@@ -4,6 +4,8 @@ A design engineering skill for AI coding agents. Teaches your agent to build int
 
 **Website:** [skills.smoothui.dev](https://skills.smoothui.dev)
 
+![UI Craft](screenshot.png)
+
 ## What it does
 
 UI Craft gives AI coding agents the design knowledge they're missing. Not templates. Not component libraries. Actual craft knowledge — 12 domains of opinionated rules about how interfaces should look, move, and feel.
