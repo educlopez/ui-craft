@@ -2,8 +2,6 @@
 
 A design engineering skill for AI coding agents. Teaches your agent to build interfaces with real design taste — not gradient cards and bounce animations.
 
-**Website:** [ui-craft.dev](https://ui-craft.dev)
-
 ## What it does
 
 UI Craft gives AI coding agents the design knowledge they're missing. Not templates. Not component libraries. Actual craft knowledge — 12 domains of opinionated rules about how interfaces should look, move, and feel.
