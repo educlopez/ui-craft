@@ -103,7 +103,9 @@ ui-craft/
 
 ## Contributing
 
-Issues and PRs welcome. If you have ideas for new domains or rules, open an issue.
+Spotted a new AI-generated pattern that should be in the anti-slop list? Have a craft rule from a product you admire? Want to add a new reference domain? PRs and issues welcome.
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on adding rules, improving references, or proposing new domains.
 
 ## Author
 
@@ -111,4 +113,4 @@ Issues and PRs welcome. If you have ideas for new domains or rules, open an issu
 
 ## License
 
-MIT
+[MIT](LICENSE) — use it however you want.
