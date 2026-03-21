@@ -4,7 +4,7 @@ A design engineering skill for AI coding agents. Teaches your agent to build int
 
 **Website:** [skills.smoothui.dev](https://skills.smoothui.dev)
 
-![UI Craft](screenshot.png)
+![UI Craft](assets/og.png)
 
 ## What it does
 
