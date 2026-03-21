@@ -95,6 +95,7 @@ Before shipping any UI, ask: "If someone said AI made this, would they believe i
 - Simple bar charts when area/line charts would be more visual and informative
 - Overly minimal results that look "empty" rather than "designed" — craft means adding the right details, not removing everything
 - Colored pills/badges on trend percentages — just use plain secondary text like "+12.5% from last month"
+- ALL CAPS / uppercase text for headings, labels, or body content — it screams "template" and hurts readability; use sentence case or title case instead
 
 ### The Craft Test (What TO Do)
 
