@@ -80,25 +80,38 @@ The skill actively rejects patterns that scream "AI made this":
 - ~~Bounce and elastic easing~~
 - ~~Glow effects as affordances~~
 - ~~Colored accent borders on cards~~
+- ~~ALL CAPS headings~~
+- ~~Uniform border-radius everywhere~~
+- ~~Emoji as icons~~
+- ~~Background gradient blobs~~
+- ~~Bento grid abuse~~
+- ~~Stagger-animate everything on load~~
+- ~~Star ratings on testimonials~~
 
 ## Project structure
 
 ```
 ui-craft/
-├── SKILL.md              # Main skill file
-└── references/
-    ├── accessibility.md   # WCAG, keyboard, focus, ARIA
-    ├── animation.md       # Easing, springs, timing, principles
-    ├── animation-orchestration.md  # Multi-stage sequences
-    ├── color.md           # Palettes, dark mode, tokens
-    ├── copy.md            # UX writing, errors, CTAs
-    ├── layout.md          # Spacing, grids, hierarchy, depth
-    ├── modern-css.md      # View Transitions, container queries
-    ├── performance.md     # Compositor, FLIP, scroll, layers
-    ├── responsive.md      # Breakpoints, touch zones, fluid
-    ├── review.md          # Systematic UI critique methodology
-    ├── sound.md           # Web Audio, UI sound design
-    └── typography.md      # Type scale, fonts, readability
+├── skills/
+│   └── ui-craft/
+│       ├── SKILL.md              # Main skill file
+│       └── references/
+│           ├── accessibility.md   # WCAG, keyboard, focus, ARIA
+│           ├── animation.md       # Easing, springs, timing, principles
+│           ├── animation-orchestration.md  # Multi-stage sequences
+│           ├── color.md           # Palettes, dark mode, tokens
+│           ├── copy.md            # UX writing, errors, CTAs
+│           ├── layout.md          # Spacing, grids, hierarchy, depth
+│           ├── modern-css.md      # View Transitions, container queries
+│           ├── performance.md     # Compositor, FLIP, scroll, layers
+│           ├── responsive.md      # Breakpoints, touch zones, fluid
+│           ├── review.md          # Systematic UI critique methodology
+│           ├── sound.md           # Web Audio, UI sound design
+│           └── typography.md      # Type scale, fonts, readability
+├── README.md
+├── CONTRIBUTING.md
+├── LICENSE
+└── VERSIONS.md
 ```
 
 ## Contributing
