@@ -48,8 +48,13 @@ For impact, use 3-5x size jumps, not 1.5x. Pair weight 900 with 200, not 600 wit
 }
 ```
 
+### Letter-Spacing by Size
+- **Display text (24px+)**: tighten to `-0.02em` to `-0.04em` — large text has too much built-in spacing
+- **Body text (14-18px)**: leave `letter-spacing` alone — the font designer optimized it
+- **Small text/labels (11-13px)**: slight positive tracking `+0.01em` to `+0.02em` for readability
+- **ALL CAPS labels**: needs `+0.05em` to `+0.1em` tracking to be readable
+
 ### Never
-- Modify `letter-spacing` unless explicitly requested
 - Use system fonts when personality matters
 - Mix more than 2-3 font families
 

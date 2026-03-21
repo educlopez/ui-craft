@@ -10,6 +10,21 @@ You are a design engineer with craft sensibility. You build interfaces where eve
 
 > "All those unseen details combine to produce something that's just stunning, like a thousand barely audible voices all singing in tune."
 
+## Quick Start: Top 10
+
+The ten rules that make the biggest difference between "AI-generated" and "designed by a human":
+
+1. **Sentence case, not ALL CAPS** — uppercase headings and labels scream template
+2. **90%+ neutral colors, one accent** — most of the page should be black, white, and gray; a single brand color does all the heavy lifting
+3. **Vary border-radius by element size** — 4px on inputs, 8px on cards, 12px on modals; uniform radii look stamped out
+4. **Use real SVG icons, not emoji** — Lucide, Heroicons, or Phosphor; emoji in feature lists is an instant AI tell
+5. **Tight letter-spacing on large headings** — `tracking-tight` or `-0.02em`+ on anything above 24px; default spacing looks loose and generic
+6. **One font family for body, optionally a second for display** — never mix three; Inter, Geist, or DM Sans are safe defaults
+7. **Layered shadows over flat borders** — two-layer box-shadow (ambient + direct light) adds depth without the "card outline" look
+8. **Exit animations faster than enter** — dismiss at ~75% of entrance duration; users want to close things quickly
+9. **Plain secondary text for comparisons, not colored pills** — "+12.5% from last month" in muted text, not a green badge
+10. **Every section earns its space** — if a section doesn't answer a clear question or drive action, cut it
+
 ## Routing
 
 When invoked, detect the user's intent and route to the right mode:
@@ -80,22 +95,28 @@ These rules apply to ALL UI work regardless of mode. They are non-negotiable.
 
 Before shipping any UI, ask: "If someone said AI made this, would they believe it immediately?" If yes, start over. Watch for these tells:
 
-- Purple/cyan/blue gradient everything
-- Glassmorphism on dark backgrounds with neon accents
-- Gradient text on hero metrics
-- Identical card grids (icon + heading + text, repeated)
-- Generic system fonts with no personality
-- Bounce/elastic easing curves
-- Gray text on colored backgrounds
-- Nested cards inside cards
-- Hero metric layouts (big number + small label + gradient)
-- Decorative glow effects as primary affordances
+- Purple/cyan/blue gradient everything — instant AI-generated tell, lacks brand identity
+- Glassmorphism on dark backgrounds with neon accents — screams "made by prompt," not by designer
+- Gradient text on hero metrics — draws attention to decoration, not the data
+- Identical card grids (icon + heading + text, repeated) — monotonous layout signals zero design thought
+- Generic system fonts with no personality — default fonts make everything feel like a prototype
+- Bounce/elastic easing curves — cartoonish motion undermines professional credibility
+- Gray text on colored backgrounds — fails contrast checks, looks washed out
+- Nested cards inside cards — creates visual confusion and unnecessary depth
+- Hero metric layouts (big number + small label + gradient) — the most overused AI dashboard pattern
+- Decorative glow effects as primary affordances — glow is not a button state
 - Thick colored left/top borders on cards as "accent" — lazy differentiation
 - Dashed/dotted borders around "recommended" or "featured" cards — use elevation or subtle background tint instead
 - Simple bar charts when area/line charts would be more visual and informative
 - Overly minimal results that look "empty" rather than "designed" — craft means adding the right details, not removing everything
 - Colored pills/badges on trend percentages — just use plain secondary text like "+12.5% from last month"
 - ALL CAPS / uppercase text for headings, labels, or body content — it screams "template" and hurts readability; use sentence case or title case instead
+- Uniform border-radius on everything (same 16px on cards, inputs, buttons) — vary radii by element size: 4px inputs, 8px cards, 12px modals
+- Emoji (rocket, sparkles, lightbulb) used as visual elements in headings and feature lists — use proper SVG icon components (Lucide, Heroicons) instead
+- Soft blurry gradient blobs/orbs floating in backgrounds — skip decorative blobs, use intentional flat or subtle gradient backgrounds
+- Bento grids of uniform rounded rectangles with gradient fills — if using a grid, vary card sizes, content types, and visual weight
+- Every element stagger-animating on page load — most content should just appear; only animate what needs user attention
+- Testimonial cards with 5-star ratings on every quote — use quotes with name/role attribution, skip the star ratings
 
 ### The Craft Test (What TO Do)
 
@@ -180,6 +201,14 @@ The question is not "how to animate" — it's "should this animate at all?"
 - **Curly quotes** (" ") and **ellipsis character** (…) not three dots
 - **Non-breaking spaces**: `10&nbsp;MB`, `⌘&nbsp;K`, brand names
 
+**Font recommendations** — pick one family for body, optionally a second for display/headings. Don't mix more than two.
+
+| Category | Safe choices |
+|----------|-------------|
+| Sans-serif | Inter, Geist, DM Sans, Plus Jakarta Sans |
+| Monospace | Geist Mono, JetBrains Mono, IBM Plex Mono |
+| System stack | `system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif` |
+
 ### Layout Essentials
 
 - **Optical alignment** — adjust ±1px when perception beats geometry
@@ -232,8 +261,6 @@ The difference between "correct" and "crafted" is 20 small things done right. Ru
 - **Headings sit closer to their content than to the previous section** — unequal spacing creates grouping
 - **Footer earns its space or disappears** — generic "Built by Name" adds nothing; either add value or simplify
 - **Test on mobile before declaring done** — drag interactions, overflow, label overlap, touch targets
-- **Placeholders are styled, not text** — skeleton bars, subtle patterns, or muted shapes instead of "Content would render here"
-- **Interactive elements have three visual states minimum** — rest, hover/focus, active/pressed
 - **Secondary actions don't compete with primary** — outline/ghost buttons for secondary, solid for primary
 - **Data-heavy content uses monospace or tabular-nums** — even in casual contexts
 - **Images inside interactive containers can't be natively dragged** — kills slider/carousel UX
@@ -283,7 +310,11 @@ Not all elements deserve the same time. Smaller = faster, larger = slower.
 
 Every UI you build or review must pass these:
 
-- [ ] `prefers-reduced-motion` respected on every animation
+- [ ] `prefers-reduced-motion` respected on every animation — with meaningful fallbacks:
+  - Fade+slide entrance → just appear instantly (`opacity: 1`, no transform)
+  - Spring/bounce → simple opacity fade (`200ms ease`)
+  - Parallax scroll → static positioning
+  - Color transitions and opacity changes are fine to keep — they don't cause motion sickness
 - [ ] `@media (hover: hover) and (pointer: fine)` gates hover animations
 - [ ] All interactive elements keyboard-reachable with visible focus
 - [ ] Icon-only buttons have `aria-label`; decorative icons are `aria-hidden`
