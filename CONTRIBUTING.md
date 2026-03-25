@@ -10,28 +10,29 @@ You can suggest new anti-slop rules, craft patterns, or improvements by [opening
 
 ```
 ui-craft/
-├── SKILL.md              # Main skill file — core rules, anti-slop, craft test
-├── references/           # Deep-dive guides per domain
-│   ├── accessibility.md  # WCAG, keyboard, focus, ARIA
-│   ├── animation.md      # Easing, springs, timing, principles
-│   ├── animation-orchestration.md  # Multi-stage sequences
-│   ├── color.md          # Palettes, dark mode, tokens
-│   ├── copy.md           # UX writing, errors, CTAs
-│   ├── layout.md         # Spacing, grids, hierarchy, depth
-│   ├── modern-css.md     # View Transitions, container queries
-│   ├── performance.md    # Compositor, FLIP, scroll, layers
-│   ├── responsive.md     # Breakpoints, touch zones, fluid
-│   ├── review.md         # Systematic UI critique methodology
-│   ├── sound.md          # Web Audio, UI sound design
-│   └── typography.md     # Type scale, fonts, readability
-└── assets/               # Images for README
+├── skills/ui-craft/
+│   ├── SKILL.md              # Main skill file — core rules, anti-slop, craft test
+│   └── references/           # Deep-dive guides per domain
+│       ├── accessibility.md  # WCAG, keyboard, focus, ARIA
+│       ├── animation.md      # Easing, springs, timing, principles
+│       ├── animation-orchestration.md  # Multi-stage sequences
+│       ├── color.md          # Palettes, dark mode, tokens
+│       ├── copy.md           # UX writing, errors, CTAs
+│       ├── layout.md         # Spacing, grids, hierarchy, depth
+│       ├── modern-css.md     # View Transitions, container queries
+│       ├── performance.md    # Compositor, FLIP, scroll, layers
+│       ├── responsive.md     # Breakpoints, touch zones, fluid
+│       ├── review.md         # Systematic UI critique methodology
+│       ├── sound.md          # Web Audio, UI sound design
+│       └── typography.md     # Type scale, fonts, readability
+└── assets/                   # Images for README
 ```
 
 ## How to Contribute
 
 ### Adding a new anti-slop rule
 
-Anti-slop rules live in the `### The Anti-Slop Test` section of `SKILL.md`. Each rule follows this pattern:
+Anti-slop rules live in the `### The Anti-Slop Test` section of `skills/ui-craft/SKILL.md`. Each rule follows this pattern:
 
 ```markdown
 - Pattern description — brief reason why it's slop; what to do instead
@@ -50,23 +51,23 @@ Example:
 
 ### Adding a craft pattern
 
-Craft patterns live in `### The Craft Test (What TO Do)` in `SKILL.md`. These describe what top SaaS products actually do — patterns worth emulating. Reference real products (Linear, Vercel, Stripe, Notion) when possible.
+Craft patterns live in `### The Craft Test (What TO Do)` in `skills/ui-craft/SKILL.md`. These describe what top SaaS products actually do — patterns worth emulating. Reference real products (Linear, Vercel, Stripe, Notion) when possible.
 
 ### Improving a reference file
 
-Reference files in `references/` contain deep-dive guidance per domain. When editing:
+Reference files in `skills/ui-craft/references/` contain deep-dive guidance per domain. When editing:
 
 - Keep the same tone — direct, opinionated, with concrete examples
 - Explain the **why**, not just the what
 - Prefer code examples over abstract principles
-- Don't contradict rules in the main `SKILL.md`
+- Don't contradict rules in the main `skills/ui-craft/SKILL.md`
 
 ### Adding a new reference domain
 
 If you think a whole new domain is needed:
 
-1. Create `references/your-domain.md`
-2. Add a routing entry in the `## Routing` table in `SKILL.md`
+1. Create `skills/ui-craft/references/your-domain.md`
+2. Add a routing entry in the `## Routing` table in `skills/ui-craft/SKILL.md`
 3. Keep the reference under 300 lines; add a table of contents if longer
 
 ## Writing Guidelines
@@ -88,7 +89,7 @@ If you think a whole new domain is needed:
 ## Quality Checklist
 
 - [ ] Rules include the pattern AND the reason (after the em dash)
-- [ ] No contradiction with existing rules in `SKILL.md` or reference files
+- [ ] No contradiction with existing rules in `skills/ui-craft/SKILL.md` or reference files
 - [ ] Concrete values and examples, not vague principles
 - [ ] Tested with at least one AI agent prompt
 - [ ] No sensitive data or credentials

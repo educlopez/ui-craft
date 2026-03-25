@@ -1,0 +1,11 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "UI Craft",
+  "version": "2026.3.25.1521",
+  "description": "The ultimate UI design engineering skill — build, animate, review, and polish interfaces with craft-level quality.",
+  "author": "Eduardo Calvo",
+  "repository": "https://github.com/educlopez/ui-craft",
+  "license": "MIT",
+  "tags": ["ui", "design", "animation", "accessibility", "css", "frontend", "design-system", "polish"],
+  "categories": ["development"]
+}

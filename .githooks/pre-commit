@@ -1,0 +1,14 @@
+#!/bin/bash
+
+# Auto-generate timestamp-based version on each commit
+# Format: YYYY.M.D.HHMM (forces plugin cache refresh)
+
+VERSION=$(date +"%Y.%-m.%-d.%H%M")
+
+# Update marketplace.json version
+if [ -f ".claude-plugin/marketplace.json" ]; then
+  sed -i '' "s/\"version\": \"[^\"]*\"/\"version\": \"$VERSION\"/" .claude-plugin/marketplace.json
+  git add .claude-plugin/marketplace.json
+fi
+
+echo "Auto-versioned to $VERSION"
