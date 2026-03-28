@@ -32,6 +32,10 @@ git clone https://github.com/educlopez/ui-craft.git ~/.skills/ui-craft
 git submodule add https://github.com/educlopez/ui-craft.git .skills/ui-craft
 ```
 
+## Discovery phase
+
+Before building anything, the skill analyzes your project for existing design decisions — CSS variables, Tailwind config, font imports, component themes. If your project already has a design system, it respects it. If not, it asks 3 quick questions (style, accent color, font) so it never defaults to generic blue/Inter.
+
 ## Four modes
 
 The skill detects your intent and routes automatically.
@@ -59,6 +63,8 @@ The skill detects your intent and routes automatically.
 | UX Copy | Error messages, empty states, CTAs, microcopy |
 | UI Review | Systematic critique methodology, anti-slop detection |
 | Orchestration | Multi-stage sequences, stagger timing, entrance/exit coordination |
+| Dashboard | Sidebar nav, metric cards, chart types, data tables, filters |
+| Inspiration | Real patterns from dub.co, cursor, linear, vercel, stripe |
 
 ## Framework agnostic
 
@@ -87,6 +93,9 @@ The skill actively rejects patterns that scream "AI made this":
 - ~~Bento grid abuse~~
 - ~~Stagger-animate everything on load~~
 - ~~Star ratings on testimonials~~
+- ~~Generic CTAs ("Learn more", "Click here")~~
+- ~~Walls of text on landing pages~~
+- ~~Pure black (#000) text~~
 
 ## Project structure
 
@@ -105,6 +114,8 @@ ui-craft/
 │           ├── modern-css.md      # View Transitions, container queries
 │           ├── performance.md     # Compositor, FLIP, scroll, layers
 │           ├── responsive.md      # Breakpoints, touch zones, fluid
+│           ├── dashboard.md       # Dashboard layout, metrics, charts, tables
+│           ├── inspiration.md     # Real patterns from top SaaS sites
 │           ├── review.md          # Systematic UI critique methodology
 │           ├── sound.md           # Web Audio, UI sound design
 │           └── typography.md      # Type scale, fonts, readability

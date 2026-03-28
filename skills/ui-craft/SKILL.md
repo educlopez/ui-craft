@@ -14,9 +14,9 @@ You are a design engineer with craft sensibility. You build interfaces where eve
 
 The rules that make the biggest difference between "AI-generated" and "designed by a human":
 
-0. **Ask before assuming** — never default accent color, font, or design style without checking the project config (`.ui-craft.json`) or asking the user. Blue is not everyone's brand.
+0. **Ask before assuming** — never default accent color, font, or design style without analyzing the existing project or asking the user. Blue is not everyone's brand.
 1. **Sentence case by default** — uppercase headings and labels scream template. The only exception: tiny category labels (11-13px) above headings may use small-caps or uppercase with wide letter-spacing (0.04-0.08em)
-2. **90%+ neutral colors, one accent** — most of the page should be black, white, and gray; a single brand color does all the heavy lifting — use the accent defined in `.ui-craft.json` or ask the user. NEVER default to blue without asking.
+2. **90%+ neutral colors, one accent** — most of the page should be black, white, and gray; a single brand color does all the heavy lifting — detect the accent from existing code or ask the user. NEVER default to blue without asking.
 3. **Vary border-radius by element size** — 4px on inputs, 8px on cards, 12px on modals; uniform radii look stamped out
 4. **Use real SVG icons, not emoji** — Lucide, Heroicons, or Phosphor; emoji in feature lists is an instant AI tell
 5. **Tight letter-spacing on large headings** — `tracking-tight` or `-0.02em`+ on anything above 24px; default spacing looks loose and generic
@@ -32,7 +32,7 @@ The rules that make the biggest difference between "AI-generated" and "designed 
 
 When invoked, detect the user's intent and route to the right mode.
 
-> **Before routing to any mode**, run the Discovery Phase. If `.ui-craft.json` exists in the project, load it silently. If it doesn't exist, run the full discovery flow. The user can skip questions by saying "just use defaults" — in which case, use: Minimal Clean style, Blue (#2563eb) accent (subtle), Inter font.
+> **Before routing to any mode**, run the Discovery Phase. Analyze the project for existing design tokens. If none are found and the user hasn't specified preferences, ask the 3 discovery questions. The user can skip by saying "just use defaults" — in which case, use: Minimal Clean style, Blue (#2563eb) accent (subtle), Inter font.
 
 | Intent | Route | Reference |
 |--------|-------|-----------|
@@ -93,11 +93,11 @@ touch-action: manipulation      → touch-manipulation
 
 After detecting the stack, also run the Discovery Phase:
 ```
-├── Check for .ui-craft.json → if exists, load and use
-├── If not exists → analyze project for existing design tokens
+├── Analyze project for existing design tokens
 ├── If design tokens found → note them, work within existing system
-├── If no design tokens → ask user the 3 discovery questions
-└── Save results to .ui-craft.json
+├── If no design tokens and user provided preferences in prompt → use those
+├── If no design tokens and no preferences → ask user the 3 discovery questions
+└── Proceed to build with the resolved design decisions
 ```
 
 ---
@@ -116,8 +116,7 @@ Scan for existing design tokens:
 ├── Tailwind config (theme.extend.colors, theme.extend.fontFamily)
 ├── globals.css / global styles (font imports, color definitions)
 ├── Layout files (font loading, Google Fonts, next/font)
-├── Component library theme (shadcn theme, MUI theme, etc.)
-├── .ui-craft.json (if exists — previous discovery results)
+├── Component library theme (shadcn theme, MUI theme, Bootstrap variables, etc.)
 └── Design system tokens file (tokens.css, design-tokens.ts)
 ```
 
@@ -176,33 +175,9 @@ Also ask: "Do you want the accent color to be used subtly (active states, select
 
 Ask: "Should headings use the same font as body, or a contrasting display font?"
 
-### Step 3: Save Decisions
+### Step 3: Apply Decisions
 
-After the user answers (or if analyzing an existing project), create/update `.ui-craft.json` in the project root:
-
-```json
-{
-  "style": "soft-modern",
-  "accent": {
-    "color": "#4f46e5",
-    "usage": "prominent"
-  },
-  "fonts": {
-    "body": "Inter",
-    "heading": "Inter",
-    "mono": "Geist Mono"
-  },
-  "discovered": {
-    "existingAccent": null,
-    "existingFonts": ["Geist", "Geist Mono"],
-    "componentLibrary": "shadcn/base-ui",
-    "tailwind": true
-  },
-  "lastUpdated": "2026-03-27"
-}
-```
-
-On subsequent runs, read `.ui-craft.json` first. If it exists and is recent, skip the questions and use these decisions. If the user says "change accent to X" or "switch font to Y", update the file.
+After the user answers (or after analyzing existing project tokens), hold these decisions in context for the current task. The project's own code (CSS variables, Tailwind config, font imports) becomes the source of truth for future runs — no external config file needed.
 
 **Shortcut:** If the user provides accent color, font, and style in the prompt, skip the Discovery Phase entirely. Use their values directly. Only run discovery when preferences are ambiguous or missing.
 
