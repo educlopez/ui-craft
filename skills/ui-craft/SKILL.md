@@ -28,6 +28,8 @@ The rules that make the biggest difference between "AI-generated" and "designed 
 11. **Every section earns its space** — if a section doesn't answer a clear question or drive action, cut it
 12. **One signature detail per UI** — a subtle motif, an unexpected layout break, a clever SVG pattern, a distinctive card treatment. This is what makes it feel designed rather than templated. Examples: angled section dividers, a branded icon style, custom list markers, a unique hover reveal
 
+> **Before writing ANY code:** Run Stack Detection + Discovery Phase. Analyze the project for existing design tokens (CSS variables, Tailwind config, font imports). If the project already has a design system, use it. If preferences are missing and not in the prompt, ask the user. Never assume defaults.
+
 ## Routing
 
 When invoked, detect the user's intent and route to the right mode.
@@ -51,6 +53,8 @@ When invoked, detect the user's intent and route to the right mode.
 | UX copy / microcopy | Read [copy.md](references/copy.md) |
 | Responsive / adaptive design | Read [responsive.md](references/responsive.md) |
 | Ambiguous | Ask which mode |
+
+**When ui-craft overlaps with other skills:** If the user's task is primarily about marketing copy (headlines, CTAs, value props), defer to a copywriting skill if available. If primarily about SEO, defer to an SEO skill. UI Craft handles the visual and interaction layer — the how it looks and feels, not the what it says.
 
 ---
 
@@ -135,6 +139,8 @@ Build an inventory of what's already defined:
 ### Step 2: Ask the User
 
 When design decisions are missing or ambiguous, ASK the user before defaulting. Present these as quick, focused questions — not a long form.
+
+**Quick ask format** (prefer over the detailed tables): "Before I build: 1. Design style — minimal, soft modern, sharp geometric, editorial, dark premium, or playful? 2. Accent color — any preference? 3. Font — clean sans-serif, geometric, humanist, monospace, or system stack?" Only show detailed tables if user asks for more options.
 
 **Question 1: Design Style**
 
@@ -393,6 +399,18 @@ The difference between "correct" and "crafted" is 20 small things done right. Ru
 - **Images inside interactive containers can't be natively dragged** — kills slider/carousel UX
 - **Every `<section>` on a landing page answers one question** — if it answers two, split it
 
+### Common Issues (What We See in Real Projects)
+
+When reviewing or polishing existing UI, these are the most frequent problems:
+
+| Issue | How to spot it | Fix |
+|-------|---------------|-----|
+| Everything is the same shade of gray | Squint test — no visual hierarchy | Darken headings to 900, lighten secondary to 500, add one accent |
+| Cards all look identical | 4+ cards with same border, radius, shadow | Differentiate primary card, vary content types, break the grid |
+| Hover states missing or default | Buttons/cards don't respond to cursor | Add translateY(-1px) + shadow on cards, bg darken on buttons |
+| Spacing is uniform everywhere | Same gap between all sections | Vary: tighter within groups, looser between sections |
+| No loading/empty/error states | Only the happy path is designed | Add skeleton, empty state with CTA, inline errors |
+
 ---
 
 ## Review Format (Required)
@@ -404,6 +422,11 @@ When reviewing UI code, use a markdown table. Never use "Before:"/"After:" on se
 | `transition: all 300ms` | `transition: opacity 200ms ease-out` | Specify exact properties; `all` animates unintended things |
 | No focus-visible style | `focus-visible:ring-2 ring-offset-2` | Keyboard users need visible focus indication |
 | `color: gray` for disabled | `opacity: 0.5` + `cursor: not-allowed` | Convey disabled state through multiple signals, not just color |
+
+When reviewing, prioritize findings by impact:
+1. **Critical** — blocks usability or accessibility (missing focus states, broken keyboard nav, no reduced-motion support)
+2. **High-impact** — immediately noticeable quality issues (wrong font, default blue, identical card grids, no hover states)
+3. **Quick wins** — small changes, big polish (add tabular-nums, fix letter-spacing, curly quotes, non-breaking spaces)
 
 ---
 
