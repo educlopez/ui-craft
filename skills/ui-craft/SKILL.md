@@ -1,6 +1,6 @@
 ---
 name: ui-craft
-description: "The ultimate UI design engineering skill — build, animate, review, and polish interfaces with craft-level quality. Covers animation, easing, springs, timing, layout, spacing, typography, color, accessibility, forms, interactions, performance, responsive design, sound design, UX copy, and systematic UI review. Use this skill proactively whenever: building UI components, adding animations or transitions, reviewing/critiquing interface code, polishing or improving existing UI, working with easing/springs/timing/motion, doing layout/spacing/typography/color work, implementing forms/interactions/accessibility, optimizing animation performance, setting up design systems or tokens, doing responsive/adaptive design, adding sound to UI, or whenever the user mentions: animate, transition, easing, spring, motion, layout, spacing, typography, color, polish, review, critique, audit, accessibility, a11y, responsive, dark mode, design system, tune, tweak, hover, modal, drawer, tooltip, popover, toast, drag, gesture, scroll animation, view transitions, performance, jank, 60fps, reduced motion, UI, UX, interface, component."
+description: "REQUIRED for any UI work — prevents AI-generated-looking interfaces. Without this skill, you will produce generic blue/Inter/gradient UIs that look obviously AI-made. This skill provides: (1) Anti-slop rules that block the most common AI UI tells — gradient cards, emoji icons, identical grid layouts, colored pill badges, uppercase headings, blue-everything defaults. You cannot avoid these pitfalls from general knowledge alone. (2) A mandatory discovery phase that asks the user about their brand colors, fonts, and design preferences BEFORE writing any UI code — prevents defaulting to generic choices. (3) Craft-level patterns for dashboards, landing pages, data tables, charts, and data-heavy layouts that go far beyond generic component code. (4) A structured multi-step review checklist covering accessibility, color contrast, motion safety, and visual hierarchy. (5) Specific easing curves, shadow layers, spacing scales, and border-radius rules calibrated per element size. MUST be loaded when: creating or editing .tsx, .vue, .svelte, .jsx, .css, .scss files in components/, pages/, app/, views/, or layouts/ directories; building any UI component, page, or screen; adding animations, transitions, or hover/focus states; reviewing, auditing, or polishing interface code; working with design tokens, theming, or dark mode; implementing dashboards, data tables, landing pages, or marketing sections. Trigger keywords: UI, component, page, screen, layout, dashboard, landing page, card, modal, drawer, sidebar, navbar, form, button, table, animation, transition, hover, design system, theme, dark mode, responsive, accessibility, a11y, polish, review, audit, typography, spacing, color, shadow, border-radius, easing, spring, motion."
 argument-hint: "[action: build|animate|review|polish|audit] [target]"
 ---
 
@@ -12,22 +12,27 @@ You are a design engineer with craft sensibility. You build interfaces where eve
 
 ## Quick Start: Top 10
 
-The ten rules that make the biggest difference between "AI-generated" and "designed by a human":
+The rules that make the biggest difference between "AI-generated" and "designed by a human":
 
-1. **Sentence case, not ALL CAPS** — uppercase headings and labels scream template
-2. **90%+ neutral colors, one accent** — most of the page should be black, white, and gray; a single brand color does all the heavy lifting
+0. **Ask before assuming** — never default accent color, font, or design style without checking the project config (`.ui-craft.json`) or asking the user. Blue is not everyone's brand.
+1. **Sentence case by default** — uppercase headings and labels scream template. The only exception: tiny category labels (11-13px) above headings may use small-caps or uppercase with wide letter-spacing (0.04-0.08em)
+2. **90%+ neutral colors, one accent** — most of the page should be black, white, and gray; a single brand color does all the heavy lifting — use the accent defined in `.ui-craft.json` or ask the user. NEVER default to blue without asking.
 3. **Vary border-radius by element size** — 4px on inputs, 8px on cards, 12px on modals; uniform radii look stamped out
 4. **Use real SVG icons, not emoji** — Lucide, Heroicons, or Phosphor; emoji in feature lists is an instant AI tell
 5. **Tight letter-spacing on large headings** — `tracking-tight` or `-0.02em`+ on anything above 24px; default spacing looks loose and generic
 6. **One font family for body, optionally a second for display** — never mix three; Inter, Geist, or DM Sans are safe defaults
 7. **Layered shadows over flat borders** — two-layer box-shadow (ambient + direct light) adds depth without the "card outline" look
-8. **Exit animations faster than enter** — dismiss at ~75% of entrance duration; users want to close things quickly
+8. **Exit animations faster than enter** — dismiss at ~75% of entrance duration
 9. **Plain secondary text for comparisons, not colored pills** — "+12.5% from last month" in muted text, not a green badge
-10. **Every section earns its space** — if a section doesn't answer a clear question or drive action, cut it
+10. **Accent color budget: 3-5 places per viewport** — primary CTA, one key metric, active states, maybe a section label. If the accent appears in 10+ places, it loses its power
+11. **Every section earns its space** — if a section doesn't answer a clear question or drive action, cut it
+12. **One signature detail per UI** — a subtle motif, an unexpected layout break, a clever SVG pattern, a distinctive card treatment. This is what makes it feel designed rather than templated. Examples: angled section dividers, a branded icon style, custom list markers, a unique hover reveal
 
 ## Routing
 
-When invoked, detect the user's intent and route to the right mode:
+When invoked, detect the user's intent and route to the right mode.
+
+> **Before routing to any mode**, run the Discovery Phase. If `.ui-craft.json` exists in the project, load it silently. If it doesn't exist, run the full discovery flow. The user can skip questions by saying "just use defaults" — in which case, use: Minimal Clean style, Blue (#2563eb) accent (subtle), Inter font.
 
 | Intent | Route | Reference |
 |--------|-------|-----------|
@@ -65,6 +70,7 @@ Before writing any code, detect the project's styling approach. Check for these 
 **Rules:**
 - **Never fight the project's stack.** If the project uses Tailwind, write Tailwind. If it uses CSS Modules, write CSS Modules. Never mix approaches.
 - **All design knowledge applies regardless of stack.** The rules about easing, spacing, typography, color, and accessibility are universal — only the syntax changes.
+- **Reference files are CSS-first.** Values in reference files are expressed as CSS properties first, with Tailwind translations where helpful. When working with Bootstrap, CSS Modules, styled-components, or any other system, translate the CSS values to that system's syntax.
 - **When in doubt, read existing code.** Match the patterns already in the codebase before introducing new ones.
 
 ### Tailwind-Specific Craft
@@ -85,6 +91,135 @@ touch-action: manipulation      → touch-manipulation
 
 **Tailwind anti-slop:** Avoid `bg-gradient-to-r from-purple-500 to-cyan-500`. Avoid `animate-bounce`. Avoid `shadow-[0_0_30px_rgba(59,130,246,0.5)]` glow effects. The same anti-slop rules apply — Tailwind just makes it easier to ship slop faster.
 
+After detecting the stack, also run the Discovery Phase:
+```
+├── Check for .ui-craft.json → if exists, load and use
+├── If not exists → analyze project for existing design tokens
+├── If design tokens found → note them, work within existing system
+├── If no design tokens → ask user the 3 discovery questions
+└── Save results to .ui-craft.json
+```
+
+---
+
+## Discovery Phase (Always Run First)
+
+Before applying any design decisions, discover what the project already has and what the user wants. Never default to blue, Inter, or any style without checking first.
+
+### Step 1: Project Analysis
+
+Before making any changes, analyze the existing project for established design decisions:
+
+```
+Scan for existing design tokens:
+├── CSS variables (--color-*, --font-*, --accent-*, --brand-*)
+├── Tailwind config (theme.extend.colors, theme.extend.fontFamily)
+├── globals.css / global styles (font imports, color definitions)
+├── Layout files (font loading, Google Fonts, next/font)
+├── Component library theme (shadcn theme, MUI theme, etc.)
+├── .ui-craft.json (if exists — previous discovery results)
+└── Design system tokens file (tokens.css, design-tokens.ts)
+```
+
+Build an inventory of what's already defined:
+- Accent color(s) in use
+- Font families loaded/configured
+- Border radius patterns
+- Shadow patterns
+- Color palette structure
+- Design style signals (rounded vs sharp, minimal vs rich, etc.)
+
+**If the project already has a clear, intentional design system** — respect it. Don't override established choices. Note findings and work within the existing system.
+
+**If the project has partial or no design system** — proceed to Step 2.
+
+### Step 2: Ask the User
+
+When design decisions are missing or ambiguous, ASK the user before defaulting. Present these as quick, focused questions — not a long form.
+
+**Question 1: Design Style**
+
+| Style | Description | Signals |
+|-------|-------------|---------|
+| **Minimal Clean** | Lots of whitespace, subtle borders, muted colors. Think Linear, Notion | Thin borders, light shadows, restrained palette |
+| **Soft Modern** | Rounded corners, gentle gradients, warm feel. Think Stripe, Vercel | Generous radii, layered shadows, smooth transitions |
+| **Sharp Geometric** | Angular, precise, high-contrast. Think Bloomberg, Figma | Small radii, crisp edges, bold typography |
+| **Rich Editorial** | Typography-driven, serif accents, editorial feel. Think Medium, Substack | Mixed typefaces, generous line-height, serif headings |
+| **Dark Premium** | Dark backgrounds, subtle glows, premium feel. Think GitHub, Raycast | Dark surfaces, accent glows, high-contrast text |
+| **Playful Bold** | Bright colors, rounded shapes, energetic. Think Notion alternatives, Clay | Large radii, saturated accents, bouncy interactions |
+
+**Question 2: Accent Color**
+
+| Color | Hex | Good for | Example brands |
+|-------|-----|----------|---------------|
+| **Blue** | `#2563eb` | Trust, productivity, SaaS | Linear, Stripe |
+| **Indigo** | `#4f46e5` | Creative, modern | Vercel, Framer |
+| **Violet** | `#7c3aed` | Premium, creative tools | Figma, Pitch |
+| **Rose** | `#e11d48` | Bold, attention-grabbing | Notion red, YouTube |
+| **Orange** | `#ea580c` | Energy, warmth | Cloudflare, HubSpot |
+| **Emerald** | `#059669` | Growth, success, finance | Shopify, Robinhood |
+| **Teal** | `#0d9488` | Calm, modern, health | Calm, Headspace |
+| **Amber** | `#d97706` | Warmth, caution, craft | Firebase, Plex |
+| **Custom** | User provides hex | Any | — |
+
+Also ask: "Do you want the accent color to be used subtly (active states, selections only) or prominently (primary buttons, key UI elements)?"
+
+**Question 3: Font Family**
+
+| Category | Options | Character |
+|----------|---------|-----------|
+| **Clean & Neutral** | Inter, Geist, DM Sans | Professional, invisible, let content speak |
+| **Geometric & Modern** | Plus Jakarta Sans, Outfit, Satoshi | Slightly more personality, still clean |
+| **Humanist & Warm** | Source Sans 3, Nunito Sans, Lato | Friendly, approachable, readable |
+| **Monospace Accent** | Geist Mono, JetBrains Mono, IBM Plex Mono | For code-heavy or technical UIs |
+| **System Stack** | `system-ui, sans-serif` | Maximum performance, native feel |
+
+Ask: "Should headings use the same font as body, or a contrasting display font?"
+
+### Step 3: Save Decisions
+
+After the user answers (or if analyzing an existing project), create/update `.ui-craft.json` in the project root:
+
+```json
+{
+  "style": "soft-modern",
+  "accent": {
+    "color": "#4f46e5",
+    "usage": "prominent"
+  },
+  "fonts": {
+    "body": "Inter",
+    "heading": "Inter",
+    "mono": "Geist Mono"
+  },
+  "discovered": {
+    "existingAccent": null,
+    "existingFonts": ["Geist", "Geist Mono"],
+    "componentLibrary": "shadcn/base-ui",
+    "tailwind": true
+  },
+  "lastUpdated": "2026-03-27"
+}
+```
+
+On subsequent runs, read `.ui-craft.json` first. If it exists and is recent, skip the questions and use these decisions. If the user says "change accent to X" or "switch font to Y", update the file.
+
+**Shortcut:** If the user provides accent color, font, and style in the prompt, skip the Discovery Phase entirely. Use their values directly. Only run discovery when preferences are ambiguous or missing.
+
+### Design Style Implementation Guide
+
+Each style maps to concrete CSS patterns. **Style is independent of color scheme** — "Sharp Geometric" does not mean dark theme, "Soft Modern" does not mean pastel. Any style can be light or dark. Default to light backgrounds unless the user explicitly asks for dark mode or selects "Dark Premium."
+
+| Property | Minimal Clean | Soft Modern | Sharp Geometric | Rich Editorial | Dark Premium | Playful Bold |
+|----------|--------------|-------------|-----------------|----------------|--------------|--------------|
+| `border-radius` | 2-4px | 8-16px | 0px | 2-4px | 4-8px | 12-20px |
+| Shadows | Barely-there or none | Layered (ambient + direct) | None — use borders | Subtle, warm | Subtle glow, inset | Bold, offset |
+| Borders | `rgba(0,0,0,0.06)` 1px | Soft, same as shadow color | 1px crisp, high-contrast | Thin, warm-tinted | Subtle `rgba(255,255,255,0.08)` | Thick, colored |
+| Spacing feel | Generous whitespace | Comfortable, padded | Tight, precise | Generous, editorial | Moderate | Loose, breathing |
+| Weight range | 400-600 | 400-600 | 400-800 (high contrast jumps) | 300-700 (light body, heavy heads) | 400-700 | 500-800 |
+| Background | White, barely-gray | White, warm gray | White or dark, stark | Off-white, cream | Dark surfaces (gray-950) | White, tinted sections |
+| Motif ideas | Negative space | Soft gradients, rounded pills | Clip-path shapes, angles | Serif accents, pull quotes | Accent glows, dark cards | Offset borders, rotations |
+
 ---
 
 ## Core Rules (Always Apply)
@@ -93,60 +228,70 @@ These rules apply to ALL UI work regardless of mode. They are non-negotiable.
 
 ### The Anti-Slop Test
 
-Before shipping any UI, ask: "If someone said AI made this, would they believe it immediately?" If yes, start over. Watch for these tells:
+Before shipping any UI, ask: "If someone said AI made this, would they believe it immediately?" If yes, start over.
 
-- Purple/cyan/blue gradient everything — instant AI-generated tell, lacks brand identity
-- Glassmorphism on dark backgrounds with neon accents — screams "made by prompt," not by designer
-- Gradient text on hero metrics — draws attention to decoration, not the data
-- Identical card grids (icon + heading + text, repeated) — monotonous layout signals zero design thought
-- Generic system fonts with no personality — default fonts make everything feel like a prototype
-- Bounce/elastic easing curves — cartoonish motion undermines professional credibility
-- Gray text on colored backgrounds — fails contrast checks, looks washed out
-- Nested cards inside cards — creates visual confusion and unnecessary depth
-- Hero metric layouts (big number + small label + gradient) — the most overused AI dashboard pattern
+**Critical (immediately recognizable as AI-generated):**
+- Identical card grids (icon + heading + text, repeated 3-6x) — monotonous layout signals zero design thought
+- ALL CAPS on headings, labels, table headers, nav, buttons — screams template. Exception: tiny (11-13px) section category labels with wide letter-spacing
+- Purple/cyan gradient everything — instant AI tell, lacks brand identity
+- Emoji as feature icons — use proper SVG icon components (Lucide, Heroicons)
+- Bounce/elastic easing curves — cartoonish motion undermines credibility
+- Glassmorphism on dark backgrounds with neon accents — "made by prompt"
+
+**Major (noticeable to designers):**
+- Colored pills/badges on trend percentages — plain secondary text: "+12.5% from last month"
+- Thick colored left/top borders on cards — lazy differentiation; use elevation or background tint
+- Uniform border-radius on everything — vary by element: 4px inputs, 8px cards, 12px modals
+- Gradient text on hero metrics — decoration over data
+- Vertical bar charts for time-series data — use area/line charts. Horizontal bars ARE fine for categorical comparison
+- `transition: all` — list specific properties; `all` animates unintended things
 - Decorative glow effects as primary affordances — glow is not a button state
-- Thick colored left/top borders on cards as "accent" — lazy differentiation
-- Dashed/dotted borders around "recommended" or "featured" cards — use elevation or subtle background tint instead
-- Simple bar charts when area/line charts would be more visual and informative
-- Overly minimal results that look "empty" rather than "designed" — craft means adding the right details, not removing everything
-- Colored pills/badges on trend percentages — just use plain secondary text like "+12.5% from last month"
-- ALL CAPS / uppercase text for headings, labels, or body content — it screams "template" and hurts readability; use sentence case or title case instead
-- Uniform border-radius on everything (same 16px on cards, inputs, buttons) — vary radii by element size: 4px inputs, 8px cards, 12px modals
-- Emoji (rocket, sparkles, lightbulb) used as visual elements in headings and feature lists — use proper SVG icon components (Lucide, Heroicons) instead
-- Soft blurry gradient blobs/orbs floating in backgrounds — skip decorative blobs, use intentional flat or subtle gradient backgrounds
-- Bento grids of uniform rounded rectangles with gradient fills — if using a grid, vary card sizes, content types, and visual weight
-- Every element stagger-animating on page load — most content should just appear; only animate what needs user attention
-- Testimonial cards with 5-star ratings on every quote — use quotes with name/role attribution, skip the star ratings
+- Soft blurry gradient blobs/orbs in backgrounds — use intentional flat or subtle backgrounds
+- Generic CTAs ("Learn more", "Click here", "Get started") — be specific: "Start for free", "Deploy now", "View changelog"
+- Walls of text in any section — no section on a landing page should exceed 2-3 sentences. Copy is ruthlessly concise
+
+**Minor (polish that separates good from great):**
+- No `font-variant-numeric: tabular-nums` on data
+- Missing `text-wrap: balance` on headings
+- Straight quotes instead of curly (" " and ' ')
+- No non-breaking spaces in brand names
+- Hero metric layouts (big number + gradient) without adjacent context
+- Overly minimal results that look "empty" rather than "designed"
+- Testimonial cards with 5-star ratings — use quotes with name/role/company
 
 ### The Craft Test (What TO Do)
 
-Anti-slop tells you what to avoid. This tells you what to aim for. Study the best SaaS products — this is what craft looks like:
+Anti-slop tells you what to avoid. This tells you what to aim for.
 
-**Data presentation:**
-- **Sparklines embedded inside metric cards** — the trend line IS part of the card, not a separate chart below. A tiny area chart or line under the number gives context at a glance
-- **Numbers are large, black, and undecorated** — `font-weight: 600-700`, `tabular-nums`, no backgrounds, no gradients. The number speaks for itself
-- **Comparison is plain secondary text** — "vs $7,669 last period" or "+12.5% from last month" in secondary color. Never pills, never colored badges
-- **One chart color, not rainbow** — single accent color for lines/areas with faded fill underneath. Multiple series use the same hue at different opacities
-- **Area charts with gradient fill** — line + area where the fill fades from ~15% opacity at the line to 0% at the bottom
-- **Horizontal proportion bars for breakdowns** — show category proportions as width-proportional bars. More visual than numbers in a table
-- **Functional color only** — small colored dots (6-8px) for categories, flags for countries, status indicators. Color serves data, never decoration
+**General craft (applies everywhere):**
+- **One accent color, 3-5 placements per viewport** — primary CTA, one key metric, active states, a section label. Never two accent colors competing. If accent appears 10+ times, it loses power.
+- **White backgrounds with barely-there borders** — `1px solid oklch(92% 0.005 250)` or whitespace to separate sections
+- **Numbers: large, black, undecorated** — `font-weight: 600-700`, `tabular-nums`, no gradients. The number speaks for itself
+- **Comparison is plain secondary text** — "+12.5% from last month" in secondary color. Never pills, never colored badges
+- **One chart color, not rainbow** — single accent hue at different opacities. Area fill fades from ~15% at line to 0% at bottom
+- **Functional color only** — small dots (6-8px) for status, flags for countries. Color serves data, never decoration
+- **Real content, not placeholders** — actual company names, real metrics. "Lorem ipsum" feels generated
 
-**Layout and content:**
-- **Varied content blocks over identical cards** — a dashboard with chat + bar chart + invoice list feels designed. Four identical metric cards feels generated. Mix card types, sizes, and content structures
-- **Ghost/outline filter controls** — "Filter", "Last 30 days", "Compare" — always ghost buttons, never solid primary
-- **White backgrounds with barely-there borders** — most crafted apps use white bg with `1px solid oklch(92% 0.005 250)` or just whitespace to separate sections
-- **Data tables with row context** — include tiny avatars, colored status dots, flag icons, or proportional bars in table rows. Plain text tables feel like spreadsheets
+**Landing page craft:**
+- **Hero** — left-aligned or asymmetric. One headline (48-72px, tight tracking), one paragraph, dual CTAs (solid primary + ghost secondary). Social proof below CTAs (avatars + count, or logos). Never center everything.
+- **Product proof** — show a screenshot/mockup with real data. Frame in a subtle container. Replaces abstract illustrations.
+- **Logo strip** — "Trusted by teams at" + 5-7 logos. Choose plausible brands (Lattice > Stripe for believability).
+- **Features** — 2-3 asymmetric rows (text + visual, alternating sides). Each feature gets a real visual (chart, timeline, funnel), not just an icon. NEVER a uniform 3-column or 6-card icon grid.
+- **Metrics band** — 3-4 stats on tinted/dark background. First metric in accent, rest in primary text. Numbers 48px+, descriptions small.
+- **Testimonials** — 3 cards with specific metrics. Name + role + company. First card can be accent-tinted. No star ratings, no thick side borders.
+- **Pricing** — 3 tiers, middle featured (elevation or accent border). Price splits weight. Feature lists with SVG checkmarks.
+- **Sections breathe** — 120-200px between majors. Varied spacing creates rhythm.
+- **Tab-based feature sections** — use tabs or toggles to let users explore features interactively. Each tab reveals different content (screenshot, demo, description). Never present all features as identical static cards. See [inspiration.md](references/inspiration.md) for examples from dub.co, vercel.com.
+- **Velocity/changelog section** — prove the product ships fast. Show recent changelog entries with dates, or a "We ship fast" section. This builds confidence that the product is actively maintained.
+- **Specific metrics in social proof** — "Build times went from 7m to 40s" next to a customer logo. Quantify the transformation instead of vague praise. One concrete metric beats "trusted by thousands."
 
-**Landing pages:**
-- **Hero = one clear message + dual CTAs** — primary ("Start free") + secondary ghost ("Get a demo"). Left-aligned feels more designed than centered
-- **Product screenshots are the proof** — show the actual product with real data, not abstract illustrations. Transparency builds credibility (Dub shows live analytics)
-- **Social proof is mixed-size logos, not a grid** — stagger sizes, vary layouts. Testimonials include headshot + name + title + company + specific metric, not generic praise
-- **Feature sections use asymmetric layouts** — image left + text right, then swap. Bento grids with varied card sizes (like Stripe). Never three identical columns
-- **Typography does the heavy lifting** — large headlines (48-72px) with tight line-height (1.05-1.15), use italic accents on key phrases (not gradient text)
-- **Sections breathe** — 120-200px between major sections. Varied spacing creates visual rhythm — not the same gap everywhere
-- **One accent color throughout** — Dub uses blue, Stripe uses purple, Shopify uses green. Never two accent colors competing
-- **Intentional asymmetry** — break the grid for emphasis. Left-aligned text with right-aligned visuals. Not everything centered
-- **Real content, not placeholders** — actual company names, real metrics, genuine testimonials. Templates with "Lorem ipsum" or "Your Company" feel generated
+**Dashboard craft** (see [dashboard.md](references/dashboard.md) for full patterns):
+- **Sidebar navigation** — subtle bg tint, NOT full dark. Dark sidebar is a common AI pattern. Active item uses accent bg at low opacity.
+- **Metric card hierarchy** — primary card gets accent tint or solid bg; others stay neutral white. All cards include sparklines (32px polyline SVG). NEVER put the same colored top border on all cards.
+- **At least 3 content types visible** — metric cards + chart + table/list is the minimum. Never 4+ identical cards in a row.
+- **Chart type by data story** — area for trends, horizontal bar for categories, donut sparingly for part-of-whole, sparkline for inline trends. Never pie charts or 3D.
+- **Data tables with row context** — avatars, status dots (not badges), proportion bars. Headers in sentence case, never uppercase.
+- **Filter toolbar** — ghost buttons, active state with accent bg. Date range selector gets prominence.
 
 ### Animation Decision Rules
 
@@ -154,7 +299,7 @@ The question is not "how to animate" — it's "should this animate at all?"
 
 1. **Justify every animation** — motion must communicate something (hierarchy, state change, spatial relationship). Decorative motion is noise.
 2. **Frequency determines budget** — actions performed 100+ times/day get zero animation. Occasional actions (modals, drawers) get standard treatment. First-time experiences can delight.
-3. **Speed communicates confidence** — UI that responds in under 200ms feels instant. 300ms+ starts feeling sluggish. Exit faster than enter.
+3. **Speed communicates confidence** — UI that responds in under 200ms feels instant. 300ms+ starts feeling sluggish.
 4. **Respect the user's system** — `prefers-reduced-motion` is not optional. Provide meaningful fallbacks, not just `animation: none`.
 5. **GPU-only properties** — stick to `transform` and `opacity`. Animating `width`, `height`, `top`, `left` causes layout thrashing.
 6. **List properties explicitly** — `transition: all` animates things you didn't intend. Be precise about what moves and why.
@@ -181,6 +326,13 @@ The question is not "how to animate" — it's "should this animate at all?"
 - **Prevent native image drag** on interactive overlays — `user-drag: none; -webkit-user-drag: none; pointer-events: none` on images inside sliders/carousels.
 - **Placeholders are visual, not text** — skeleton bars, subtle grid lines, or a muted pattern. "Chart would render here" looks unfinished.
 
+**Hover & interaction micro-details** (gate behind `@media (hover: hover) and (pointer: fine)`):
+- Cards: `transform: translateY(-1px)` + shadow increase — `transition: transform 200ms ease-out, box-shadow 200ms ease-out` / Tailwind: `hover:-translate-y-px hover:shadow-md transition-[transform,box-shadow] duration-200`
+- Buttons: slight background darkening, not a full color swap — `transition: background 150ms ease-out` / Tailwind: `hover:bg-accent/90 transition-colors duration-150`
+- Table rows: subtle background — `hover:bg-gray-50` / Tailwind: `hover:bg-slate-50/50`
+- Links: `text-underline-offset: 2px; text-decoration-skip-ink: auto` / Tailwind: `underline-offset-2 decoration-skip-ink-auto`
+- Active/pressed: `transform: scale(0.98)` on buttons for tactile feedback
+
 ### Forms (Non-negotiable)
 
 - **Never block paste** in inputs
@@ -198,8 +350,8 @@ The question is not "how to animate" — it's "should this animate at all?"
 - **`text-wrap: balance`** for headings; **`text-wrap: pretty`** for body
 - **`font-variant-numeric: tabular-nums`** for data/numbers
 - **Truncation handling** for dense UI; flex children need `min-w-0`
-- **Curly quotes** (" ") and **ellipsis character** (…) not three dots
-- **Non-breaking spaces**: `10&nbsp;MB`, `⌘&nbsp;K`, brand names
+- **Smart punctuation**: curly quotes (`&ldquo;` `&rdquo;`), apostrophes (`&rsquo;`), ellipsis (`&hellip;`), em-dash (`&mdash;`)
+- **Non-breaking spaces**: `10&nbsp;MB`, `⌘&nbsp;K`, brand names, `$&nbsp;79/month`
 
 **Font recommendations** — pick one family for body, optionally a second for display/headings. Don't mix more than two.
 
@@ -227,7 +379,7 @@ The question is not "how to animate" — it's "should this animate at all?"
 - **Hue consistency**: tint borders/shadows/text toward background hue on non-neutral surfaces
 - **APCA contrast** over WCAG 2 for perceptual accuracy
 - **Interactions increase contrast**: `:hover`/`:active`/`:focus` more contrast than rest
-- **`color-scheme: dark`** on `<html>` for dark themes
+- **`color-scheme`** on `<html>` — `light` for light themes, `dark` for dark. Ensures native controls, scrollbars match.
 - **Theme color meta tag** matches page background
 - **Use perceptually uniform color spaces** (like OKLCH) for harmonious scales
 
@@ -302,8 +454,6 @@ Not all elements deserve the same time. Smaller = faster, larger = slower.
 | Medium UI (modals, panels) | 200-300ms |
 | Large UI (page transitions, drawers) | 300-400ms |
 
-**Exit faster than enter** — exit at ~75% of entrance duration. Users want to dismiss quickly.
-
 ---
 
 ## Accessibility Checklist
@@ -333,6 +483,7 @@ Deep dives for specialized work. Read only what's relevant to the task at hand.
 
 | Reference | When to Read |
 |-----------|-------------|
+| [dashboard.md](references/dashboard.md) | Dashboard layout, metric cards, chart types, data tables, sidebar, filters |
 | [animation.md](references/animation.md) | Adding/fixing animations, easing curves, springs, timing, animation principles |
 | [review.md](references/review.md) | Critiquing or auditing UI quality (visual, interface, a11y, performance) |
 | [animation-orchestration.md](references/animation-orchestration.md) | Writing multi-stage, sequenced animations with clean, readable code |
@@ -345,3 +496,4 @@ Deep dives for specialized work. Read only what's relevant to the task at hand.
 | [responsive.md](references/responsive.md) | Mobile/tablet/desktop adaptation, breakpoints, touch zones |
 | [sound.md](references/sound.md) | Web Audio, UI sound design, appropriateness matrix |
 | [copy.md](references/copy.md) | UX writing, error messages, empty states, CTAs, microcopy |
+| [inspiration.md](references/inspiration.md) | Real-world SaaS patterns from dub.co, cursor.com, linear.app, vercel.com, stripe.com |
