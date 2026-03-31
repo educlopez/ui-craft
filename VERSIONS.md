@@ -1,5 +1,10 @@
 # Versions
 
+## v0.4.2 (2026-03-31)
+
+- Fix `skills/ui-craft/SKILL.md` description length so it stays within Codex's 1024-character limit
+- Keep skill metadata valid for installation and agent loading
+
 ## v0.2.0 (2026-03-21)
 
 - Quick Start: Top 10 rules for highest-impact guidance
