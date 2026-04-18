@@ -1,5 +1,31 @@
 # Versions
 
+## v0.10.0 (2026-04-18) — signature move: scored heuristic critique
+
+After a competitive scan (Anthropic `canvas-design`, Vercel `agent-skills`, `taste-skill`, `impeccable`) and a senior-designer / design-systems-lead / data-viz-lead gap analysis, we picked the signature differentiator: **the only AI design skill that produces a scoreable, defensible critique.** Anyone can list anti-patterns. Fewer can score them against established methodology. Nobody else frames findings as business impact.
+
+**New references:**
+- `references/heuristics.md` — Nielsen's 10 usability heuristics + 6 design laws (Fitts, Hick, Doherty, Cleveland-McGill, Miller, Tesler), each with a 1-5 scoring rubric and impact framing (`blocks-conversion` / `adds-friction` / `reduces-trust` / `minor-polish`). Ships the exact Markdown scorecard format the new command emits.
+- `references/personas.md` — 5 persona walkthroughs (Priya / Jordan / Adaeze / Kwame / Margo — first-timer, power, low-bandwidth, screen-reader, one-thumb) with checklists and red flags.
+- `references/state-design.md` — the state lattice (idle / loading / empty / error / partial / conflict / offline) with per-state rules, xstate-style pseudocode, and a "design the unhappy path first" methodology.
+
+**New commands (total 16):**
+- `/ui-craft:heuristic [path] [--persona=<name>]` — scored critique using Nielsen + design laws; optional persona walkthroughs. Output is machine-parseable; PMs paste it into Linear/Jira. Knob-agnostic (usability is not a knob).
+- `/ui-craft:unhappy [path]` — state-first pass; enumerate and stub every non-happy state before touching the happy path. Knob-aware (`CRAFT_LEVEL ≤4` stubs 3 states; `8+` all 6).
+
+**Detector v0.2.0** (`ui-craft-detect@0.2.0`, now live on npm):
+- **8 new rules** (total 19): `left-top-animation`, `no-focus-visible`, `pixel-radius-inconsistency`, `unit-mixing`, `absolute-zindex`, `setTimeout-animation`, `inline-any-style`, `aria-label-emoji`.
+- **Ignore comments**: `// ui-craft-detect-ignore`, `…-next-line`, `…-file`, `…-ignore-rule: <id>`. Work in HTML comments too.
+- **`.uicraftrc.json` config file** (walks up to `.git` boundary): per-rule `off` / `warn` / `error` overrides; glob-based `ignore`; `extends` acknowledged.
+- **`--fix` + `--fix-dry-run`**: auto-remediate `transition: all` → `transition: opacity, transform`; strip `animate-bounce` from class lists. Concurrent-edit guarded.
+- **`--sarif` output**: SARIF 2.1.0 JSON for GitHub code-scanning alerts.
+- Summary line now reports config overrides + auto-fix count.
+- Published to npm (`npm whoami: educalvolpz`).
+
+**Landing docs** (`skills.smoothui.dev/docs`): migrated single-page landing to landing + `/docs/*` routes via Astro 6 content collections. Five initial pages: `getting-started`, `skill-anatomy`, `variants`, `commands`, `ui-craft-detect`. Shared docs layout with sticky sidebar (desktop) / collapsible drawer (mobile), matching the landing's Geist + `oklch()` aesthetic exactly.
+
+**Per-variant eval JSONs** added: `ui-craft-playful.json`, `ui-craft-brutalist.json`. 15 should-trigger / should-not-trigger queries each; cross-variant discriminators as the high-signal negatives.
+
 ## v0.9.1 (2026-04-18) — publish `ui-craft-detect` on npm
 
 The detector script is now shippable as a standalone npm package.

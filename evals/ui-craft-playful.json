@@ -1,0 +1,62 @@
+[
+  {
+    "query": "design a landing for our new AI writing app. i want it playful and approachable, think clay.com or duolingo. rounded corners, spring animations, friendly color palette. tailwind v4, nextjs 15",
+    "should_trigger": true
+  },
+  {
+    "query": "make my onboarding flow feel more like arc browser — colorful, bouncy, personality-rich. files at app/(onboarding)/[step]/page.tsx",
+    "should_trigger": true
+  },
+  {
+    "query": "redesign this pricing page to feel friendlier — currently it's flat and corporate, users say it feels like tax software. i want gumroad vibes",
+    "should_trigger": true
+  },
+  {
+    "query": "we're rebranding our consumer app to feel more delightful and approachable. need a new visual direction — soft shadows, bouncy motion, multi-accent palette (pink + yellow + green is fine). mobile-first",
+    "should_trigger": true
+  },
+  {
+    "query": "the kids education product needs a UI overhaul — playful but still professional. big rounded buttons, spring on every interaction, mascot-friendly aesthetic. think duolingo before duolingo got too serious",
+    "should_trigger": true
+  },
+  {
+    "query": "build the admin dashboard for our internal ops team — dense tables, semantic colors, keyboard shortcuts. bloomberg vibes",
+    "should_trigger": false
+  },
+  {
+    "query": "design a serious B2B SaaS landing for enterprise buyers. clean and trustworthy, monochrome + one accent, no decoration. linear-like",
+    "should_trigger": false
+  },
+  {
+    "query": "long-form blog post page with serif display font, drop caps, wide reading column — editorial magazine feel",
+    "should_trigger": false
+  },
+  {
+    "query": "build me a minimal checkout page with no distractions. one column, big CTA, zero animations. finance context — trust is paramount",
+    "should_trigger": false
+  },
+  {
+    "query": "the user asked me to 'add playful microinteractions' to their existing corporate dashboard — but the rest of the UI is strictly serious. don't want to mix aesthetics, should stay in line with existing design",
+    "should_trigger": false
+  },
+  {
+    "query": "build the trading terminal UI: real-time price updates, order book, positions table — fintech, dense, keyboard-driven",
+    "should_trigger": false
+  },
+  {
+    "query": "i need a contract review tool. lots of forms, signature fields, audit trails. law firm users, must feel authoritative",
+    "should_trigger": false
+  },
+  {
+    "query": "review this clay-inspired homepage for accessibility — keyboard nav, color contrast (we have playful saturated colors), focus states",
+    "should_trigger": false
+  },
+  {
+    "query": "add some color and personality to my boring marketing page. but not too much — keep it professional, we sell to CFOs",
+    "should_trigger": false
+  },
+  {
+    "query": "polish the typography on this long article — tabular-nums in stats, text-wrap balance on headlines, curly quotes. medium-like publication",
+    "should_trigger": false
+  }
+]

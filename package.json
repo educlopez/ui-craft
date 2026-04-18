@@ -1,6 +1,6 @@
 {
   "name": "ui-craft-detect",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Static anti-slop detector for UI code. Flags AI-generated design patterns (purple gradients, bounce easing, glassmorphism, generic CTAs, ALL CAPS headings, transition: all). Zero dependencies, works out of the box.",
   "type": "module",
   "bin": {

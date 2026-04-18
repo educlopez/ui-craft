@@ -57,6 +57,8 @@ The rules that make the biggest difference between "AI-generated" and "designed 
 | UX copy | [copy.md](references/copy.md) |
 | Responsive | [responsive.md](references/responsive.md) |
 | Three.js / GSAP / Motion | [stack.md](references/stack.md) — **OPT-IN ONLY — do not load unless user chose Motion/GSAP/Three.js in Discovery Step 2** |
+| Scored critique / PM-ready audit | [heuristics.md](references/heuristics.md) + [personas.md](references/personas.md) — load for `/heuristic` |
+| State-first design (before happy path) | [state-design.md](references/state-design.md) — load for `/unhappy` |
 | Ambiguous | Ask which mode |
 
 **Overlap with other skills:** defer marketing copy to a copywriting skill; defer SEO to an SEO skill. UI Craft is the visual and interaction layer.
@@ -222,3 +224,6 @@ Read only what's relevant.
 | [copy.md](references/copy.md) | Error messages, empty states, CTAs, content & states |
 | [inspiration.md](references/inspiration.md) | Real SaaS patterns from dub.co, cursor.com, linear.app, vercel.com, stripe.com |
 | [stack.md](references/stack.md) | Three.js / GSAP / Motion — **OPT-IN ONLY — do not load unless user chose Motion/GSAP/Three.js in Discovery Step 2** |
+| [heuristics.md](references/heuristics.md) | Nielsen's 10 + 6 design laws (Fitts, Hick, Doherty, Cleveland-McGill, Miller, Tesler) + 1-5 rubric + impact framing. Load for `/heuristic` |
+| [personas.md](references/personas.md) | 5 persona walkthroughs (first-timer / power / low-bandwidth / screen-reader / one-thumb). Load for `/heuristic --persona=<name>` |
+| [state-design.md](references/state-design.md) | State lattice — idle / loading / empty / error / partial / conflict / offline. Load for `/unhappy` |

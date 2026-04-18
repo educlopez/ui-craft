@@ -1,0 +1,62 @@
+[
+  {
+    "query": "redesign my portfolio to feel brutalist — raw, print-heavy, Swiss grid, bold monospace type, 2-4px hard borders, no shadows. think personal site not corporate",
+    "should_trigger": true
+  },
+  {
+    "query": "i want my product landing to have a terminal aesthetic — mono font everywhere, green on black, typing cursor on hero, zero decoration. we sell to devs",
+    "should_trigger": true
+  },
+  {
+    "query": "design a nothing-phone-style settings UI: monospace labels, flat surfaces, high contrast B/W, dot-matrix feel. minimal chrome",
+    "should_trigger": true
+  },
+  {
+    "query": "rebuild our marketing site in a web 1.0 brutalist style — visible grid, massive type-as-hero (200px headlines), no soft corners, ALL CAPS category labels with wide tracking. yung lean era vibes",
+    "should_trigger": true
+  },
+  {
+    "query": "make this portfolio deliberately raw and anti-slick. ibm plex mono, hard borders, asymmetric swiss grid with col-span-2 and col-span-7. opposite of shadcn",
+    "should_trigger": true
+  },
+  {
+    "query": "build a clean minimalist landing page, linear/notion aesthetic, whitespace heavy, inter font, one accent color",
+    "should_trigger": false
+  },
+  {
+    "query": "design a playful onboarding flow with bouncy spring animations, multi-color palette, rounded everything",
+    "should_trigger": false
+  },
+  {
+    "query": "editorial magazine page with serif display font, pull quotes, drop caps, wide reading column",
+    "should_trigger": false
+  },
+  {
+    "query": "dense analytics dashboard, data-heavy, semantic color palette, tabular-nums, 4/8px grid",
+    "should_trigger": false
+  },
+  {
+    "query": "the user mentions 'brutalist' but they're talking about the concrete architecture in their hero image, not a UI style. the UI itself should be polished and approachable",
+    "should_trigger": false
+  },
+  {
+    "query": "make my typography bolder and more raw — but we still want the rest of the site friendly and approachable. just amplify the hero",
+    "should_trigger": false
+  },
+  {
+    "query": "build an admin panel for managing database tables. users are engineers, they want dense, functional, keyboard-driven — but not brutalist, just professional",
+    "should_trigger": false
+  },
+  {
+    "query": "audit this brutalist-styled page for accessibility — high contrast is good but touch targets are tiny, color-only signaling is everywhere, keyboard nav is broken",
+    "should_trigger": false
+  },
+  {
+    "query": "i like the aesthetic of vercel's docs — clean, monochrome, tight type. some people call it brutalist but it's really just disciplined minimal",
+    "should_trigger": false
+  },
+  {
+    "query": "write unit tests for the theme switcher in our brutalist portfolio",
+    "should_trigger": false
+  }
+]

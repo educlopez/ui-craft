@@ -8,9 +8,11 @@ A design engineering skill for AI coding agents. Teaches your agent to build int
 
 ## What it does
 
-UI Craft gives AI coding agents the design knowledge they're missing. Not templates. Not component libraries. Actual craft knowledge — 15 domains of opinionated rules about how interfaces should look, move, and feel, plus 14 slash commands to run focused passes on existing code.
+UI Craft gives AI coding agents the design knowledge they're missing. Not templates. Not component libraries. Actual craft knowledge — 18 domains of opinionated rules about how interfaces should look, move, and feel, plus 16 slash commands to run focused passes on existing code.
 
 Every UI gets tested against a single question: *"Would someone believe AI made this?"* If yes, it starts over.
+
+**What makes this different:** the only AI design skill that produces a **scoreable, defensible critique** — Nielsen's 10 usability heuristics × 6 classic design laws (Fitts, Hick, Doherty, Cleveland-McGill, Miller, Tesler) × 5 persona walkthroughs, with every finding tagged by business impact (`blocks-conversion` / `adds-friction` / `reduces-trust` / `minor-polish`). Paste the scorecard straight into Linear/Jira.
 
 ## Same prompt, different result
 
@@ -35,7 +37,9 @@ npx skills add educlopez/ui-craft
 
 Works with **Claude Code, Codex, Cursor, Gemini, OpenCode, Windsurf**, and any agent that supports the [Agent Skills](https://skills.sh) spec.
 
-Each agent gets a pre-built mirror under a dedicated folder (`.codex/`, `.cursor/`, `.gemini/`, `.opencode/`, `.agents/`). The main `ui-craft` skill lands as a peer skill; each of the 14 slash commands is materialized as its own sub-skill in non-Claude harnesses (since only Claude Code understands slash commands — other agents see them as skills triggered by intent like "audit my UI", "polish this page").
+Each agent gets a pre-built mirror under a dedicated folder (`.codex/`, `.cursor/`, `.gemini/`, `.opencode/`, `.agents/`). The main `ui-craft` skill lands as a peer skill; each of the 16 slash commands is materialized as its own sub-skill in non-Claude harnesses (since only Claude Code understands slash commands — other agents see them as skills triggered by intent like "audit my UI", "polish this page").
+
+**Full reference docs:** [skills.smoothui.dev/docs](https://skills.smoothui.dev/docs).
 
 ### Alternative installation
 
@@ -81,16 +85,18 @@ Each variant defers to the main `ui-craft` skill for base rules and references �
 
 ## Slash commands
 
-Fourteen focused passes, each applying a single lens from the skill.
+Sixteen focused passes, each applying a single lens from the skill.
 
 **Review & ship:**
 
 | Command | Does |
 |---------|------|
+| `/ui-craft:heuristic` | **Signature move.** Scored critique — Nielsen 10 + 6 design laws + persona walkthroughs. Produces a Markdown scorecard with impact tags. No code changes. |
 | `/ui-craft:audit` | Technical — a11y, performance, responsive. Prioritized findings table. |
 | `/ui-craft:critique` | UX — hierarchy, clarity, anti-slop. No code changes. |
 | `/ui-craft:polish` | Final pass — compound details that turn "done" into "crafted". |
 | `/ui-craft:harden` | Production readiness — loading/empty/error states, i18n, offline, edge cases. |
+| `/ui-craft:unhappy` | State-first pass — design every non-happy state (idle/loading/empty/error/partial/conflict/offline) before the happy path. |
 
 **Transform:**
 
@@ -123,7 +129,7 @@ The skill detects your intent and routes automatically.
 | **Review** | "Review this component" | Audits for generic AI patterns, accessibility gaps, and missed details |
 | **Polish** | "Polish this dashboard" | Finds the twenty small things that turn "done" into "crafted" |
 
-## 15 domains
+## 18 domains
 
 | Domain | Covers |
 |--------|--------|
@@ -142,6 +148,9 @@ The skill detects your intent and routes automatically.
 | Dashboard | Sidebar nav, metric cards, chart types, data tables, filters |
 | Inspiration | Real patterns from dub.co, cursor, linear, vercel, stripe |
 | **Stack** | Motion, GSAP, Three.js — decision tree, patterns, perf gotchas, anti-patterns (opt-in) |
+| **Heuristics** | Nielsen's 10 + Fitts/Hick/Doherty/Cleveland-McGill/Miller/Tesler with 1-5 scoring rubric and impact framing |
+| **Personas** | 5 archetypes (first-timer, power user, low-bandwidth, screen-reader, one-thumb) with walkthrough checklists |
+| **State design** | Idle / loading / empty / error / partial / conflict / offline — design the unhappy path first |
 
 ## Framework agnostic
 
