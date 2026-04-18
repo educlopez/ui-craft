@@ -1,5 +1,19 @@
 # Versions
 
+## v0.11.0 (2026-04-18) — dataviz, ux-writing, motion system, `/shape`
+
+Tier 2 of the differentiation push. Fills three expert-knowledge gaps flagged by the competitive research (senior product designer / design-systems lead / data-viz lead lenses) and adds the wireframe-first command.
+
+**New references:**
+- `references/dataviz.md` — Cleveland-McGill perceptual hierarchy, chart selection matrix, color for data (sequential / diverging / categorical with ColorBrewer + Okabe-Ito), Tufte principles distilled, direct labeling, small multiples, animated-transition pattern, 10-item anti-slop checklist. Fills the gap `dashboard.md` left (chrome vs data science).
+- `references/ux-writing.md` — voice vs tone distinction, 3-axis voice matrix, tone-by-context table, reading level (Flesch ≥70) with concrete grade-14 → grade-7 rewrite examples, terminology consistency, 9-row inclusive-language swap table, locale-aware strings (`Intl.*`, plural rules, length tolerance, RTL, logical CSS properties), 3-part error-copy anatomy, CTA respect rules, banned dark patterns. Complements `copy.md` (tactical) with the system layer.
+- `references/motion-system.md` — duration scale (120 / 200 / 280 / 400 / 600ms as tokens), easing scale (4 cubic-béziers), 5 choreography rules (hierarchy, stagger, exit < enter, co-located, shared element), motion budget per surface, reduced-motion contract with the 2 documented exceptions, Figma JSON token export, framework mapping, 8 system-level anti-patterns. Complements `animation.md` (tactical) and `animation-orchestration.md` (multi-stage) with the token/rhythm layer.
+
+**New command (total 17):**
+- `/ui-craft:shape [description]` — wireframe-first pass. Outputs ASCII layout (desktop + mobile), content inventory with P0/P1/P2 annotations, state list pointing at `state-design.md`, and 3-5 open questions — all before any JSX. Knob-aware (at `CRAFT_LEVEL ≥ 7`, also adds motion shape + typography hierarchy plan). Low-fi gate to prevent jumping straight to hi-fi.
+
+**Impact:** 3 new expert domains (dataviz / ux-writing / motion-system) + a wireframe-first workflow. Competitors stop at `impeccable`'s system-level depth; we now cover it and add dataviz + the shape-first discipline. Total: 6 skills, 17 commands, 21 domains.
+
 ## v0.10.0 (2026-04-18) — signature move: scored heuristic critique
 
 After a competitive scan (Anthropic `canvas-design`, Vercel `agent-skills`, `taste-skill`, `impeccable`) and a senior-designer / design-systems-lead / data-viz-lead gap analysis, we picked the signature differentiator: **the only AI design skill that produces a scoreable, defensible critique.** Anyone can list anti-patterns. Fewer can score them against established methodology. Nobody else frames findings as business impact.

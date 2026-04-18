@@ -8,7 +8,7 @@ A design engineering skill for AI coding agents. Teaches your agent to build int
 
 ## What it does
 
-UI Craft gives AI coding agents the design knowledge they're missing. Not templates. Not component libraries. Actual craft knowledge — 18 domains of opinionated rules about how interfaces should look, move, and feel, plus 16 slash commands to run focused passes on existing code.
+UI Craft gives AI coding agents the design knowledge they're missing. Not templates. Not component libraries. Actual craft knowledge — 21 domains of opinionated rules about how interfaces should look, move, and feel, plus 17 slash commands to run focused passes on existing code.
 
 Every UI gets tested against a single question: *"Would someone believe AI made this?"* If yes, it starts over.
 
@@ -37,7 +37,7 @@ npx skills add educlopez/ui-craft
 
 Works with **Claude Code, Codex, Cursor, Gemini, OpenCode, Windsurf**, and any agent that supports the [Agent Skills](https://skills.sh) spec.
 
-Each agent gets a pre-built mirror under a dedicated folder (`.codex/`, `.cursor/`, `.gemini/`, `.opencode/`, `.agents/`). The main `ui-craft` skill lands as a peer skill; each of the 16 slash commands is materialized as its own sub-skill in non-Claude harnesses (since only Claude Code understands slash commands — other agents see them as skills triggered by intent like "audit my UI", "polish this page").
+Each agent gets a pre-built mirror under a dedicated folder (`.codex/`, `.cursor/`, `.gemini/`, `.opencode/`, `.agents/`). The main `ui-craft` skill lands as a peer skill; each of the 17 slash commands is materialized as its own sub-skill in non-Claude harnesses (since only Claude Code understands slash commands — other agents see them as skills triggered by intent like "audit my UI", "polish this page").
 
 **Full reference docs:** [skills.smoothui.dev/docs](https://skills.smoothui.dev/docs).
 
@@ -85,7 +85,7 @@ Each variant defers to the main `ui-craft` skill for base rules and references �
 
 ## Slash commands
 
-Sixteen focused passes, each applying a single lens from the skill.
+Seventeen focused passes, each applying a single lens from the skill.
 
 **Review & ship:**
 
@@ -98,10 +98,11 @@ Sixteen focused passes, each applying a single lens from the skill.
 | `/ui-craft:harden` | Production readiness — loading/empty/error states, i18n, offline, edge cases. |
 | `/ui-craft:unhappy` | State-first pass — design every non-happy state (idle/loading/empty/error/partial/conflict/offline) before the happy path. |
 
-**Transform:**
+**Plan & transform:**
 
 | Command | Does |
 |---------|------|
+| `/ui-craft:shape` | **Wireframe-first.** ASCII layout + content inventory + state list + open questions before any JSX. Run when starting a new screen. |
 | `/ui-craft:animate` | Add / fix motion. Honors `MOTION_INTENSITY` + chosen stack. |
 | `/ui-craft:adapt` | Responsive pass — mobile, tablet, desktop, touch, safe areas. |
 | `/ui-craft:typeset` | Typography pass — fonts, scale, tracking, micro-typography. |
@@ -129,7 +130,7 @@ The skill detects your intent and routes automatically.
 | **Review** | "Review this component" | Audits for generic AI patterns, accessibility gaps, and missed details |
 | **Polish** | "Polish this dashboard" | Finds the twenty small things that turn "done" into "crafted" |
 
-## 18 domains
+## 21 domains
 
 | Domain | Covers |
 |--------|--------|
@@ -151,6 +152,9 @@ The skill detects your intent and routes automatically.
 | **Heuristics** | Nielsen's 10 + Fitts/Hick/Doherty/Cleveland-McGill/Miller/Tesler with 1-5 scoring rubric and impact framing |
 | **Personas** | 5 archetypes (first-timer, power user, low-bandwidth, screen-reader, one-thumb) with walkthrough checklists |
 | **State design** | Idle / loading / empty / error / partial / conflict / offline — design the unhappy path first |
+| **Data viz** | Cleveland-McGill perceptual hierarchy, chart selection matrix, ColorBrewer + Okabe-Ito palettes, direct labeling, Tufte principles |
+| **UX writing** | Voice / tone matrix, reading level (Flesch ≥70), terminology consistency, inclusive language, locale-aware strings |
+| **Motion system** | Duration + easing token scales, choreography rules, motion budget per surface, reduced-motion contract |
 
 ## Framework agnostic
 

@@ -59,6 +59,10 @@ The rules that make the biggest difference between "AI-generated" and "designed 
 | Three.js / GSAP / Motion | [stack.md](references/stack.md) — **OPT-IN ONLY — do not load unless user chose Motion/GSAP/Three.js in Discovery Step 2** |
 | Scored critique / PM-ready audit | [heuristics.md](references/heuristics.md) + [personas.md](references/personas.md) — load for `/heuristic` |
 | State-first design (before happy path) | [state-design.md](references/state-design.md) — load for `/unhappy` |
+| Data visualization / charts / dashboards | [dataviz.md](references/dataviz.md) — Cleveland-McGill, color for data, Tufte |
+| UX writing / voice / tone / microcopy | [ux-writing.md](references/ux-writing.md) — voice matrix, reading level, locale, inclusive language |
+| Motion system / tokens / choreography | [motion-system.md](references/motion-system.md) — duration + easing scale, motion budget |
+| Wireframe-first / shape a new screen | Run `/shape` before coding; see state lattice + content inventory |
 | Ambiguous | Ask which mode |
 
 **Overlap with other skills:** defer marketing copy to a copywriting skill; defer SEO to an SEO skill. UI Craft is the visual and interaction layer.
@@ -227,3 +231,6 @@ Read only what's relevant.
 | [heuristics.md](references/heuristics.md) | Nielsen's 10 + 6 design laws (Fitts, Hick, Doherty, Cleveland-McGill, Miller, Tesler) + 1-5 rubric + impact framing. Load for `/heuristic` |
 | [personas.md](references/personas.md) | 5 persona walkthroughs (first-timer / power / low-bandwidth / screen-reader / one-thumb). Load for `/heuristic --persona=<name>` |
 | [state-design.md](references/state-design.md) | State lattice — idle / loading / empty / error / partial / conflict / offline. Load for `/unhappy` |
+| [dataviz.md](references/dataviz.md) | Cleveland-McGill perceptual hierarchy, chart selection matrix, ColorBrewer/Okabe-Ito palettes, Tufte, direct labeling, small multiples |
+| [ux-writing.md](references/ux-writing.md) | Voice/tone matrix, reading level (Flesch ≥70), terminology consistency, inclusive language swaps, locale-aware strings |
+| [motion-system.md](references/motion-system.md) | Duration + easing token scales, choreography rules, motion budget per surface, reduced-motion contract, Figma JSON export |
