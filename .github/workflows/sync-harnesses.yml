@@ -1,0 +1,49 @@
+name: Sync harness mirrors
+
+# Keeps .codex / .cursor / .gemini / .opencode / .agents in sync with
+# skills/ui-craft/ and commands/. Runs on push to main when the source changes.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "skills/ui-craft/**"
+      - "commands/**"
+      - "scripts/sync-harnesses.mjs"
+      - ".github/workflows/sync-harnesses.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: sync-harnesses-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Run sync
+        run: node scripts/sync-harnesses.mjs
+
+      - name: Commit drift (if any)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if [[ -n "$(git status --porcelain)" ]]; then
+            git add .codex .cursor .gemini .opencode .agents
+            git commit -m "chore: sync harness mirrors [skip ci]"
+            git push
+          else
+            echo "No drift — mirrors are up to date."
+          fi

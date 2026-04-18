@@ -1,5 +1,56 @@
 # Versions
 
+## v0.6.0 (2026-04-18) — multi-harness support
+
+Following `pbakaus/impeccable`'s pattern (5 agent harnesses, each with the skill + commands-as-sub-skills).
+
+- **`scripts/sync-harnesses.mjs`** generates mirrors for 5 harnesses: `.codex/`, `.cursor/`, `.gemini/`, `.opencode/`, `.agents/`. The main `ui-craft` skill is copied verbatim; each of the 7 commands is materialized as a peer sub-skill with `name` + `description` frontmatter (since only Claude Code supports slash commands — other agents only understand skills).
+- **`package.json`** added (thin, private) with `npm run sync` alias.
+- **`.github/workflows/sync-harnesses.yml`** re-runs the sync on push to `main` when source changes and commits any drift, so mirrors stay fresh automatically.
+- Generated dirs are committed (not gitignored) so users installing via `npx skills add educlopez/ui-craft` get the right mirror for their agent immediately.
+- `README.md` documents the install matrix and the sync workflow.
+- Source of truth stays `skills/ui-craft/` + `commands/` — never edit files under the harness dirs directly.
+
+## v0.5.1 (2026-04-18) — robustness audit
+
+Audited against two specialized reviewers (`plugin-dev:skill-reviewer`, `plugin-dev:plugin-validator`) and the `skill-creator` methodology. Fixed contradictions introduced by the v0.5.0 refactor and completed knob plumbing.
+
+**Critical fixes:**
+- `commands/animate.md` no longer recommends `ease-in` for exits (contradicted `animation.md`). Exit now `ease-out` at ~75% duration, or `cubic-bezier(0.4, 0, 1, 1)` for a softer tail.
+- `SKILL.md` Routing + Reference Files rows for `stack.md` now say **"OPT-IN ONLY"** explicitly — prevents agents loading 442 lines for unrelated motion tasks.
+- `SKILL.md` "never center hero" softened to allow centered heroes with asymmetric supporting elements (reconciles with `inspiration.md`'s documentation of dub/linear/vercel/stripe/cursor).
+- `SKILL.md` "NEVER default blue" → "never *default* to blue" (brand blues are fine).
+- `references/review.md` no longer references fake commands `/ui-craft review` / `/ui-craft audit` — updated to real `/ui-craft:critique|audit|polish`.
+
+**Dedup — one canonical home per rule:**
+- Anti-Slop list → SKILL.md only (review.md links).
+- Animation Decision Ladder → `animation.md` only (SKILL.md + `animate.md` link).
+- Polish Pass compound details → `review.md` only (`commands/polish.md` is a thin pointer).
+- Interaction Rules (touch/focus/keyboard/overscroll) → `accessibility.md` only.
+- `@starting-style` → `modern-css.md` only.
+- Hardware-acceleration / shorthand-prop gotcha → `performance.md` only.
+- Spring section opens with "pick spring OR tween globally" note.
+
+**Knob plumbing completed:**
+- `/polish` → `CRAFT_LEVEL` gating (skip ≤4, full pass 5-7, + signature 8+).
+- `/animate` → `MOTION_INTENSITY` tiers (≤3 / 4-7 / 8+).
+- `/critique` → `CRAFT_LEVEL` sets severity threshold (3 = critical only / 9+ = flag minor polish).
+- `/adapt` → `VISUAL_DENSITY` drives column count + spacing per breakpoint.
+- `/distill` → `CRAFT_LEVEL` drives cut aggression + signature preservation.
+- `/audit` and `/typeset` → explicitly knob-agnostic.
+
+**Housekeeping:** `.gitignore` now covers `**/.DS_Store`.
+
+## v0.5.0 (2026-04-18)
+
+- **SKILL.md slimmed** from 35KB → 13.6KB by applying progressive disclosure. Always-needed rules stay in SKILL.md; depth moves to matching references.
+- **Knobs** added at top of SKILL.md: `CRAFT_LEVEL`, `MOTION_INTENSITY`, `VISUAL_DENSITY` (1-10). Change behavior, not just tone.
+- **Seven slash commands** under `commands/`: `audit`, `critique`, `polish`, `animate`, `distill`, `adapt`, `typeset`. Each applies a single lens from the skill.
+- **New `references/stack.md`** (opt-in during Discovery): Motion, GSAP, Three.js + R3F. Decision tree, install, top patterns, clashes with ui-craft rules, perf gotchas, anti-patterns.
+- **`stack.md` enriched** after gap analysis against the top-installed stack skills in the agent-skills ecosystem (GreenSock's official `gsap-performance`, `hyperframes@gsap`, `framer-motion-animator`, `awesome-copilot@gsap-framer-scroll-animation`, Vercel Labs' `react-three-fiber`, and `claudedesignskills@react-three-fiber`). Added: Motion `useSpring` scroll smoothing + viewport trigger + App Router `'use client'` caveat, GSAP `quickTo` + `autoAlpha` + `immediateRender` trap + `ScrollTrigger.refresh` discipline, R3F Suspense/progressive loading + `<Bounds>`/`<Center>` auto-fit + DRACO/KTX2 compression + `invalidate()` for demand rendering. New cross-stack rules: `will-change` lifecycle, no smooth-scroll libraries, strip-debug checklist.
+- **Discovery phase** gains a 4th question — optional animation stack — that gates `stack.md` load.
+- Reference files enriched with content moved from SKILL.md: `review.md` (Polish Pass, Common Issues, Component Craft), `accessibility.md` (Quick Checklist, Forms), `animation.md` (Interaction Rules, Decision Rules), `performance.md` (Core Rules), `typography.md` / `layout.md` / `copy.md` (Essentials sections).
+
 ## v0.4.2 (2026-03-31)
 
 - Fix `skills/ui-craft/SKILL.md` description length so it stays within Codex's 1024-character limit

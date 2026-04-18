@@ -1,4 +1,4 @@
 {
   "skills": ["skills/ui-craft"],
-  "commands": []
+  "commands": ["commands"]
 }
