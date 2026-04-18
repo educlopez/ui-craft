@@ -141,6 +141,7 @@ Or per-component with `useReducedMotion()` and branch the animation.
 - `useScroll({ container })` with `trackContentSize: true` has cost — only enable when content genuinely resizes.
 - **Next.js App Router**: any file using `motion` hooks (`useScroll`, `useTransform`, `useSpring`, `useReducedMotion`) must be `'use client'`. Silent hydration mismatches otherwise.
 - Inline `style={{ … }}` objects on `motion.div` create a new object every render → memoization busted. Hoist or `useMemo`.
+- **Motion v12 animates `oklch()` / `oklab()` / `color-mix()` directly** — useful for dynamic theming. Example: `animate={{ backgroundColor: "oklch(70% 0.15 250)" }}`. Hardware-accelerated, no RGB interpolation artifacts.
 
 ### Anti-patterns (flag in review)
 
@@ -280,6 +281,15 @@ gsap.to(".menu", { autoAlpha: 0, duration: 0.2 })
 - **`immediateRender` trap**: a second `from()` / `fromTo()` targeting the same property on the same element will snap to its start value immediately, overwriting earlier tweens. Pass `immediateRender: false` on all but the first.
 - `ScrollTrigger.refresh()` is expensive — don't call it on every `resize`. Debounce, or only on orientation change / content load. `invalidateOnRefresh: true` on the trigger handles most recalcs automatically.
 - Use `clearProps: "all"` at the end of a tween to remove the inline styles GSAP wrote, preventing conflicts with CSS states (hover, `:active`) afterwards.
+- **Pause animations off-screen with `IntersectionObserver`**. On long pages with multiple timelines, idle sections still burn RAF cycles. Pause them:
+  ```ts
+  const io = new IntersectionObserver(([entry]) => {
+    if (entry.isIntersecting) tl.play()
+    else tl.pause()
+  })
+  io.observe(container)
+  ```
+  Or use ScrollTrigger's `toggleActions: "play pause resume pause"` which handles this natively.
 
 ### Anti-patterns
 
@@ -384,6 +394,25 @@ Drops `dpr` automatically on low FPS. Ship this on any production scene.
 </Canvas>
 ```
 Every `useLoader` / `useGLTF` / `useTexture` **must** live under a Suspense boundary. Nesting lets you show a low-res placeholder while the high-res loads, then swap — zero blank frames.
+
+**6b. DOM overlays inside the scene with `<Html>` (drei)**
+```tsx
+import { Html } from "@react-three/drei"
+
+<mesh position={[0, 1, 0]}>
+  <Html distanceFactor={8} occlude="blending">
+    <div className="rounded-md bg-background/90 px-2 py-1 text-xs">Label</div>
+  </Html>
+</mesh>
+```
+`distanceFactor` scales with camera distance (so labels don't balloon on zoom). `occlude` hides the overlay when geometry blocks it — respects depth without feeling cheap.
+
+**6c. Axis-specific prop notation**
+```tsx
+// Instead of <mesh position={[x, 0, 0]}> on every render:
+<mesh position-x={x} />
+```
+Avoids recreating the `[x, y, z]` tuple each frame and reads cleaner when animating a single axis via state/ref.
 
 **7. Auto-fit camera with `<Bounds>` + `<Center>`**
 ```tsx

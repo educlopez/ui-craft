@@ -38,7 +38,7 @@ const ROOT = resolve(__dirname, "..")
 // so we don't mirror to `.claude/` — it would just be duplication.
 const HARNESSES = [".codex", ".cursor", ".gemini", ".opencode", ".agents"]
 
-const SOURCE_SKILL_DIR = resolve(ROOT, "skills/ui-craft")
+const SOURCE_SKILLS_ROOT = resolve(ROOT, "skills")
 const SOURCE_COMMANDS_DIR = resolve(ROOT, "commands")
 
 const BANNER = `<!-- AUTO-GENERATED. Do not edit here. Source: skills/ui-craft/ + commands/*.md. Regenerate with \`node scripts/sync-harnesses.mjs\`. -->\n`
@@ -94,12 +94,21 @@ function commandToSkill(commandName, commandContent) {
 
 // ---------- run ----------
 
-if (!existsSync(SOURCE_SKILL_DIR)) {
-  console.error(`❌ Source skill not found: ${SOURCE_SKILL_DIR}`)
+if (!existsSync(SOURCE_SKILLS_ROOT)) {
+  console.error(`❌ Source skills root not found: ${SOURCE_SKILLS_ROOT}`)
   process.exit(1)
 }
 if (!existsSync(SOURCE_COMMANDS_DIR)) {
   console.error(`❌ Source commands not found: ${SOURCE_COMMANDS_DIR}`)
+  process.exit(1)
+}
+
+const skillNames = readdirSync(SOURCE_SKILLS_ROOT, { withFileTypes: true })
+  .filter((e) => e.isDirectory())
+  .map((e) => e.name)
+
+if (skillNames.length === 0) {
+  console.error(`❌ No skills found under ${SOURCE_SKILLS_ROOT}`)
   process.exit(1)
 }
 
@@ -118,15 +127,20 @@ for (const harness of HARNESSES) {
   }
   mkdirSync(harnessSkillsDir, { recursive: true })
 
-  // 1. Main skill mirror
-  const mainDest = resolve(harnessSkillsDir, "ui-craft")
-  cpSync(SOURCE_SKILL_DIR, mainDest, { recursive: true })
-  const mainSkillMd = resolve(mainDest, "SKILL.md")
-  writeFileSync(
-    mainSkillMd,
-    insertBannerAfterFrontmatter(readFileSync(mainSkillMd, "utf8")),
-  )
-  totalDirs++
+  // 1. Mirror every source skill (ui-craft + variants)
+  for (const skillName of skillNames) {
+    const src = resolve(SOURCE_SKILLS_ROOT, skillName)
+    const dest = resolve(harnessSkillsDir, skillName)
+    cpSync(src, dest, { recursive: true })
+    const skillMd = resolve(dest, "SKILL.md")
+    if (existsSync(skillMd)) {
+      writeFileSync(
+        skillMd,
+        insertBannerAfterFrontmatter(readFileSync(skillMd, "utf8")),
+      )
+    }
+    totalDirs++
+  }
 
   // 2. Each command → peer sub-skill
   for (const file of commandFiles) {
@@ -141,5 +155,6 @@ for (const harness of HARNESSES) {
 
 console.log(`✅ Sync complete`)
 console.log(`   Harnesses: ${HARNESSES.join(", ")}`)
+console.log(`   Source skills mirrored: ${skillNames.length} (${skillNames.join(", ")})`)
 console.log(`   Commands materialized as sub-skills: ${commandFiles.length}`)
 console.log(`   Total dirs written: ${totalDirs}`)

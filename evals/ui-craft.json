@@ -1,0 +1,82 @@
+[
+  {
+    "query": "I'm building a pricing page for our SaaS app. We have 3 tiers: Free, Pro at $29/mo, Enterprise. Can you lay it out? Using Tailwind v4 + Next.js 15 App Router. The file should go at app/pricing/page.tsx",
+    "should_trigger": true
+  },
+  {
+    "query": "ok so i asked claude for a checkout page earlier and it gave me glassmorphism with purple gradients and bouncy cards. i need something that actually looks like serious saas software, not a demo. files are at app/(checkout)/page.tsx and components/checkout-form.tsx",
+    "should_trigger": true
+  },
+  {
+    "query": "review the design of my dashboard at src/app/dashboard/page.tsx — specifically worried about the sidebar and the 4 metric cards at the top. tell me what's off",
+    "should_trigger": true
+  },
+  {
+    "query": "add an entrance animation to this modal at components/settings/team-invite-dialog.tsx. i want something that feels premium, not the bouncy shadcn default",
+    "should_trigger": true
+  },
+  {
+    "query": "i want to polish this sign-in screen before we ship to production monday. files are app/(auth)/signin/page.tsx and signin-form.tsx. the typography feels off and the CTA isn't prominent enough",
+    "should_trigger": true
+  },
+  {
+    "query": "can you redo my feature section? currently its 6 cards in a grid, each with an icon + heading + 2 lines of text. super generic looking",
+    "should_trigger": true
+  },
+  {
+    "query": "build the onboarding flow for our app — 3 steps: workspace setup, invite team, first integration. should feel premium, not generic AI output. tailwind, nextjs 15, typescript",
+    "should_trigger": true
+  },
+  {
+    "query": "make this settings page feel less like bootstrap 3 and more like linear or notion. file: src/pages/admin/settings.tsx. we're a b2b tool for eng teams",
+    "should_trigger": true
+  },
+  {
+    "query": "help me with the typography on this blog post — the hierarchy isn't clear and the body text is too tight. tailwind v4, file is app/blog/[slug]/page.tsx. body font is Inter",
+    "should_trigger": true
+  },
+  {
+    "query": "design review on this landing page hero for our launch tomorrow. app/page.tsx — currently centered h1 + subtitle + 2 buttons. needs to feel designed, not assembled",
+    "should_trigger": true
+  },
+  {
+    "query": "write me a fetch helper that retries with exponential backoff and respects retry-after headers from 429 responses. typescript, no dependencies",
+    "should_trigger": false
+  },
+  {
+    "query": "my postgres query is slow — 2.3s on a table with 40M rows. here's the EXPLAIN ANALYZE output, can you spot the issue? CREATE INDEX I should add?",
+    "should_trigger": false
+  },
+  {
+    "query": "how do I type a generic React.forwardRef that takes a ref prop AND forwards it to a nested component? typescript is complaining about HOCs wrapping it",
+    "should_trigger": false
+  },
+  {
+    "query": "refactor this python script to use asyncio instead of threading. it's at scripts/ingest_data.py, does ~50k db writes per run, currently takes 45min",
+    "should_trigger": false
+  },
+  {
+    "query": "set up a github actions workflow that deploys to cloudflare workers on push to main, with a preview deployment for each PR comment",
+    "should_trigger": false
+  },
+  {
+    "query": "what's the best way to structure a monorepo with pnpm workspaces and turborepo? we have 3 apps and 5 shared packages, currently in a flat src/ layout",
+    "should_trigger": false
+  },
+  {
+    "query": "write unit tests for the auth service at src/services/auth.ts. it has login, signup, refresh-token, and a session validator. using vitest and msw",
+    "should_trigger": false
+  },
+  {
+    "query": "my stripe webhook is failing with a 500 in production but works locally. here's the last 20 lines of the cloud run log. help me debug",
+    "should_trigger": false
+  },
+  {
+    "query": "i need to migrate a 200GB postgres database from AWS RDS to supabase with minimal downtime. whats the best approach? logical replication or dump/restore?",
+    "should_trigger": false
+  },
+  {
+    "query": "convert this bash script to zsh. keeps hitting compat issues with globbing (shopt -s nullglob doesn't work) and array subscripts on my mac",
+    "should_trigger": false
+  }
+]

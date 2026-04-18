@@ -1,4 +1,9 @@
 {
-  "skills": ["skills/ui-craft"],
+  "skills": [
+    "skills/ui-craft",
+    "skills/ui-craft-minimal",
+    "skills/ui-craft-editorial",
+    "skills/ui-craft-dense-dashboard"
+  ],
   "commands": ["commands"]
 }

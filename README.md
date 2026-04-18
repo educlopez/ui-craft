@@ -50,6 +50,18 @@ Three numeric knobs (1-10) that the skill asks about during Discovery. They chan
 
 At `MOTION_INTENSITY 8+` the skill loads [`references/stack.md`](skills/ui-craft/references/stack.md) only if the user opts into Motion / GSAP / Three.js during Discovery.
 
+## Style variants
+
+Three opt-in sibling skills that pre-commit to a style and lock the knobs to matching values. Agents pick them when the user mentions a specific aesthetic or product reference.
+
+| Variant | Triggers on | Knobs locked | Style anchors |
+|---------|-------------|--------------|---------------|
+| `ui-craft-minimal` | "minimal", "Linear-like", "Notion-like", "editorial clean", whitespace-heavy | CRAFT=8 / MOTION=3 / DENSITY=2 | Monochrome + one accent, Inter/Geist, hairline borders over shadows |
+| `ui-craft-editorial` | "editorial", "magazine", "Medium-like", "Substack-like", "long-form", "blog" | CRAFT=9 / MOTION=4 / DENSITY=3 | Serif display + humanist body, wide reading column, OpenType features |
+| `ui-craft-dense-dashboard` | "dashboard", "admin panel", "Bloomberg-like", "Retool-like", "data dense" | CRAFT=7 / MOTION=3 / DENSITY=9 | IBM Plex + mono numbers, semantic palette, 4/8px grid, tabular-nums everywhere |
+
+Each variant defers to the main `ui-craft` skill for base rules and references — it only overrides knob defaults and adds style-specific guidance.
+
 ## Slash commands
 
 Seven focused passes, each applying a single lens from the skill:
@@ -131,9 +143,9 @@ The skill actively rejects patterns that scream "AI made this":
 ```
 ui-craft/
 ├── skills/
-│   └── ui-craft/
-│       ├── SKILL.md              # Slim entry point (~13KB) — knobs, discovery, anti-slop, routing
-│       └── references/
+│   ├── ui-craft/                 # Main skill
+│   │   ├── SKILL.md              # Slim entry point (~13KB) — knobs, discovery, anti-slop, routing
+│   │   └── references/
 │           ├── accessibility.md   # WCAG, keyboard, focus, ARIA, forms, checklist
 │           ├── animation.md       # Easing, springs, timing, interaction rules, principles
 │           ├── animation-orchestration.md  # Multi-stage sequences
@@ -147,8 +159,11 @@ ui-craft/
 │           ├── responsive.md      # Breakpoints, touch zones, fluid
 │           ├── review.md          # Critique methodology, Polish Pass, common issues
 │           ├── sound.md           # Web Audio, UI sound design
-│           ├── stack.md           # Motion / GSAP / Three.js (opt-in)
-│           └── typography.md      # Scale, fonts, readability, essentials
+│   │       ├── stack.md           # Motion / GSAP / Three.js (opt-in)
+│   │       └── typography.md      # Scale, fonts, readability, essentials
+│   ├── ui-craft-minimal/          # Variant — Linear/Notion aesthetic
+│   ├── ui-craft-editorial/        # Variant — Medium/Substack aesthetic
+│   └── ui-craft-dense-dashboard/  # Variant — Bloomberg/Retool aesthetic
 ├── commands/                      # Claude Code slash commands (source)
 │   ├── adapt.md                  # /ui-craft:adapt
 │   ├── animate.md                # /ui-craft:animate
@@ -159,6 +174,7 @@ ui-craft/
 │   └── typeset.md                # /ui-craft:typeset
 ├── scripts/
 │   └── sync-harnesses.mjs        # Generates .codex/.cursor/.gemini/.opencode/.agents mirrors
+├── evals/                         # Eval query sets for description optimizer
 ├── .codex/skills/                 # AUTO-GENERATED — do not edit
 ├── .cursor/skills/                # AUTO-GENERATED
 ├── .gemini/skills/                # AUTO-GENERATED
@@ -179,7 +195,11 @@ npm run sync
 # or: node scripts/sync-harnesses.mjs
 ```
 
-The sync script copies `skills/ui-craft/` into each harness dir and converts each file in `commands/` into a standalone sub-skill. It wipes and regenerates the harness dirs, so never edit `.codex/`, `.cursor/`, etc. directly — change `skills/ui-craft/` or `commands/`, then run sync. GitHub Actions runs it automatically on push to `main` (`.github/workflows/sync-harnesses.yml`).
+The sync script copies every folder under `skills/` (main skill + variants) into each harness dir and converts each file in `commands/` into a standalone sub-skill. It wipes and regenerates the harness dirs, so never edit `.codex/`, `.cursor/`, etc. directly — change `skills/` or `commands/`, then run sync. GitHub Actions runs it automatically on push to `main` (`.github/workflows/sync-harnesses.yml`).
+
+## Tuning skill descriptions
+
+Every skill's `description` field is the primary trigger mechanism. The `evals/` folder holds query sets for `skill-creator`'s description optimizer (`run_loop.py`), which evaluates and iterates descriptions against realistic should-trigger / should-not-trigger prompts. See `evals/README.md` for the commands and how to add new eval sets.
 
 ## Contributing
 
