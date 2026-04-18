@@ -84,3 +84,42 @@ Dashboards value density over breathing room (opposite of landing pages).
 - Tables: compact row height (40-48px). Dense but scannable.
 - A dashboard should show enough data that a user can make a decision without scrolling. If the first viewport is just 4 large metric cards, you've wasted space.
 - Aim for: 3-4 metric cards + at least one chart + start of a table/list — all above the fold.
+
+---
+
+## Signal-to-Noise Hierarchy
+
+The most common AI-generated dashboard failure isn't any single bad choice — it's that every KPI, every chart, every card looks equally important. The user doesn't know where to look. Signal-to-noise hierarchy is the fix.
+
+### Tiers
+
+**Tier 1 — The hero metric.** One per dashboard. The number that answers "am I winning today?". Largest visual weight. Accent color is allowed here, and here only. Trend indicator adjacent (up/down + delta). Context micro-text below: "vs last 7 days" or "of monthly quota."
+
+**Tier 2 — Supporting metrics (2-4).** The breakdown of the hero — if the hero is revenue, supports are revenue by channel, by region, by segment. Neutral colors. Smaller type. Grouped visually with the hero (shared container, aligned baseline).
+
+**Tier 3 — Context (0-3 charts).** Trends, time series, comparisons. Chart type matches data shape (see `dataviz.md` and the Chart Type Decision Matrix above). Sparklines for micro-context inside cards. No large charts competing with the hero's visual weight.
+
+**Tier 4 — Deep-dive.** Tables, filters, raw data. Accessible but not crowding the viewport. Often collapsed by default, or lives on a separate tab / route. The user drills in when they need it.
+
+### The anti-pattern: "grid of 8 KPI cards with equal weight"
+
+Every card the same size, same color, same layout → the user's eye has nowhere to land → the user scrolls looking for meaning → the user leaves. This is the single most recognizable AI-generated dashboard shape.
+
+### The rule
+
+One hero. 2-4 supports. Context behind. Deep-dive one click away. Test by squinting at the dashboard: your eye should land on ONE thing first. If it lands everywhere, the hierarchy is broken.
+
+### Ranking decisions to document per dashboard
+
+Before building, answer these:
+
+- **What's the hero metric for this surface?** Different for exec view (revenue) vs operator view (tickets open) vs customer view (usage vs limit). See `personas.md` to ground this in concrete archetypes.
+- **What supporting metrics contextualize the hero?** The 2-4 that make the hero actionable, not the 8 you could show.
+- **What's deep-dive, not surface?** Everything the user needs once a week, not once a minute.
+- **Who's the user and what decision are they making in the next 60 seconds?** If you can't name the decision, the dashboard has no job.
+
+### Cross-references
+
+- `dataviz.md` — chart selection by data shape; Cleveland-McGill perceptual hierarchy (position-on-common-scale is most accurate — use it for the hero).
+- `heuristics.md` — Cleveland-McGill PASS/FAIL, Hick's Law for filter/nav choices.
+- `personas.md` — concrete user archetypes to ground "who's the user" in reality, not abstraction.

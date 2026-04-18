@@ -8,7 +8,7 @@ A design engineering skill for AI coding agents. Teaches your agent to build int
 
 ## What it does
 
-UI Craft gives AI coding agents the design knowledge they're missing. Not templates. Not component libraries. Actual craft knowledge — 21 domains of opinionated rules about how interfaces should look, move, and feel, plus 17 slash commands to run focused passes on existing code.
+UI Craft gives AI coding agents the design knowledge they're missing. Not templates. Not component libraries. Actual craft knowledge — 23 domains of opinionated rules about how interfaces should look, move, and feel, plus 17 slash commands to run focused passes on existing code. Stack-agnostic by design.
 
 Every UI gets tested against a single question: *"Would someone believe AI made this?"* If yes, it starts over.
 
@@ -130,7 +130,7 @@ The skill detects your intent and routes automatically.
 | **Review** | "Review this component" | Audits for generic AI patterns, accessibility gaps, and missed details |
 | **Polish** | "Polish this dashboard" | Finds the twenty small things that turn "done" into "crafted" |
 
-## 21 domains
+## 23 domains
 
 | Domain | Covers |
 |--------|--------|
@@ -155,6 +155,8 @@ The skill detects your intent and routes automatically.
 | **Data viz** | Cleveland-McGill perceptual hierarchy, chart selection matrix, ColorBrewer + Okabe-Ito palettes, direct labeling, Tufte principles |
 | **UX writing** | Voice / tone matrix, reading level (Flesch ≥70), terminology consistency, inclusive language, locale-aware strings |
 | **Motion system** | Duration + easing token scales, choreography rules, motion budget per surface, reduced-motion contract |
+| **AI / chat surfaces** | Streaming contract, 7-state model, tool traces, citations, feedback affordances, generative UI, conversation layout |
+| **Forms** | Validation timing, progressive disclosure, multi-step wizards, autosave, optimistic submit, field patterns (phone/date/tz/cc/password/magic-link/upload) |
 
 ## Framework agnostic
 
@@ -241,7 +243,7 @@ ui-craft/
 
 [![npm version](https://img.shields.io/npm/v/ui-craft-detect?style=flat-square&label=ui-craft-detect)](https://www.npmjs.com/package/ui-craft-detect)
 
-Scan a codebase for common AI-generated UI anti-patterns — 25 rules covering AI slop (`transition: all`, bounce easing, purple gradients, ALL CAPS headings), dark patterns (confirmshaming, destructive actions without confirmation), a11y (icon-only buttons without labels), dataviz (categorical rainbow palettes), state design (data fetching without empty/error branches), and placeholder copy shipped to prod (`Lorem ipsum`, `TODO`, `John Doe`). Zero dependencies, works out of the box.
+Scan a codebase for common AI-generated UI anti-patterns — 29 rules covering AI slop (`transition: all`, bounce easing, purple gradients, ALL CAPS headings), dark patterns (confirmshaming, destructive actions without confirmation), a11y (icon-only buttons without labels, modal-without-`<dialog>`, `outline: none` without `:focus-visible` replacement), forms (placeholder-as-label), tables (no overflow handling on mobile), dataviz (categorical rainbow palettes), state design (data fetching without empty/error branches), and placeholder copy shipped to prod (`Lorem ipsum`, `TODO`, `John Doe`). Zero dependencies, works out of the box.
 
 Published as a standalone CLI on npm — use it anywhere without cloning:
 

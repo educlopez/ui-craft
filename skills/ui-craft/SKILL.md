@@ -63,6 +63,8 @@ The rules that make the biggest difference between "AI-generated" and "designed 
 | UX writing / voice / tone / microcopy | [ux-writing.md](references/ux-writing.md) — voice matrix, reading level, locale, inclusive language |
 | Motion system / tokens / choreography | [motion-system.md](references/motion-system.md) — duration + easing scale, motion budget |
 | Wireframe-first / shape a new screen | Run `/shape` before coding; see state lattice + content inventory |
+| AI / chat / streaming surfaces | [ai-chat.md](references/ai-chat.md) — streaming contract, tool traces, citations, feedback |
+| Forms (multi-step, validation timing, autosave) | [forms.md](references/forms.md) — holistic form system design |
 | Ambiguous | Ask which mode |
 
 **Overlap with other skills:** defer marketing copy to a copywriting skill; defer SEO to an SEO skill. UI Craft is the visual and interaction layer.
@@ -234,3 +236,5 @@ Read only what's relevant.
 | [dataviz.md](references/dataviz.md) | Cleveland-McGill perceptual hierarchy, chart selection matrix, ColorBrewer/Okabe-Ito palettes, Tufte, direct labeling, small multiples |
 | [ux-writing.md](references/ux-writing.md) | Voice/tone matrix, reading level (Flesch ≥70), terminology consistency, inclusive language swaps, locale-aware strings |
 | [motion-system.md](references/motion-system.md) | Duration + easing token scales, choreography rules, motion budget per surface, reduced-motion contract, Figma JSON export |
+| [ai-chat.md](references/ai-chat.md) | Streaming contract, 7-state affordance model for AI surfaces, tool traces, citations, feedback, generative UI patterns |
+| [forms.md](references/forms.md) | Validation timing, progressive disclosure, multi-step wizards, autosave, optimistic submit, field-specific patterns |

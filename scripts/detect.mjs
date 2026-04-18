@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// ui-craft anti-slop detector v0.3.0
+// ui-craft anti-slop detector v0.4.0
 // Scans CSS/JSX/TSX/Vue/Svelte/etc for common AI-generated UI anti-patterns.
 // Zero dependencies. Node 18+. Rules mirror skills/ui-craft/SKILL.md "Anti-Slop Test".
 //
@@ -11,7 +11,7 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 
-const VERSION = "0.3.0";
+const VERSION = "0.4.0";
 
 const SCAN_EXTENSIONS = new Set([
   ".css", ".scss", ".sass",
@@ -613,6 +613,161 @@ const rules = [
         if (m) return { snippet: m[0].slice(0, 80) };
       }
       return false;
+    },
+  },
+
+  // ===== NEW v0.4 RULES =====
+  {
+    id: "a11y/modal-without-dialog",
+    severity: "critical",
+    description: "custom modal without native <dialog> or [popover]",
+    fix: "Prefer native <dialog> or [popover] over custom divs. Native elements give you focus trap, ESC handling, and backdrop click out of the box. See references/modern-css.md → Popover API + <dialog>.",
+    scope: "file",
+    matchFile(content, lines) {
+      // Skip if file imports a known accessible dialog library.
+      const a11yLibRe = /from\s+["'](?:@radix-ui\/[^"']+|@headlessui\/react|@ariakit\/react|@reach\/[^"']+|vaul|react-aria(?:-components)?|react-modal)["']/;
+      if (a11yLibRe.test(content)) return [];
+
+      // Signals of a modal-like pattern.
+      const hasDivDialogRole = /<div\b[^>]*\brole\s*=\s*["'](?:dialog|alertdialog)["']/.test(content);
+      const hasModalClass = /\b(?:class|className)\s*=\s*["'][^"']*\b(?:modal|overlay)\b[^"']*["']/.test(content);
+      // Backdrop pattern: position fixed + inset 0 near a state gate like isOpen && / open ?
+      const hasBackdrop = (
+        (/position:\s*fixed/.test(content) && /inset:\s*0\b/.test(content)) ||
+        /\bfixed\s+inset-0\b/.test(content)
+      );
+      const hasStateGate = /\b(?:isOpen|open)\s*&&|\b(?:isOpen|open)\s*\?/.test(content);
+
+      const modalish = hasDivDialogRole || hasModalClass || (hasBackdrop && hasStateGate);
+      if (!modalish) return [];
+
+      // If any native-dialog signal exists, we're fine.
+      const nativeSignals = /<dialog\b|\bshowModal\s*\(|\bpopover\s*=|\bpopoverTarget\s*=|\bHTMLDialogElement\b/;
+      if (nativeSignals.test(content)) return [];
+
+      // Find first offending line for reporting.
+      let ln = 1;
+      for (let i = 0; i < lines.length; i++) {
+        if (
+          /<div\b[^>]*\brole\s*=\s*["'](?:dialog|alertdialog)["']/.test(lines[i]) ||
+          /\b(?:class|className)\s*=\s*["'][^"']*\b(?:modal|overlay)\b[^"']*["']/.test(lines[i])
+        ) {
+          ln = i + 1;
+          break;
+        }
+      }
+      return [{ line: ln, snippet: "modal-like pattern without <dialog>/[popover] or accessible-dialog lib" }];
+    },
+  },
+  {
+    id: "forms/placeholder-as-label",
+    severity: "critical",
+    description: "input/textarea with placeholder but no label",
+    fix: "Placeholders are not labels — they disappear on focus and break screen readers. Add a <label>, aria-label, or aria-labelledby. See references/forms.md and references/accessibility.md.",
+    scope: "line",
+    match(line, ctx) {
+      const re = /<(input|textarea)\b[^>]*\bplaceholder\s*=/;
+      const m = line.match(re);
+      if (!m) return false;
+      const tag = m[0];
+      // Skip inputs that don't need labels.
+      if (/\btype\s*=\s*["'](?:hidden|submit|button|reset|image)["']/.test(tag)) return false;
+      // Already has an accessible name?
+      if (/\baria-label\s*=/.test(tag) || /\baria-labelledby\s*=/.test(tag)) return false;
+      // Check the same JSX element — a placeholder attr might span lines. Approximate by
+      // peeking ahead a couple of lines for closing > or aria-* before it.
+      const lines = ctx && ctx.lines;
+      const idx = ctx && ctx.lineIdx;
+      if (lines && typeof idx === "number") {
+        // Build a small window from the opening tag to its first closing >.
+        let window = line;
+        for (let j = idx + 1; j < Math.min(lines.length, idx + 4); j++) {
+          window += "\n" + lines[j];
+          if (/>/.test(lines[j])) break;
+        }
+        if (/\baria-label\s*=/.test(window) || /\baria-labelledby\s*=/.test(window)) return false;
+
+        // Check preceding 3 lines for a wrapping <label …> or htmlFor/for pointing at this.
+        const from = Math.max(0, idx - 3);
+        const preceding = lines.slice(from, idx).join("\n");
+        if (/<label\b/.test(preceding)) return false;
+      }
+      return { snippet: line.match(/<(?:input|textarea)\b[^>]*\bplaceholder\s*=\s*["'][^"']*["']/)?.[0]?.slice(0, 100) || "placeholder without label" };
+    },
+  },
+  {
+    id: "a11y/outline-none-no-replacement",
+    severity: "critical",
+    description: "outline removed without focus-visible replacement",
+    fix: "Removing outline without replacement breaks keyboard accessibility. Pair every outline: none with a :focus-visible ring or outline replacement — focus-visible:ring-2 ring-offset-2 in Tailwind.",
+    scope: "line",
+    match(line, ctx) {
+      const cssRe = /outline:\s*(?:none|0|0px)\b/;
+      const twRe = /\b(?:outline-none|focus:outline-none)\b/;
+      const hit = cssRe.test(line) || twRe.test(line);
+      if (!hit) return false;
+
+      const lines = ctx && ctx.lines;
+      const idx = ctx && ctx.lineIdx;
+      if (lines && typeof idx === "number") {
+        const from = Math.max(0, idx - 6);
+        const to = Math.min(lines.length, idx + 7);
+        const window = lines.slice(from, to).join("\n");
+        // Replacement signals.
+        const hasFocusVisible = /:focus-visible\b|\bfocus-visible:/.test(window);
+        const hasFocusRule = /:focus\b\s*[,{]/.test(window); // CSS :focus { ... } or :focus,
+        const hasFocusVisibleRing = /\bfocus-visible:[\w-]*(?:ring|outline)\b/.test(window);
+        if (hasFocusVisible || hasFocusRule || hasFocusVisibleRing) return false;
+      }
+      const m = line.match(cssRe) || line.match(twRe);
+      return { snippet: m ? m[0] : "outline removed" };
+    },
+  },
+  {
+    id: "tables/no-overflow-handling",
+    severity: "major",
+    description: "table without overflow handling or sticky header",
+    fix: "Tables need horizontal overflow on mobile and a sticky header for long lists. Wrap in overflow-x: auto and apply position: sticky; top: 0 to thead/th.",
+    scope: "file",
+    matchFile(content, lines) {
+      const hasTable = /<table\b|\brole\s*=\s*["']table["']|display:\s*table\b/.test(content);
+      if (!hasTable) return [];
+
+      const hasOverflow = /\boverflow-auto\b|\boverflow-x-auto\b|\boverflow-scroll\b|\boverflow-x-scroll\b|overflow:\s*auto\b|overflow-x:\s*auto\b|overflow:\s*scroll\b|overflow-x:\s*scroll\b/.test(content);
+      const hasStickyHead = (
+        /position:\s*sticky[\s\S]{0,200}?(?:thead|th\b)/.test(content) ||
+        /(?:thead|th)\b[\s\S]{0,200}?position:\s*sticky/.test(content) ||
+        /<thead\b[^>]*\bclassName\s*=\s*["'][^"']*\bsticky\b[^"']*\btop-0\b/.test(content) ||
+        /<thead\b[^>]*\bclassName\s*=\s*["'][^"']*\btop-0\b[^"']*\bsticky\b/.test(content) ||
+        /<th\b[^>]*\bclassName\s*=\s*["'][^"']*\bsticky\b[^"']*\btop-0\b/.test(content) ||
+        /<th\b[^>]*\bclassName\s*=\s*["'][^"']*\btop-0\b[^"']*\bsticky\b/.test(content)
+      );
+
+      if (hasOverflow && hasStickyHead) return [];
+
+      // Find the first table-ish line for reporting.
+      let ln = 1;
+      for (let i = 0; i < lines.length; i++) {
+        if (/<table\b|\brole\s*=\s*["']table["']|display:\s*table\b/.test(lines[i])) {
+          ln = i + 1;
+          break;
+        }
+      }
+
+      const findings = [];
+      if (!hasOverflow) {
+        findings.push({
+          line: ln,
+          snippet: "Tables without horizontal overflow break on mobile (~320px). Wrap in an element with overflow-x: auto.",
+        });
+      }
+      if (!hasStickyHead) {
+        findings.push({
+          line: ln,
+          snippet: "Long tables benefit from position: sticky; top: 0; on thead/th — header stays visible while scrolling rows.",
+        });
+      }
+      return findings;
     },
   },
 ];

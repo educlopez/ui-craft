@@ -1,5 +1,31 @@
 # Versions
 
+## v0.13.0 (2026-04-19) — AI-chat, modern-CSS platform, forms, dashboard hierarchy, detector v0.4
+
+Filtered through two gates applied to every proposed addition: (a) stack-agnostic, (b) design-engineer-pure. Product / growth / marketing concerns deferred to future sibling skills. This release expands only what passes both filters.
+
+**New references:**
+- `references/ai-chat.md` (158 lines) — framework-neutral interaction patterns for AI surfaces. Streaming contract (first pixel <400ms / Doherty), 7-state affordance table (idle / composing / thinking / streaming / tool-calling / complete / error), tool traces, citation chips with deep-link, feedback affordances, retry vs regenerate vs continue, inline response actions, generative UI patterns, conversation surface layout, 10 anti-patterns. Does not assume any specific SDK.
+- `references/forms.md` (161 lines) — holistic form system design beyond labels/errors. Validation timing decision tree, progressive disclosure, multi-step wizards with resume-on-return, autosave + conflict resolution, optimistic submit, keyboard contract, field-specific patterns (phone / date / timezone / credit card / password / magic-link / file upload), destructive actions inside forms, 10 anti-patterns.
+
+**Expanded references:**
+- `references/modern-css.md` — added Anchor Positioning (Baseline 2026), Popover API + `<dialog>`, `interpolate-size: allow-keywords`, `color-mix()` for theme derivations, `transition-behavior: allow-discrete` with `@starting-style`, deeper container-query patterns (style queries, named containers). Replaces the need for a separate `native-platform.md` — consolidated into the existing reference.
+- `references/dashboard.md` — added "Signal-to-noise hierarchy" section. The 4-tier model (hero metric / supporting / context / deep-dive), the "8-equal-cards" anti-pattern, the squint test, 4 ranking questions to answer per dashboard.
+
+**Detector `ui-craft-detect@0.4.0`** — 4 new rules (total 29):
+- `a11y/modal-without-dialog` (critical, file-level) — custom div modals when native `<dialog>` or `[popover]` would work. Skips files importing Radix / HeadlessUI / Ariakit / Reach / Vaul / React Aria / React Modal (already a11y-correct).
+- `forms/placeholder-as-label` (critical, line-level) — inputs with placeholder but no `<label>` / `aria-label` / `aria-labelledby`.
+- `a11y/outline-none-no-replacement` (critical, line-level) — `outline: none` or `outline-none` without `:focus-visible` replacement in a 6-line window.
+- `tables/no-overflow-handling` (major, file-level) — tables without horizontal overflow handling OR sticky thead (emits up to 2 findings per file).
+
+`package.json` bumped to `0.4.0`. Detector: 1272 → 1427 lines. All prior features intact (ignore comments, `.uicraftrc.json`, `--fix`, `--json`, `--sarif`).
+
+**Explicitly NOT added** (failed filter):
+- `de-shadcnify.md` — React-specific. Principles already dispersed across existing refs.
+- `onboarding.md` — adjacent to product strategy, not pure design engineering.
+- `command-menu.md` — too narrow for its own file.
+- `native-platform.md` — redundant with `modern-css.md`.
+
 ## v0.12.0 (2026-04-18) — detector v0.3 + docs expansion
 
 **Detector `ui-craft-detect@0.3.0`** — 6 new rules (total 25). All from the Tier 3 competitive research backlog.
