@@ -1,0 +1,24 @@
+# npm auto-includes every README.* by default. We only want the swapped
+# README.md (written by the prepack script from README.npm.md).
+README.npm.md
+README.repo.md
+
+# Everything else the repo ships is skill content, not detector code — it
+# lives in the git repo but shouldn't bloat the npm tarball. `files` in
+# package.json is the allow-list; this file is the deny-list for items
+# npm would otherwise include by default.
+VERSIONS.md
+CONTRIBUTING.md
+.claude-plugin/
+.agents/
+.claude/
+.codex/
+.cursor/
+.gemini/
+.opencode/
+.github/
+.githooks/
+assets/
+skills/
+commands/
+evals/

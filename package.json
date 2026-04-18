@@ -1,12 +1,37 @@
 {
-  "name": "ui-craft",
-  "private": true,
-  "version": "0.9.0",
-  "description": "UI Craft — design engineering skill for AI coding agents. Repo-local tooling.",
+  "name": "ui-craft-detect",
+  "version": "0.1.0",
+  "description": "Static anti-slop detector for UI code. Flags AI-generated design patterns (purple gradients, bounce easing, glassmorphism, generic CTAs, ALL CAPS headings, transition: all). Zero dependencies, works out of the box.",
   "type": "module",
+  "bin": {
+    "ui-craft-detect": "scripts/detect.mjs"
+  },
+  "main": "scripts/detect.mjs",
+  "files": [
+    "scripts/detect.mjs",
+    "LICENSE",
+    "README.md"
+  ],
+  "keywords": [
+    "ui",
+    "design",
+    "linter",
+    "detector",
+    "anti-pattern",
+    "ai-slop",
+    "css",
+    "jsx",
+    "tsx",
+    "tailwind",
+    "accessibility",
+    "design-system",
+    "cli",
+    "code-quality"
+  ],
   "scripts": {
     "sync": "node scripts/sync-harnesses.mjs",
-    "detect": "node scripts/detect.mjs"
+    "detect": "node scripts/detect.mjs",
+    "validate": "node scripts/validate.mjs"
   },
   "engines": {
     "node": ">=18"
@@ -15,5 +40,10 @@
     "type": "git",
     "url": "git+https://github.com/educlopez/ui-craft.git"
   },
+  "homepage": "https://skills.smoothui.dev",
+  "bugs": {
+    "url": "https://github.com/educlopez/ui-craft/issues"
+  },
+  "author": "Eduardo Calvo",
   "license": "MIT"
 }

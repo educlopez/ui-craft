@@ -1,5 +1,14 @@
 # Versions
 
+## v0.9.1 (2026-04-18) — publish `ui-craft-detect` on npm
+
+The detector script is now shippable as a standalone npm package.
+
+- `package.json` repurposed: `name: "ui-craft-detect"`, `version: 0.1.0`, `"private": false`, adds `bin`, `main`, `files`, `keywords`, `author`, `homepage`. Joins the user's existing CLI lineup (`smoothui-cli`, `design-bites`, `sparkbites-mcp`).
+- `.npmignore` excludes skill content (skills/, commands/, .codex/, etc.) from the tarball. Only `scripts/detect.mjs`, `LICENSE`, `package.json`, and `README.md` ship (12.6kB tarball).
+- `npx ui-craft-detect <path>` works anywhere — no clone, no clone, no install.
+- Compatible with pre-commit hooks via `npx ui-craft-detect .` or Husky.
+
 ## v0.9.0 (2026-04-18) — 2 new variants, agent logos, pre-commit hook
 
 - **`ui-craft-playful`** — Clay / Gumroad / Duolingo / Arc aesthetic. Knobs 8/7/4. Rounded corners, spring motion, multi-accent (≤3), colored soft shadows.
