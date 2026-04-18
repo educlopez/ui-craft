@@ -8,9 +8,24 @@ A design engineering skill for AI coding agents. Teaches your agent to build int
 
 ## What it does
 
-UI Craft gives AI coding agents the design knowledge they're missing. Not templates. Not component libraries. Actual craft knowledge — 15 domains of opinionated rules about how interfaces should look, move, and feel, plus 7 slash commands to run focused passes on existing code.
+UI Craft gives AI coding agents the design knowledge they're missing. Not templates. Not component libraries. Actual craft knowledge — 15 domains of opinionated rules about how interfaces should look, move, and feel, plus 14 slash commands to run focused passes on existing code.
 
 Every UI gets tested against a single question: *"Would someone believe AI made this?"* If yes, it starts over.
+
+## Same prompt, different result
+
+<table>
+  <tr>
+    <td><strong>Without UI Craft</strong><br/><img src="assets/screenshots/hero-without.png" alt="Hero built without UI Craft" width="100%" /></td>
+    <td><strong>With UI Craft</strong><br/><img src="assets/screenshots/hero-with.png" alt="Hero built with UI Craft" width="100%" /></td>
+  </tr>
+  <tr>
+    <td><img src="assets/screenshots/dashboard-without.png" alt="Dashboard built without UI Craft" width="100%" /></td>
+    <td><img src="assets/screenshots/dashboard-with.png" alt="Dashboard built with UI Craft" width="100%" /></td>
+  </tr>
+</table>
+
+More before/after comparisons on the [landing page](https://skills.smoothui.dev).
 
 ## Install
 
@@ -20,7 +35,7 @@ npx skills add educlopez/ui-craft
 
 Works with **Claude Code, Codex, Cursor, Gemini, OpenCode, Windsurf**, and any agent that supports the [Agent Skills](https://skills.sh) spec.
 
-Each agent gets a pre-built mirror under a dedicated folder (`.codex/`, `.cursor/`, `.gemini/`, `.opencode/`, `.agents/`). The main `ui-craft` skill lands as a peer skill; each of the 7 slash commands is materialized as its own sub-skill in non-Claude harnesses (since only Claude Code understands slash commands — other agents see them as skills triggered by intent like "audit my UI", "polish this page").
+Each agent gets a pre-built mirror under a dedicated folder (`.codex/`, `.cursor/`, `.gemini/`, `.opencode/`, `.agents/`). The main `ui-craft` skill lands as a peer skill; each of the 14 slash commands is materialized as its own sub-skill in non-Claude harnesses (since only Claude Code understands slash commands — other agents see them as skills triggered by intent like "audit my UI", "polish this page").
 
 ### Alternative installation
 
@@ -64,17 +79,36 @@ Each variant defers to the main `ui-craft` skill for base rules and references �
 
 ## Slash commands
 
-Seven focused passes, each applying a single lens from the skill:
+Fourteen focused passes, each applying a single lens from the skill.
+
+**Review & ship:**
 
 | Command | Does |
 |---------|------|
-| `/ui-craft:audit` | Technical quality — a11y, performance, responsive. Prioritized findings table. |
-| `/ui-craft:critique` | UX critique — hierarchy, clarity, anti-slop. No code changes. |
+| `/ui-craft:audit` | Technical — a11y, performance, responsive. Prioritized findings table. |
+| `/ui-craft:critique` | UX — hierarchy, clarity, anti-slop. No code changes. |
 | `/ui-craft:polish` | Final pass — compound details that turn "done" into "crafted". |
-| `/ui-craft:animate` | Add/fix motion. Honors `MOTION_INTENSITY` and the chosen stack. |
-| `/ui-craft:distill` | Strip to essence. Cut every section that doesn't earn space. |
+| `/ui-craft:harden` | Production readiness — loading/empty/error states, i18n, offline, edge cases. |
+
+**Transform:**
+
+| Command | Does |
+|---------|------|
+| `/ui-craft:animate` | Add / fix motion. Honors `MOTION_INTENSITY` + chosen stack. |
 | `/ui-craft:adapt` | Responsive pass — mobile, tablet, desktop, touch, safe areas. |
 | `/ui-craft:typeset` | Typography pass — fonts, scale, tracking, micro-typography. |
+| `/ui-craft:colorize` | Introduce color strategically — one accent, 3–5 placements, no decoration. |
+| `/ui-craft:clarify` | UX copy — button labels, error messages, empty states, CTAs. |
+| `/ui-craft:extract` | Pull repeated patterns into shared components and tokens. |
+
+**Taste dial:**
+
+| Command | Does |
+|---------|------|
+| `/ui-craft:distill` | Strip to essence. Cut every section that doesn't earn its space. |
+| `/ui-craft:bolder` | Amplify a forgettable UI — type weapon + one signature motif. |
+| `/ui-craft:quieter` | Tone down a shouty UI — fewer accents, softer type, less motion. |
+| `/ui-craft:delight` | Add purposeful micro-interactions — copy first, animation last. |
 
 ## Four modes
 
@@ -187,6 +221,18 @@ ui-craft/
 ├── LICENSE
 └── VERSIONS.md
 ```
+
+## Anti-slop detection
+
+Scan a codebase for common AI-generated UI anti-patterns — `transition: all`, bounce easing, purple gradients, ALL CAPS headings, generic CTAs, glassmorphism abuse. Zero dependencies, works out of the box.
+
+```bash
+node scripts/detect.mjs ./src
+# or with JSON output:
+node scripts/detect.mjs ./src --json
+```
+
+Exit code 0 when clean, 1 when findings — usable as a CI gate. Rules mirror the Anti-Slop Test in `skills/ui-craft/SKILL.md`.
 
 ## Maintaining harness mirrors
 

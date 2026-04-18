@@ -1,0 +1,62 @@
+[
+  {
+    "query": "design a long-form article page for our product blog. medium-like — serif display font, wide reading column, drop cap on first paragraph, generous whitespace. file at app/blog/[slug]/page.tsx",
+    "should_trigger": true
+  },
+  {
+    "query": "i want this landing to feel editorial, like The Verge or Vox — magazine vibes, serif headlines, pull quotes, subtle textures. tailwind v4",
+    "should_trigger": true
+  },
+  {
+    "query": "build a substack-style writer homepage. heavy on typography, rich body copy, minimal chrome, newsletter signup inline. nextjs 15",
+    "should_trigger": true
+  },
+  {
+    "query": "this is a long-form essay site. i want fraunces or playfair display for headings, humanist serif body, proper OpenType features like small caps and old-style figures",
+    "should_trigger": true
+  },
+  {
+    "query": "redesign our content site to feel more like a magazine — currently it's a boring grid of cards, i want issue-style layouts with varied column widths",
+    "should_trigger": true
+  },
+  {
+    "query": "clean minimalist landing page. linear/notion aesthetic, mostly whitespace, one blue accent, inter font",
+    "should_trigger": false
+  },
+  {
+    "query": "build an admin dashboard for managing users and feature flags. dense tables, sidebar nav, filters, bulk actions",
+    "should_trigger": false
+  },
+  {
+    "query": "i need a marketing page for a developer tool. tailwind v4, nextjs 15, no specific style mentioned",
+    "should_trigger": false
+  },
+  {
+    "query": "add serif fonts to this dashboard to make it feel more premium — currently inter everywhere, feels cold",
+    "should_trigger": false
+  },
+  {
+    "query": "the user wants a blog page but the design system uses Geist font and has no serif tokens — not a true editorial context, just content",
+    "should_trigger": false
+  },
+  {
+    "query": "write unit tests for the markdown parser at src/lib/mdx.ts",
+    "should_trigger": false
+  },
+  {
+    "query": "audit this page for accessibility — color contrast, focus states, keyboard nav",
+    "should_trigger": false
+  },
+  {
+    "query": "build a product listing page with filters, grid of product cards, and a sticky sidebar. ecommerce, tailwind",
+    "should_trigger": false
+  },
+  {
+    "query": "my content site needs an 'editorial feel' according to stakeholders but they also want dense metadata, filter sidebars, and a data table of past issues — sounds more dashboard-y actually",
+    "should_trigger": false
+  },
+  {
+    "query": "polish this pricing page — tabular-nums on amounts, curly quotes in testimonials, text-wrap: balance on headlines",
+    "should_trigger": false
+  }
+]

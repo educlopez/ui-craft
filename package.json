@@ -1,11 +1,12 @@
 {
   "name": "ui-craft",
   "private": true,
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "UI Craft — design engineering skill for AI coding agents. Repo-local tooling.",
   "type": "module",
   "scripts": {
-    "sync": "node scripts/sync-harnesses.mjs"
+    "sync": "node scripts/sync-harnesses.mjs",
+    "detect": "node scripts/detect.mjs"
   },
   "engines": {
     "node": ">=18"

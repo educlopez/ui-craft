@@ -1,0 +1,28 @@
+name: Validate
+
+# Fails the PR if plugin manifests, skill frontmatter, or internal links break.
+# Cheap to run (pure Node, no deps).
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Validate plugin structure + skill metadata + links
+        run: node scripts/validate.mjs
+
+      - name: Dry-run sync script (must not error)
+        run: node scripts/sync-harnesses.mjs

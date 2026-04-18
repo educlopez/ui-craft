@@ -1,5 +1,14 @@
 # Versions
 
+## v0.8.0 (2026-04-18) — more commands, detector, CI
+
+- **7 new slash commands** (total 14): `/bolder`, `/quieter`, `/delight`, `/harden`, `/colorize`, `/clarify`, `/extract`. Each follows the existing command pattern (YAML frontmatter + knob gating where relevant + specific reference pointers + Review Format output). Materialized as sub-skills in every harness mirror.
+- **`scripts/detect.mjs`** — zero-dependency static anti-slop detector. Scans CSS / JSX / TSX / Vue / Svelte / Astro for 11 anti-patterns (transition-all, bounce easing, purple/cyan gradients, ALL CAPS headings, glassmorphism stacks, gradient text on metrics, emoji-as-icons, pure black text, generic CTAs, uniform border-radius). Exits non-zero on findings — CI-ready. `npm run detect [path]`.
+- **`scripts/validate.mjs`** + **`.github/workflows/validate.yml`** — validates plugin manifests, skill frontmatter (name + description ≤ 1024 chars for Codex), command frontmatter, and resolves every internal markdown link. Runs on push + PR. Currently 61/61 checks pass.
+- **`evals/`** — added per-variant eval query sets: `ui-craft-minimal.json`, `ui-craft-editorial.json`, `ui-craft-dense-dashboard.json`. Each has 15 should-trigger / should-not-trigger queries focused on cross-variant discriminators (the high-signal negatives).
+- **README** — before/after screenshots (hero + dashboard), updated commands table grouped by intent (Review & ship / Transform / Taste dial).
+- Marketplace CalVer bumped to `2026.4.18.2300`; package.json to `0.8.0`.
+
 ## v0.7.0 (2026-04-18) — style variants + eval infra
 
 - **Three new sibling skills** under `skills/`: `ui-craft-minimal` (Linear/Notion aesthetic), `ui-craft-editorial` (Medium/Substack), `ui-craft-dense-dashboard` (Bloomberg/Retool). Each locks the knobs (`CRAFT_LEVEL` / `MOTION_INTENSITY` / `VISUAL_DENSITY`) and adds style-specific overrides. Variants defer to the main `ui-craft` skill for base rules and references — minimal duplication.

@@ -1,0 +1,62 @@
+[
+  {
+    "query": "build me a landing page. i want it clean and minimal, like linear or notion — lots of whitespace, no gradients, monochrome with one accent color. tailwind v4, nextjs 15, file at app/page.tsx",
+    "should_trigger": true
+  },
+  {
+    "query": "redesign this settings page to feel more like notion — currently it's bootstrap-ish with too many colors and borders. src/app/settings/page.tsx",
+    "should_trigger": true
+  },
+  {
+    "query": "I want the design to feel editorial and minimalist, like Linear's docs. whitespace heavy, tight typography, hairline dividers. the file is src/app/docs/page.tsx",
+    "should_trigger": true
+  },
+  {
+    "query": "build a clean one-column marketing page. heavy whitespace, inter font, one blue accent, no decorations. feels like early Stripe or Vercel's docs",
+    "should_trigger": true
+  },
+  {
+    "query": "make this onboarding flow feel more restrained. currently has gradient headers and animated backgrounds. i want quiet confidence, not shouty",
+    "should_trigger": true
+  },
+  {
+    "query": "the user asked for a 'minimalist dashboard with real-time metrics and 12 KPI cards' — handle this dashboard request even though they said minimalist",
+    "should_trigger": false
+  },
+  {
+    "query": "design a magazine-style article page with drop caps, pull quotes, and a reading progress bar. serif body font, wide column",
+    "should_trigger": false
+  },
+  {
+    "query": "i need a bloomberg-like trading dashboard: dense tables, semantic color for up/down, tabular numbers, heavy chrome with filters and toolbars",
+    "should_trigger": false
+  },
+  {
+    "query": "build a pricing page for our SaaS with 3 tiers. tailwind, nextjs. no specific style preference mentioned",
+    "should_trigger": false
+  },
+  {
+    "query": "add an entrance animation to the modal at components/dialog.tsx — i want something premium with scroll-linked progress",
+    "should_trigger": false
+  },
+  {
+    "query": "my checkout page feels too clean, add some visual interest and color — currently very plain",
+    "should_trigger": false
+  },
+  {
+    "query": "write a fetch helper with retry and exponential backoff",
+    "should_trigger": false
+  },
+  {
+    "query": "review this component for accessibility issues — keyboard nav and focus states specifically. src/components/nav.tsx",
+    "should_trigger": false
+  },
+  {
+    "query": "i want this to feel like a premium editorial magazine — serif fonts, OpenType features, drop caps on the first paragraph. file is app/stories/[slug]/page.tsx",
+    "should_trigger": false
+  },
+  {
+    "query": "build the admin panel for managing users, orgs, and feature flags. this is an internal tool, data-heavy, needs filters and bulk actions",
+    "should_trigger": false
+  }
+]

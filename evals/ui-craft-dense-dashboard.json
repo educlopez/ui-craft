@@ -1,0 +1,62 @@
+[
+  {
+    "query": "build an admin dashboard for our internal ops team. bloomberg-ish — dense tables, filter chips, toolbar with bulk actions, tabular numbers everywhere. react + tailwind",
+    "should_trigger": true
+  },
+  {
+    "query": "redesign our analytics dashboard at src/app/admin/analytics/page.tsx. needs to show 20+ metrics at once, time range picker, segment filters. data-heavy, not marketing",
+    "should_trigger": true
+  },
+  {
+    "query": "i'm building an internal tool for managing feature flags across envs. needs sortable tables, inline editing, bulk actions, keyboard shortcuts. think retool or linear's admin views",
+    "should_trigger": true
+  },
+  {
+    "query": "ops panel for monitoring job queues. list of jobs with status dots (success/warn/failed), runtime, and inline retry. very dense, 50+ rows visible",
+    "should_trigger": true
+  },
+  {
+    "query": "build the trading terminal for our fintech app. multi-pane layout, real-time price updates, order book, positions table — as dense as bloomberg terminal but keyboard-first",
+    "should_trigger": true
+  },
+  {
+    "query": "landing page for our SaaS product. pricing tiers, feature grid, testimonials, CTAs. marketing context, not internal tool",
+    "should_trigger": false
+  },
+  {
+    "query": "design a long-form blog post page. serif fonts, wide reading column, pull quotes",
+    "should_trigger": false
+  },
+  {
+    "query": "minimalist settings page like notion — whitespace-heavy, one accent color, no tables",
+    "should_trigger": false
+  },
+  {
+    "query": "the client said they want a 'dashboard' but it's really just 4 KPI cards and a chart on their marketing site — not a real admin dashboard",
+    "should_trigger": false
+  },
+  {
+    "query": "build a product detail page for our ecommerce store with image gallery, size picker, add to cart, reviews",
+    "should_trigger": false
+  },
+  {
+    "query": "set up react-query for the api calls in our admin panel. caching, invalidation, optimistic updates",
+    "should_trigger": false
+  },
+  {
+    "query": "add accessibility fixes to the users table — keyboard sorting, screen reader announcements on filter change, focus management on inline edit",
+    "should_trigger": false
+  },
+  {
+    "query": "my dashboard UI feels too dense and overwhelming, tone it down, i want more breathing room and fewer toolbar actions",
+    "should_trigger": false
+  },
+  {
+    "query": "i need a dashboard but for end-users not admins — 4-5 high-level metrics, a main chart, friendly copy. not data-heavy",
+    "should_trigger": false
+  },
+  {
+    "query": "add a settings dialog to the admin dashboard at components/admin/settings-dialog.tsx. modal with form fields — save, cancel, destructive delete",
+    "should_trigger": false
+  }
+]
