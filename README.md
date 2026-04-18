@@ -226,12 +226,22 @@ ui-craft/
 
 ## Anti-slop detection
 
+[![npm version](https://img.shields.io/npm/v/ui-craft-detect?style=flat-square&label=ui-craft-detect)](https://www.npmjs.com/package/ui-craft-detect)
+
 Scan a codebase for common AI-generated UI anti-patterns — `transition: all`, bounce easing, purple gradients, ALL CAPS headings, generic CTAs, glassmorphism abuse. Zero dependencies, works out of the box.
+
+Published as a standalone CLI on npm — use it anywhere without cloning:
+
+```bash
+npx ui-craft-detect ./src
+# or with JSON output:
+npx ui-craft-detect ./src --json
+```
+
+Or from a clone of this repo:
 
 ```bash
 node scripts/detect.mjs ./src
-# or with JSON output:
-node scripts/detect.mjs ./src --json
 ```
 
 Exit code 0 when clean, 1 when findings — usable as a CI gate. Rules mirror the Anti-Slop Test in `skills/ui-craft/SKILL.md`.
