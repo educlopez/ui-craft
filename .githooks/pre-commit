@@ -1,14 +1,52 @@
 #!/bin/bash
+# Pre-commit hook for ui-craft. Runs two steps:
+#   1. Auto-bump marketplace.json version (CalVer) so plugin cache refreshes.
+#   2. Run the anti-slop detector on any staged UI files.
+#
+# Enable once per clone:
+#   git config core.hooksPath .githooks
+#
+# Temporarily skip (use sparingly):
+#   git commit --no-verify
 
-# Auto-generate timestamp-based version on each commit
-# Format: YYYY.M.D.HHMM (forces plugin cache refresh)
+set -e
+
+# --- 1. Auto-version ------------------------------------------------------
 
 VERSION=$(date +"%Y.%-m.%-d.%H%M")
-
-# Update marketplace.json version
 if [ -f ".claude-plugin/marketplace.json" ]; then
   sed -i '' "s/\"version\": \"[^\"]*\"/\"version\": \"$VERSION\"/" .claude-plugin/marketplace.json
   git add .claude-plugin/marketplace.json
+  echo "Auto-versioned to $VERSION"
 fi
 
-echo "Auto-versioned to $VERSION"
+# --- 2. Anti-slop detector on staged UI files -----------------------------
+
+STAGED=$(git diff --cached --name-only --diff-filter=ACM \
+  | grep -E '\.(css|scss|sass|tsx|jsx|ts|js|vue|svelte|astro|html)$' || true)
+
+if [ -z "$STAGED" ]; then
+  exit 0
+fi
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+TMPDIR="$(mktemp -d)"
+trap 'rm -rf "$TMPDIR"' EXIT
+
+# Copy the staged version of each file (index content) into a temp tree so
+# the detector sees exactly what's about to be committed — not the working
+# tree, which may have unrelated unstaged edits.
+while IFS= read -r file; do
+  mkdir -p "$TMPDIR/$(dirname "$file")"
+  git show ":$file" > "$TMPDIR/$file" 2>/dev/null || true
+done <<< "$STAGED"
+
+cd "$TMPDIR"
+if node "$REPO_ROOT/scripts/detect.mjs" . ; then
+  exit 0
+else
+  echo ""
+  echo "ui-craft anti-slop detector found issues in staged files."
+  echo "Fix them, re-stage, and commit again — or run 'git commit --no-verify'."
+  exit 1
+fi

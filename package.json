@@ -1,7 +1,7 @@
 {
   "name": "ui-craft",
   "private": true,
-  "version": "0.8.0",
+  "version": "0.9.0",
   "description": "UI Craft — design engineering skill for AI coding agents. Repo-local tooling.",
   "type": "module",
   "scripts": {

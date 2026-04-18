@@ -1,5 +1,14 @@
 # Versions
 
+## v0.9.0 (2026-04-18) — 2 new variants, agent logos, pre-commit hook
+
+- **`ui-craft-playful`** — Clay / Gumroad / Duolingo / Arc aesthetic. Knobs 8/7/4. Rounded corners, spring motion, multi-accent (≤3), colored soft shadows.
+- **`ui-craft-brutalist`** — Swiss print revival / Nothing UI / Web 1.0 terminal. Knobs 7/2/6. Mono or geometric sans, hard 2-4px borders, type-as-hero, pure B/W allowed.
+- **Style variants total: 5** (minimal + editorial + dense-dashboard + playful + brutalist).
+- **Landing page**: real SVG agent logos (Claude Code, Codex, Cursor, Gemini, OpenCode) in the "Works in every agent" pill row, served from `/public/agents/`. Sourced from the `skills.sh` ecosystem icon set.
+- **Pre-commit hook** (`.githooks/pre-commit`) now runs two steps: (1) auto-version `marketplace.json` CalVer, (2) run `scripts/detect.mjs` on staged UI files. Enable per clone: `git config core.hooksPath .githooks`.
+- **Housekeeping**: `marketplace.json` `name` field is now `"ui-craft"` (kebab-case, matches directory + skill name). Display-only metadata; no install path or slug impact.
+
 ## v0.8.0 (2026-04-18) — more commands, detector, CI
 
 - **7 new slash commands** (total 14): `/bolder`, `/quieter`, `/delight`, `/harden`, `/colorize`, `/clarify`, `/extract`. Each follows the existing command pattern (YAML frontmatter + knob gating where relevant + specific reference pointers + Review Format output). Materialized as sub-skills in every harness mirror.

@@ -67,13 +67,15 @@ At `MOTION_INTENSITY 8+` the skill loads [`references/stack.md`](skills/ui-craft
 
 ## Style variants
 
-Three opt-in sibling skills that pre-commit to a style and lock the knobs to matching values. Agents pick them when the user mentions a specific aesthetic or product reference.
+Five opt-in sibling skills that pre-commit to a style and lock the knobs to matching values. Agents pick them when the user mentions a specific aesthetic or product reference.
 
 | Variant | Triggers on | Knobs locked | Style anchors |
 |---------|-------------|--------------|---------------|
-| `ui-craft-minimal` | "minimal", "Linear-like", "Notion-like", "editorial clean", whitespace-heavy | CRAFT=8 / MOTION=3 / DENSITY=2 | Monochrome + one accent, Inter/Geist, hairline borders over shadows |
-| `ui-craft-editorial` | "editorial", "magazine", "Medium-like", "Substack-like", "long-form", "blog" | CRAFT=9 / MOTION=4 / DENSITY=3 | Serif display + humanist body, wide reading column, OpenType features |
-| `ui-craft-dense-dashboard` | "dashboard", "admin panel", "Bloomberg-like", "Retool-like", "data dense" | CRAFT=7 / MOTION=3 / DENSITY=9 | IBM Plex + mono numbers, semantic palette, 4/8px grid, tabular-nums everywhere |
+| `ui-craft-minimal` | "minimal", "Linear-like", "Notion-like", "whitespace-heavy" | CRAFT=8 / MOTION=3 / DENSITY=2 | Monochrome + one accent, Inter/Geist, hairline borders |
+| `ui-craft-editorial` | "editorial", "magazine", "Medium-like", "Substack-like", "long-form" | CRAFT=9 / MOTION=4 / DENSITY=3 | Serif display + humanist body, wide reading column, OpenType |
+| `ui-craft-dense-dashboard` | "dashboard", "admin panel", "Bloomberg-like", "Retool-like" | CRAFT=7 / MOTION=3 / DENSITY=9 | IBM Plex + mono numbers, semantic palette, 4/8px grid |
+| `ui-craft-playful` | "playful", "friendly", "Clay-like", "Gumroad-like", "Duolingo-like", "Arc-like" | CRAFT=8 / MOTION=7 / DENSITY=4 | Rounded corners, spring motion, multi-accent (≤3), colored soft shadows |
+| `ui-craft-brutalist` | "brutalist", "raw", "Swiss print", "Nothing-like", "terminal aesthetic" | CRAFT=7 / MOTION=2 / DENSITY=6 | Mono or geometric sans, hard 2-4px borders, pure B/W, type-as-hero |
 
 Each variant defers to the main `ui-craft` skill for base rules and references — it only overrides knob defaults and adds style-specific guidance.
 
@@ -233,6 +235,16 @@ node scripts/detect.mjs ./src --json
 ```
 
 Exit code 0 when clean, 1 when findings — usable as a CI gate. Rules mirror the Anti-Slop Test in `skills/ui-craft/SKILL.md`.
+
+### Pre-commit hook (optional)
+
+A pre-commit hook at `.githooks/pre-commit` auto-versions `marketplace.json` and runs the detector on staged UI files. Enable once per clone:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+It scans only staged file content (via `git show :path`), so working-tree noise is ignored. Skip ad-hoc with `git commit --no-verify`.
 
 ## Maintaining harness mirrors
 
