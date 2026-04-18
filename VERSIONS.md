@@ -1,5 +1,19 @@
 # Versions
 
+## v0.12.0 (2026-04-18) — detector v0.3 + docs expansion
+
+**Detector `ui-craft-detect@0.3.0`** — 6 new rules (total 25). All from the Tier 3 competitive research backlog.
+- `dark-pattern/confirmshaming` (critical) — "No thanks, I hate saving money"-style shaming copy
+- `dark-pattern/destructive-no-confirm` (critical) — `<button>Delete</button>` without a nearby `AlertDialog`/`onConfirm`/`useConfirm`
+- `a11y/icon-only-button-no-label` (critical) — `<button>` with only an `<svg>`/`<Icon>` child and no `aria-label`
+- `dataviz/categorical-rainbow` (major) — chart library imports + 6+ inline color literals without a named palette (`viridis`, `okabe`, `tableau`, `colorBrewer`)
+- `state/missing-empty-or-error` (major) — data-fetching components (`useQuery`, `useSWR`, `fetch`) with no empty/error/loading branches in the JSX
+- `copy/placeholder-shipped` (critical) — `Lorem ipsum`, `TODO`, `XXX`, `John Doe`, `555-0123` in shipped text nodes
+
+`package.json` bumped to `0.3.0`. Line count 1055 → 1272 (within budget). Existing features preserved: ignore comments, `.uicraftrc.json` config, `--fix`/`--fix-dry-run`, `--json`, `--sarif`.
+
+**Landing docs expanded** (`skills.smoothui.dev/docs`) — 6 new reference pages in the new `reference` section of the docs site: `heuristics`, `personas`, `state-design`, `dataviz`, `ux-writing`, `motion-system`. Total docs pages: 11 (was 5). Each page is docs-appropriate (not agent-appropriate), written for devs already using the skill. Uses the existing `DocsLayout.astro` — no layout changes. `pnpm run build` exits 0 with 13 pages.
+
 ## v0.11.0 (2026-04-18) — dataviz, ux-writing, motion system, `/shape`
 
 Tier 2 of the differentiation push. Fills three expert-knowledge gaps flagged by the competitive research (senior product designer / design-systems lead / data-viz lead lenses) and adds the wireframe-first command.

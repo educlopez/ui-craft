@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// ui-craft anti-slop detector v0.2.0
+// ui-craft anti-slop detector v0.3.0
 // Scans CSS/JSX/TSX/Vue/Svelte/etc for common AI-generated UI anti-patterns.
 // Zero dependencies. Node 18+. Rules mirror skills/ui-craft/SKILL.md "Anti-Slop Test".
 //
@@ -11,7 +11,7 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 
-const VERSION = "0.2.0";
+const VERSION = "0.3.0";
 
 const SCAN_EXTENSIONS = new Set([
   ".css", ".scss", ".sass",
@@ -396,6 +396,223 @@ const rules = [
         }
       }
       return findings;
+    },
+  },
+
+  // ===== NEW v0.3 RULES =====
+  {
+    id: "dark-pattern/confirmshaming",
+    severity: "critical",
+    description: "confirmshaming copy",
+    fix: "make the dismissive option neutral — 'Not now' / 'No thanks' without guilt-tripping",
+    scope: "line",
+    match(line) {
+      const patterns = [
+        /no\s+thanks[^<>"']{0,80}?\b(miss|stay|hate|regret|ignore|disappoint)/i,
+        /\b(i'?ll|i)\s+(do\s+not|don'?t|refuse\s+to)[^<>"']{0,80}?\b(want|need|believe|care)\b/i,
+        /\b(continue\s+without|skip)[^<>"']{0,80}?\b(security|savings|benefits|protection)\b/i,
+      ];
+      for (const re of patterns) {
+        const m = line.match(re);
+        if (m) return { snippet: m[0].slice(0, 120) };
+      }
+      return false;
+    },
+  },
+  {
+    id: "dark-pattern/destructive-no-confirm",
+    severity: "critical",
+    description: "destructive button without confirmation",
+    fix: "wrap destructive actions in an AlertDialog / confirmation modal; include the item name in the confirm button label",
+    scope: "file",
+    matchFile(content, lines) {
+      const findings = [];
+      // Destructive verbs inside a <button>…</button> or <a>…</a>
+      const btnRe = /<(button|a)\b[^>]*>([\s\S]*?)<\/\1>/gi;
+      const verbRe = /\b(delete|remove|cancel\s+subscription|destroy|wipe|uninstall|purge|factory\s+reset)\b/i;
+      const confirmRe = /\b(AlertDialog|ConfirmDialog|confirm\s*\(|onConfirm|useConfirm|ConfirmationModal)\b|Dialog[^\n]*destructive/;
+      // Build position->line index
+      const lineStarts = [0];
+      for (let i = 0; i < content.length; i++) {
+        if (content[i] === "\n") lineStarts.push(i + 1);
+      }
+      const lineFor = (pos) => {
+        let lo = 0, hi = lineStarts.length - 1;
+        while (lo < hi) {
+          const mid = (lo + hi + 1) >> 1;
+          if (lineStarts[mid] <= pos) lo = mid;
+          else hi = mid - 1;
+        }
+        return lo + 1;
+      };
+      const seenLines = new Set();
+      let m;
+      while ((m = btnRe.exec(content)) !== null) {
+        const inner = m[2];
+        // Strip tags to get visible text
+        const visible = inner.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+        const vm = visible.match(verbRe);
+        if (!vm) continue;
+        const ln = lineFor(m.index);
+        // Look in a window of +/- 40 lines for confirmation signals
+        const startLine = Math.max(0, ln - 1 - 40);
+        const endLine = Math.min(lines.length, ln - 1 + 40);
+        const window = lines.slice(startLine, endLine).join("\n");
+        if (confirmRe.test(window)) continue;
+        if (seenLines.has(ln)) continue;
+        seenLines.add(ln);
+        findings.push({ line: ln, snippet: `<${m[1]}>…${vm[0]}…</${m[1]}> with no confirmation nearby` });
+      }
+      return findings;
+    },
+  },
+  {
+    id: "a11y/icon-only-button-no-label",
+    severity: "critical",
+    description: "icon-only button without accessible name",
+    fix: 'add `aria-label` describing the action (e.g., `aria-label="Close dialog"`), not the icon',
+    scope: "file",
+    matchFile(content, lines) {
+      const findings = [];
+      const openRe = /<button\b([^>]*)>/;
+      const iconOnlyRe = /^\s*(<svg\b|<Icon\b|<[A-Z]\w*Icon\b|\{\s*[A-Za-z_$][\w$]*\s*\}\s*$)/;
+      const labelRe = /\b(aria-label|aria-labelledby|title)\s*=/;
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        const openMatch = line.match(openRe);
+        if (!openMatch) continue;
+        // Skip self-closing buttons
+        if (/<button\b[^>]*\/\s*>/.test(line)) continue;
+        const attrs = openMatch[1];
+        if (labelRe.test(attrs)) continue;
+        // If opening tag already has text after `>` on the same line, use that as the first inner
+        const afterOpen = line.slice(line.indexOf(openMatch[0]) + openMatch[0].length);
+        let inner = afterOpen.trim();
+        // If inner is a closing tag or empty, look at following non-whitespace line
+        if (inner === "" || /^<\/button>/.test(inner)) {
+          // Find next non-whitespace line within next 2 lines
+          let found = null;
+          for (let j = i + 1; j < Math.min(lines.length, i + 3); j++) {
+            const t = lines[j].trim();
+            if (t === "") continue;
+            found = t;
+            break;
+          }
+          if (!found) continue;
+          inner = found;
+        }
+        // If inner line contains plain text before tags, it's labelled — skip
+        const stripped = inner.replace(/<[^>]+>/g, "").trim();
+        // If there's meaningful text content (not just whitespace/punctuation), skip
+        if (stripped && /[A-Za-z0-9]{2,}/.test(stripped)) continue;
+        if (!iconOnlyRe.test(inner)) continue;
+        findings.push({ line: i + 1, snippet: `<button> with only ${inner.slice(0, 40)} and no aria-label` });
+      }
+      return findings;
+    },
+  },
+  {
+    id: "dataviz/categorical-rainbow",
+    severity: "major",
+    description: "chart with unnamed rainbow palette",
+    fix: "use a named palette — viridis (sequential), Okabe-Ito (categorical, colorblind-safe), or Tableau 10. See references/dataviz.md",
+    scope: "file",
+    matchFile(content) {
+      const chartLib = /\b(recharts|nivo|chart\.js|@visx|victory|d3-scale-chromatic)\b/;
+      if (!chartLib.test(content)) return [];
+      const namedPalette = /\b(viridis|cividis|okabe|tableau|colorBrewer|categorical10|setMagma)\b/i;
+      if (namedPalette.test(content)) return [];
+      // Scan arrays for ≥6 color strings
+      const findings = [];
+      const arrRe = /\[([^\[\]]{20,2000})\]/g;
+      const colorRe = /"#[0-9a-fA-F]{3,8}"|"hsla?\([^"]+\)"|"rgba?\([^"]+\)"|"oklch\([^"]+\)"|"(?:fill|text|bg|stroke)-(?:red|blue|green|yellow|orange|purple|pink|cyan|teal|indigo|violet|fuchsia|rose|amber|lime|emerald|sky|slate|gray|zinc|neutral|stone)-\d+"/g;
+      // Precompute line for position
+      const lineStarts = [0];
+      for (let i = 0; i < content.length; i++) {
+        if (content[i] === "\n") lineStarts.push(i + 1);
+      }
+      const lineFor = (pos) => {
+        let lo = 0, hi = lineStarts.length - 1;
+        while (lo < hi) {
+          const mid = (lo + hi + 1) >> 1;
+          if (lineStarts[mid] <= pos) lo = mid;
+          else hi = mid - 1;
+        }
+        return lo + 1;
+      };
+      let m;
+      const seenLines = new Set();
+      while ((m = arrRe.exec(content)) !== null) {
+        const body = m[1];
+        const colors = body.match(colorRe);
+        if (!colors || colors.length < 6) continue;
+        const ln = lineFor(m.index);
+        if (seenLines.has(ln)) continue;
+        seenLines.add(ln);
+        findings.push({ line: ln, snippet: `${colors.length} colors in array, no named palette` });
+      }
+      return findings;
+    },
+  },
+  {
+    id: "state/missing-empty-or-error",
+    severity: "major",
+    description: "data-fetching component without empty/error states",
+    fix: "data-fetching components should render empty/error states explicitly. See references/state-design.md — design the unhappy path first",
+    scope: "file",
+    matchFile(content, lines) {
+      const fetchSignal = /\b(useQuery|useSWR|useFetch|useAsync|createResource|useSuspenseQuery)\b|\bfetch\(/;
+      if (!fetchSignal.test(content)) return [];
+      const branchSignals = [
+        /\bisError\b/,
+        /\berror\s*\?/,
+        /\bisLoading\s*\?/,
+        /\bif\s*\([^)]*empty/i,
+        /\bdata\?\.length\s*===?\s*0/,
+        /\bdata\s*\|\|\s*\[\s*\]/,
+        /\bEmptyState\b/,
+        /\bErrorState\b/,
+        /<NoData\b/,
+        /\bcase\b[^:]*\bempty\b/i,
+        /\bcase\b[^:]*\berror\b/i,
+      ];
+      for (const re of branchSignals) {
+        if (re.test(content)) return [];
+      }
+      // Flag on first fetch-signal line
+      let ln = 1;
+      for (let i = 0; i < lines.length; i++) {
+        if (fetchSignal.test(lines[i])) {
+          ln = i + 1;
+          break;
+        }
+      }
+      return [{ line: ln, snippet: "data-fetching hook/call with no empty or error branch in file" }];
+    },
+  },
+  {
+    id: "copy/placeholder-shipped",
+    severity: "critical",
+    description: "placeholder copy not replaced",
+    fix: "replace placeholder text with real content before shipping. Use production copy or obviously-fake-but-plausible domain content (e.g., 'Acme Industries' not 'Lorem ipsum')",
+    scope: "line",
+    match(line) {
+      const patterns = [
+        /\bLorem ipsum\b/i,
+        />\s*TODO\s*</,
+        /placeholder:\s*["']TODO["']/,
+        />\s*XXX\s*</,
+        />\s*Placeholder\s+[A-Z]\w*\s*</,
+        />\s*(Lorem|Dolor|Consectetur)\s/,
+        />\s*A{4,}\s*</,
+        />\s*555-?0\d{3}\s*</,
+        />\s*(John|Jane)\s+Doe\s*</,
+      ];
+      for (const re of patterns) {
+        const m = line.match(re);
+        if (m) return { snippet: m[0].slice(0, 80) };
+      }
+      return false;
     },
   },
 ];
