@@ -1,6 +1,6 @@
 # Forms — System Design
 
-Holistic form design: timing, placement, progressive disclosure, multi-step flows, autosave, optimistic submit, keyboard contract, and field-specific patterns. Input labels and ARIA requirements live in `accessibility.md`; error message tone lives in `copy.md` and `ux-writing.md`. This file is the system that ties those tactical pieces together.
+Holistic form design: timing, placement, progressive disclosure, multi-step flows, autosave, optimistic submit, keyboard contract, and field-specific patterns. Input labels and ARIA requirements live in `accessibility.md`; error message tone lives in `copy.md`. This file is the system that ties those tactical pieces together.
 
 ---
 
@@ -72,7 +72,7 @@ When a form is too long for one screen, or the steps represent logical phases (a
 For any form that takes longer than ~30 seconds to fill.
 
 - **Debounce 1-2s** after the last keystroke, not per keystroke.
-- **Visible "Saved" indicator with timestamp** — "Saved 2s ago" near the fields, quiet typography. Match `ux-writing.md` restraint: "Saved" beats "Your draft has been saved successfully!"
+- **Visible "Saved" indicator with timestamp** — "Saved 2s ago" near the fields, quiet typography. Match `copy.md` restraint: "Saved" beats "Your draft has been saved successfully!"
 - **Network loss.** Show "Reconnecting… Your draft is safe locally" and queue the save. When back online, sync and update the indicator.
 - **Conflict resolution.** If another tab or user edited the same resource, offer "Keep mine / Keep theirs / Merge." See `state-design.md` for the conflict-state pattern.
 - **Never show a spinner for autosave.** The whole point is invisibility. A check mark or timestamp is enough.
@@ -126,7 +126,7 @@ The fields that AI-generated forms get wrong.
 Deleting accounts, subscriptions, workspaces, or data from within a settings form.
 
 - **Separate section** — a "Danger zone" or "Delete account" block, visually distinct, usually at the bottom.
-- **Warning tone, not shaming.** See `ux-writing.md` Banned Patterns — no confirmshaming.
+- **Warning tone, not shaming.** See `copy.md` Banned Patterns — no confirmshaming.
 - **Type-to-confirm.** Require the user to type the resource name for deletion: "Type `my-project` to confirm."
 - **30-day grace period visible** where applicable — "You'll have 30 days to restore this from Trash."
 - **Show consequences upfront.** "You'll lose: 47 projects, all API keys, access for 12 team members."
@@ -154,8 +154,7 @@ Form sins that invalidate the rest of the work:
 ## Cross-References
 
 - `accessibility.md` — ARIA, label requirements, keyboard non-negotiables, `aria-describedby` for errors.
-- `copy.md` — error message tone, empty state copy, button verb+noun discipline.
-- `ux-writing.md` — voice/tone across form states, locale-aware strings, CTAs that respect users.
+- `copy.md` — voice/tone across form states, reading level, locale-aware strings, inclusive language, error message tone, empty states, CTA discipline.
 - `state-design.md` — form states (idle / submitting / success / error / partial / offline); autosave conflict state.
 - `heuristics.md` — Error Prevention heuristic, Miller's Law for step counts, Tesler's Law for progressive disclosure.
 - `modern-css.md` — `interpolate-size: allow-keywords` for revealed fields, `<dialog>` for confirm modals, Anchor Positioning for inline help popovers.

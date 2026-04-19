@@ -1,6 +1,6 @@
 # Stack: Motion / GSAP / Three.js
 
-Load this reference **only when the user opts in during Discovery**. Every rule in `animation.md` still applies — this file covers the library-specific how.
+Load this reference **only when the user opts in during Discovery**. Every rule in `motion.md` still applies — this file covers the library-specific how.
 
 ## Decision tree — which library?
 

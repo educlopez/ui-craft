@@ -1,5 +1,29 @@
 # Versions
 
+## v0.14.0 (2026-04-19) — full consolidation pruning
+
+Post-audit pruning. Six targeted merges/moves/deletes to kill duplication debt accumulated across v0.5.0-v0.13.0. No new capabilities — tighter ones.
+
+**Merges:**
+- `animation.md` + `motion-system.md` → `motion.md` (284 lines — 36% smaller than the 443 lines of the two inputs). Dropped the 22-variant easing list in favor of 4 canonical tokens (`--ease-out`, `--ease-in-out`, `--ease-emphasized`, `--ease-soft`). Single authoritative duration scale (120 / 200 / 280 / 400 / 600ms). One spring-vs-tween rule.
+- `copy.md` + `ux-writing.md` → `copy.md` (273 lines — 19% smaller than inputs). System-level sections first (voice matrix, tone-by-context, reading level, terminology, inclusive language, locale), then tactical (CTAs, errors, empty states, confirmations), then banned dark patterns. One file, one mental model for anything UX-copy-shaped.
+
+**Moves:**
+- `animation-orchestration.md` → `examples/animation-storyboard.md` (it was always a single template, not a reference).
+- Variants `ui-craft-playful` + `ui-craft-brutalist` → `examples/presets/`. These covered <5% of real asks and competed with the main skill's triggers. As presets, they stay discoverable ("use playful preset") without polluting the skill trigger space.
+- `evals/ui-craft-playful.json` + `ui-craft-brutalist.json` → `evals/presets/`.
+
+**Deletes (unique bits absorbed elsewhere):**
+- `/bolder` command — its type-amplification moved into `/typeset` ("Amplifying hierarchy" section); signature-detail concept was already owned by `/polish` at `CRAFT_LEVEL 8+`.
+- `/quieter` command — its accent-reduction moved into `/colorize` ("Over-colored? Reduce."); visual-weight reduction moved into `/distill`; motion-trim was already in `/animate` at `MOTION_INTENSITY ≤ 3`.
+
+**Trims:**
+- `ui-craft-minimal` description 520 → 264 chars, `ui-craft-editorial` 557 → 268, `ui-craft-dense-dashboard` 623 → 286. Stripped `"Defers all base..."` boilerplate present across all variant descriptions. Triggering is cleaner, no trigger-fatigue.
+
+**Net state:** 23 → 20 references · 17 → 15 commands · 6 → 4 skills · 115 → 95 dirs per harness sync · validator 79 → 63 checks (fewer files, fewer assertions — all pass).
+
+Updated references to the merged/moved files across `SKILL.md`, `stack.md`, `dataviz.md`, `ai-chat.md`, `forms.md`, `commands/animate.md`, `commands/delight.md`, `commands/shape.md`, `commands/typeset.md`, `commands/distill.md`, `commands/colorize.md`, `skills/ui-craft-minimal/SKILL.md`, `skills/ui-craft-dense-dashboard/SKILL.md`, `plugin.json`, and `README.md`. Landing docs follow in a separate commit.
+
 ## v0.13.0 (2026-04-19) — AI-chat, modern-CSS platform, forms, dashboard hierarchy, detector v0.4
 
 Filtered through two gates applied to every proposed addition: (a) stack-agnostic, (b) design-engineer-pure. Product / growth / marketing concerns deferred to future sibling skills. This release expands only what passes both filters.

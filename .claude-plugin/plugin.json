@@ -3,9 +3,7 @@
     "skills/ui-craft",
     "skills/ui-craft-minimal",
     "skills/ui-craft-editorial",
-    "skills/ui-craft-dense-dashboard",
-    "skills/ui-craft-playful",
-    "skills/ui-craft-brutalist"
+    "skills/ui-craft-dense-dashboard"
   ],
   "commands": ["commands"]
 }

@@ -8,7 +8,7 @@ A design engineering skill for AI coding agents. Teaches your agent to build int
 
 ## What it does
 
-UI Craft gives AI coding agents the design knowledge they're missing. Not templates. Not component libraries. Actual craft knowledge — 23 domains of opinionated rules about how interfaces should look, move, and feel, plus 17 slash commands to run focused passes on existing code. Stack-agnostic by design.
+UI Craft gives AI coding agents the design knowledge they're missing. Not templates. Not component libraries. Actual craft knowledge — 20 domains of opinionated rules about how interfaces should look, move, and feel, plus 15 slash commands to run focused passes on existing code. Stack-agnostic by design.
 
 Every UI gets tested against a single question: *"Would someone believe AI made this?"* If yes, it starts over.
 
@@ -37,7 +37,7 @@ npx skills add educlopez/ui-craft
 
 Works with **Claude Code, Codex, Cursor, Gemini, OpenCode, Windsurf**, and any agent that supports the [Agent Skills](https://skills.sh) spec.
 
-Each agent gets a pre-built mirror under a dedicated folder (`.codex/`, `.cursor/`, `.gemini/`, `.opencode/`, `.agents/`). The main `ui-craft` skill lands as a peer skill; each of the 17 slash commands is materialized as its own sub-skill in non-Claude harnesses (since only Claude Code understands slash commands — other agents see them as skills triggered by intent like "audit my UI", "polish this page").
+Each agent gets a pre-built mirror under a dedicated folder (`.codex/`, `.cursor/`, `.gemini/`, `.opencode/`, `.agents/`). The main `ui-craft` skill lands as a peer skill; each of the 15 slash commands is materialized as its own sub-skill in non-Claude harnesses (since only Claude Code understands slash commands — other agents see them as skills triggered by intent like "audit my UI", "polish this page").
 
 **Full reference docs:** [skills.smoothui.dev/docs](https://skills.smoothui.dev/docs).
 
@@ -71,21 +71,23 @@ At `MOTION_INTENSITY 8+` the skill loads [`references/stack.md`](skills/ui-craft
 
 ## Style variants
 
-Five opt-in sibling skills that pre-commit to a style and lock the knobs to matching values. Agents pick them when the user mentions a specific aesthetic or product reference.
+Three opt-in sibling skills that pre-commit to a style and lock the knobs to matching values. Agents pick them when the user mentions a specific aesthetic or product reference.
 
 | Variant | Triggers on | Knobs locked | Style anchors |
 |---------|-------------|--------------|---------------|
 | `ui-craft-minimal` | "minimal", "Linear-like", "Notion-like", "whitespace-heavy" | CRAFT=8 / MOTION=3 / DENSITY=2 | Monochrome + one accent, Inter/Geist, hairline borders |
 | `ui-craft-editorial` | "editorial", "magazine", "Medium-like", "Substack-like", "long-form" | CRAFT=9 / MOTION=4 / DENSITY=3 | Serif display + humanist body, wide reading column, OpenType |
 | `ui-craft-dense-dashboard` | "dashboard", "admin panel", "Bloomberg-like", "Retool-like" | CRAFT=7 / MOTION=3 / DENSITY=9 | IBM Plex + mono numbers, semantic palette, 4/8px grid |
-| `ui-craft-playful` | "playful", "friendly", "Clay-like", "Gumroad-like", "Duolingo-like", "Arc-like" | CRAFT=8 / MOTION=7 / DENSITY=4 | Rounded corners, spring motion, multi-accent (≤3), colored soft shadows |
-| `ui-craft-brutalist` | "brutalist", "raw", "Swiss print", "Nothing-like", "terminal aesthetic" | CRAFT=7 / MOTION=2 / DENSITY=6 | Mono or geometric sans, hard 2-4px borders, pure B/W, type-as-hero |
 
 Each variant defers to the main `ui-craft` skill for base rules and references — it only overrides knob defaults and adds style-specific guidance.
 
+### Style presets
+
+For playful and brutalist aesthetics (Clay / Gumroad / Duolingo / Arc-playful, Nothing-phone / Swiss-print / brutalist), see `examples/presets/playful.md` and `examples/presets/brutalist.md`. The main `ui-craft` skill applies these preset knob values + style overrides on top of the base rules when the user asks for those aesthetics.
+
 ## Slash commands
 
-Seventeen focused passes, each applying a single lens from the skill.
+Fifteen focused passes, each applying a single lens from the skill.
 
 **Review & ship:**
 
@@ -114,9 +116,7 @@ Seventeen focused passes, each applying a single lens from the skill.
 
 | Command | Does |
 |---------|------|
-| `/ui-craft:distill` | Strip to essence. Cut every section that doesn't earn its space. |
-| `/ui-craft:bolder` | Amplify a forgettable UI — type weapon + one signature motif. |
-| `/ui-craft:quieter` | Tone down a shouty UI — fewer accents, softer type, less motion. |
+| `/ui-craft:distill` | Strip to essence. Cut every section that doesn't earn its space. Absorbs visual-weight reduction (softer type, less motion). |
 | `/ui-craft:delight` | Add purposeful micro-interactions — copy first, animation last. |
 
 ## Four modes
@@ -130,33 +130,30 @@ The skill detects your intent and routes automatically.
 | **Review** | "Review this component" | Audits for generic AI patterns, accessibility gaps, and missed details |
 | **Polish** | "Polish this dashboard" | Finds the twenty small things that turn "done" into "crafted" |
 
-## 23 domains
+## 20 domains
 
 | Domain | Covers |
 |--------|--------|
-| Animation | Easing curves, spring physics, duration rules, `prefers-reduced-motion` |
+| Motion | Decision ladder, duration + easing token scales, interaction rules, choreography, motion budget, reduced-motion contract |
 | Layout | Spacing systems, optical alignment, layered shadows, visual hierarchy |
 | Typography | `text-wrap: balance`, tabular-nums, font scale, curly quotes |
 | Color | OKLCH, design tokens, dark mode, APCA contrast |
 | Accessibility | WAI-ARIA, keyboard nav, focus management, touch targets |
 | Performance | Compositor-only animations, FLIP, `will-change`, CLS prevention |
-| Modern CSS | View Transitions, scroll-driven animations, container queries, `:has()` |
+| Modern CSS | View Transitions, Anchor Positioning, Popover, `<dialog>`, `interpolate-size`, `color-mix()`, scroll-driven, container queries |
 | Responsive | Fluid sizing, mobile-first, touch zones, safe areas |
 | Sound | Web Audio API, feedback sounds, appropriateness matrix |
-| UX Copy | Error messages, empty states, CTAs, microcopy |
-| UI Review | Systematic critique methodology, anti-slop detection |
-| Orchestration | Multi-stage sequences, stagger timing, entrance/exit coordination |
-| Dashboard | Sidebar nav, metric cards, chart types, data tables, filters |
+| UX Copy | Voice / tone matrix, reading level, terminology, locale-aware strings, inclusive language, error/empty/CTA tactics |
+| UI Review | Systematic critique methodology, anti-slop detection, Polish Pass |
+| Dashboard | Signal-to-noise hierarchy (hero / supporting / context / deep-dive), sidebar, metric cards, data tables |
 | Inspiration | Real patterns from dub.co, cursor, linear, vercel, stripe |
-| **Stack** | Motion, GSAP, Three.js — decision tree, patterns, perf gotchas, anti-patterns (opt-in) |
-| **Heuristics** | Nielsen's 10 + Fitts/Hick/Doherty/Cleveland-McGill/Miller/Tesler with 1-5 scoring rubric and impact framing |
-| **Personas** | 5 archetypes (first-timer, power user, low-bandwidth, screen-reader, one-thumb) with walkthrough checklists |
-| **State design** | Idle / loading / empty / error / partial / conflict / offline — design the unhappy path first |
-| **Data viz** | Cleveland-McGill perceptual hierarchy, chart selection matrix, ColorBrewer + Okabe-Ito palettes, direct labeling, Tufte principles |
-| **UX writing** | Voice / tone matrix, reading level (Flesch ≥70), terminology consistency, inclusive language, locale-aware strings |
-| **Motion system** | Duration + easing token scales, choreography rules, motion budget per surface, reduced-motion contract |
-| **AI / chat surfaces** | Streaming contract, 7-state model, tool traces, citations, feedback affordances, generative UI, conversation layout |
-| **Forms** | Validation timing, progressive disclosure, multi-step wizards, autosave, optimistic submit, field patterns (phone/date/tz/cc/password/magic-link/upload) |
+| Stack | Motion, GSAP, Three.js — decision tree, patterns, perf gotchas, anti-patterns (opt-in) |
+| Heuristics | Nielsen's 10 + Fitts / Hick / Doherty / Cleveland-McGill / Miller / Tesler with 1-5 scoring rubric and impact framing |
+| Personas | 5 archetypes (first-timer, power user, low-bandwidth, screen-reader, one-thumb) with walkthrough checklists |
+| State design | Idle / loading / empty / error / partial / conflict / offline — design the unhappy path first |
+| Data viz | Cleveland-McGill perceptual hierarchy, chart selection matrix, ColorBrewer + Okabe-Ito palettes, direct labeling, Tufte |
+| AI / chat surfaces | Streaming contract, 7-state model, tool traces, citations, feedback affordances, generative UI, conversation layout |
+| Forms | Validation timing, progressive disclosure, multi-step wizards, autosave, optimistic submit, field-specific patterns |
 
 ## Framework agnostic
 
@@ -195,44 +192,35 @@ The skill actively rejects patterns that scream "AI made this":
 ui-craft/
 ├── skills/
 │   ├── ui-craft/                 # Main skill
-│   │   ├── SKILL.md              # Slim entry point (~13KB) — knobs, discovery, anti-slop, routing
-│   │   └── references/
-│           ├── accessibility.md   # WCAG, keyboard, focus, ARIA, forms, checklist
-│           ├── animation.md       # Easing, springs, timing, interaction rules, principles
-│           ├── animation-orchestration.md  # Multi-stage sequences
-│           ├── color.md           # Palettes, dark mode, tokens
-│           ├── copy.md            # UX writing, errors, CTAs, content & states
-│           ├── dashboard.md       # Dashboard layout, metrics, charts, tables
-│           ├── inspiration.md     # Real patterns from top SaaS sites
-│           ├── layout.md          # Spacing, grids, hierarchy, depth, essentials
-│           ├── modern-css.md      # View Transitions, container queries
-│           ├── performance.md     # Compositor, FLIP, scroll, layers, core rules
-│           ├── responsive.md      # Breakpoints, touch zones, fluid
-│           ├── review.md          # Critique methodology, Polish Pass, common issues
-│           ├── sound.md           # Web Audio, UI sound design
-│   │       ├── stack.md           # Motion / GSAP / Three.js (opt-in)
-│   │       └── typography.md      # Scale, fonts, readability, essentials
+│   │   ├── SKILL.md              # Slim entry — knobs, discovery, anti-slop, routing
+│   │   └── references/           # 20 domain references (accessibility, motion, layout,
+│   │                             #   typography, color, performance, modern-css, responsive,
+│   │                             #   sound, copy, review, dashboard, inspiration, stack,
+│   │                             #   heuristics, personas, state-design, dataviz,
+│   │                             #   ai-chat, forms)
 │   ├── ui-craft-minimal/          # Variant — Linear/Notion aesthetic
 │   ├── ui-craft-editorial/        # Variant — Medium/Substack aesthetic
 │   └── ui-craft-dense-dashboard/  # Variant — Bloomberg/Retool aesthetic
-├── commands/                      # Claude Code slash commands (source)
-│   ├── adapt.md                  # /ui-craft:adapt
-│   ├── animate.md                # /ui-craft:animate
-│   ├── audit.md                  # /ui-craft:audit
-│   ├── critique.md               # /ui-craft:critique
-│   ├── distill.md                # /ui-craft:distill
-│   ├── polish.md                 # /ui-craft:polish
-│   └── typeset.md                # /ui-craft:typeset
-├── scripts/
-│   └── sync-harnesses.mjs        # Generates .codex/.cursor/.gemini/.opencode/.agents mirrors
+├── commands/                      # 15 Claude Code slash commands (source of truth)
+├── examples/
+│   ├── animation-storyboard.md   # Multi-stage animation pattern template
+│   └── presets/
+│       ├── playful.md            # Clay / Gumroad / Duolingo / Arc aesthetic preset
+│       └── brutalist.md          # Swiss print / Nothing / terminal aesthetic preset
 ├── evals/                         # Eval query sets for description optimizer
+│   └── presets/                   # Playful + brutalist eval JSONs (reference material)
+├── scripts/
+│   ├── sync-harnesses.mjs        # Generates .codex/.cursor/.gemini/.opencode/.agents
+│   ├── detect.mjs                # ui-craft-detect CLI (also shipped on npm)
+│   └── validate.mjs              # Manifest + link checker
 ├── .codex/skills/                 # AUTO-GENERATED — do not edit
 ├── .cursor/skills/                # AUTO-GENERATED
 ├── .gemini/skills/                # AUTO-GENERATED
 ├── .opencode/skills/              # AUTO-GENERATED
 ├── .agents/skills/                # AUTO-GENERATED (generic agent-skills spec)
 ├── .github/workflows/
-│   └── sync-harnesses.yml        # Re-runs sync on push to main; commits drift
+│   ├── sync-harnesses.yml        # Regenerates mirrors on push to main
+│   └── validate.yml              # Runs validator on PR + push
 ├── README.md
 ├── CONTRIBUTING.md
 ├── LICENSE

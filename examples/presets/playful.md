@@ -1,10 +1,11 @@
 ---
-name: ui-craft-playful
-description: "Playful / friendly-pop variant of ui-craft tuned for Clay-like, Gumroad-like, Duolingo-like, and Arc Browser approachable UIs with spring motion, generous radii, and multi-accent warmth. Trigger when the user asks for playful, friendly, fun, approachable, casual, Clay-like, Gumroad-like, Duolingo-like, or Arc Browser interfaces. Locks preset knobs CRAFT_LEVEL=8, MOTION_INTENSITY=7, VISUAL_DENSITY=4 and overrides ui-craft defaults with style-specific rules for bouncy type, saturated OKLCH multi-accents, generous radii, overshoot spring motion, and soft colored shadows. Defers all base anti-slop and craft rules to ui-craft."
-argument-hint: "[action: build|review|polish] [target]"
+title: "UI Craft — Playful Preset"
+description: "Playful / friendly-pop preset for ui-craft tuned for Clay-like, Gumroad-like, Duolingo-like, and Arc Browser approachable UIs with spring motion, generous radii, and multi-accent warmth."
 ---
 
 # UI Craft — Playful
+
+This is a preset for the main `ui-craft` skill. When the user asks for a Clay / Gumroad / Duolingo / Arc-playful UI, the main skill should read this file and apply the locked knob values + style overrides while still following the base craft rules.
 
 Pre-committed playful style: friendly-pop, Clay / Gumroad / Duolingo / Arc Browser. Warmth via spring motion, generous radii, and saturated-but-tuned multi-accents.
 
@@ -29,7 +30,7 @@ Do not re-ask these in Discovery. Confirm primary accent + whether dark mode is 
 
 ## Base rules (inherited)
 
-All rules in `../ui-craft/SKILL.md` apply. This file overrides knob defaults and adds style-specific guidance below. The anti-slop and craft tests still apply in full.
+All rules in the main `ui-craft` SKILL.md apply. This preset overrides knob defaults and adds style-specific guidance below. The anti-slop and craft tests still apply in full.
 
 ## Style-specific overrides
 
@@ -77,12 +78,14 @@ All rules in `../ui-craft/SKILL.md` apply. This file overrides knob defaults and
 
 ## Reference files to read first
 
-Load these from `../ui-craft/references/`:
+Load these from `skills/ui-craft/references/`:
 
 - `color.md` — OKLCH tuning, multi-accent discipline, dark mode
-- `animation-orchestration.md` — spring physics, stagger, entrance choreography
+- `motion.md` — spring physics, stagger, entrance choreography
 - `typography.md` — weight, tracking, `text-wrap`
 - `layout.md` — rhythm, asymmetry, hero composition
+
+Also see `examples/animation-storyboard.md` for multi-stage sequences.
 
 Skip `dashboard.md` unless the user explicitly wants a playful admin tool.
 

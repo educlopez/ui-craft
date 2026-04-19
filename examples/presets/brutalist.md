@@ -1,10 +1,11 @@
 ---
-name: ui-craft-brutalist
-description: "Brutalist / web 1.0 revival variant of ui-craft tuned for yugonostalgic, Nothing-phone-UI, Swiss-print, terminal-aesthetic interfaces where raw typography and hard contrast carry everything. Trigger when the user asks for brutalist, raw, deliberately ugly, Swiss print, Nothing-like, terminal aesthetic, editorial brutalism, or web 1.0 revival designs. Locks preset knobs CRAFT_LEVEL=7, MOTION_INTENSITY=2, VISUAL_DENSITY=6 and overrides ui-craft defaults with mono / geometric sans, 2-4px solid borders, sharp corners, visible Swiss grids, massive type-as-hero, ALL CAPS mono labels, and instant state changes. Defers all base anti-slop and craft rules to ui-craft."
-argument-hint: "[action: build|review|polish] [target]"
+title: "UI Craft — Brutalist Preset"
+description: "Brutalist / web 1.0 revival preset for ui-craft tuned for yugonostalgic, Nothing-phone-UI, Swiss-print, terminal-aesthetic interfaces where raw typography and hard contrast carry everything."
 ---
 
 # UI Craft — Brutalist
+
+This is a preset for the main `ui-craft` skill. When the user asks for a brutalist / Nothing-phone / Swiss-print / terminal-aesthetic UI, the main skill should read this file and apply the locked knob values + style overrides while still following the base craft rules.
 
 Pre-committed brutalist style: early-web revival, yugonostalgia (Yung Lean sites), Nothing phone UI, Swiss print editorial. Type-as-hero, hard contrast, visible grids, raw chrome.
 
@@ -29,7 +30,7 @@ Do not re-ask these in Discovery. Confirm single accent color and light/dark/inv
 
 ## Base rules (inherited)
 
-All rules in `../ui-craft/SKILL.md` apply. This file overrides knob defaults and adds style-specific guidance below. The anti-slop and craft tests still apply in full.
+All rules in the main `ui-craft` SKILL.md apply. This preset overrides knob defaults and adds style-specific guidance below. The anti-slop and craft tests still apply in full.
 
 ## Style-specific overrides
 
@@ -81,14 +82,14 @@ All rules in `../ui-craft/SKILL.md` apply. This file overrides knob defaults and
 
 ## Reference files to read first
 
-Load these from `../ui-craft/references/`:
+Load these from `skills/ui-craft/references/`:
 
 - `typography.md` — tracking, weight, mono pairing, type-as-hero
 - `layout.md` — Swiss grid, asymmetric spans, margin discipline
 - `color.md` — hard contrast, single accent, when pure black/white is allowed
 - `accessibility.md` — focus rings, contrast with hard inversions
 
-Skip `animation-orchestration.md`, `sound.md`, `inspiration.md` (consumer-warm focus).
+Skip `motion.md` (minimal motion), `sound.md`, `inspiration.md` (consumer-warm focus).
 
 ## Anti-patterns for THIS style
 

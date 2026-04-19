@@ -149,7 +149,7 @@ Animate to reveal change, not for decoration. The D3 enter / update / exit patte
 - Respect `prefers-reduced-motion` — collapse to instant transitions.
 - Never animate on mount just for the entrance. A dashboard loading is not a moment for choreography.
 
-See `references/animation.md` for easing curves and `references/motion-system.md` for the duration scale.
+See `references/motion.md` for easing curves and the duration scale.
 
 ---
 

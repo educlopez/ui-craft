@@ -1,6 +1,6 @@
 ---
 name: ui-craft-editorial
-description: "Editorial / magazine / long-form variant of ui-craft tuned for Medium-like, Substack-like, The Verge-style content-heavy interfaces where typography is the star. Trigger when the user asks for editorial, magazine, content-heavy, long-form, blog, Medium-like, or Substack-like designs. Locks preset knobs CRAFT_LEVEL=9, MOTION_INTENSITY=4, VISUAL_DENSITY=3 and overrides ui-craft defaults with serif display + humanist body pairing, baseline grid, drop caps, OpenType features, and reading-aware motion. Defers all base anti-slop and craft rules to ui-craft."
+description: "Editorial / magazine / long-form / Medium / Substack / content-heavy UIs. Locked knobs: CRAFT=9, MOTION=4, DENSITY=3. Serif display + humanist body, wide reading column, drop caps, OpenType. Trigger on: editorial, magazine, long-form, blog, Medium-like, Substack-like."
 argument-hint: "[action: build|review|polish] [target]"
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: ui-craft-minimal
-description: "Minimal / clean / editorial variant of ui-craft tuned for Linear-like, Notion-like, Vercel-like UIs with generous whitespace, monochrome palette, and one accent. Trigger when the user asks for minimal, clean, editorial, whitespace-heavy, Linear-like, or Notion-like interfaces. Locks preset knobs CRAFT_LEVEL=8, MOTION_INTENSITY=3, VISUAL_DENSITY=2 and overrides ui-craft defaults with style-specific rules for typography, spacing, borders, motion, and composition. Defers all base anti-slop and craft rules to ui-craft."
+description: "Minimal / clean / Linear / Notion / Vercel / whitespace-heavy UIs. Locked knobs: CRAFT=8, MOTION=3, DENSITY=2. Monochrome + one accent, Inter/Geist, hairline borders over shadows. Trigger on: minimal, clean, Linear-like, Notion-like, Vercel-like, whitespace-heavy."
 argument-hint: "[action: build|review|polish] [target]"
 ---
 
@@ -82,7 +82,7 @@ Keep the reading list tight. Load only these from `../ui-craft/references/`:
 - `color.md` — monochrome scales, OKLCH, dark mode
 - `accessibility.md` — focus, contrast, keyboard
 
-Skip `dashboard.md`, `animation-orchestration.md`, `stack.md`, `sound.md` unless explicitly relevant.
+Skip `dashboard.md`, `stack.md`, `sound.md` unless explicitly relevant.
 
 ## Anti-patterns for THIS style
 

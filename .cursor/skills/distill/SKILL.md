@@ -23,8 +23,11 @@ Distill the UI at the target the user described to its essence. Load the `ui-cra
 1. **Content** — walls of text → 2-3 sentences max per landing section. Vague testimonials → specific metrics or cut. "Features" lists with 12 items → pick the 4 that matter. Placeholder copy → real or removed.
 2. **Structure** — identical card grids → asymmetric rows with real visuals. Three competing CTAs → one primary + one secondary. Breadcrumbs + title + subtitle + description + icon → pick the two that are load-bearing.
 3. **Visuals** — decorative gradient blobs → gone. Background patterns that don't carry meaning → gone. Duplicate iconography → gone.
-4. **Code** — unused props, dead branches, commented-out blocks, `console.log`, TODO notes without tickets — gone.
-5. **Anti-slop overlap** — if you see anything on the Anti-Slop Test (SKILL.md), cut it first.
+4. **Visual weight reduction** — if headings are shouting at weight 800 / 72px / tracking -0.04em, compress: 800 → 600, 72 → 56, -0.04 → -0.02. Don't remove hierarchy; tighten the range. Replace hard drop shadows with ambient + direct (`references/modern-css.md`) or 1px borders — never both. If every section is full-bleed and high-contrast, let some breathe.
+5. **Code** — unused props, dead branches, commented-out blocks, `console.log`, TODO notes without tickets — gone.
+6. **Anti-slop overlap** — if you see anything on the Anti-Slop Test (SKILL.md), cut it first.
+
+**Overlapping commands:** for color overload (too many accents, decorative color), use `/colorize`. For motion noise, use `/animate` with `MOTION_INTENSITY ≤ 3`.
 
 **Output**:
 - Edit code directly.

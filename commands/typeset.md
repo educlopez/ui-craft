@@ -37,4 +37,19 @@ Typeset the UI at `$ARGUMENTS`. Load the `ui-craft` skill and read `references/t
 
 7. **Hierarchy check** — can you tell primary / secondary / tertiary at a glance? If every line has the same weight or size, collapse or amplify.
 
+## Amplifying hierarchy
+
+If the UI is technically correct but forgettable, use typography as the weapon. **Pick ONE element to carry signature** (never two); boldness is typography, not color or decoration:
+
+1. **Hero headline** — push size to 80-120px, weight to 700-800, tracking to -0.04em. Tight leading (0.95-1.0).
+2. **Hierarchy jump** — widen the gap between H1 and body. If H1 is 32px and body is 16px, the UI is whispering; if H1 is 48px+, the ratio reads. Compress or expand the range deliberately.
+3. **Micro-motif** — one custom detail that repeats: a hand-drawn underline, numeric counters (`01`, `02`), an asymmetric supporting element, a distinctive list marker.
+
+**Knob gating for amplification (CRAFT_LEVEL):**
+- `≤ 4` — skip. Boldness is a craft layer, not a baseline.
+- `5-7` — apply the type amplification only. No signature motif unless asked.
+- `8+` — type amplification + one signature detail (owned by `/polish`).
+
+**Pre-check:** if an accent is already overused or hierarchy is already loud, you don't have a tameness problem — you have a noise problem. Route to `/distill` (cut) or `/colorize` (reduce accents) instead.
+
 **Output**: edit code directly. Print the Review Format table. Call out the single highest-impact change (usually: "font choice" or "tracking-tight on hero").

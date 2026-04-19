@@ -1,6 +1,6 @@
 ---
 name: ui-craft-dense-dashboard
-description: "Dense dashboard / admin / data-heavy variant of ui-craft tuned for Bloomberg-like, Retool-like, Linear issues-style internal tools and analytics dashboards. Trigger when the user asks for a dashboard, admin panel, data-dense UI, analytics interface, internal tool, or Bloomberg/Retool-like interface. Locks preset knobs CRAFT_LEVEL=7, MOTION_INTENSITY=3, VISUAL_DENSITY=9 and overrides ui-craft defaults with tight 4/8px grid, semantic color palette, tabular-nums on every number, mono for IDs, sparklines, keyboard-shortcut-visible chrome, and row-level micro-motion. Defers all base anti-slop and craft rules to ui-craft."
+description: "Dense dashboard / admin / Bloomberg / Retool / data-heavy internal tools. Locked knobs: CRAFT=7, MOTION=3, DENSITY=9. IBM Plex + mono numbers, semantic palette, 4/8px grid, sparklines, tabular-nums. Trigger on: dashboard, admin panel, data-dense, analytics, Bloomberg-like, Retool-like."
 argument-hint: "[action: build|review|polish] [target]"
 ---
 
@@ -95,7 +95,7 @@ Load these from `../ui-craft/references/`:
 - `performance.md` — virtualization, list perf, compositor
 - `responsive.md` — tablet + laptop breakpoints, toolbar collapse
 
-Skip `inspiration.md` (landing-page focused), `sound.md`, `animation-orchestration.md`.
+Skip `inspiration.md` (landing-page focused), `sound.md`.
 
 ## Anti-patterns for THIS style
 

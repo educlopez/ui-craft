@@ -29,6 +29,6 @@ Add delight to the UI at the target the user described. Load the `ui-craft` skil
 - `4-7` → copy + hover + state transitions (candidates 1-3).
 - `8+` → all four, including the signature detail.
 
-**References to read**: `references/animation.md` (Decision Ladder + interaction rules), `references/copy.md` (microcopy voice), `references/animation-orchestration.md` (if multi-stage).
+**References to read**: `references/motion.md` (Decision Ladder + interaction rules), `references/copy.md` (microcopy voice), `../examples/animation-storyboard.md` (if multi-stage).
 
 **Output**: edit code directly. Print the Review Format table. Flag every candidate you chose not to add and why.

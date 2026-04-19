@@ -98,7 +98,7 @@ Mark each as **required** / **optional (why)** / **N/A**.
 **Knob awareness.**
 
 - At `CRAFT_LEVEL ≥ 7`, add two more sections:
-  - **Motion shape** — which elements enter, in what order, with what stagger. Pick from the duration scale in `references/motion-system.md`.
+  - **Motion shape** — which elements enter, in what order, with what stagger. Pick from the duration scale in `references/motion.md`.
   - **Typography hierarchy plan** — display / headline / body / label sizes and weights, before code.
 - At `CRAFT_LEVEL ≤ 4`, strip Step 4 to `idle / loading / error` only. Skip the motion shape.
 

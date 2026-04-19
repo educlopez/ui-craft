@@ -43,10 +43,10 @@ The rules that make the biggest difference between "AI-generated" and "designed 
 | Intent | Mode / Reference |
 |--------|------------------|
 | Building new UI | **Build** — this file + relevant references |
-| Adding/fixing animations | **Animate** — [animation.md](references/animation.md) |
+| Adding/fixing animations | **Animate** — [motion.md](references/motion.md) |
 | Reviewing existing UI | **Review** — [review.md](references/review.md) |
 | Polishing existing UI | **Polish** — this file + [review.md](references/review.md) Polish Pass |
-| Multi-stage animations | [animation-orchestration.md](references/animation-orchestration.md) |
+| Multi-stage animations | [animation-storyboard.md](../../examples/animation-storyboard.md) |
 | Layout / spacing | [layout.md](references/layout.md) |
 | Typography | [typography.md](references/typography.md) |
 | Color / theming / dark mode | [color.md](references/color.md) |
@@ -54,14 +54,13 @@ The rules that make the biggest difference between "AI-generated" and "designed 
 | Animation performance | [performance.md](references/performance.md) |
 | Advanced CSS / View Transitions | [modern-css.md](references/modern-css.md) |
 | Sound design | [sound.md](references/sound.md) |
-| UX copy | [copy.md](references/copy.md) |
+| UX copy / voice / tone / microcopy | [copy.md](references/copy.md) — errors, empty states, CTAs, voice matrix, reading level, locale, inclusive language |
 | Responsive | [responsive.md](references/responsive.md) |
 | Three.js / GSAP / Motion | [stack.md](references/stack.md) — **OPT-IN ONLY — do not load unless user chose Motion/GSAP/Three.js in Discovery Step 2** |
 | Scored critique / PM-ready audit | [heuristics.md](references/heuristics.md) + [personas.md](references/personas.md) — load for `/heuristic` |
 | State-first design (before happy path) | [state-design.md](references/state-design.md) — load for `/unhappy` |
 | Data visualization / charts / dashboards | [dataviz.md](references/dataviz.md) — Cleveland-McGill, color for data, Tufte |
-| UX writing / voice / tone / microcopy | [ux-writing.md](references/ux-writing.md) — voice matrix, reading level, locale, inclusive language |
-| Motion system / tokens / choreography | [motion-system.md](references/motion-system.md) — duration + easing scale, motion budget |
+| Motion system / tokens / choreography | [motion.md](references/motion.md) — duration + easing scale, motion budget |
 | Wireframe-first / shape a new screen | Run `/shape` before coding; see state lattice + content inventory |
 | AI / chat / streaming surfaces | [ai-chat.md](references/ai-chat.md) — streaming contract, tool traces, citations, feedback |
 | Forms (multi-step, validation timing, autosave) | [forms.md](references/forms.md) — holistic form system design |
@@ -160,7 +159,7 @@ Anti-slop says what to avoid. Craft says what to aim for.
 
 > **Should this animate?** → High-frequency? No. Not communicating hierarchy/state/space? Cut it. Otherwise: <300ms, GPU-only, `prefers-reduced-motion` honored.
 
-Full ladder, easing, springs, stagger, interaction contract → [animation.md](references/animation.md) (**Decision Rules**).
+Full ladder, easing, springs, stagger, interaction contract → [motion.md](references/motion.md) (**Decision Ladder**).
 
 ### Design Rules (core)
 
@@ -205,7 +204,7 @@ Prioritize findings by impact:
 | Medium UI (modals, panels) | 200-300ms |
 | Large UI (page transitions, drawers) | 300-400ms |
 
-Full easing curves, spring configs, stagger rules, and interaction rules → [animation.md](references/animation.md).
+Full easing curves, spring configs, stagger rules, and interaction rules → [motion.md](references/motion.md).
 
 ---
 
@@ -216,9 +215,8 @@ Read only what's relevant.
 | Reference | When to Read |
 |-----------|--------------|
 | [dashboard.md](references/dashboard.md) | Dashboards, metric cards, charts, tables, sidebar, filters |
-| [animation.md](references/animation.md) | Easing, springs, timing, interaction rules, principles |
+| [motion.md](references/motion.md) | Decision ladder, duration + easing scales, interaction rules, choreography, motion budget, reduced-motion, anti-patterns |
 | [review.md](references/review.md) | Critique methodology, Polish Pass, common issues, component craft |
-| [animation-orchestration.md](references/animation-orchestration.md) | Multi-stage sequenced animations |
 | [layout.md](references/layout.md) | Spacing, grids, hierarchy, composition, depth, essentials |
 | [typography.md](references/typography.md) | Scale, font choice, readability, weight, essentials |
 | [color.md](references/color.md) | Strategy, palettes, dark mode, tokens |
@@ -227,14 +225,12 @@ Read only what's relevant.
 | [modern-css.md](references/modern-css.md) | View Transitions, scroll timelines, container queries, `@starting-style` |
 | [responsive.md](references/responsive.md) | Mobile/tablet/desktop, breakpoints, touch zones |
 | [sound.md](references/sound.md) | Web Audio, UI sound, appropriateness matrix |
-| [copy.md](references/copy.md) | Error messages, empty states, CTAs, content & states |
+| [copy.md](references/copy.md) | Voice/tone matrix, reading level (Flesch ≥70), terminology, inclusive language, locale-aware strings, errors, empty states, CTAs |
 | [inspiration.md](references/inspiration.md) | Real SaaS patterns from dub.co, cursor.com, linear.app, vercel.com, stripe.com |
 | [stack.md](references/stack.md) | Three.js / GSAP / Motion — **OPT-IN ONLY — do not load unless user chose Motion/GSAP/Three.js in Discovery Step 2** |
 | [heuristics.md](references/heuristics.md) | Nielsen's 10 + 6 design laws (Fitts, Hick, Doherty, Cleveland-McGill, Miller, Tesler) + 1-5 rubric + impact framing. Load for `/heuristic` |
 | [personas.md](references/personas.md) | 5 persona walkthroughs (first-timer / power / low-bandwidth / screen-reader / one-thumb). Load for `/heuristic --persona=<name>` |
 | [state-design.md](references/state-design.md) | State lattice — idle / loading / empty / error / partial / conflict / offline. Load for `/unhappy` |
 | [dataviz.md](references/dataviz.md) | Cleveland-McGill perceptual hierarchy, chart selection matrix, ColorBrewer/Okabe-Ito palettes, Tufte, direct labeling, small multiples |
-| [ux-writing.md](references/ux-writing.md) | Voice/tone matrix, reading level (Flesch ≥70), terminology consistency, inclusive language swaps, locale-aware strings |
-| [motion-system.md](references/motion-system.md) | Duration + easing token scales, choreography rules, motion budget per surface, reduced-motion contract, Figma JSON export |
 | [ai-chat.md](references/ai-chat.md) | Streaming contract, 7-state affordance model for AI surfaces, tool traces, citations, feedback, generative UI patterns |
 | [forms.md](references/forms.md) | Validation timing, progressive disclosure, multi-step wizards, autosave, optimistic submit, field-specific patterns |

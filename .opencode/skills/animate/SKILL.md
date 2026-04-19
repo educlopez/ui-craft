@@ -9,7 +9,7 @@ description: "Add or fix motion. Honors MOTION_INTENSITY and loads the stack ref
 
 Add or fix animations in the target the user described. Load the `ui-craft` skill.
 
-**Step 1 — Decision Ladder**: run the Decision Ladder from `references/animation.md` first. Anything that fails it gets removed, not improved.
+**Step 1 — Decision Ladder**: run the Decision Ladder from `references/motion.md` first. Anything that fails it gets removed, not improved.
 
 **Step 2 — Pick the library**:
 
@@ -25,9 +25,9 @@ Add or fix animations in the target the user described. Load the `ui-craft` skil
 | Medium UI (modals, panels) | 200-300ms |
 | Large UI (page transitions, drawers) | 300-400ms |
 
-Exit ≈ 75% of entrance duration (shorter, same `ease-out` — or a flatter tail like `cubic-bezier(0.4, 0, 1, 1)` for a softer exit). Never `ease-in` on UI (see `references/animation.md`). `cubic-bezier(0.22, 1, 0.36, 1)` is a safe spring-like default.
+Exit ≈ 75% of entrance duration (shorter, same `ease-out` — or a flatter tail like `cubic-bezier(0.4, 0, 1, 1)` for a softer exit). Never `ease-in` on UI (see `references/motion.md`). `cubic-bezier(0.22, 1, 0.36, 1)` is a safe spring-like default.
 
-**Step 4 — Multi-stage sequences** → read `references/animation-orchestration.md`. Stagger 30-80ms, not 200ms.
+**Step 4 — Multi-stage sequences** → read `../examples/animation-storyboard.md`. Stagger 30-80ms, not 200ms.
 
 **Step 5 — Respect the knobs**:
 - `MOTION_INTENSITY ≤ 3` → hover states only, no entrances, no scroll-triggered.

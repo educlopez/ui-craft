@@ -74,7 +74,7 @@ Every AI response gets feedback controls. Optional, never required.
 
 - **Thumb up / thumb down.** Pick up/down OR agree/disagree wording — never mix. Persist choice; allow undo.
 - **On thumb down: inline quick chips** — "factually incorrect", "harmful", "refused reasonable request", "bad format", "other". User can skip chips and just send the thumb.
-- **Acknowledgement copy** — "Thanks — this helps us improve." Not "Your feedback has been recorded successfully!" Match `ux-writing.md` restraint.
+- **Acknowledgement copy** — "Thanks — this helps us improve." Not "Your feedback has been recorded successfully!" Match `copy.md` restraint.
 - **Never block the UI on feedback.** No "you must rate before continuing" modals. Ever.
 
 ---
@@ -152,7 +152,7 @@ Ten sins that immediately read as "AI UI built in a weekend":
 ## Cross-References
 
 - `state-design.md` — base state lattice (idle / loading / empty / error / partial / conflict / offline). AI surfaces extend it with thinking / streaming / tool-calling.
-- `motion-system.md` — caret animation tokens, streaming shimmer, tool-trace expand/collapse. Use the existing duration scale; never bespoke.
+- `motion.md` — caret animation tokens, streaming shimmer, tool-trace expand/collapse. Use the existing duration scale; never bespoke.
 - `accessibility.md` — live-region announcements when content streams (`aria-live="polite"` on the message container; `aria-busy` during tool calls).
 - `heuristics.md` — visibility-of-system-status applied to AI; the stream is the system, and it needs to be visible at every moment.
-- `copy.md` + `ux-writing.md` — error and acknowledgement copy for AI responses; tone is restrained, not effusive.
+- `copy.md` — error and acknowledgement copy for AI responses; tone is restrained, not effusive.
