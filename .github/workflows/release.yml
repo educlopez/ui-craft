@@ -1,0 +1,99 @@
+name: Auto-release on VERSIONS.md bump
+
+# When VERSIONS.md gains a new `## vX.Y.Z` entry at the top, create the git
+# tag and the GitHub release using the entry's content as the notes.
+# Idempotent: if a tag with that name already exists, the workflow skips.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "VERSIONS.md"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract top version entry from VERSIONS.md
+        id: extract
+        run: |
+          set -euo pipefail
+
+          VERSION_LINE=$(grep -m 1 -E '^## v[0-9]+\.[0-9]+\.[0-9]+' VERSIONS.md || true)
+          if [ -z "$VERSION_LINE" ]; then
+            echo "No versioned entry found in VERSIONS.md — nothing to do."
+            echo "tag=" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          TAG=$(printf '%s\n' "$VERSION_LINE" | sed -E 's/^## (v[0-9]+\.[0-9]+\.[0-9]+).*/\1/')
+          TITLE=$(printf '%s\n' "$VERSION_LINE" | sed -E 's/^## //')
+
+          # Body = lines between the first `## vX.Y.Z` (exclusive) and the next
+          # `## vX.Y.Z` (exclusive).
+          awk '
+            /^## v[0-9]+\.[0-9]+\.[0-9]+/ {
+              count++
+              if (count == 1) { next } else { exit }
+            }
+            count == 1 { print }
+          ' VERSIONS.md > release-body.md
+
+          # Trim leading + trailing blank lines — keeps the release body tight.
+          sed -i -e '/./,$!d' release-body.md
+          sed -i -e :a -e '/^$/{$d;N;ba' -e '}' release-body.md
+
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "title=$TITLE" >> $GITHUB_OUTPUT
+
+          echo "Found: $TAG"
+          echo "Title: $TITLE"
+          echo "Body preview:"
+          head -5 release-body.md
+          echo "..."
+          wc -l release-body.md
+
+      - name: Check if tag already exists
+        id: tag
+        if: steps.extract.outputs.tag != ''
+        run: |
+          set -euo pipefail
+          TAG="${{ steps.extract.outputs.tag }}"
+          if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null 2>&1; then
+            echo "Tag $TAG exists on origin — skipping."
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "Tag $TAG is new — will create."
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create tag and GitHub release
+        if: steps.extract.outputs.tag != '' && steps.tag.outputs.exists == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG="${{ steps.extract.outputs.tag }}"
+          TITLE="${{ steps.extract.outputs.title }}"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git tag "$TAG"
+          git push origin "$TAG"
+
+          gh release create "$TAG" \
+            --title "$TITLE" \
+            --notes-file release-body.md \
+            --verify-tag
+
+          echo "Released: https://github.com/${{ github.repository }}/releases/tag/$TAG"
