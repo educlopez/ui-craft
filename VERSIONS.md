@@ -1,5 +1,30 @@
 # Versions
 
+## v0.15.0 (2026-04-19) — detector v0.5 (33 rules + `init-hook`)
+
+**Detector `ui-craft-detect@0.5.0`** — 4 new rules (total 33) + new `init-hook` subcommand.
+
+**New rules:**
+- `a11y/streaming-no-live-region` (critical, file-level) — files rendering streaming content (useChat / useStream / SSE / token-by-token setState loops) without `aria-live`, `role="status"`, or a named LiveRegion component. Screen readers miss streamed updates otherwise.
+- `forms/autocomplete-missing` (major, line-level) — inputs typed or named for email / tel / password / credit card / address without the `autocomplete` attribute. Breaks browser autofill + mobile UX.
+- `a11y/heading-order-skip` (major, file-level) — heading levels jumping more than one level down (e.g., `<h1>` → `<h3>` with no `<h2>`). Breaks screen-reader document outline.
+- `perf/image-no-dimensions` (major, line-level) — `<img>` without `width` + `height` OR `aspect-ratio` (inline style or Tailwind `aspect-*` class). Source of Cumulative Layout Shift. Skips `data:` URIs and decorative images.
+
+**New `init-hook` subcommand** — replaces the need for a separate `ui-craft-detect-hooks` npm package. One CLI, one install, full tooling coverage:
+```bash
+npx ui-craft-detect init-hook                  # auto-detect husky or native
+npx ui-craft-detect init-hook --native         # .githooks/pre-commit + chmod +x
+npx ui-craft-detect init-hook --husky          # .husky/pre-commit
+npx ui-craft-detect init-hook --github-action  # CI workflow
+npx ui-craft-detect init-hook --all            # all three
+npx ui-craft-detect init-hook --dry-run        # preview only
+```
+- Interactive overwrite prompt with colored diff (bypass with `--yes`).
+- Every generated hook uses `npx ui-craft-detect` so it's zero-config in other repos.
+- Graceful error on non-git directories. Updated `--help` documents both scan and init-hook.
+
+**Implementation:** detector 1427 → 1960 lines (+533). Zero new dependencies (uses `readline` built-in for prompts). All v0.4.0 features intact — ignore comments, `.uicraftrc.json` config, `--fix` / `--fix-dry-run`, `--json`, `--sarif`. `package.json` bumped to `0.5.0`.
+
 ## v0.14.0 (2026-04-19) — full consolidation pruning
 
 Post-audit pruning. Six targeted merges/moves/deletes to kill duplication debt accumulated across v0.5.0-v0.13.0. No new capabilities — tighter ones.

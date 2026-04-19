@@ -231,7 +231,7 @@ ui-craft/
 
 [![npm version](https://img.shields.io/npm/v/ui-craft-detect?style=flat-square&label=ui-craft-detect)](https://www.npmjs.com/package/ui-craft-detect)
 
-Scan a codebase for common AI-generated UI anti-patterns — 29 rules covering AI slop (`transition: all`, bounce easing, purple gradients, ALL CAPS headings), dark patterns (confirmshaming, destructive actions without confirmation), a11y (icon-only buttons without labels, modal-without-`<dialog>`, `outline: none` without `:focus-visible` replacement), forms (placeholder-as-label), tables (no overflow handling on mobile), dataviz (categorical rainbow palettes), state design (data fetching without empty/error branches), and placeholder copy shipped to prod (`Lorem ipsum`, `TODO`, `John Doe`). Zero dependencies, works out of the box.
+Scan a codebase for common AI-generated UI anti-patterns — 33 rules covering AI slop (`transition: all`, bounce easing, purple gradients, ALL CAPS headings), dark patterns (confirmshaming, destructive actions without confirmation), a11y (icon-only buttons without labels, modal-without-`<dialog>`, `outline: none` without `:focus-visible` replacement, streaming without `aria-live`, heading-level skips), forms (placeholder-as-label, missing `autocomplete`), perf (images without dimensions → CLS), tables (no overflow handling on mobile), dataviz (categorical rainbow palettes), state design (data fetching without empty/error branches), and placeholder copy shipped to prod (`Lorem ipsum`, `TODO`, `John Doe`). Zero dependencies, works out of the box.
 
 Published as a standalone CLI on npm — use it anywhere without cloning:
 
@@ -249,15 +249,23 @@ node scripts/detect.mjs ./src
 
 Exit code 0 when clean, 1 when findings — usable as a CI gate. Rules mirror the Anti-Slop Test in `skills/ui-craft/SKILL.md`.
 
-### Pre-commit hook (optional)
+### Pre-commit hooks + CI — `init-hook` subcommand
 
-A pre-commit hook at `.githooks/pre-commit` auto-versions `marketplace.json` and runs the detector on staged UI files. Enable once per clone:
+`ui-craft-detect` can install its own pre-commit hook or GitHub Action with zero config.
 
 ```bash
-git config core.hooksPath .githooks
+# Auto-detect (uses husky if present, else native .githooks)
+npx ui-craft-detect init-hook
+
+# Pick explicitly
+npx ui-craft-detect init-hook --native         # .githooks/pre-commit (no deps)
+npx ui-craft-detect init-hook --husky          # .husky/pre-commit (assumes husky)
+npx ui-craft-detect init-hook --github-action  # .github/workflows/ui-craft-detect.yml
+npx ui-craft-detect init-hook --all            # all three
+npx ui-craft-detect init-hook --dry-run        # preview without writing
 ```
 
-It scans only staged file content (via `git show :path`), so working-tree noise is ignored. Skip ad-hoc with `git commit --no-verify`.
+The native hook scans only staged file content (via `git show :path`), so working-tree noise is ignored. Skip ad-hoc with `git commit --no-verify`. This repo's own `.githooks/pre-commit` also auto-bumps `marketplace.json` CalVer on every commit.
 
 ## Maintaining harness mirrors
 

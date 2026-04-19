@@ -1,17 +1,20 @@
 #!/usr/bin/env node
-// ui-craft anti-slop detector v0.4.0
+// ui-craft anti-slop detector v0.5.0
 // Scans CSS/JSX/TSX/Vue/Svelte/etc for common AI-generated UI anti-patterns.
 // Zero dependencies. Node 18+. Rules mirror skills/ui-craft/SKILL.md "Anti-Slop Test".
 //
 // Usage:
 //   node scripts/detect.mjs [path] [--json] [--sarif] [--fix] [--fix-dry-run]
+//   node scripts/detect.mjs init-hook [--husky|--native|--github-action|--all] [--dry-run] [--yes]
 // Exit codes:
 //   0 clean (or only warnings), 1 errors present, 2 arg error / unreadable path
 
 import { promises as fs } from "node:fs";
+import * as fsSync from "node:fs";
 import path from "node:path";
+import readline from "node:readline";
 
-const VERSION = "0.4.0";
+const VERSION = "0.5.0";
 
 const SCAN_EXTENSIONS = new Set([
   ".css", ".scss", ".sass",
@@ -770,6 +773,224 @@ const rules = [
       return findings;
     },
   },
+
+  // ===== NEW v0.5 RULES =====
+  {
+    id: "a11y/streaming-no-live-region",
+    severity: "critical",
+    description: "streaming content without aria-live region",
+    fix: "Streaming content without an `aria-live` region is invisible to screen readers. Wrap the streaming output (or append updates to a parallel hidden region) with `<div aria-live='polite' aria-atomic='false' role='status'>`. See `references/ai-chat.md` and `references/accessibility.md`.",
+    scope: "file",
+    matchFile(content, lines) {
+      // Streaming signals.
+      const hasUseStream = /\buseStream\s*\(|\buseChat\s*\(/.test(content);
+      const hasReadableStreamReader =
+        /\bReadableStream\b/.test(content) &&
+        /\.getReader\s*\(/.test(content) &&
+        /set[A-Z]\w*\s*\(/.test(content);
+      const hasEventSource = /\bnew\s+EventSource\s*\(/.test(content);
+      const hasTokenAppend =
+        /setMessages[\s\S]{0,200}?\[\s*\.\.\.\s*prev/.test(content) &&
+        /(for\s+await|for\s*\([^)]*of\s+[^)]*(?:stream|reader)\b)/i.test(content);
+      // State update inside `for await (const chunk of stream)` loop.
+      let hasForAwaitStateUpdate = false;
+      const forAwaitRe = /for\s+await\s*\(\s*(?:const|let|var)\s+\w+\s+of\s+([^)]+)\)\s*\{([\s\S]*?)\}/g;
+      let fm;
+      while ((fm = forAwaitRe.exec(content)) !== null) {
+        const iter = fm[1];
+        const body = fm[2];
+        if (!/stream|chunk|reader|response/i.test(iter)) continue;
+        if (/set[A-Z]\w*\s*\(|\.update\s*\(|\.push\s*\(/.test(body)) {
+          hasForAwaitStateUpdate = true;
+          break;
+        }
+      }
+      const hasStreaming =
+        hasUseStream ||
+        hasReadableStreamReader ||
+        hasEventSource ||
+        hasTokenAppend ||
+        hasForAwaitStateUpdate;
+      if (!hasStreaming) return [];
+
+      // Live-region signals.
+      const liveRegionRe =
+        /aria-live\s*=|role\s*=\s*["'](?:status|alert)["']|aria-atomic\s*=|aria-relevant\s*=|<LiveRegion\b|<Announce\b|<AriaLive\b/;
+      if (liveRegionRe.test(content)) return [];
+
+      // Find the first streaming-signal line for reporting.
+      let ln = 1;
+      for (let i = 0; i < lines.length; i++) {
+        if (
+          /\buseStream\s*\(|\buseChat\s*\(|\bnew\s+EventSource\s*\(|\.getReader\s*\(|for\s+await\s*\(/.test(
+            lines[i],
+          )
+        ) {
+          ln = i + 1;
+          break;
+        }
+      }
+      return [
+        {
+          line: ln,
+          snippet: "streaming output with no aria-live / role=status region in file",
+        },
+      ];
+    },
+  },
+  {
+    id: "forms/autocomplete-missing",
+    severity: "major",
+    description: "input without autocomplete attribute",
+    fix: "Inputs for email / tel / password / address / credit card need an `autocomplete` attribute so browsers can autofill. Pick the right value from the standardized list (`email`, `tel`, `new-password`, `current-password`, `cc-number`, `given-name`, etc.). Improves mobile UX and a11y.",
+    scope: "line",
+    match(line, ctx) {
+      // Skip if no <input on this line.
+      if (!/<input\b/i.test(line)) return false;
+
+      // Pull the first <input …> tag on the line.
+      const tagMatch = line.match(/<input\b[^>]*\/?>?/i);
+      if (!tagMatch) return false;
+      const tag = tagMatch[0];
+
+      // Skip input types that never want autocomplete.
+      const typeMatch = tag.match(/\btype\s*=\s*["']([^"']+)["']/i);
+      const type = typeMatch ? typeMatch[1].toLowerCase() : null;
+      if (
+        type &&
+        ["hidden", "submit", "button", "checkbox", "radio", "file", "reset", "image"].includes(type)
+      ) {
+        return false;
+      }
+
+      // Triggers: type matches a well-known autocomplete type.
+      const typeTriggers = ["email", "tel", "password", "url"];
+      const typeHit = type && typeTriggers.includes(type);
+
+      // Triggers: name hints at autocomplete.
+      let nameHit = false;
+      const nameMatch = tag.match(/\bname\s*=\s*["']([^"']+)["']/i);
+      if (nameMatch) {
+        const name = nameMatch[1];
+        const nameRe =
+          /^(?:email|tel|phone|password|first.?name|last.?name|address|city|zip|postal|country|cc.?(?:number|name|exp|cvc|csc)|card)$/i;
+        if (nameRe.test(name)) nameHit = true;
+      }
+
+      if (!typeHit && !nameHit) return false;
+
+      // Build a small window of the current + next 2 lines to handle wrapped attributes.
+      let window = tag;
+      const lines2 = ctx && ctx.lines;
+      const idx = ctx && ctx.lineIdx;
+      if (lines2 && typeof idx === "number") {
+        // If the tag is not self-closed on this line, peek forward.
+        if (!/>/.test(tag)) {
+          for (let j = idx + 1; j < Math.min(lines2.length, idx + 3); j++) {
+            window += "\n" + lines2[j];
+            if (/>/.test(lines2[j])) break;
+          }
+        } else {
+          // Still peek 2 lines forward for safety when attrs span lines.
+          for (let j = idx + 1; j < Math.min(lines2.length, idx + 3); j++) {
+            window += "\n" + lines2[j];
+          }
+        }
+      }
+
+      if (/\bautocomplete\s*=/i.test(window)) return false;
+
+      return { snippet: tag.slice(0, 100) };
+    },
+  },
+  {
+    id: "a11y/heading-order-skip",
+    severity: "major",
+    description: "heading levels skip (e.g. h1 → h3)",
+    fix: "Screen readers use heading hierarchy to build a document outline. A page's first heading is typically `<h1>`, then `<h2>` for sections, then `<h3>` for subsections — no skips.",
+    scope: "file",
+    matchFile(content, lines) {
+      // Collect the sequence of heading opens with their line numbers.
+      const seq = [];
+      const headingRe = /<h([1-6])\b/g;
+      const lineStarts = [0];
+      for (let i = 0; i < content.length; i++) {
+        if (content[i] === "\n") lineStarts.push(i + 1);
+      }
+      const lineFor = (pos) => {
+        let lo = 0, hi = lineStarts.length - 1;
+        while (lo < hi) {
+          const mid = (lo + hi + 1) >> 1;
+          if (lineStarts[mid] <= pos) lo = mid;
+          else hi = mid - 1;
+        }
+        return lo + 1;
+      };
+      let m;
+      while ((m = headingRe.exec(content)) !== null) {
+        seq.push({ level: parseInt(m[1], 10), line: lineFor(m.index) });
+      }
+      if (seq.length < 2) return [];
+
+      // Walk for first "going down" skip.
+      for (let i = 1; i < seq.length; i++) {
+        const prev = seq[i - 1].level;
+        const cur = seq[i].level;
+        // Skip happens when going deeper by more than one level.
+        if (cur > prev + 1) {
+          return [
+            {
+              line: seq[i].line,
+              snippet: `h${prev} \u2192 h${cur} without h${prev + 1}`,
+            },
+          ];
+        }
+      }
+      return [];
+    },
+  },
+  {
+    id: "perf/image-no-dimensions",
+    severity: "major",
+    description: "<img> without width/height or aspect-ratio",
+    fix: "Images without explicit `width`+`height` or `aspect-ratio` cause CLS (Cumulative Layout Shift) while loading. Set both `width` and `height` (the browser calculates aspect ratio) or use CSS `aspect-ratio: 16 / 9`. Affects Core Web Vitals.",
+    scope: "line",
+    match(line) {
+      // Match each <img …> tag on the line (there may be more than one).
+      const re = /<img\b[^>]*>/gi;
+      let m;
+      while ((m = re.exec(line)) !== null) {
+        const tag = m[0];
+
+        // Skip inline data-URI images (icons, sprites, negligible CLS).
+        if (/\bsrc\s*=\s*["']data:/i.test(tag)) continue;
+
+        // Skip decorative / aria-hidden images.
+        if (/\baria-hidden\s*=\s*["']true["']/i.test(tag)) continue;
+        if (/\brole\s*=\s*["']presentation["']/i.test(tag)) continue;
+        if (/\balt\s*=\s*["']\s*["']/i.test(tag)) continue;
+
+        // Passes: width AND height attributes.
+        const hasWidth = /\bwidth\s*=/.test(tag);
+        const hasHeight = /\bheight\s*=/.test(tag);
+        if (hasWidth && hasHeight) continue;
+
+        // Passes: inline style with aspect-ratio.
+        if (/\bstyle\s*=\s*["'][^"']*aspect-ratio/i.test(tag)) continue;
+
+        // Passes: Tailwind aspect-[…] / aspect-square / aspect-video / aspect-auto.
+        if (/\b(?:class|className)\s*=\s*["'][^"']*\baspect-(?:\[|square|video|auto)/.test(tag)) {
+          continue;
+        }
+
+        // Passes: explicit aspect-ratio attribute.
+        if (/\baspect-ratio\s*=/.test(tag)) continue;
+
+        return { snippet: tag.slice(0, 100) };
+      }
+      return false;
+    },
+  },
 ];
 
 // --- Config loading ------------------------------------------------------
@@ -1191,22 +1412,334 @@ function parseArgs(argv) {
 
 function printHelp() {
   process.stdout.write(
-    `ui-craft-detect v${VERSION}\n\n` +
-      `Usage: ui-craft-detect [path] [options]\n\n` +
-      `Options:\n` +
-      `  --json           Machine-readable JSON output\n` +
-      `  --sarif          SARIF 2.1.0 output (GitHub code-scanning)\n` +
-      `  --fix            Auto-fix supported rules in place\n` +
-      `  --fix-dry-run    Show diff of would-be fixes without writing\n` +
-      `  --version, -v    Print version\n` +
-      `  --help, -h       This help\n\n` +
+    `ui-craft-detect v${VERSION} \u2014 static anti-slop detector for UI code\n\n` +
+      `Usage:\n` +
+      `  ui-craft-detect [path] [flags]              # scan a directory\n` +
+      `  ui-craft-detect init-hook [options]         # install pre-commit hooks or CI\n\n` +
+      `Scan flags:\n` +
+      `  --json           machine-readable output\n` +
+      `  --sarif          SARIF 2.1.0 (GitHub code scanning)\n` +
+      `  --fix            auto-fix fixable rules (transition-all, animate-bounce)\n` +
+      `  --fix-dry-run    print would-be diff without writing\n\n` +
+      `init-hook options:\n` +
+      `  (no flag)        auto-detect husky or native\n` +
+      `  --husky          write .husky/pre-commit\n` +
+      `  --native         write .githooks/pre-commit (+ chmod +x)\n` +
+      `  --github-action  write .github/workflows/ui-craft-detect.yml\n` +
+      `  --all            write all three\n` +
+      `  --dry-run        show what would be written\n` +
+      `  --yes            overwrite without prompting\n\n` +
+      `Global:\n` +
+      `  --help, -h       this help\n` +
+      `  --version, -v    print version\n\n` +
       `Config: looks for .uicraftrc.json upward from scan root.\n` +
       `Ignore comments: ui-craft-detect-ignore[-file|-next-line|-rule: <id>]\n`,
   );
 }
 
+// --- init-hook subcommand -------------------------------------------------
+
+const HOOK_NATIVE_PATH = ".githooks/pre-commit";
+const HOOK_HUSKY_PATH = ".husky/pre-commit";
+const HOOK_GHA_PATH = ".github/workflows/ui-craft-detect.yml";
+
+const NATIVE_HOOK_CONTENT = `#!/usr/bin/env bash
+# ui-craft-detect pre-commit hook (native, no deps).
+# Generated by \`ui-craft-detect init-hook --native\`.
+
+set -e
+
+STAGED=$(git diff --cached --name-only --diff-filter=ACM \\
+  | grep -E '\\.(css|scss|sass|tsx|jsx|ts|js|vue|svelte|astro|html)$' || true)
+
+if [ -z "$STAGED" ]; then
+  exit 0
+fi
+
+TMPDIR="$(mktemp -d)"
+trap 'rm -rf "$TMPDIR"' EXIT
+
+while IFS= read -r file; do
+  mkdir -p "$TMPDIR/$(dirname "$file")"
+  git show ":$file" > "$TMPDIR/$file" 2>/dev/null || true
+done <<< "$STAGED"
+
+cd "$TMPDIR"
+if npx ui-craft-detect . ; then
+  exit 0
+else
+  echo ""
+  echo "ui-craft-detect found issues in staged files."
+  echo "Fix them, re-stage, and commit \u2014 or use 'git commit --no-verify'."
+  exit 1
+fi
+`;
+
+const HUSKY_HOOK_CONTENT = `#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+npx ui-craft-detect .
+`;
+
+const GHA_CONTENT = `name: ui-craft-detect
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  detect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npx --yes ui-craft-detect@latest .
+`;
+
+function parseInitHookArgs(argv) {
+  const flags = {
+    husky: false,
+    native: false,
+    githubAction: false,
+    all: false,
+    dryRun: false,
+    yes: false,
+    help: false,
+    unknown: [],
+  };
+  for (const a of argv) {
+    if (a === "--husky") flags.husky = true;
+    else if (a === "--native") flags.native = true;
+    else if (a === "--github-action") flags.githubAction = true;
+    else if (a === "--all") flags.all = true;
+    else if (a === "--dry-run") flags.dryRun = true;
+    else if (a === "--yes" || a === "-y") flags.yes = true;
+    else if (a === "--help" || a === "-h") flags.help = true;
+    else flags.unknown.push(a);
+  }
+  return flags;
+}
+
+function printInitHookHelp() {
+  process.stdout.write(
+    `ui-craft-detect init-hook \u2014 install pre-commit hooks or CI workflow\n\n` +
+      `Usage:\n` +
+      `  ui-craft-detect init-hook [options]\n\n` +
+      `Modes:\n` +
+      `  (no flag)        auto-detect: .husky/ exists \u2192 husky; else native\n` +
+      `  --husky          write ${HOOK_HUSKY_PATH}\n` +
+      `  --native         write ${HOOK_NATIVE_PATH} (+ chmod +x)\n` +
+      `  --github-action  write ${HOOK_GHA_PATH}\n` +
+      `  --all            write all three\n\n` +
+      `Flags:\n` +
+      `  --dry-run        print what would be written; write nothing\n` +
+      `  --yes, -y        overwrite existing files without prompting\n` +
+      `  --help, -h       this help\n`,
+  );
+}
+
+async function fileExists(p) {
+  try {
+    await fs.stat(p);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function simpleDiff(before, after) {
+  const a = before.split(/\r?\n/);
+  const b = after.split(/\r?\n/);
+  const out = [];
+  const max = Math.max(a.length, b.length);
+  for (let i = 0; i < max; i++) {
+    if (a[i] === b[i]) continue;
+    if (a[i] !== undefined) out.push(red(`- ${a[i]}`));
+    if (b[i] !== undefined) out.push(c("32", `+ ${b[i]}`));
+  }
+  return out.join("\n");
+}
+
+function prompt(question) {
+  return new Promise((resolve) => {
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout,
+    });
+    rl.question(question, (answer) => {
+      rl.close();
+      resolve(answer);
+    });
+  });
+}
+
+/**
+ * Write `content` to `relPath` (relative to cwd), creating parent dirs.
+ * If the file exists and differs, show a diff and confirm unless `yes`.
+ * If `executable`, chmod +x.
+ * Returns { written: boolean, reason?: string }.
+ */
+async function writeHookFile(cwd, relPath, content, { executable, yes, dryRun }) {
+  const full = path.join(cwd, relPath);
+  const parent = path.dirname(full);
+
+  if (dryRun) {
+    process.stdout.write(`\n${bold("--- " + relPath)}${executable ? dim(" (chmod +x)") : ""}\n`);
+    process.stdout.write(content);
+    if (!content.endsWith("\n")) process.stdout.write("\n");
+    return { written: false, reason: "dry-run" };
+  }
+
+  const exists = await fileExists(full);
+  if (exists) {
+    const existing = await fs.readFile(full, "utf8");
+    if (existing === content) {
+      process.stdout.write(dim(`unchanged: ${relPath}\n`));
+      return { written: false, reason: "unchanged" };
+    }
+    if (!yes) {
+      process.stdout.write(`\n${bold(relPath)} already exists. Diff:\n`);
+      process.stdout.write(simpleDiff(existing, content) + "\n");
+      const answer = await prompt(`Overwrite ${relPath}? [y/N] `);
+      if (!/^y(es)?$/i.test(answer.trim())) {
+        process.stdout.write(dim(`skipped: ${relPath}\n`));
+        return { written: false, reason: "declined" };
+      }
+    }
+  }
+
+  await fs.mkdir(parent, { recursive: true });
+  await fs.writeFile(full, content, "utf8");
+  if (executable) {
+    try {
+      fsSync.chmodSync(full, 0o755);
+    } catch (err) {
+      process.stderr.write(`warning: could not chmod +x ${relPath}: ${err.message}\n`);
+    }
+  }
+  process.stdout.write(`${c("32", "wrote")} ${relPath}${executable ? dim(" (chmod +x)") : ""}\n`);
+  return { written: true };
+}
+
+async function runInitHook(argv) {
+  const opts = parseInitHookArgs(argv);
+
+  if (opts.help) {
+    printInitHookHelp();
+    process.exit(0);
+  }
+
+  if (opts.unknown.length > 0) {
+    process.stderr.write(`error: unknown flag(s): ${opts.unknown.join(" ")}\n\n`);
+    printInitHookHelp();
+    process.exit(2);
+  }
+
+  const cwd = process.cwd();
+
+  // Require a git repo (or a git init clearly recommended).
+  const gitDirExists = await fileExists(path.join(cwd, ".git"));
+  if (!gitDirExists) {
+    process.stderr.write(`error: Not a git repository. Run \`git init\` first.\n`);
+    process.exit(2);
+  }
+
+  // Decide which targets to write.
+  let doHusky = opts.husky || opts.all;
+  let doNative = opts.native || opts.all;
+  let doGha = opts.githubAction || opts.all;
+
+  if (!doHusky && !doNative && !doGha) {
+    if (opts.dryRun) {
+      // Dry-run with no mode flag: preview all three for discovery.
+      doHusky = true;
+      doNative = true;
+      doGha = true;
+      process.stdout.write(dim(`dry-run \u2014 previewing all three targets\n`));
+    } else {
+      // Auto-detect.
+      const huskyDirExists = await fileExists(path.join(cwd, ".husky"));
+      if (huskyDirExists) {
+        doHusky = true;
+        process.stdout.write(dim(`detected .husky/ \u2014 using husky mode\n`));
+      } else {
+        doNative = true;
+        process.stdout.write(dim(`no .husky/ \u2014 using native mode\n`));
+      }
+    }
+  }
+
+  // Husky-specific warning when .husky/ is missing but --husky was forced.
+  if (doHusky) {
+    const huskyDirExists = await fileExists(path.join(cwd, ".husky"));
+    if (!huskyDirExists) {
+      process.stdout.write(
+        yellow(
+          `warning: .husky/ not found. If husky is not installed yet, run:\n` +
+            `  npm install husky && npx husky init\n`,
+        ),
+      );
+    }
+  }
+
+  const { dryRun, yes } = opts;
+
+  if (doNative) {
+    await writeHookFile(cwd, HOOK_NATIVE_PATH, NATIVE_HOOK_CONTENT, {
+      executable: true,
+      yes,
+      dryRun,
+    });
+    if (!dryRun) {
+      process.stdout.write(
+        dim(`next: run \`git config core.hooksPath .githooks\` to activate.\n`),
+      );
+    }
+  }
+
+  if (doHusky) {
+    await writeHookFile(cwd, HOOK_HUSKY_PATH, HUSKY_HOOK_CONTENT, {
+      executable: true,
+      yes,
+      dryRun,
+    });
+    if (!dryRun) {
+      process.stdout.write(
+        dim(`next: ensure husky is installed (\`npm install husky && npx husky init\`).\n`),
+      );
+    }
+  }
+
+  if (doGha) {
+    await writeHookFile(cwd, HOOK_GHA_PATH, GHA_CONTENT, {
+      executable: false,
+      yes,
+      dryRun,
+    });
+    if (!dryRun) {
+      process.stdout.write(
+        dim(`next: commit ${HOOK_GHA_PATH} and push \u2014 the workflow runs on PRs to main.\n`),
+      );
+    }
+  }
+
+  process.exit(0);
+}
+
 async function main() {
-  const { flags, positional } = parseArgs(process.argv.slice(2));
+  const rawArgs = process.argv.slice(2);
+
+  // Subcommand dispatch: `init-hook` is a sibling command, not a scan.
+  if (rawArgs[0] === "init-hook") {
+    await runInitHook(rawArgs.slice(1));
+    return;
+  }
+
+  const { flags, positional } = parseArgs(rawArgs);
 
   if (flags.help) {
     printHelp();
