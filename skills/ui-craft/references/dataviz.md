@@ -57,7 +57,7 @@ For ordinal or continuous magnitude: revenue, count, score. Use perceptually uni
 - **viridis, cividis** (Matplotlib) — perceptually uniform, colorblind-safe, print-safe.
 - **YlGnBu, YlOrRd** (ColorBrewer) — classic sequential, works on light backgrounds.
 
-Never use a rainbow (hue-only) palette for sequential data. Hue is not ordered — the eye cannot rank red vs green by magnitude.
+Never use a rainbow (hue-only) palette for sequential data. Hue is not ordered — the eye cannot rank red vs green by magnitude. Ordered magnitude needs a luminance ramp (viridis, cividis, YlOrRd). Hue-only is also colorblind-hostile: red-green deficiency affects approximately 8% of men and 0.5% of women (Birch 2012; Sharpe et al. 1999) — exactly the mid-spectrum of a rainbow.
 
 ### Diverging — centered on a meaningful midpoint
 
@@ -70,16 +70,17 @@ For values with a neutral zero: surplus/deficit, above/below average, net promot
 
 For discrete groups with no order: regions, departments, products.
 
-- **Tableau 10, Okabe-Ito** (colorblind-safe, 8 hues).
+- **Okabe-Ito** (Okabe & Ito 2008, colorblind-safe, 8 hues).
 - **Cap at 7 hues.** After that, hues become indistinguishable. Options: (a) group remainder into "Other", (b) repeat hues with patterns, (c) direct-label each series and drop the legend.
 
 ### Never-defaults
 
-- Pie chart with > 5 slices.
-- Rainbow / HSL-rotation palettes for sequential data.
-- Red/green as the only signal (8% of men are red-green colorblind — add shape, icon, or label).
-- Chart library defaults (Chart.js rainbows, Recharts' built-in `stroke`) without a palette override.
-- The chart library's default grid (heavy lines at every tick).
+- **Pie chart with > 5 slices** — Cleveland-McGill: angle is the fourth-lowest encoding in the perceptual hierarchy; humans cannot accurately compare more than 4–5 angular wedges. Use a horizontal bar chart sorted by magnitude instead.
+- **Rainbow / HSL-rotation palette for sequential or ordinal data** — hue carries no perceptual ordering; the eye cannot rank hues by magnitude without trial-and-error. Diverging data needs a two-direction luminance ramp (RdBu, PiYG); sequential data needs a single-direction luminance ramp (viridis, YlOrRd). Hue-only is also colorblind-hostile: red-green deficiency affects approximately 8% of men and 0.5% of women (Birch 2012; Sharpe et al. 1999). Test every palette with a colorblind simulator (Color Oracle, Coblis) — non-negotiable for status colors.
+- **Red and green as the only signal** — pair color with shape, icon, or text label; color alone fails for red-green deficient users (same citation above).
+- **3-D charts of any kind** — depth occludes data points; foreshortening distorts position-based comparison (Cleveland-McGill: volume is second-lowest in the hierarchy). No 2-D chart benefits from a third dimension.
+- **Chart library defaults without a palette override** — built-in palettes (Chart.js, Recharts) are designed for demos, not perceptual accuracy; always override with a named, colorblind-safe palette.
+- **Default grid at every tick** — Tufte's data-ink ratio: a dense grid is chartjunk. Use sparse grid lines (every 2nd or 3rd tick), or baseline + target lines only.
 
 ---
 
@@ -191,3 +192,5 @@ Cross-reference when triaging a flagged chart.
 - Brewer, C. A. ColorBrewer 2.0 — [colorbrewer2.org](https://colorbrewer2.org/).
 - Okabe, M. & Ito, K. (2008). "Color Universal Design."
 - Wilke, C. O. (2019). *Fundamentals of Data Visualization*. O'Reilly.
+- Birch, J. (2012). "Worldwide prevalence of red-green color deficiency." *Journal of the Optical Society of America A*.
+- Sharpe, L. T. et al. (1999). "A new and popular explanation of colour blindness." In *Colour Vision: From Genes to Perception*. Cambridge University Press.

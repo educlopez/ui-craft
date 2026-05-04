@@ -253,6 +253,7 @@ Tiered by signal. Tier 1 is required reading before writing any UI; lower tiers 
 | [ai-chat.md](references/ai-chat.md) | Streaming contract, 7-state affordance model for AI surfaces, tool traces, citations, generative UI. |
 | [review.md](references/review.md) | Critique methodology, Polish Pass, common issues, component craft. Load when reviewing or refining. |
 | [finish-bar.md](references/finish-bar.md) | 10-pass finishing protocol. Load on `/finalize` or CRAFT_LEVEL ≥ 8. |
+| [principles-catalog.md](references/principles-catalog.md) | 42 example design principles across 8 product categories. Load during `/brief` principles workshop branch as conversation seed. |
 
 ### Tier 3 — Foundations (read for the relevant discipline)
 

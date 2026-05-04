@@ -35,7 +35,7 @@ For every heuristic, write a concrete finding — quote text, count elements, na
 
 **Output contract:**
 - This command produces a **critique artifact**, not code. No edits unless the user explicitly asks in a follow-up.
-- The scorecard is machine-parseable markdown. A PM can paste it into Linear or Jira and file tickets row-by-row. Frame it that way in any preamble.
+- The scorecard is machine-parseable markdown. A PM can paste it into any issue tracker and file tickets row-by-row. Frame it that way in any preamble.
 - No "First Impressions" paragraph, no hedging, no praise padding. Tables + ranked list only.
 
 Do NOT edit code. This is a scored critique.

@@ -24,7 +24,7 @@ Web Audio API best practices, UI sound appropriateness, and implementation.
 
 - Every audio cue MUST have a visual equivalent — sound never replaces visual feedback
 - Provide explicit toggle to disable sounds in settings
-- Respect `prefers-reduced-motion` as proxy for sound sensitivity
+- Respect `prefers-reduced-motion` as a default proxy for sound sensitivity, AND provide an explicit independent sound toggle. **Why caveat:** the proxy is imperfect — some users tolerate visual motion but not audio (vestibular conditions, hearing aids), some users tolerate audio but not motion. Always offer a sound toggle separate from motion preference; reduced-motion is the default-off, not the only signal.
 - Allow volume adjustment independent of system volume
 - Never add sound to high-frequency interactions
 - Sound should inform, not punish — avoid harsh sounds for mistakes
@@ -33,7 +33,10 @@ Web Audio API best practices, UI sound appropriateness, and implementation.
 
 ## Web Audio API Implementation
 
-### Single AudioContext (Critical)
+### Single AudioContext
+
+Single AudioContext per page. Never create new AudioContext per sound. **Why critical:** browsers limit AudioContext instances (typically 6 per page); exhausting them silently fails new sounds. A shared AudioContext also synchronizes timing across rapid-fire UI feedback (typing keystrokes, button clicks within 50ms) — independent contexts desync.
+
 ```ts
 let audioContext: AudioContext | null = null;
 function getAudioContext(): AudioContext {
@@ -41,8 +44,6 @@ function getAudioContext(): AudioContext {
   return audioContext;
 }
 ```
-
-Never create new AudioContext per sound.
 
 ### Resume Suspended Context
 ```ts
@@ -80,7 +81,10 @@ osc.frequency.setValueAtTime(400, t);
 osc.frequency.exponentialRampToValueAtTime(600, t + 0.04);
 ```
 
-### Envelope (Always Exponential Decay)
+### Envelope
+
+Use exponential decay (not linear) for sound envelopes. **Why:** linear decay produces an audible click as the envelope hits zero — the abrupt stop creates a high-frequency artifact at the cutoff. Exponential decay mimics natural acoustic decay (room reverberation, string damping) — it reaches zero asymptotically, no click.
+
 ```ts
 gain.gain.setValueAtTime(0.3, t);  // set initial value first
 gain.gain.exponentialRampToValueAtTime(0.001, t + 0.05);  // never target 0
@@ -97,17 +101,12 @@ gain.gain.exponentialRampToValueAtTime(0.001, t + 0.05);  // never target 0
 | Filter Q | 2-5 | Focused but not harsh |
 | Gain | ≤ 1.0 | Prevent clipping |
 | Default volume | 0.3 | Subtle, not loud |
-
-### Tuning from Feedback
-
-| User Says | Adjustment |
-|-----------|------------|
-| "too harsh" | Lower filter frequency, reduce Q |
-| "too muffled" | Higher filter frequency |
-| "too long" | Shorter duration, faster decay |
-| "cuts off" | Use exponential decay |
-| "more mechanical" | Higher Q, faster decay |
-| "softer" | Lower gain, triangle wave |
+| "too harsh" | → lower filter frequency, reduce Q | |
+| "too muffled" | → higher filter frequency | |
+| "too long" | → shorter duration, faster decay | |
+| "cuts off" | → use exponential decay | |
+| "more mechanical" | → higher Q, faster decay | |
+| "softer" | → lower gain, triangle wave | |
 
 ---
 

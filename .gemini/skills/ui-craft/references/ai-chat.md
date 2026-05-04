@@ -29,7 +29,7 @@ Seven states AI UIs need beyond the base `state-design.md` lattice. Every state 
 
 | State | Signal |
 |---|---|
-| Idle | Empty input, placeholder prompt, optional suggested starter prompts below |
+| Idle | Empty input, placeholder copy, blinking cursor on focus. Optionally: starter prompt carousels below input — only when the surface has tested the carousel against a control (no surface should ship "what AI thinks users want to ask" — that pattern reads as condescending and misses real intents). |
 | Composing | User typing; no AI activity shown; send button enabled |
 | Thinking | Sent, model hasn't started; typing-dots or "thinking…" label; max 2s before escalating to progress |
 | Streaming | Caret visible; tokens appearing; stop button active; auto-scroll following tail |
@@ -70,7 +70,7 @@ When the model cites sources, make them first-class content, not footnotes no on
 
 ## Feedback Affordances
 
-Every AI response gets feedback controls. Optional, never required.
+Every AI response gets visible feedback controls (thumbs / star / "did this help?" affordance). User interaction with them is optional — the system never gates progression on feedback. The control's presence signals the team values feedback; the optional interaction respects user attention.
 
 - **Thumb up / thumb down.** Pick up/down OR agree/disagree wording — never mix. Persist choice; allow undo.
 - **On thumb down: inline quick chips** — "factually incorrect", "harmful", "refused reasonable request", "bad format", "other". User can skip chips and just send the thumb.

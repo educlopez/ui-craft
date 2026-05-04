@@ -4,18 +4,44 @@ Adaptation is not just scaling — it's rethinking for each context.
 
 ---
 
-## Breakpoint Strategy
+## Breakpoint Strategy: Content-Driven (Preferred)
 
-### Content-Driven (Preferred)
-Set breakpoints where the design actually breaks, not at arbitrary device widths.
+Add breakpoints where the content breaks, not at conventional device widths. Container queries are the preferred mechanism — components respond to their container, not to the viewport.
 
-### Device Reference
-- **Mobile**: 320px-767px
-- **Tablet**: 768px-1023px
-- **Desktop**: 1024px+
-- **Ultra-wide**: test at 50% zoom to simulate
+```css
+.card-container { container-type: inline-size; }
+
+@container (min-width: 400px) {
+  .card { grid-template-columns: 1fr 2fr; }
+}
+```
+
+Use fluid sizing to eliminate most breakpoints entirely:
+
+```css
+/* Fluid font: 16px at 320px → 20px at 1200px */
+font-size: clamp(1rem, 0.5rem + 1.5vw, 1.25rem);
+
+/* Fluid spacing */
+padding: clamp(1rem, 2vw, 3rem);
+```
+
+For full container query patterns — style queries, named containers, when to prefer container over media queries — see [modern-css.md](modern-css.md).
+
+---
+
+## Breakpoint Strategy: Device Reference (Fallback)
+
+When the project's existing system uses device breakpoints, match it. The conventional ranges:
+
+- Mobile: < 768px
+- Tablet: 768–1023px
+- Desktop: 1024px+
+
+Use these only when integrating with an existing system. New code should prefer container queries (see above).
 
 ### Verify Coverage
+
 - Mobile, tablet, laptop, ultra-wide
 - Portrait AND landscape
 - Different browsers (Safari, Chrome, Firefox)
@@ -66,7 +92,7 @@ Set breakpoints where the design actually breaks, not at arbitrary device widths
 
 ### Layout
 - Multi-column (use horizontal space)
-- Side navigation always visible
+- Side navigation: always visible on desktop (1024px+). On tablet (768–1023px): collapse to icon rail or persistent narrow sidebar. On mobile: collapse to a drawer or bottom-nav pattern. **Why:** primary navigation must remain discoverable; visible-by-default at desktop trades screen real estate for discoverability, while mobile trades discoverability for content room — both are correct in their context.
 - Multiple information panels
 - Max-width constraints (don't stretch to 4K)
 
@@ -83,27 +109,8 @@ Set breakpoints where the design actually breaks, not at arbitrary device widths
 
 ---
 
-## Technical Implementation
+## Responsive Grid (No Breakpoints)
 
-### Container Queries (Component-Level)
-```css
-.card-container { container-type: inline-size; }
-
-@container (min-width: 400px) {
-  .card { grid-template-columns: 1fr 2fr; }
-}
-```
-
-### Fluid Sizing
-```css
-/* Fluid font size: 16px at 320px, 20px at 1200px */
-font-size: clamp(1rem, 0.5rem + 1.5vw, 1.25rem);
-
-/* Fluid spacing */
-padding: clamp(1rem, 2vw, 3rem);
-```
-
-### Responsive Grid (No Breakpoints)
 ```css
 .grid {
   display: grid;
@@ -112,7 +119,10 @@ padding: clamp(1rem, 2vw, 3rem);
 }
 ```
 
-### Responsive Images
+---
+
+## Responsive Images
+
 ```html
 <picture>
   <source media="(min-width: 768px)" srcset="large.webp">
@@ -120,7 +130,10 @@ padding: clamp(1rem, 2vw, 3rem);
 </picture>
 ```
 
-### Safe Areas
+---
+
+## Safe Areas
+
 ```css
 .fixed-bottom {
   padding-bottom: env(safe-area-inset-bottom);
@@ -140,11 +153,8 @@ padding: clamp(1rem, 2vw, 3rem);
 ---
 
 ## Never
-- Hide core functionality on mobile
-- Assume desktop = powerful device
-- Use different information architecture across contexts
-- Break platform expectations
-- Forget landscape orientation
-- Use generic breakpoints blindly
-- Ignore touch on desktop (many desktops have touchscreens)
-- Use `display: none` carelessly (still downloads content)
+
+- Don't hide core functionality on mobile — feature parity is the floor; if a feature is too complex for mobile, redesign the feature, don't hide it.
+- Don't assume touch only on mobile — tablets and 2-in-1 laptops blur the line; design pointer-agnostic.
+- Don't forget landscape orientation — mobile in landscape and tablet in portrait often have similar dimensions and need similar treatment.
+- Don't ship horizontal scroll at any breakpoint without an explicit scroll affordance — accidental horizontal scroll is the most common AI-template responsive failure.

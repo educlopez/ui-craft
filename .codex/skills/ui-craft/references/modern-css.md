@@ -1,12 +1,16 @@
-# Modern CSS Techniques
+# Modern CSS Capabilities
 
-View Transitions, scroll-driven animations, container queries, pseudo-elements, and @starting-style.
+CSS capabilities that unlock interaction patterns otherwise requiring JS: View Transitions, CSS Scroll Timelines, Anchor Positioning, Container Queries, `@starting-style`, allow-keywords. Each section: when to reach for the API, what principle it encodes, and the rules that follow from the principle.
 
 ---
 
 ## View Transitions API
 
-Navigate between pages or states with smooth, coordinated transitions.
+View Transitions preserve scroll position and focus across navigations because the browser captures both before and after states as snapshots, eliminating the layout thrashing and focus loss that hand-rolled JS transitions cause. The browser handles the morph; you name the elements that should persist.
+
+**Use View Transitions when:** DOM identity is preserved across views — App Router page transitions, list-to-detail flows where the same element exists on both sides of the navigation.
+
+**Don't use View Transitions for:** modal overlays (use `@starting-style` + `display: block` allow-keywords instead), in-page state transitions (use CSS Scroll Timelines or simple transitions), tab-switching within the same page (no view boundary).
 
 ### Basic Usage
 ```js
@@ -29,6 +33,9 @@ document.startViewTransition(() => {
 ```
 
 ### Rules
+
+Each `view-transition-name` must be unique at the moment the transition fires — two elements sharing the same name will cause the transition to fail silently. Names are a handshake between the before and after state; clean them up so stale names don't leak across navigations.
+
 - Each `view-transition-name` must be **unique during transition**
 - **Clean up names** after transition completes:
 ```js
@@ -46,7 +53,7 @@ document.startViewTransition(() => {
 
 ## @starting-style
 
-Animate element entry with pure CSS — no JavaScript:
+`@starting-style` defines the element's style on first paint, before the browser computes the transition. Without it there is no "from" state for a newly mounted element — the browser skips the transition entirely. This replaces the `useEffect` → `setMounted(true)` → `data-mounted` pattern with a single CSS block.
 
 ```css
 .toast {
@@ -61,13 +68,13 @@ Animate element entry with pure CSS — no JavaScript:
 }
 ```
 
-Replaces the common `useEffect` → `setMounted(true)` → `data-mounted` pattern. Use when browser support allows.
+Baseline 2024. Pair with `transition-behavior: allow-discrete` when the element toggles `display`.
 
 ---
 
 ## CSS Scroll Timelines
 
-Tie animations to scroll progress — no JavaScript, no scroll event listeners.
+Scroll Timelines drive animations from scroll position rather than time, running off the main thread with zero scroll event listeners. The timeline replaces the clock — the progress of the scroll IS the animation progress.
 
 ### Scroll-Linked
 ```css
@@ -97,6 +104,9 @@ Tie animations to scroll progress — no JavaScript, no scroll event listeners.
 ```
 
 ### Rules
+
+Scroll Timelines exist because polling `scrollY` or attaching scroll event listeners for continuous animation causes layout/paint work on every frame — a Scroll Timeline runs on the compositor thread and costs nothing. Reserve IntersectionObserver for one-shot visibility triggers (wider support, no continuous callback overhead).
+
 - Prefer Scroll/View Timelines over JS for scroll-linked motion
 - Never poll scroll position for animation
 - Never use `scroll` event listeners for continuous animation
@@ -106,7 +116,7 @@ Tie animations to scroll progress — no JavaScript, no scroll event listeners.
 
 ## Container Queries
 
-Adapt components based on their container, not the viewport:
+A component's layout should respond to the space it occupies, not the viewport. Viewport media queries break reusable components because the same component in a sidebar and in main content hits the same breakpoints even though the available space is completely different. Container queries fix the unit of measure.
 
 ```css
 .card-container {
@@ -123,11 +133,11 @@ Adapt components based on their container, not the viewport:
 }
 ```
 
-Better for reusable components that live in different layout contexts.
-
 ---
 
 ## Pseudo-Elements
+
+`::before` and `::after` add a layer of styling surface without extra DOM nodes. The most useful application is interactive state overlays — placing a pseudo-element between the element's background and content lets hover/focus states change the overlay without affecting surrounding elements. Hit target expansion is the other dominant use case: extend the interactive area without changing the visible element.
 
 ### Decorative Content (::before / ::after)
 ```css
@@ -163,61 +173,26 @@ Better for reusable components that live in different layout contexts.
 ```
 
 ### Rules
+
 - `::before`/`::after` **require `content` property** to render
 - Parent must have `position: relative` for absolute pseudo-elements
 - Pseudo-elements need `z-index` for proper layering
 - **Use pseudo-elements for decoration** — don't add extra DOM nodes
-
-### Native Pseudo-Elements
-- `::backdrop` — dialog/popover backgrounds
-- `::placeholder` — input placeholder styling
-- `::selection` — text selection styling
+- Native variants: `::backdrop` (dialog/popover backgrounds), `::placeholder` (input text), `::selection` (highlighted text)
 
 ---
 
 ## clip-path for Animation
 
-Powerful animation tool beyond just clipping shapes.
+`clip-path: inset()` is the cleaner alternative to animating `width` or `height` for reveal effects — it composites, doesn't reflow, and accepts fractional values. Four inset values map to top/right/bottom/left clipping edges; animate between them for directional reveals.
 
-### Inset (Rectangular Clipping)
 ```css
-/* Hidden from right */
-.hidden { clip-path: inset(0 100% 0 0); }
-/* Fully visible */
-.visible { clip-path: inset(0 0 0 0); }
-/* Transition between them */
+.hidden  { clip-path: inset(0 100% 0 0); }  /* clipped from right */
+.visible { clip-path: inset(0 0 0 0);    }  /* fully visible */
 .element { transition: clip-path 200ms ease-out; }
 ```
 
-### Patterns
-- **Hold-to-delete**: overlay `inset(0 100% 0 0)` → `inset(0 0 0 0)` over 2s on `:active`
-- **Tab transitions**: duplicate tabs, clip to show active, animate on change
-- **Image reveals**: `inset(0 0 100% 0)` → `inset(0 0 0 0)` on scroll
-- **Comparison sliders**: clip top image, adjust inset on drag
-
----
-
-## CSS Nesting
-
-Modern CSS supports nesting natively:
-
-```css
-.card {
-  padding: var(--space-md);
-
-  & .title {
-    font-weight: 600;
-  }
-
-  &:hover {
-    box-shadow: var(--shadow-lg);
-  }
-
-  @media (width < 768px) {
-    padding: var(--space-sm);
-  }
-}
-```
+Patterns: hold-to-delete (2s linear on `:active`), tab transitions, image reveals on scroll, comparison sliders. In all cases the visible-state value is `inset(0 0 0 0)` — vary the hidden-state edge to control direction.
 
 ---
 
@@ -238,7 +213,7 @@ Modern CSS supports nesting natively:
 
 ## Anchor Positioning
 
-Baseline 2026 (Firefox 147, Safari 26, Chrome 125+). One-line placement for popovers, tooltips, dropdowns, and menus — kills the Floating UI dependency for most cases. Pair with the Popover API for a fully declarative menu.
+Anchor Positioning replaces JS-driven popover positioning — no `getBoundingClientRect()`, no resize observers, no coordinate math. The browser owns the placement and handles viewport overflow through declarative fallback chains. Baseline 2026 (Firefox 147, Safari 26, Chrome 125+). Kills the Floating UI dependency for most cases; pair with the Popover API for a fully declarative menu.
 
 ```css
 .button {
@@ -265,16 +240,19 @@ Baseline 2026 (Firefox 147, Safari 26, Chrome 125+). One-line placement for popo
 ```
 
 ### Rules
+
+Anchor names are scoped to their containing block by default — explicitly declare `position-anchor` in nested contexts to avoid resolution ambiguity. Always define a fallback so viewport-edge popovers don't clip rather than flip.
+
 - Anchor names are scoped by default; use `position-anchor` explicitly in nested cases
 - Always define a `position-try-fallbacks` for viewport-edge cases
-- Pair with `<div popover>` for automatic focus and dismiss handling (see below)
+- Pair with `<div popover>` for automatic focus and dismiss handling
 - Progressive enhancement: feature-detect with `@supports (anchor-name: --x)`, fall back to JS only for older browsers
 
 ---
 
 ## Popover API + `<dialog>`
 
-Native modals and popovers without JS state machines. ESC, focus trap, and backdrop come for free.
+The browser already implements focus trapping, ESC handling, and backdrop rendering for modal and non-modal overlays. Building these in JS means reimplementing browser behavior with more code and more failure modes. Use the platform.
 
 ```html
 <!-- Popover: lightweight menu, tooltip, dropdown -->
@@ -301,6 +279,9 @@ document.getElementById('confirm').showModal();
 ```
 
 ### Rules
+
+Native `<dialog>` and `[popover]` enforce correct semantics and ARIA roles automatically — a custom `<div role="dialog">` with manual focus management is always more code for a worse result.
+
 - Use `<dialog>` with `showModal()` for modals — get focus trap + backdrop + ESC for free
 - Use `popover` attribute for non-modal overlays (menus, tooltips, combobox panels)
 - Pair Popover with Anchor Positioning for placement instead of JS math
@@ -311,7 +292,7 @@ document.getElementById('confirm').showModal();
 
 ## `interpolate-size: allow-keywords`
 
-Animate to `height: auto`, `width: max-content`, and other intrinsic sizes without JS measurement. Chrome 129+ as of early 2026; progressive enhancement everywhere else.
+Browsers historically refused to animate to intrinsic sizes (`height: auto`, `width: max-content`) because the value isn't known until layout. `interpolate-size: allow-keywords` opts in to browser-side interpolation of these values, enabling accordion and disclosure patterns without JS measurement. Chrome 129+ as of early 2026; progressive enhancement everywhere else.
 
 ```css
 :root {
@@ -330,6 +311,9 @@ Animate to `height: auto`, `width: max-content`, and other intrinsic sizes witho
 ```
 
 ### Rules
+
+Set at `:root` so every element in the document inherits the opt-in — scoping it narrower creates inconsistency. The fallback for non-supporting browsers is to measure `scrollHeight` in JS and animate to a pixel value.
+
 - Set `interpolate-size: allow-keywords` at `:root` to opt-in globally
 - Works with `height`, `width`, `block-size`, `inline-size` to/from `auto`, `min-content`, `max-content`, `fit-content`
 - Fallback for non-supporting browsers: JS measures scroll height and animates to a pixel value
@@ -339,7 +323,7 @@ Animate to `height: auto`, `width: max-content`, and other intrinsic sizes witho
 
 ## `color-mix()` for Theming Derivations
 
-Replace hand-tuned shade ladders with one base token and derived variations. Works in OKLCH for perceptually uniform mixing.
+Hand-tuned shade ladders break every time the base token changes. `color-mix()` derives hover, pressed, muted, and ring variants from a single base token — one change propagates through every derived value. Mix in `oklch` for perceptual uniformity; sRGB mixing produces inconsistent lightness shifts across hues.
 
 ```css
 :root {
@@ -354,6 +338,7 @@ Replace hand-tuned shade ladders with one base token and derived variations. Wor
 ```
 
 ### Rules
+
 - Mix in `oklch` or `lch` for perceptual uniformity — never `srgb` unless the base is already sRGB
 - Same derivation pattern works for semantic palettes: `--success`, `--warning`, `--danger` each get their own hover/pressed/muted
 - One base change cascades through every derived token — no ladder to re-tune
@@ -363,7 +348,7 @@ Replace hand-tuned shade ladders with one base token and derived variations. Wor
 
 ## `transition-behavior: allow-discrete`
 
-Required for smooth enter/exit transitions on elements that toggle `display: none` — popovers, dialogs, and any element that mounts/unmounts in the DOM but wants a fade.
+CSS transitions skip `display: none` by default because `none` is not a numeric value — there is no midpoint to interpolate. `allow-discrete` tells the browser to hold the element visible through the exit transition before applying `display: none`, enabling fade-out on elements that unmount from the DOM.
 
 ```css
 .menu {
@@ -385,6 +370,9 @@ Required for smooth enter/exit transitions on elements that toggle `display: non
 ```
 
 ### Rules
+
+Without `allow-discrete`, popovers and dialogs snap in and out — there is no mechanism to fade them. Without `@starting-style`, the enter keyframe has no "from" state and the element jumps directly to its final state on first paint.
+
 - `allow-discrete` enables transitions on `display`, `visibility`, and custom-property changes
 - Combine with `@starting-style` for the enter keyframe — without it, the element jumps to its final state on first paint
 - Essential for `<dialog>` and `[popover]` fade/slide animations
@@ -395,6 +383,14 @@ Required for smooth enter/exit transitions on elements that toggle `display: non
 ## Container Queries — Deeper Patterns
 
 Beyond the basic size query. Use for component-level responsiveness where viewport media queries are the wrong tool.
+
+### When to prefer container over media queries
+
+- Component reused across sidebar + main + modal at different widths
+- Layout must respond to its slot, not the viewport
+- Design system components meant to be dropped into arbitrary layouts
+
+**Anti-pattern:** using `@media (max-width: 768px)` to change a card's layout when the card lives in both a narrow sidebar and a wide main region — the breakpoint fires on both even though only one needs the narrow layout.
 
 ### Style queries
 ```css
@@ -425,10 +421,3 @@ Style queries read custom properties from the container (behind a flag in some b
 ```
 
 Same component, different behavior per parent. Viewport media queries can't express this.
-
-### When to prefer container over media queries
-- Component reused across sidebar + main + modal at different widths
-- Layout must respond to its slot, not the viewport
-- Design system components meant to be dropped into arbitrary layouts
-
-**Anti-pattern:** using `@media (max-width: 768px)` to change a card's layout when the card lives in both a narrow sidebar and a wide main region — the breakpoint fires on both even though only one needs the narrow layout.

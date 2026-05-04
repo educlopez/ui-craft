@@ -30,7 +30,7 @@ Compact prompt template:
 > 4. **Success metric** — what does 'the user succeeded on this surface' look like in observable behavior?
 > 5. **Out of scope** — three to five things this surface deliberately does NOT do."
 
-**Principles workshop case:** if the user says "I don't have principles yet" or gives vague answers ("make it good", "keep it simple"), do NOT fabricate principles from vague input. Run the principles workshop from `references/brief.md` as a focused sub-flow: ask for three past design decisions that were debated, then derive candidate principles from the patterns. Refuse to accept platitudes — push back and prompt for substance.
+**Principles workshop case:** if the user says "I don't have principles yet" or gives vague answers ("make it good", "keep it simple"), do NOT fabricate principles from vague input. Load `references/principles-catalog.md` first. The catalog has 42 worked example principles across 8 product categories — use them as conversation seeds, not as templates to adopt literally. Show 2-3 from the closest category to the user's product, then ask which resonate or which they'd flip. Then run the principles workshop from `references/brief.md` as a focused sub-flow: ask for three past design decisions that were debated, then derive candidate principles from the patterns. Refuse to accept platitudes — push back and prompt for substance.
 
 **Parsing long input:** if the user provides a product description or PRD, parse it into the five sections rather than re-asking for information already given. State what you extracted and ask for confirmation or corrections.
 

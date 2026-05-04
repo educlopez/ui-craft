@@ -1,5 +1,53 @@
 # Versions
 
+## v0.18.0 (2026-05-03) — remaining references audited + principles catalog
+
+v0.16 fixed the floor and v0.17 added the ceiling. v0.18 finishes the prune+ground+scope sweep across the references that escaped v0.16, and adds a worked-example bank for the principles workshop in `/brief`.
+
+**Triage audit (Phase 1):**
+
+Same lens as v0.16 (dev POV + designer POV) applied to seven references that had not been audited: `state-design.md`, `dataviz.md`, `ai-chat.md`, `forms.md`, `modern-css.md`, `responsive.md`, `sound.md`. Verdicts:
+
+- **FIX (large):** `modern-css.md` — six "### Rules" sections without principle-to-rule justification, intro that blurred scope, syntax dumps without decision context.
+- **FIX (medium):** `dataviz.md` — Never-defaults rules without inline citations to Cleveland-McGill / Tufte / colorblind statistics; one commercial-product palette name.
+- **FIX (medium):** `forms.md` — validation debounce without grounding, "never show 20 fields" without scope, debounce-vs-debounce duplication that confused readers.
+- **POLISH:** `responsive.md` — breakpoint strategy section internally contradictory, side-nav universal not scoped, generic Nevers that weren't responsive-specific.
+- **POLISH:** `sound.md` — three rules labeled "Always" / "Critical" without explaining why; accessibility rules without caveat about the `prefers-reduced-motion` proxy.
+- **POLISH:** `ai-chat.md` — logical contradiction in feedback-controls rule ("every" + "optional"), one vague state-table entry.
+- **LEAVE:** `state-design.md` — already strong, scored 9/10 on both axes.
+
+**Phase 2 — fixes (six files edited in parallel):**
+
+- **`modern-css.md`** (434 → 423 lines) — every "### Rules" section gained a 2-3 line principle paragraph above it (View Transitions snapshot mechanism, Scroll Timelines compositor thread, Anchor Positioning declarative fallback chains, `interpolate-size` allow-keyword opt-in, `color-mix()` source-of-truth derivation, `transition-behavior: allow-discrete` for `display: none` exit). Intro rewritten with a crisp scope sentence. View Transitions decision tree added (when DOM identity preserves vs. when use `@starting-style` instead). Anchor Positioning kept and grounded (replaces JS-driven popover positioning, no coordinate math, no resize observers). CSS Nesting cut entirely (pure syntax with no design pattern).
+- **`dataviz.md`** (193 → 196 lines) — every rule in Never-defaults gained inline citation: pie-chart limit cited to Cleveland-McGill angle hierarchy, rainbow palette cited to hue-has-no-order plus colorblind prevalence, 3-D charts cited to volume-ranking + occlusion. Colorblind statistic now cites Birch 2012 and Sharpe et al. 1999. Tableau 10 commercial palette name removed (replaced with academic Okabe-Ito, which is colorblind-safe and the stronger recommendation anyway).
+- **`forms.md`** (160 → 169 lines) — validation debounce grounded in cognitive load (jittery feedback breaks typing flow, 300ms is the perceived "after I stopped" threshold). "Never show 20 fields" scoped to mobile multi-step forms with Hick's Law citation; desktop tolerates higher density when scan structure is clear. New `## Debounce Timings` section disambiguates validation debounce (300ms per-field) from autosave debounce (1-2s per-form) — same word, different mechanisms. "Destructive Actions Inside Forms" trimmed from 6 bullets to 3 + cross-reference to `copy.md`.
+- **`responsive.md`** (150 → 160 lines) — Breakpoint Strategy section split into two clearly separated subsections: "Content-Driven (Preferred)" with container queries as the preferred mechanism, and "Device Reference (Fallback)" for integrating with existing systems. Side-navigation rule scoped to all three breakpoint contexts (always-visible desktop / icon-rail tablet / drawer mobile). Never section trimmed from 8 generic items to 4 responsive-specific ones (don't hide core functionality on mobile, don't assume touch-only on mobile, don't forget landscape, don't ship horizontal scroll without affordance).
+- **`sound.md`** (143 lines, no change in count — additions balanced by Parameters consolidation) — exponential decay grounded in acoustic physics (linear decay creates an audible click; exponential mimics natural decay). `prefers-reduced-motion` rule expanded with caveat (proxy is imperfect; provide independent sound toggle). Single AudioContext rule grounded in browser limits (typically 6 instances per page) and timing synchronization across rapid-fire UI feedback.
+- **`ai-chat.md`** (158 lines, no change) — feedback controls contradiction fixed (every AI response gets *visible* feedback controls; user *interaction* with them is optional). Idle state row tightened (starter prompt carousels only when tested against a control — no "what AI thinks users want to ask" pattern).
+
+**Phase 3 — `references/principles-catalog.md` (NEW, 299 lines):**
+
+A worked-example bank of 42 opinionated design principles across 8 product categories: Developer Tools (6), Consumer Apps (6), Finance / Regulated (5), Creative Tools (5), Data Analytics (5), Collaborative Tools (5), AI / Streaming Surfaces (5), Public-facing Forms (5). Each principle has four parts: title (4-7 words), statement (1 line), the design implication it produces (the change in product behavior), and an opposing principle it rules out (the contrast that proves it's opinionated).
+
+Strongest examples per category: "Show the data, not the design" (developer tools), "The empty page is the customer" (consumer apps), "Wrong is worse than late" (finance), "The canvas is sacred" (creative tools), "One number per screen" (data analytics), "Conflict is expected, not exceptional" (collaborative), "Streaming is a state, not a transition" (AI surfaces), "Defaults are decisions" (forms).
+
+The catalog ends with an "Anti-principles" section listing platitudes that masquerade as principles ("Be user-friendly", "Design with empathy", "Make it beautiful") — each one fails the "would anyone disagree?" test. Slogans go in marketing copy, not in `.ui-craft/brief.md`.
+
+**Phase 4 — wiring:**
+
+- `commands/brief.md` — the principles workshop branch now loads `references/principles-catalog.md` first, surfaces 2-3 principles from the closest product category as conversation seeds, then asks the user which resonate or which they'd flip. Seeds prime; the workshop refines.
+- `SKILL.md` Tier 2 — new row for `principles-catalog.md` with the gate note "Load during `/brief` principles workshop branch as conversation seed." Not promoted to Tier 1 (not always-loaded) and not added to the Routing intent table (sub-resource, not a directly-invoked intent).
+
+**Carry-over housekeeping:** one stale brand reference in `commands/heuristic.md` ("PM can paste it into Linear or Jira") cleaned to "any issue tracker", consistent with the same fix applied to `references/heuristics.md` in v0.16.
+
+**Validation:** 69/69 markdown link + frontmatter checks pass (unchanged from v0.17 — no new commands, just a new reference). Sync mirrored 4 source skills + 18 commands across 5 harnesses; 110 directories written, none broken. Brand sweep clean across all design-attribution surfaces; remaining mentions are CSS keywords (`linear` easing in code blocks, `cursor` as input device or UI element), technical interop disclaimers (Vercel AI SDK / LangChain / CopilotKit), Figma as the consumer of the JSON token export in motion.md, and academic palette citations (Okabe-Ito, ColorBrewer, viridis).
+
+**Detector unchanged** — `ui-craft-detect@0.5.0`, 33 rules. v0.18 is a content release.
+
+**Coverage now:** every reference file in the skill has been audited and either pruned, grounded, scoped, or confirmed strong. The decision spine (`brief.md` + `tokens.md`) and ceiling (`finish-bar.md` + `/finalize`) sit on top of a uniformly grounded floor. The principles catalog turns `/brief`'s principles workshop from "name your principles" (often stuck) into "react to these archetypes" (productive).
+
+---
+
 ## v0.17.0 (2026-05-03) — decision spine + finish bar + feedback hierarchy
 
 v0.16 fixed the floor by pruning filler and grounding rules in principles. v0.17 lands the ceiling: durable artifacts that anchor design decisions across sessions, a 10-pass finishing protocol with measurable criteria, and a feedback hierarchy that prevents polish-before-fix.

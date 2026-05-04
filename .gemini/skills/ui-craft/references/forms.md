@@ -23,7 +23,7 @@ The most-botched decision in form UX. Wrong timing feels punitive; right timing 
 
 **Rules:**
 - Validate on blur only after the user has interacted with the field at least once. Never validate on mount — nothing is wrong yet, and red borders on a fresh form read as hostile.
-- Inline validation requires a debounce (~300ms) to avoid flickering errors while typing.
+- Inline validation: debounce 300ms before showing error states. **Why:** without debounce, users see flickering error→success cycles as they type. Jittery feedback breaks the typing flow and reduces trust. 300ms is the threshold where users perceive feedback as "after I stopped" rather than "while I'm typing". (See Debounce Timings below.)
 - Server-side uniqueness checks (username, slug) show a tiny spinner in the field during the check, then a green check or red error on resolve.
 - On submit, surface ALL errors at once, not one at a time. Users want to fix everything in one pass.
 
@@ -48,7 +48,7 @@ Show fields only when relevant. A form with 20 visible fields reads as homework;
 - **Conditional fields appear smoothly** — use `animation-timeline` or a 200ms height/opacity transition, not a pop-in. See `modern-css.md` for `interpolate-size: allow-keywords`.
 - **Group related fields under a shared section header** — billing address separate from shipping address separate from payment.
 - **Optional fields behind a "More options" toggle** if there are more than 2. Most users don't need them; showing them upfront adds cognitive load for no gain.
-- **Never show 20 fields at once.** The form looks abandoned before the user starts.
+- **Mobile multi-step forms: max 5-7 fields per step.** **Why:** Hick's Law — decision time grows logarithmically with options on-screen, and mobile reading width amplifies the effect. Forms longer than 7 fields exceed the page-scanning time (~7 seconds) before the user begins typing. Desktop tolerates higher density when the form has a clear scan structure (left-aligned labels, grouped fieldsets).
 - **Conditional reveal is one-way** until submit — don't hide a field the user has filled, even if the condition changes. Instead, disable it with a note.
 
 ---
@@ -71,11 +71,22 @@ When a form is too long for one screen, or the steps represent logical phases (a
 
 For any form that takes longer than ~30 seconds to fill.
 
-- **Debounce 1-2s** after the last keystroke, not per keystroke.
+- **Autosave debounce: 1-2s** after the last keystroke across the form, not per keystroke. (See Debounce Timings below.)
 - **Visible "Saved" indicator with timestamp** — "Saved 2s ago" near the fields, quiet typography. Match `copy.md` restraint: "Saved" beats "Your draft has been saved successfully!"
 - **Network loss.** Show "Reconnecting… Your draft is safe locally" and queue the save. When back online, sync and update the indicator.
 - **Conflict resolution.** If another tab or user edited the same resource, offer "Keep mine / Keep theirs / Merge." See `state-design.md` for the conflict-state pattern.
 - **Never show a spinner for autosave.** The whole point is invisibility. A check mark or timestamp is enough.
+
+---
+
+## Debounce Timings
+
+Two debounces, two purposes:
+
+- **Validation debounce: 300ms.** Triggers after the user pauses typing in a field. Prevents flicker; lets the user see the field's final state before judging it.
+- **Autosave debounce: 1-2s.** Triggers after the user pauses across the form. Reduces network cost; lets the user settle on a value before persisting.
+
+These never share the same timer. Validation runs per-field; autosave runs per-form.
 
 ---
 
@@ -125,12 +136,9 @@ The fields that AI-generated forms get wrong.
 
 Deleting accounts, subscriptions, workspaces, or data from within a settings form.
 
-- **Separate section** — a "Danger zone" or "Delete account" block, visually distinct, usually at the bottom.
-- **Warning tone, not shaming.** See `copy.md` Banned Patterns — no confirmshaming.
-- **Type-to-confirm.** Require the user to type the resource name for deletion: "Type `my-project` to confirm."
-- **30-day grace period visible** where applicable — "You'll have 30 days to restore this from Trash."
-- **Show consequences upfront.** "You'll lose: 47 projects, all API keys, access for 12 team members."
-- **Never the primary-button-style** — the delete button uses a danger color, and the safe button (Cancel) is the primary.
+- **Separate section** — a "Danger zone" block, visually distinct, at the bottom. Never primary-button-style for the delete action; Cancel is the primary.
+- **Type-to-confirm** for irreversible deletions: require the user to type the resource name.
+- Copy tone and confirmshaming rules: see `copy.md` — Banned Patterns (Dark UX).
 
 ---
 
