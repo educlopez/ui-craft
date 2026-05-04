@@ -8,11 +8,11 @@ A design engineering skill for AI coding agents. Teaches your agent to build int
 
 ## What it does
 
-UI Craft gives AI coding agents the design knowledge they're missing. Not templates. Not component libraries. Actual craft knowledge — 20 domains of opinionated rules about how interfaces should look, move, and feel, plus 15 slash commands to run focused passes on existing code. Stack-agnostic by design.
+UI Craft gives AI coding agents the design knowledge they're missing. Not templates. Not component libraries. Actual craft knowledge — 23 domain references of opinionated rules about how interfaces should look, move, and feel, plus 18 slash commands to run focused passes on existing code. Stack-agnostic by design.
 
 Every UI gets tested against a single question: *"Would someone believe AI made this?"* If yes, it starts over.
 
-**What makes this different:** the only AI design skill that produces a **scoreable, defensible critique** — Nielsen's 10 usability heuristics × 6 classic design laws (Fitts, Hick, Doherty, Cleveland-McGill, Miller, Tesler) × 5 persona walkthroughs, with every finding tagged by business impact (`blocks-conversion` / `adds-friction` / `reduces-trust` / `minor-polish`). Paste the scorecard straight into Linear/Jira.
+**What makes this different:** the only AI design skill that produces a **scoreable, defensible critique** — Nielsen's 10 usability heuristics × 6 classic design laws (Fitts, Hick, Doherty, Cleveland-McGill, Miller, Tesler) × 5 persona walkthroughs, with every finding tagged by business impact (`blocks-conversion` / `adds-friction` / `reduces-trust` / `minor-polish`). Paste the scorecard straight into any issue tracker.
 
 ## Same prompt, different result
 
@@ -37,7 +37,7 @@ npx skills add educlopez/ui-craft
 
 Works with **Claude Code, Codex, Cursor, Gemini, OpenCode, Windsurf**, and any agent that supports the [Agent Skills](https://skills.sh) spec.
 
-Each agent gets a pre-built mirror under a dedicated folder (`.codex/`, `.cursor/`, `.gemini/`, `.opencode/`, `.agents/`). The main `ui-craft` skill lands as a peer skill; each of the 15 slash commands is materialized as its own sub-skill in non-Claude harnesses (since only Claude Code understands slash commands — other agents see them as skills triggered by intent like "audit my UI", "polish this page").
+Each agent gets a pre-built mirror under a dedicated folder (`.codex/`, `.cursor/`, `.gemini/`, `.opencode/`, `.agents/`). The main `ui-craft` skill lands as a peer skill; each of the 18 slash commands is materialized as its own sub-skill in non-Claude harnesses (since only Claude Code understands slash commands — other agents see them as skills triggered by intent like "audit my UI", "polish this page").
 
 **Full reference docs:** [skills.smoothui.dev/docs](https://skills.smoothui.dev/docs).
 
@@ -87,7 +87,15 @@ For playful and brutalist aesthetics (Clay / Gumroad / Duolingo / Arc-playful, N
 
 ## Slash commands
 
-Fifteen focused passes, each applying a single lens from the skill.
+Eighteen focused passes, each applying a single lens from the skill.
+
+**Decision spine & finalize:**
+
+| Command | Does |
+|---------|------|
+| `/ui-craft:brief` | Write or update the project's durable design brief at `.ui-craft/brief.md` — 5 required sections + principles workshop. Run before any net-new project. |
+| `/ui-craft:tokens` | Audit or establish the 3-layer token spine (primitive → semantic → component). Both modes intentionally crafted, not just inverted. |
+| `/ui-craft:finalize` | Pre-ship gate. Runs detector + brief/token check + the 10-pass finish bar + feedback hierarchy filter. Output only — no auto-fix. |
 
 **Review & ship:**
 
@@ -130,23 +138,26 @@ The skill detects your intent and routes automatically.
 | **Review** | "Review this component" | Audits for generic AI patterns, accessibility gaps, and missed details |
 | **Polish** | "Polish this dashboard" | Finds the twenty small things that turn "done" into "crafted" |
 
-## 20 domains
+## 23 domain references
 
 | Domain | Covers |
 |--------|--------|
-| Motion | Decision ladder, duration + easing token scales, interaction rules, choreography, motion budget, reduced-motion contract |
+| Motion | Decision ladder, duration + easing token scales, interaction rules, choreography, motion budget, reduced-motion contract. Rendering performance (compositor, FLIP, scroll timelines, will-change lifecycle) |
 | Layout | Spacing systems, optical alignment, layered shadows, visual hierarchy |
 | Typography | `text-wrap: balance`, tabular-nums, font scale, curly quotes |
 | Color | OKLCH, design tokens, dark mode, APCA contrast |
 | Accessibility | WAI-ARIA, keyboard nav, focus management, touch targets |
-| Performance | Compositor-only animations, FLIP, `will-change`, CLS prevention |
 | Modern CSS | View Transitions, Anchor Positioning, Popover, `<dialog>`, `interpolate-size`, `color-mix()`, scroll-driven, container queries |
 | Responsive | Fluid sizing, mobile-first, touch zones, safe areas |
 | Sound | Web Audio API, feedback sounds, appropriateness matrix |
 | UX Copy | Voice / tone matrix, reading level, terminology, locale-aware strings, inclusive language, error/empty/CTA tactics |
 | UI Review | Systematic critique methodology, anti-slop detection, Polish Pass |
 | Dashboard | Signal-to-noise hierarchy (hero / supporting / context / deep-dive), sidebar, metric cards, data tables |
-| Inspiration | Real patterns from dub.co, cursor, linear, vercel, stripe |
+| Inspiration | Pattern archetypes from observed mature SaaS — hero archetypes, signature details by pattern type, what mature interfaces never do, reference token values |
+| Brief | Durable design brief format — product purpose, primary user, 3-5 ranked principles, success metric, out of scope. Persists across sessions at `.ui-craft/brief.md` |
+| Tokens | 3-layer token spine (primitive → semantic → component). Both modes intentional. 7 required categories with cross-refs |
+| Finish bar | 10-pass finishing protocol with measurable criteria. Hierarchy / type system / surface stack / spacing rhythm / iconography / states / motion / microcopy / pixel honesty / data formatting |
+| Principles catalog | 42 example principles across 8 product categories, seed material for the `/brief` workshop |
 | Stack | Motion, GSAP, Three.js — decision tree, patterns, perf gotchas, anti-patterns (opt-in) |
 | Heuristics | Nielsen's 10 + Fitts / Hick / Doherty / Cleveland-McGill / Miller / Tesler with 1-5 scoring rubric and impact framing |
 | Personas | 5 archetypes (first-timer, power user, low-bandwidth, screen-reader, one-thumb) with walkthrough checklists |
@@ -186,6 +197,16 @@ The skill actively rejects patterns that scream "AI made this":
 - ~~Walls of text on landing pages~~
 - ~~Pure black (#000) text~~
 
+## Canonical pipeline
+
+Once the spine is in place, the workflow is:
+
+```
+Discovery → /brief → /tokens → build → /finalize → ship
+```
+
+The brief and tokens land as durable artifacts at `.ui-craft/brief.md` and the project's preferred token destination — they survive across sessions and anchor every subsequent design decision. Build proceeds with full reference loading via the routing table. `/finalize` runs the 10-pass finish bar before merge, gated on the brief existing.
+
 ## Project structure
 
 ```
@@ -194,14 +215,15 @@ ui-craft/
 │   ├── ui-craft/                 # Main skill
 │   │   ├── SKILL.md              # Slim entry — knobs, discovery, anti-slop, routing
 │   │   └── references/           # 20 domain references (accessibility, motion, layout,
-│   │                             #   typography, color, performance, modern-css, responsive,
+│   │                             #   typography, color, modern-css, responsive,
 │   │                             #   sound, copy, review, dashboard, inspiration, stack,
 │   │                             #   heuristics, personas, state-design, dataviz,
-│   │                             #   ai-chat, forms)
+│   │                             #   ai-chat, forms, brief, tokens,
+│   │                             #   finish-bar, principles-catalog)
 │   ├── ui-craft-minimal/          # Variant — Linear/Notion aesthetic
 │   ├── ui-craft-editorial/        # Variant — Medium/Substack aesthetic
 │   └── ui-craft-dense-dashboard/  # Variant — Bloomberg/Retool aesthetic
-├── commands/                      # 15 Claude Code slash commands (source of truth)
+├── commands/                      # 18 Claude Code slash commands (source of truth)
 ├── examples/
 │   ├── animation-storyboard.md   # Multi-stage animation pattern template
 │   └── presets/

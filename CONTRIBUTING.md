@@ -13,31 +13,34 @@ ui-craft/
 ├── skills/
 │   ├── ui-craft/                   # Main skill
 │   │   ├── SKILL.md                # Anti-slop test, craft test, routing, knobs, discovery
-│   │   └── references/             # 20 domain references
+│   │   └── references/             # 23 domain references
 │   │       ├── accessibility.md    # WCAG, keyboard, focus, ARIA, forms, checklist
 │   │       ├── ai-chat.md          # Streaming, tool traces, citations, generative UI
+│   │       ├── brief.md            # Durable design brief format — `.ui-craft/brief.md` lives here
 │   │       ├── color.md            # OKLCH, palettes, dark mode, tokens
 │   │       ├── copy.md             # Voice / tone / locale / inclusive / microcopy
 │   │       ├── dashboard.md        # Signal-to-noise, sidebar, metric cards, tables
 │   │       ├── dataviz.md          # Cleveland-McGill, ColorBrewer, Tufte, small multiples
+│   │       ├── finish-bar.md       # 10-pass finishing protocol with measurable criteria
 │   │       ├── forms.md            # Validation, wizards, autosave, field patterns
 │   │       ├── heuristics.md       # Nielsen 10 + 6 design laws + scoring rubric
-│   │       ├── inspiration.md      # Real patterns from dub, linear, vercel, stripe
+│   │       ├── inspiration.md      # Pattern archetypes and signature details from observed mature SaaS
 │   │       ├── layout.md           # Spacing, grids, hierarchy, depth
 │   │       ├── modern-css.md       # View Transitions, Anchor, Popover, <dialog>, color-mix
-│   │       ├── motion.md           # Duration + easing tokens, choreography, budget
-│   │       ├── performance.md      # Compositor, FLIP, will-change, CLS prevention
+│   │       ├── motion.md           # Duration + easing tokens, choreography, budget, rendering perf
 │   │       ├── personas.md         # 5 walkthroughs with checklists
+│   │       ├── principles-catalog.md  # 42 example principles across 8 product categories
 │   │       ├── responsive.md       # Fluid sizing, mobile-first, safe areas
 │   │       ├── review.md           # Critique methodology + Polish Pass
 │   │       ├── sound.md            # Web Audio, appropriateness matrix
 │   │       ├── stack.md            # Motion / GSAP / Three.js (opt-in)
 │   │       ├── state-design.md     # State lattice — idle / loading / empty / error / ...
+│   │       ├── tokens.md           # 3-layer token spine + intentional dark mode
 │   │       └── typography.md       # Scale, fonts, readability, essentials
 │   ├── ui-craft-minimal/           # Variant — Linear / Notion aesthetic
 │   ├── ui-craft-editorial/         # Variant — Medium / Substack aesthetic
 │   └── ui-craft-dense-dashboard/   # Variant — Bloomberg / Retool aesthetic
-├── commands/                       # 15 Claude Code slash commands (source)
+├── commands/                       # 18 Claude Code slash commands (source)
 ├── examples/
 │   ├── animation-storyboard.md     # Multi-stage animation pattern template
 │   └── presets/
@@ -111,7 +114,7 @@ After adding: bump `package.json` version, add a line to `VERSIONS.md`. The `rel
 
 ### Adding a craft pattern
 
-Craft patterns live in `### The Craft Test (What TO Do)` in `skills/ui-craft/SKILL.md`. These describe what top SaaS products actually do — patterns worth emulating. Reference real products (Linear, Vercel, Stripe, Notion) where useful.
+Craft patterns live in `### The Craft Test (What TO Do)` in `skills/ui-craft/SKILL.md`. These describe what top SaaS products actually do — patterns worth emulating. Reference observed pattern archetypes from `inspiration.md` rather than naming specific products. Brand exemplars drift; observed patterns hold.
 
 ### Improving a reference file
 
@@ -153,7 +156,7 @@ Commands live in `commands/*.md`. Each needs YAML frontmatter with `description`
 - **Avoid rigid MUSTs** — explain reasoning so the model can judge edge cases
 - **Be framework-agnostic** — the skill adapts to Tailwind, CSS Modules, styled-components, vanilla CSS, SFC, and Astro; syntax translates, rules don't
 - **Include concrete values** — "use 4px" beats "use a small radius"
-- **Reference real products** — "like Linear's sidebar" beats "a good sidebar"
+- **Reference observed patterns by structure** — "240px fixed sidebar with 12px vertical padding" beats "a good sidebar" or naming a specific product
 - **Cite original sources** where rules trace to established research
 
 ## Local dev checklist
@@ -162,7 +165,7 @@ Before opening a PR:
 
 ```bash
 node scripts/sync-harnesses.mjs   # regenerate harness mirrors
-node scripts/validate.mjs         # check manifests + links (63/63 expected)
+node scripts/validate.mjs         # check manifests + links (69/69 expected)
 node scripts/detect.mjs .         # self-scan — should be 0 findings
 ```
 
