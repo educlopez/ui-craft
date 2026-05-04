@@ -14,13 +14,13 @@ A dashboard needs a sidebar + main content area. The sidebar is the navigation s
 - `overscroll-behavior: contain` on the sidebar if it scrolls independently.
 
 **Main content area:**
-- Filter/toolbar row at the top: ghost buttons for filters, active state uses accent bg at low opacity. Always include a date range selector.
+- Filter/toolbar row at the top: ghost buttons for filters, active state uses accent bg at low opacity. Always include a date range selector for any time-series surface. **Why:** time-series data without an interactive range silently encodes the assumption that the default window is correct — when it isn't (and it usually isn't for power users), the dashboard becomes a screenshot. **When it breaks:** real-time monitoring surfaces with a fixed last-N-minutes window — the range is the affordance, not the picker.
 - Content grid below filters: metric cards → charts → tables/lists.
 - Minimum 3 different content types visible per viewport (e.g., metric cards + chart + table).
 
 ## Metric Card Hierarchy
 
-Never show 4+ identical metric cards. Differentiate the primary metric.
+Never show 4+ identical metric cards. Differentiate the primary metric. **Why:** a uniform grid of equal-weight cards triggers the AI-template tell — variety signals editorial decision; uniformity signals defaulted-out. It also fails the squint test: the eye can't lock on a primary at first glance. **How to differentiate:** primary card gets accent tint, slightly larger number, optional sparkline; secondaries are neutral with smaller type. See Signal-to-Noise Hierarchy section below.
 
 **Primary metric card:**
 - Accent-tinted background (`background: oklch(var(--accent) / 0.05)` / Tailwind: `bg-accent/5`) with accent-colored number, OR solid accent background with white text.
@@ -32,7 +32,7 @@ Never show 4+ identical metric cards. Differentiate the primary metric.
 
 **All metric cards should include:**
 - Sparklines: 32px tall, polyline SVG, accent color with faded fill underneath.
-- Change text: "+2,149 from last month" in `var(--text-tertiary)`. NEVER green arrows for positive, red for negative. Color implies judgment that may not be warranted.
+- Change text: "+2,149 from last month" in `var(--text-tertiary)`. **Never green arrows for positive, red for negative.** **Why:** color implies judgment that may not match user context — a 30% increase in costs is "positive" by sign and "bad" by goal; the green arrow encodes the wrong story. Render the magnitude in neutral and let the user's interpretation supply meaning. **When it breaks:** financial trading surfaces where positive/negative is universally tied to goal (gains green, losses red is the domain convention) — match the user's domain, don't fight it.
 - Label: sentence case, 12-13px, `font-weight: 500`, secondary color.
 - Value: 28-36px, `font-weight: 700`, `font-variant-numeric: tabular-nums`, `letter-spacing: -0.02em`.
 - NO colored top/left borders. NO colored change text. NO arrow icons next to percentages.
@@ -49,9 +49,11 @@ Never show 4+ identical metric cards. Differentiate the primary metric.
 | Conversion/funnel | Progressive bars with stage labels | Shows drop-off clearly | Donut chart |
 | Never use | — | — | Pie charts, 3D charts of any kind |
 
+**Why never pie charts:** Cleveland-McGill perceptual hierarchy ranks angle (pie) below position (bar). Humans compare bar lengths to within a few percent; pie wedges fail at 4+ slices. **Why never 3D:** depth occludes data points and foreshortens position-based comparison. No 2D chart benefits from a third dimension. **When a two-segment donut is acceptable:** a donut with center label for binary proportions (used vs free, paid vs free) — only one comparison to make.
+
 ## Chart Styling
 
-- **Single accent hue at varying opacities** for multi-series: `accent/100`, `accent/60`, `accent/30`. Never rainbow colors.
+- **Single accent hue at varying opacities** for multi-series: `accent/100`, `accent/60`, `accent/30`. **Never rainbow colors.** **Why:** hue does not encode ordering — readers can't rank red vs green by magnitude. Single-hue opacity ramps preserve perceptual ordering and remain colorblind-safe. See `dataviz.md` for full palette guidance.
 - **Gradient fill underneath area lines**: line at full opacity, fill fades from ~15% at line to 0% at bottom.
 - **Label placement**: axis labels in secondary text, 11-12px. Data point labels only on hover (tooltip), not permanently displayed.
 - **Grid lines**: horizontal only, very subtle (`border-color: oklch(95% 0 0)` / Tailwind: `border-gray-100`). No vertical grid lines.
@@ -65,12 +67,12 @@ Tables are the workhorse of dashboards. Make them earn their space.
 - **Status indicators**: small colored dots (6-8px) inline with text. "Active" with a green dot, not a green badge/pill. The dot conveys status; the text provides the label. Badges add visual noise and are an AI-slop pattern.
 - **Proportion bars**: show relative values as width-proportional bars within cells. More visual than raw numbers.
 - **Row hover**: subtle background highlight (`background: #f9fafb` / Tailwind: `hover:bg-gray-50`).
-- **Headers**: sentence case, `font-weight: 500`, secondary color. NEVER uppercase table headers.
+- **Headers**: sentence case, `font-weight: 500`, secondary color. **Never uppercase table headers.** **Why:** uppercase removes the lowercase letterforms that aid scan-pattern recognition; readers process uppercase ~13-20% slower than sentence case (Tinker 1969). Uppercase also reads as decorative-template, not data-functional.
 - **Alignment**: text left, numbers right, status center.
 
 ## Filter & Toolbar Patterns
 
-- Ghost buttons for all filter controls — never solid primary buttons in a toolbar.
+- Ghost buttons for all filter controls — **never solid primary buttons in a toolbar.** **Why:** a toolbar holds 5-15 tertiary actions (filter, sort, group, export, refresh). Each solid primary button competes for the user's primary-action attention budget; the dashboard's actual primary action (drill-in, edit, alert config) gets buried. Hick's Law applied to visual weight.
 - Active filter state: accent background at low opacity + accent text, or subtle border change.
 - Group related filters visually. Date range selector deserves more prominence (slightly larger or separated).
 - "Reset filters" appears only when filters are active, as a text link — not a button.

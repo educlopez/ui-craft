@@ -1,5 +1,43 @@
 # Versions
 
+## v0.19.0 (2026-05-03) — close the audit chapter
+
+v0.16, v0.17, and v0.18 progressively prune+ground+scoped every reference file. v0.19 closes the audit chapter: a triage of the 18 slash commands confirmed the prior releases' brand-cleanup and grounding work propagated through, and `dashboard.md` (one of the 4 strongest references per the original audit, but the only Tier 1 file that hadn't received a Why-clause pass) was brought to the same standard as the v0.18-grounded files.
+
+**Phase A — slash command triage:**
+
+Applied the same lens used for v0.16 and v0.18 references to all 18 slash commands (adapt, animate, audit, brief, clarify, colorize, critique, delight, distill, extract, finalize, harden, heuristic, polish, shape, tokens, typeset, unhappy). Categories swept: stale references (any `references/foo.md` mention where `foo.md` no longer exists or has been renamed), brand-name attributions used as design exemplars, vague intensifiers in operative instructions, universals stated as laws without grounding, contradictions with the references the command invokes, frontmatter compliance (`description` + `argument-hint`), outdated knob references inconsistent with the v0.16 Knobs section.
+
+**Verdict: every command is clean.** All 18 commands have valid frontmatter with `description` and `argument-hint`. All cited reference paths resolve. Zero brand-name design attributions. No vague intensifiers in operative instructions. No contradictions with the references invoked. No architecture drift from the v0.16/v0.17 decision spine. The one stragglar caught in v0.18 (`commands/heuristic.md` "Linear or Jira" → "any issue tracker") was the only carry-over; nothing else slipped through.
+
+The clean verdict is itself the finding worth recording: the v0.16/v0.18 brand-cleanup and grounding work is uniform across both `references/` and `commands/`. No follow-on housekeeping required for the commands as a group.
+
+**Phase B — `dashboard.md` grounding:**
+
+`dashboard.md` scored 9/10 in the original v0.16 audit (one of the four strongest files, alongside `inspiration.md`, `accessibility.md`, and `color.md`) and was preserved. v0.18 grounded six other references with Why-clauses citing named principles (Hick / Cleveland-McGill / colorblind statistics / acoustic physics / Tinker / etc), but `dashboard.md` was untouched. v0.19 brings it to the same standard.
+
+Seven dashboard rules gained Why-clauses or When-it-breaks notes:
+
+- **Date range selector universal** — Why: time-series without an interactive range silently encodes a default-window assumption that becomes wrong for power users; the dashboard becomes a screenshot. When it breaks: real-time monitoring with fixed last-N-minutes window — the range is the affordance, not the picker.
+- **Never 4+ identical metric cards** — Why: uniform grids trigger the AI-template tell (variety signals editorial decision; uniformity signals defaulted-out) and fail the squint test. Cross-references the Signal-to-Noise Hierarchy section.
+- **Never green/red arrows on change values** — Why sharpened: a 30% increase in costs is positive by sign and bad by goal; the green arrow encodes the wrong story. Render magnitude in neutral and let user interpretation supply meaning. When it breaks: trading surfaces where positive/negative is universally tied to goal — match the user's domain, don't fight it.
+- **Never pie charts, never 3D charts** — Why: pie wedges fail Cleveland-McGill perceptual ranking (angle is below position); 3D depth occludes data and foreshortens position-based comparison. When it breaks: two-segment donut with center label for binary proportions (used vs free) — only one comparison to make.
+- **Never rainbow palettes for multi-series** — Why: hue does not encode ordering; readers cannot rank red vs green by magnitude. Single-hue opacity ramps preserve perceptual ordering and remain colorblind-safe. Cross-references `dataviz.md`.
+- **Never uppercase table headers** — Why: uppercase removes the lowercase letterforms that aid scan-pattern recognition; users read uppercase ~13-20% slower than sentence case (Tinker 1969). Reads as decorative-template, not data-functional.
+- **Never solid primary buttons in a toolbar** — Why: a toolbar holds 5-15 tertiary actions; each solid primary button competes for the user's primary-action attention budget. Hick's Law applied to visual weight — the dashboard's actual primary action gets buried.
+
+Strong sections preserved verbatim: Signal-to-Noise Hierarchy (the squint-test treatment, the 4-tier model, the "grid of 8 KPI cards with equal weight" anti-pattern, and the per-dashboard ranking decisions checklist) and Chart Type Decision Matrix (Cleveland-McGill-grounded mapping from data story to chart type).
+
+**Coverage now uniform:** every reference file in the skill — including the four originally-strongest — has been grounded with named principles, scoped universals, and When-it-breaks notes where they apply. No reference sits at "rules without judgment" anymore.
+
+**Validation:** 69/69 markdown link + frontmatter checks pass. Sync mirrored 4 source skills + 18 commands across 5 harnesses; 110 directories written. Brand sweep clean. Detector unchanged at v0.5.0 (33 rules).
+
+**This closes the audit chapter.** v0.16 fixed the floor by cutting filler and grounding existing rules. v0.17 added the ceiling — durable artifacts (`.ui-craft/brief.md`, token spine) and the 10-pass finishing protocol with `/finalize`. v0.18 propagated the grounding across all remaining references. v0.19 confirmed the commands inherited the cleanup and brought the last unconverted reference to standard. The skill's structural shape — Discovery → `/brief` → `/tokens` → build → `/finalize` → ship — sits on top of a uniformly grounded foundation.
+
+**Next iteration should not be more audit.** The marginal returns on more meta-design have flattened. The next leverage is real-world dogfooding — using the skill on actual projects, recording where it produces friction or weak output, and iterating on lived experience rather than on more rules. Possible v0.20+ candidates: detector ↔ `/finalize` JSON integration, `/hierarchy` standalone command (extracts Pass 1 of finish-bar) if the use case proves real, or content additions driven by what dogfooding surfaces.
+
+---
+
 ## v0.18.0 (2026-05-03) — remaining references audited + principles catalog
 
 v0.16 fixed the floor and v0.17 added the ceiling. v0.18 finishes the prune+ground+scope sweep across the references that escaped v0.16, and adds a worked-example bank for the principles workshop in `/brief`.
