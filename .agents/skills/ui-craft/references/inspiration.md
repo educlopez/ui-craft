@@ -1,12 +1,12 @@
-# Real-World SaaS Landing Page Patterns
+# Patterns Observed in Mature SaaS Interfaces
 
-Reference analysis of 5 best-in-class SaaS sites: dub.co, cursor.com, linear.app, vercel.com, stripe.com. Updated March 2025.
+Observational pattern analysis from production-grade SaaS landing pages, abstracted from source. All values extracted from real CSS. Section 6 ("What Mature Interfaces Never Do") is the highest-signal section — read it first.
 
 ---
 
-## 1. Cross-Site Patterns (Universal Rules)
+## 1. Cross-Surface Patterns
 
-These patterns appear across all 5 sites. Treat them as proven conventions.
+Universal rules observed across the full sample. Treat as proven conventions.
 
 | Pattern | Detail |
 |---------|--------|
@@ -19,78 +19,110 @@ These patterns appear across all 5 sites. Treat them as proven conventions.
 | **Minimal decoration** | Content IS the design. No ornamental gradients, blobs, or abstract shapes competing with the product. |
 | **Changelog/velocity proof** | At least one section proves the product ships fast — changelogs, release notes, version timelines. |
 | **Every section has a distinct layout** | No two adjacent sections share the same visual structure. Variety signals intentional design. |
-| **Centered hero alignment** | All 5 sites center their hero text. Left-aligned heroes are less common in modern SaaS. |
+| **Centered hero alignment** | Center-aligned heroes dominate mature SaaS. Left-aligned is less common. |
 
 ---
 
-## 2. Per-Site Signature Details
+## 2. Hero Section Archetypes
 
-What makes each site distinctive. Use for inspiration, not direct copying.
+Six recurring hero patterns. Each is named by structure, not by source.
 
-### Dub.co
-- **Scrolling logo strip** — logos scroll horizontally in a continuous loop, not static
-- **Tab-based feature nav** — "Short Links / Conversion Analytics / Affiliate Programs" as interactive tabs, each revealing different content
-- **QR code interactive preview** — unique product-specific detail that doubles as a demo
-- **"We ship fast" section** — changelog entries with dates proving velocity
-- **Blue accent used sparingly** — `#2563eb` appears only in CTAs and key interactive elements
+### Archetype A — Minimal text-only
+One large headline + subhead + 1-2 CTAs. No product visual in the viewport. Relies entirely on copy to communicate value. Works when the product name alone carries recognition or when the headline is provocative enough to pull the scroll.
 
-### Cursor.com
-- **Product-first hero** — massive IDE screenshot below a minimal headline, product speaks for itself
-- **Photography as texture** — landscape wallpaper images behind IDE demos, not abstract gradients
-- **Research table** — year/project/status in a simple HTML table, elegant and informational
-- **Interactive embedded demos** — not static screenshots but actual code diffs running on the page
-- **Mission statement section** — "Software creation is changing" — a philosophical anchor mid-page
+- Headlines: 5-10 words, sentence case
+- Subhead: 1-2 lines max, 18-20px, neutral-500
+- CTAs: dual (solid primary + ghost secondary) or single strong action
+- Below hero: immediate product proof (no filler sections)
 
-### Linear.app
-- **Figure numbering** — "FIG 0.2", "FIG 0.3" as editorial labels on sections, gives a technical publication feel
-- **Provocative CTA** — "Issue tracking is dead" — strong opinion, not generic "Sign up free"
-- **Live product UI embedded** — actual product interface rendered on the page, not a screenshot
-- **Value props as labeled figures** — 3 concepts presented as numbered editorial figures, not cards
-- **Dark premium with subtle gradients** — darkness serves the product (dark UI = dark marketing)
+**When it breaks:** products without brand recognition or a strong category-defining statement — the missing visual leaves new users with nothing to anchor on.
 
-### Vercel.com
-- **Light/dark adaptive** — both theme versions available, not committed to one
-- **Specific customer metrics** — "build times went from 7m to 40s" next to the customer logo
-- **Framework logos** — tech stack displayed as recognizable framework icons
-- **Tab sections by use case** — "AI Apps / Web Apps / Ecommerce / Marketing / Platforms"
-- **Terminal output as social proof** — showing real deployment logs and build output
+### Archetype B — Asymmetric headline + product screenshot
+Left-aligned headline block, right-aligned product UI or screenshot. Gives a document/editorial feel. Communicates "the product is the proof" without centering the hero on pure copy.
 
-### Stripe.com
-- **Animated wave/gradient backgrounds** — signature branded element, NOT generic blobs. Intentional, recognizable, ownable
-- **Bento grid layout** — varied card sizes for product features, breaking the uniform grid
-- **Real payment UIs** — billing plans, card issuing, crypto interfaces as screenshots
-- **Financial data with real-looking numbers** — specific dollar amounts, growth percentages
-- **Premium typography with italics** — italicized hero headlines as a distinctive typographic choice
+- Layout: ~50/50 split or 40/60 text/visual
+- Visual: high-fidelity product screenshot, not illustration
+- Alignment: text left, visual right (rarely reversed)
+
+**When it breaks:** products with complex UIs that don't read quickly at a glance — the visual confuses instead of proving.
+
+### Archetype C — Product-first (full-width UI)
+Minimal headline above or beside a massive full-width product screenshot or embedded interactive demo. The product IS the hero. Copy is secondary.
+
+- Headline: minimal, often a single phrase or word
+- Visual: takes 60-80% of above-the-fold height
+- Can include real interactive elements, not just static images
+
+### Archetype D — Bento grid hero
+Positioning statement centered above a bento grid of product surfaces. Each card shows a different feature or UI. Communicates product breadth.
+
+- Grid: mixed card sizes — one large card + 2-3 smaller
+- Each card shows a distinct product surface
+- Typography: headline centered above the grid
+
+### Archetype E — Editorial figure
+Value propositions presented as numbered editorial figures ("FIG 0.2", "FIG 0.3"). Gives a technical publication feel. Strong for developer-focused products where "serious" positioning outweighs "approachable."
+
+- Section labels: uppercase monospace or small-caps
+- Layout: each figure gets a distinct visual treatment
+- No uniform card grid
+
+### Archetype F — Scrolling social proof strip
+Hero text centered, immediately followed by a horizontally scrolling logo strip (continuous loop, not static). Makes "trusted by" feel dynamic and high-volume.
+
+- Logos: monochrome or muted, not full-color
+- Motion: CSS scroll animation, pauses on hover
+- Placement: immediately below hero CTA block
+
+**When it breaks:** early-stage products without recognizable logos — an empty or weak strip signals the opposite of trust.
 
 ---
 
-## 3. Hero Section Patterns by Site
+## 3. Feature Presentation Patterns
 
-| Site | Alignment | Headline Style | CTAs | Below Hero |
-|------|-----------|---------------|------|------------|
-| **Dub.co** | Center | Short declarative statement | Dual: solid "Start for free" + outline "Get a demo" | Scrolling logo strip |
-| **Cursor.com** | Center | Single word/phrase | Single: "Download" | Massive product screenshot |
-| **Linear.app** | Center | Category-defining statement ("The product development system") | Single: provocative link ("Issue tracking is dead") | Live product UI |
-| **Vercel.com** | Center | Action-oriented ("Build and deploy on the AI Cloud") | Dual: "Start Deploying" + "Get a Demo" | Customer logos with metrics |
-| **Stripe.com** | Center | Italicized positioning statement | Dual: primary CTA + Google auth | Bento grid of product features |
+No mature SaaS product uses identical card grids for features.
 
-### Synthesis
-- All use centered alignment
-- Headlines are 5-10 words maximum
-- 3 of 5 use dual CTAs, 2 use single
-- Product proof appears immediately after the hero (no filler sections)
+### Tab-based feature sections
+- Horizontal tabs or pills at the top of a section
+- Each tab reveals completely different content (screenshot, demo, description)
+- Prevents the monotonous 3-column icon+heading+text grid
+
+**When it breaks:** more than 5-6 tabs — cognitive load exceeds the benefit of the interactive reveal.
+
+### Bento grid (varied card sizes)
+- Mixed card dimensions: one large card + 2-3 smaller cards
+- Each card shows a different product surface
+- Unequal sizing creates visual hierarchy within the grid
+
+### Editorial figures
+- Value propositions presented as numbered figures
+- Each figure gets a distinct layout treatment
+- Feels like a technical publication, not a marketing template
+
+### Product-first (screenshots as features)
+- Instead of describing features, embed the actual product
+- Interactive demos, live UI, or high-fidelity screenshots
+- The product IS the feature presentation
+
+### Alternating text + visual rows
+- Text on one side, visual (screenshot/demo) on the other
+- Sides alternate per row to create rhythm
+- Each visual is unique — chart, screenshot, code block
+
+### Key principle
+Every feature section should feel designed individually for that feature. If two feature blocks can be swapped without anyone noticing, the design is too uniform.
 
 ---
 
 ## 4. Social Proof Patterns
 
-| Pattern | Sites Using It | Implementation |
-|---------|---------------|----------------|
-| **Logo strip** | All 5 | Horizontal row of 5-8 company logos, monochrome or muted. "Trusted by" or "Used by teams at" |
-| **Specific metrics** | Vercel, Dub | Metric + customer name: "7m to 40s build times" next to company logo |
-| **Testimonial with identity** | Dub, Linear | Photo + name + title + company logo. Quote is specific, references the product feature |
-| **Customer count** | Dub, Vercel | "Join 50,000+ teams" or similar, placed near CTA |
-| **Changelog as proof** | Dub, Cursor | Release dates and features listed to show shipping velocity |
+| Pattern | Implementation |
+|---------|----------------|
+| **Logo strip** | Horizontal row of 5-8 company logos, monochrome or muted. "Trusted by" or "Used by teams at." |
+| **Specific metrics** | Metric + customer name: "7m to 40s build times" next to company logo. |
+| **Testimonial with identity** | Photo + name + title + company logo. Quote is specific, references the product feature. |
+| **Customer count** | "Join 50,000+ teams" or similar, placed near CTA. |
+| **Changelog as proof** | Release dates and features listed to show shipping velocity. |
 
 ### What makes social proof work
 - **Specificity over volume** — one concrete metric beats "trusted by thousands"
@@ -100,86 +132,73 @@ What makes each site distinctive. Use for inspiration, not direct copying.
 
 ---
 
-## 5. Feature Presentation Patterns
+## 5. Signature Details by Pattern Type
 
-None of these sites use identical card grids for features. Here is what they use instead:
+Concrete patterns observed in production. Each stands as a reusable technique.
 
-### Tab-based feature sections
-**Used by:** Dub.co, Vercel.com
-- Horizontal tabs or pills at the top of a section
-- Each tab reveals completely different content (screenshot, demo, description)
-- Prevents the monotonous 3-column icon+heading+text grid
+### Card and surface treatment
+- **Grid-line border aesthetic**: horizontal and vertical borders (`border-x`, `border-y` in Tailwind) with a custom grid-border color — creates a technical grid feel without background fills
+- **Inset shadow for sunken surfaces**: `box-shadow: 0 2px 6px 0 rgba(0,0,0,0.2) inset` — signals an embedded or input-like container
+- **Hairline card borders**: 1px `neutral-200` with a bottom-only `rgba(0,0,0,0.04)` shadow — separation without visual weight, common in card-heavy dashboard layouts
+- **Bento card sizing ratio**: ~2:1 dominant card to minor cards; never all cards equal size
 
-### Bento grid (varied card sizes)
-**Used by:** Stripe.com
-- Mixed card dimensions: one large card + 2-3 smaller cards
-- Each card shows a different product surface (billing, payments, issuing)
-- Unequal sizing creates visual hierarchy within the grid
+### Typography signatures
+- **Display italics**: italicized hero headline as a typographic accent — distinctive without added color
+- **Negative letter-spacing on all headings** (see Section 7 for exact values)
+- **Font weight distribution skewed to medium**: `font-weight: 500` as the dominant weight across UI, `600` for emphasis only, `700` reserved for hero scale
+- **Editorial section labels**: uppercase, tracked-out, small — "FIG 0.2" or "01 / OVERVIEW" style
 
-### Editorial figures
-**Used by:** Linear.app
-- Value propositions presented as numbered figures ("FIG 0.2")
-- Each figure gets a distinct layout treatment
-- Feels like a technical publication, not a marketing template
+### Color signatures
+- **One accent, used sparingly**: accent color appears in CTAs and key interactive elements only — not in decorative elements
+- **Nearly colorless base UI**: neutral-first palette; color reserved for status and brand accent
+- **Dark mode via alpha overlays**: `color: rgba(255,255,255,0.9)`, `background: rgba(255,255,255,0.1)` on hover — avoids hardcoded dark-mode color values
+- **Tinted neutral grays**: never pure `#000` or `#fff` as text; always cool-toned (see Section 7)
 
-### Product-first (screenshots as features)
-**Used by:** Cursor.com, Linear.app
-- Instead of describing features, they embed the actual product
-- Interactive demos, live UI, or high-fidelity screenshots
-- The product IS the feature presentation
+### Microinteraction signatures
+- **Ring-halo hover**: `box-shadow: 0 0 0 4px var(--neutral-200)` instead of background color change — reads as "glowing" selection
+- **Slide-up-fade entrance**: translate Y offset + opacity fade, 50ms staggered per item, 500ms duration
+- **Hover lift**: `translateY(-2px)` + shadow growth at `150-200ms ease-out`
+- **No `transition: all`**: always target specific properties — `transition: box-shadow, transform, opacity`
 
-### Alternating text + visual rows
-**Used by:** Dub.co, Vercel.com
-- Text on one side, visual (screenshot/demo) on the other
-- Sides alternate per row to create rhythm
-- Each visual is unique — chart, screenshot, code block
-
-### Key principle
-Every feature section should feel like it was designed individually for that feature. If you can swap two feature blocks and nobody notices, the design is too uniform.
+### Spacing signatures
+- **Section rhythm**: 80-120px between sections
+- **Card internal padding**: 24-40px
+- **Card gaps**: 24-32px
+- **Nav height**: 64px
+- **Max content width**: 1080-1200px
 
 ---
 
-## 6. What Best-in-Class Sites Never Do
+## 6. What Mature Interfaces Never Do
 
-Confirmed absent across all 5 sites:
+Confirmed absent across the full observed sample:
 
 | Anti-Pattern | Why It Fails |
 |-------------|-------------|
-| **Emoji icons in feature lists** | Looks unfinished. Every site uses custom SVG icons or product screenshots. |
-| **Colored gradient text** | None use rainbow or multi-color gradient text. Even dark-themed Cursor avoids it. |
+| **Emoji icons in feature lists** | Looks unfinished. Production UIs use custom SVG icons or product screenshots. |
+| **Colored gradient text** | None use rainbow or multi-color gradient text. Even dark-themed interfaces avoid it. |
 | **Star ratings in testimonials** | Zero instances. All use quote + name + role + company. |
-| **Identical 3-column feature cards** | No site repeats the same card layout for features. Each section is bespoke. |
+| **Identical 3-column feature cards** | No section repeats the same card layout for features. Each section is bespoke. |
 | **Placeholder or generic text** | Every piece of text is specific to the product. No "lorem ipsum" energy. |
 | **Bouncy/elastic animations** | Motion is subtle and functional. No bounce, no wiggle, no playful easing. |
 | **Colored pill badges for metrics** | Metrics are displayed as plain text with clear hierarchy, not decorated badges. |
-| **ALL CAPS headings** | All 5 use sentence case or title case. No uppercase headings. |
-| **Glassmorphism** | Not a single frosted-glass panel. Even the dark-themed sites avoid it. |
-| **Abstract blob/orb decorations** | Stripe uses intentional branded gradients. Nobody uses generic decorative blobs. |
-| **Multiple competing accent colors** | Each site has one accent color used consistently and sparingly. |
-| **"Powered by" or tool attribution** | No marketing page advertises what it was built with in the footer. |
+| **ALL CAPS headings** | Sentence case or title case throughout. No uppercase headings. |
+| **Glassmorphism** | Not a single frosted-glass panel. Even dark-themed interfaces avoid it. |
+| **Abstract blob/orb decorations** | Intentional branded gradients exist. Generic decorative blobs do not. |
+| **Multiple competing accent colors** | One accent color, used consistently and sparingly. |
+| **"Powered by" or tool attribution** | No marketing page advertises its own stack in the footer. |
 | **Generic CTAs** | No "Learn more" or "Click here." Every CTA is specific: "Start for free", "Download", "Start Deploying". |
 | **Walls of text** | No section has more than 2-3 sentences. Copy is ruthlessly concise. |
-| **Pure black text** | None use `#000000`. Darkest text is cool gray like `#414552` (Stripe) or `#18181b` (Tailwind zinc-900). |
+| **Pure black text** | None use `#000000`. Darkest text is cool gray — `#414552` or `#18181b` (zinc-900). |
 
 ---
 
-## 7. Reference Values from Stripe's Design System
+## 7. Reference Token Values
 
-Extracted from Stripe's actual CSS tokens. Use as calibration for "what premium feels like in code."
+Values extracted from production CSS. Use as calibration for "what premium feels like in code." Where two observed systems differ significantly, both are shown with labels.
 
-**Shadows** (blue-gray tinted, never pure black):
-```css
-/* Resting */ box-shadow: rgb(64 68 82 / 8%) 0px 2px 5px 0px;
-/* Hover */  box-shadow: rgb(64 68 82 / 8%) 0px 2px 5px 0px, rgb(64 68 82 / 8%) 0px 3px 9px 0px;
-/* Focus */  box-shadow: 0 0 0 4px rgb(1 150 237 / 36%);
-```
+### Type scale ranges observed
 
-**Border-radius** (restrained — max 10px for standard elements):
-```
-Inputs: 4px | Buttons: 8px | Cards: 8-10px | Pills/badges: 999em
-```
-
-**Typography** (negative letter-spacing on headings):
 ```
 Hero (76-94px):     weight 700, line-height 1.05, letter-spacing -0.04em
 Section (48-56px):  weight 700, line-height 1.1,  letter-spacing -0.03em
@@ -187,58 +206,82 @@ Card (24-32px):     weight 600, line-height 1.2,  letter-spacing -0.02em
 Body (16-17px):     weight 400, line-height 1.5,  letter-spacing normal
 ```
 
-**Spacing** (4px base unit):
+**Pattern A (medium-dominant)**: `font-weight: 500` as primary UI weight (120+ instances), `600` for emphasis only, `700` avoided entirely.
+**Pattern B (bold-dominant)**: `700` reserved for hero and section headings only; `400` for all body copy.
+
+### Spacing scales observed
+
 ```
-Section gaps: 80-120px | Card gaps: 24-32px | Card padding: 24-40px
-Nav height: 64px | Max content width: 1080-1200px
-```
-
-**Color** (never pure black, cool-toned grays):
-```
-Text primary:   #414552 (gray-700, NOT #000)
-Text secondary: #687385 (gray-500)
-Borders:        #d5dbe1 (gray-150)
-Surface:        #f6f8fa (gray-50)
-Brand accent:   #625afa (purple-500)
-```
-
-**Hover transitions**: `150-200ms ease-out`, `translateY(-2px)` + shadow growth
-
----
-
-## 8. Reference Values from Dub.co's Design System
-
-Extracted from Dub.co's actual CSS/Tailwind. Next.js + Tailwind v3.4.4 + Radix UI.
-
-**Fonts**: Inter (body), Satoshi (display headings), Geist Mono (code)
-
-**Font weight distribution** (from class frequency):
-```
-font-weight: 500 (Tailwind: font-medium): 120 uses — the dominant weight
-font-weight: 600 (Tailwind: font-semibold): 34 uses — emphasis only
-font-weight: 700: NEVER used — Dub avoids bold entirely
+Section gaps:      80-120px
+Card gaps:         24-32px
+Card padding:      24-40px
+Nav height:        64px
+Max content width: 1080-1200px
+Base unit:         4px
 ```
 
-**Signature hover**: Ring-halo effect instead of shadow/color change:
+### Shadow stack examples
+
+**Blue-gray tinted shadows** (never pure black):
 ```css
-/* CSS: */ box-shadow: 0 0 0 4px var(--neutral-200, #e5e5e5);
-/* Tailwind: hover:ring-4 hover:ring-neutral-200 — 13 elements use this pattern */
+/* Resting */ box-shadow: rgb(64 68 82 / 8%) 0px 2px 5px 0px;
+/* Hover */   box-shadow: rgb(64 68 82 / 8%) 0px 2px 5px 0px, rgb(64 68 82 / 8%) 0px 3px 9px 0px;
+/* Focus */   box-shadow: 0 0 0 4px rgb(1 150 237 / 36%);
 ```
 
-**Signature visual**: Inset shadows for sunken/embedded surfaces:
+**Ring-halo hover** (neutral, no blue tint):
+```css
+box-shadow: 0 0 0 4px var(--neutral-200, #e5e5e5);
+/* Tailwind: hover:ring-4 hover:ring-neutral-200 */
+```
+
+**Inset sunken surface**:
 ```css
 box-shadow: 0 2px 6px 0 rgba(0,0,0,0.2) inset;
 ```
 
-**Grid-line border aesthetic**: Uses horizontal and vertical borders (`border-left` + `border-right`, `border-top` + `border-bottom` / Tailwind: `border-x`, `border-y`) with a custom grid-border color for a technical grid feel.
+### Border-radius observed
 
-**Motion**: slide-up-fade entrance with 50ms staggered delays, `transition-duration: 500ms` (Tailwind: `duration-500`) as primary timing. Targeted transition properties, never `transition: all`.
-
-**Radius hierarchy**:
+**Pattern A** (restrained):
 ```
-Buttons: border-radius: 8px (Tailwind: rounded-lg)
-Cards: border-radius: 12-16px (Tailwind: rounded-xl / rounded-2xl)
-Badges: border-radius: 9999px (Tailwind: rounded-full)
+Inputs: 4px | Buttons: 8px | Cards: 8-10px | Pills/badges: 999em
 ```
 
-**Color approach**: Nearly colorless UI — neutral-first palette using RGB custom properties for alpha compositing. Color is reserved for status and brand accent only. Dark mode uses alpha-based white overlays (`color: rgba(255,255,255,0.9)`, `background: rgba(255,255,255,0.1)` on hover / Tailwind: `text-white/90`, `hover:bg-white/10`).
+**Pattern B** (more generous):
+```
+Buttons: 8px (rounded-lg) | Cards: 12-16px (rounded-xl / rounded-2xl) | Badges: 9999px (rounded-full)
+```
+
+The difference teaches: card radius scales up proportionally with card size. Small cards (dashboard widgets) at 8px, large cards (feature showcase) at 12-16px.
+
+### Color tinted-neutral examples
+
+```
+Text primary:   #414552  (cool gray-700, NOT #000)
+Text secondary: #687385  (cool gray-500)
+Borders:        #d5dbe1  (cool gray-150)
+Surface:        #f6f8fa  (cool gray-50)
+Brand accent:   #625afa  (purple-500 — one example; substitute project accent)
+```
+
+**Dark mode via alpha** (avoids hardcoded dark-mode palette):
+```css
+color: rgba(255,255,255,0.9);           /* Tailwind: text-white/90 */
+background: rgba(255,255,255,0.1);      /* Tailwind: hover:bg-white/10 */
+```
+
+### Motion timing observed
+
+```
+Hover transitions:    150-200ms ease-out
+Entrance animations:  500ms duration, 50ms staggered delay per item
+Transform:            translateY(-2px) on hover lift
+Property targeting:   box-shadow, transform, opacity — never transition: all
+```
+
+**Font pairing pattern** (display + system + mono):
+```
+Display headings: Satoshi or equivalent geometric sans
+Body:             Inter or equivalent neutral sans
+Code/technical:   Geist Mono or equivalent monospace
+```

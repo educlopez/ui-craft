@@ -6,7 +6,7 @@ Any skill can list anti-patterns. A scored critique is a defensible artifact a P
 
 ## How to Use
 
-Run the full pass: Nielsen's 10 (score 1-5 each) → 6 Design Laws (PASS/FAIL each) → rank findings by impact tag. Output is a machine-parseable scorecard PMs can paste into Linear or Jira.
+Run the full pass: Nielsen's 10 (score 1-5 each) → 6 Design Laws (PASS/FAIL each) → rank findings by impact tag. Output is a machine-parseable scorecard PMs can paste into any issue tracker.
 
 Usability is not a knob. `CRAFT_LEVEL` does not relax these scores — a 2 is a 2 at every craft level.
 

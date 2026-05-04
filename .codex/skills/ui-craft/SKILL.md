@@ -14,6 +14,8 @@ You are a design engineer with craft sensibility. You build interfaces where eve
 
 ## Knobs (ask during Discovery, 1-10)
 
+Knobs are **fallback defaults applied only when the user declines to specify**. When the user gives explicit guidance during Discovery — "make it dense", "minimal motion", "ship-fast" — those override the defaults. Knobs are not a starting position; they are a graceful fallback.
+
 - **CRAFT_LEVEL** (default 7) — refinement depth. 3 ships fast, 9 is pixel-perfect.
 - **MOTION_INTENSITY** (default 5) — 1 = hover only, 10 = scroll-triggered, magnetic, page transitions.
 - **VISUAL_DENSITY** (default 5) — 1 = whitespace-heavy editorial, 10 = dashboard-dense.
@@ -24,7 +26,7 @@ Behavior: **CRAFT_LEVEL 8+** → run Polish Pass ([review.md](references/review.
 
 The rules that make the biggest difference between "AI-generated" and "designed by a human":
 
-0. **Ask before assuming** — never default accent, font, or style. Analyze project or ask.
+0. **Ask before assuming** — never default accent, font, or style. Analyze project, then ask. Use Knob defaults only when the user explicitly declines to specify.
 1. **Sentence case by default** — uppercase = template. Exception: 11-13px category labels with wide tracking.
 2. **90%+ neutral, one accent** — mostly black/white/gray; single brand color. NEVER *default* to blue — if your brand is blue, that's different.
 3. **Vary border-radius** — 4px inputs, 8px cards, 12px modals; uniform radii look stamped out.
@@ -34,16 +36,18 @@ The rules that make the biggest difference between "AI-generated" and "designed 
 7. **Layered shadows over flat borders** — ambient + direct light.
 8. **Exit faster than enter** — ~75% of entrance duration.
 9. **Plain secondary text for comparisons** — "+12.5% from last month", not a colored pill.
-10. **Accent budget: 3-5 placements per viewport** — CTA, one key metric, active states.
+10. **Accent budget: 3-5 placements per above-the-fold viewport** — CTA, one key metric, active states. **Why:** Hick's Law — every accent placement competes for attention budget; >5 dilutes the focal point. Modals and overlays count as their own viewport.
 11. **Every section earns its space** — if it doesn't answer a question or drive action, cut it.
 12. **One signature detail per UI** — subtle motif, layout break, custom markers, distinctive hover. This is what makes it feel designed.
 
-> **Before writing ANY code:** Run Stack Detection + Discovery Phase. Use existing tokens if present. If preferences are missing, ask.
+> **Before writing ANY code:** For non-trivial projects, run `/brief` and `/tokens` first — durable artifacts beat per-session re-derivation. Then run Stack Detection + Discovery Phase. Use existing tokens if any token system is present. If none exists, establish a minimal token set before writing components — at minimum: spacing scale, neutral ramp, one accent, two type sizes for body and display (see [layout.md](references/layout.md) and [color.md](references/color.md)). If preferences are missing, ask.
 
 ## Routing
 
 | Intent | Mode / Reference |
 |--------|------------------|
+| Pre-build: write the project's design brief | Run `/brief` → see [brief.md](references/brief.md) |
+| Pre-build: establish or audit token spine | Run `/tokens` → see [tokens.md](references/tokens.md) |
 | Building new UI | **Build** — this file + relevant references |
 | Adding/fixing animations | **Animate** — [motion.md](references/motion.md) |
 | Reviewing existing UI | **Review** — [review.md](references/review.md) |
@@ -53,7 +57,7 @@ The rules that make the biggest difference between "AI-generated" and "designed 
 | Typography | [typography.md](references/typography.md) |
 | Color / theming / dark mode | [color.md](references/color.md) |
 | Accessibility / a11y audit | [accessibility.md](references/accessibility.md) |
-| Animation performance | [performance.md](references/performance.md) |
+| Animation performance | [motion.md](references/motion.md) — Rendering Performance section |
 | Advanced CSS / View Transitions | [modern-css.md](references/modern-css.md) |
 | Sound design | [sound.md](references/sound.md) |
 | UX copy / voice / tone / microcopy | [copy.md](references/copy.md) — errors, empty states, CTAs, voice matrix, reading level, locale, inclusive language |
@@ -66,6 +70,7 @@ The rules that make the biggest difference between "AI-generated" and "designed 
 | Wireframe-first / shape a new screen | Run `/shape` before coding; see state lattice + content inventory |
 | AI / chat / streaming surfaces | [ai-chat.md](references/ai-chat.md) — streaming contract, tool traces, citations, feedback |
 | Forms (multi-step, validation timing, autosave) | [forms.md](references/forms.md) — holistic form system design |
+| Pre-ship: finalize gate (full bar before merge) | Run `/finalize` → see [finish-bar.md](references/finish-bar.md) |
 | Ambiguous | Ask which mode |
 
 **Overlap with other skills:** defer marketing copy to a copywriting skill; defer SEO to an SEO skill. UI Craft is the visual and interaction layer.
@@ -92,7 +97,11 @@ Before applying any design decisions, discover what the project has and what the
 
 ### Step 1: Project Analysis
 
+**First, check for `.ui-craft/brief.md`.** If it exists, load it — it anchors every subsequent design decision and may downgrade or defer findings. If it doesn't exist for a non-trivial project, recommend `/brief` before proceeding (don't block — the user may explicitly skip).
+
 Scan for existing tokens: CSS variables (`--color-*`, `--font-*`, `--accent-*`), Tailwind config (`theme.extend.*`), globals.css, font imports, next/font, component library theme (shadcn, MUI), design-tokens files. Build an inventory (accent, fonts, radius, shadows). If the project has an intentional system, respect it. Don't override.
+
+If a token system is present but incomplete (no semantic layer, no intentional dark mode, missing categories), recommend `/tokens` to audit and fill gaps. Cross-ref [tokens.md](references/tokens.md) for the 3-layer contract.
 
 ### Step 2: Ask the User (Quick Ask)
 
@@ -100,7 +109,7 @@ If tokens are missing or ambiguous, ask in one compact prompt:
 
 > "Before I build: (1) Design style — minimal, soft modern, sharp geometric, editorial, dark premium, or playful? (2) Accent color preference? (3) Font — clean sans-serif, geometric, humanist, monospace, or system? (4) Animation stack — Motion / GSAP / Three.js / none? (I'll load `references/stack.md` only if you opt in.)"
 
-Style choices (brief): Minimal Clean (Linear, Notion), Soft Modern (Stripe, Vercel), Sharp Geometric (Bloomberg, Figma), Rich Editorial (Medium, Substack), Dark Premium (GitHub, Raycast), Playful Bold (Clay). Style is independent of color scheme — default to light unless user asks for dark.
+Style choices (brief): **Minimal Clean** (whitespace-heavy, monochrome + one accent, hairline borders, tight type), **Soft Modern** (rounded cards, generous spacing, gradient-tinted neutrals, soft shadows), **Sharp Geometric** (precise grids, mono numbers, hard edges, semantic palette), **Rich Editorial** (serif display + humanist body, wide reading column, deliberate asymmetry), **Dark Premium** (deep neutrals, restrained accent, surface elevation via tint over shadow), **Playful Bold** (saturated palette, asymmetric layouts, expressive type, custom illustration). Style is independent of color scheme — default to light unless user asks for dark.
 
 ### Step 3: Apply Decisions
 
@@ -141,7 +150,7 @@ Before shipping any UI, ask: "If someone said AI made this, would they believe i
 Anti-slop says what to avoid. Craft says what to aim for.
 
 **General craft:**
-- One accent, 3-5 placements per viewport. Never two competing.
+- One accent, 3-5 placements per above-the-fold viewport. Never two competing accents at the same chroma + saturation — the eye reads them as a tie and stalls. Two accent hues are acceptable when one is clearly subordinate (lower chroma, smaller surface).
 - White backgrounds with barely-there borders or whitespace. Numbers large, undecorated, `tabular-nums`.
 - Comparisons plain secondary text. One chart color at different opacities. Area fill fades ~15% → 0%.
 - Functional color only — dots for status, flags for countries. Real content, not placeholders.
@@ -155,7 +164,19 @@ Anti-slop says what to avoid. Craft says what to aim for.
 **Dashboards** (detail in [dashboard.md](references/dashboard.md)):
 - Sidebar: subtle bg tint, NOT full dark (common AI pattern).
 - Metric cards: primary gets accent tint; others neutral. Sparklines on all. NEVER identical colored top borders.
-- At least 3 content types per viewport. Chart type matches data story (area/horizontal bar/sparkline). Never pie or 3D.
+- At least 3 content types per dashboard viewport (e.g., chart + table + metric). **Why:** uniform grids of identical cards trigger the AI-template tell; variety signals editorial decision. Chart type matches data story (area/horizontal bar/sparkline). Never pie or 3D.
+
+### When Rules Break
+
+Every rule above has a context where it inverts. Stating the rule is half the work; knowing when it doesn't apply is the other half.
+
+- **"Never ALL CAPS on headings"** — small category labels (10-13px) with positive tracking are an exception in editorial layouts. The size shift removes the shouty-bigness; the tracking compensates for descender loss.
+- **"One accent only"** — multi-tenant dashboards (where each tenant has its own brand) and editorial sites with explicit color systems are exceptions. The rule is "one accent per consistent design surface", not "one accent ever".
+- **"Avoid pie charts"** — for two-segment proportional comparisons (e.g., used vs. free storage on a single device), a donut with center label is acceptable. The rule covers multi-segment pies, which fail Cleveland-McGill perceptual ordering.
+- **"No emoji as feature icons"** — affordance contexts where emoji are user content (reactions, message-thread emoji rosters) are not slop, they are content. The rule covers decorative emoji standing in for designed icons.
+- **"Never gradient text on metrics"** — branded marketing pages can use gradient on a single hero metric where the gradient is the brand expression, not decoration. Inside-the-product metrics still follow the rule.
+
+**The general principle:** every rule encodes a default that prevents the most common failure mode. When the context inverts the failure mode, the rule may invert too. The work is recognizing the inversion, not memorizing exceptions.
 
 ### Animation Decision Ladder
 
@@ -212,27 +233,46 @@ Full easing curves, spring configs, stagger rules, and interaction rules → [mo
 
 ## Reference Files
 
-Read only what's relevant.
+Tiered by signal. Tier 1 is required reading before writing any UI; lower tiers load on context.
+
+### Tier 1 — Required before writing UI
 
 | Reference | When to Read |
 |-----------|--------------|
-| [dashboard.md](references/dashboard.md) | Dashboards, metric cards, charts, tables, sidebar, filters |
-| [motion.md](references/motion.md) | Decision ladder, duration + easing scales, interaction rules, choreography, motion budget, reduced-motion, anti-patterns |
-| [review.md](references/review.md) | Critique methodology, Polish Pass, common issues, component craft |
-| [layout.md](references/layout.md) | Spacing, grids, hierarchy, composition, depth, essentials |
-| [typography.md](references/typography.md) | Scale, font choice, readability, weight, essentials |
-| [color.md](references/color.md) | Strategy, palettes, dark mode, tokens |
-| [accessibility.md](references/accessibility.md) | WCAG, keyboard, focus, forms, ARIA, checklist |
-| [performance.md](references/performance.md) | Compositor, FLIP, scroll, blur, layers, core rules |
-| [modern-css.md](references/modern-css.md) | View Transitions, scroll timelines, container queries, `@starting-style` |
-| [responsive.md](references/responsive.md) | Mobile/tablet/desktop, breakpoints, touch zones |
-| [sound.md](references/sound.md) | Web Audio, UI sound, appropriateness matrix |
-| [copy.md](references/copy.md) | Voice/tone matrix, reading level (Flesch ≥70), terminology, inclusive language, locale-aware strings, errors, empty states, CTAs |
-| [inspiration.md](references/inspiration.md) | Real SaaS patterns from dub.co, cursor.com, linear.app, vercel.com, stripe.com |
-| [stack.md](references/stack.md) | Three.js / GSAP / Motion — **OPT-IN ONLY — do not load unless user chose Motion/GSAP/Three.js in Discovery Step 2** |
-| [heuristics.md](references/heuristics.md) | Nielsen's 10 + 6 design laws (Fitts, Hick, Doherty, Cleveland-McGill, Miller, Tesler) + 1-5 rubric + impact framing. Load for `/heuristic` |
-| [personas.md](references/personas.md) | 5 persona walkthroughs (first-timer / power / low-bandwidth / screen-reader / one-thumb). Load for `/heuristic --persona=<name>` |
-| [state-design.md](references/state-design.md) | State lattice — idle / loading / empty / error / partial / conflict / offline. Load for `/unhappy` |
-| [dataviz.md](references/dataviz.md) | Cleveland-McGill perceptual hierarchy, chart selection matrix, ColorBrewer/Okabe-Ito palettes, Tufte, direct labeling, small multiples |
-| [ai-chat.md](references/ai-chat.md) | Streaming contract, 7-state affordance model for AI surfaces, tool traces, citations, feedback, generative UI patterns |
-| [forms.md](references/forms.md) | Validation timing, progressive disclosure, multi-step wizards, autosave, optimistic submit, field-specific patterns |
+| [brief.md](references/brief.md) | Durable design brief at `.ui-craft/brief.md` — read first, anchors every decision. Run `/brief` if absent. |
+| [tokens.md](references/tokens.md) | 3-layer token spine (primitive → semantic → component). Both modes intentional. Run `/tokens` to audit or establish. |
+| [inspiration.md](references/inspiration.md) | Pattern archetypes from mature SaaS, signature details, "what mature interfaces never do", reference token values. **Read first** — highest signal in the skill. |
+| [accessibility.md](references/accessibility.md) | WCAG, keyboard, focus, forms, ARIA, checklist. **Required before forms or interactive components.** |
+| [color.md](references/color.md) | Strategy, palettes, dark mode, tokens, accent budget. |
+| [layout.md](references/layout.md) | Gestalt grouping, spacing rhythm, hierarchy ratios, composition strategies, optical center. |
+
+### Tier 2 — Surface-specific (read when building this surface)
+
+| Reference | When to Read |
+|-----------|--------------|
+| [dashboard.md](references/dashboard.md) | Dashboards, metric cards, charts, tables, sidebar, filters. |
+| [forms.md](references/forms.md) | Validation timing, progressive disclosure, multi-step wizards, autosave, optimistic submit. |
+| [ai-chat.md](references/ai-chat.md) | Streaming contract, 7-state affordance model for AI surfaces, tool traces, citations, generative UI. |
+| [review.md](references/review.md) | Critique methodology, Polish Pass, common issues, component craft. Load when reviewing or refining. |
+| [finish-bar.md](references/finish-bar.md) | 10-pass finishing protocol. Load on `/finalize` or CRAFT_LEVEL ≥ 8. |
+
+### Tier 3 — Foundations (read for the relevant discipline)
+
+| Reference | When to Read |
+|-----------|--------------|
+| [typography.md](references/typography.md) | Scale, font choice, readability, weight — scoped per script and role. |
+| [motion.md](references/motion.md) | Decision ladder, duration + easing scales with perceptual grounding, interaction rules, motion-gap audit. |
+| [modern-css.md](references/modern-css.md) | View Transitions, scroll timelines, container queries, `@starting-style`. |
+| [responsive.md](references/responsive.md) | Mobile/tablet/desktop, breakpoints, touch zones. |
+| [copy.md](references/copy.md) | Voice/tone matrix, reading level (Flesch ≥70), terminology, inclusive language, errors, empty states, CTAs. |
+| [sound.md](references/sound.md) | Web Audio, UI sound, appropriateness matrix. Rare — load when explicitly building audio feedback. |
+
+### Tier 4 — Opt-in (only on explicit request or specific commands)
+
+| Reference | When to Read |
+|-----------|--------------|
+| [stack.md](references/stack.md) | Three.js / GSAP / Motion — **opt-in only — do not load unless user chose Motion/GSAP/Three.js in Discovery Step 2.** |
+| [heuristics.md](references/heuristics.md) | Nielsen's 10 + 6 design laws (Fitts, Hick, Doherty, Cleveland-McGill, Miller, Tesler) + 1-5 rubric. Load for `/heuristic`. |
+| [personas.md](references/personas.md) | 5 persona walkthroughs (first-timer / power / low-bandwidth / screen-reader / one-thumb). Load for `/heuristic --persona=<name>`. |
+| [state-design.md](references/state-design.md) | State lattice — idle / loading / empty / error / partial / conflict / offline. Load for `/unhappy`. |
+| [dataviz.md](references/dataviz.md) | Cleveland-McGill perceptual hierarchy, chart selection matrix, ColorBrewer/Okabe-Ito palettes, Tufte, direct labeling. Load when designing charts. |

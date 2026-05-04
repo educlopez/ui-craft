@@ -19,6 +19,6 @@ Harden the UI at `$ARGUMENTS` for production. Load the `ui-craft` skill.
 
 **Knob-agnostic** — correctness is not tunable. Run the full matrix regardless of CRAFT_LEVEL / MOTION_INTENSITY / VISUAL_DENSITY.
 
-**References to read**: `references/accessibility.md` (keyboard + screen reader paths), `references/copy.md` (error and empty-state voice), `references/performance.md` (loading thresholds + skeleton CLS).
+**References to read**: `references/accessibility.md` (keyboard + screen reader paths), `references/copy.md` (error and empty-state voice), `references/motion.md` Rendering Performance section (skeleton motion + reduced-motion).
 
 **Output**: a per-surface checklist marking each of the 9 items as present / missing / partial. Then edit the code to fix what's missing. Print the Review Format table showing fixes. End with a "still at risk" list for anything you couldn't safely auto-fix (requires backend, requires design decision, requires translation files).

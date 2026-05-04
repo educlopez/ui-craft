@@ -82,7 +82,7 @@ Load these from `../ui-craft/references/`:
 - `color.md` — warm palette, accent discipline
 - `copy.md` — editorial voice, headings, empty states
 
-Skip `dashboard.md`, `performance.md` (standard web perf is fine), `sound.md` unless relevant.
+Skip `dashboard.md`, `sound.md` unless relevant.
 
 ## Anti-patterns for THIS style
 

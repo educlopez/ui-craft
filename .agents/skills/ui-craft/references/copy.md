@@ -12,11 +12,11 @@ Voice, tone, reading level, terminology, inclusive language, locale handling, an
 
 Pick three axes. Lock a position on each. Deviations are deliberate (brand campaigns, April Fools), never accidental.
 
-| Axis | Endpoints | Example anchors |
-|------|-----------|-----------------|
-| Formality | Formal ↔ Casual | Stripe formal; Mailchimp casual |
-| Reverence | Reverent ↔ Irreverent | Apple reverent; Slack irreverent |
-| Expertise | Expert ↔ Beginner-friendly | Datadog expert; Duolingo beginner |
+| Axis | Endpoints | What to lock down |
+|------|-----------|-------------------|
+| Formality | Formal ↔ Casual | Pick a position; document with one sample sentence at the chosen point and one at each extreme |
+| Reverence | Reverent ↔ Irreverent | Reverent treats the user task as serious; irreverent allows wit and acknowledges absurdity. Pick one. |
+| Expertise | Expert ↔ Beginner-friendly | Expert assumes vocabulary; beginner-friendly defines on first use. Mixed within a product is acceptable when the surfaces serve different audiences. |
 
 Document the positions. "Casual-but-respectful, beginner-friendly, mildly irreverent" is a brief a writer can execute against. "Friendly" is not.
 

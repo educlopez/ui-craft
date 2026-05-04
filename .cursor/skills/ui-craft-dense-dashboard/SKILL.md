@@ -94,7 +94,7 @@ Load these from `../ui-craft/references/`:
 
 - `dashboard.md` — primary reference; metric cards, charts, sidebar, tables
 - `typography.md` — tabular-nums, mono pairing, scale
-- `performance.md` — virtualization, list perf, compositor
+- `motion.md` Rendering Performance — compositor pipeline, layer promotion, scroll-linked motion
 - `responsive.md` — tablet + laptop breakpoints, toolbar collapse
 
 Skip `inspiration.md` (landing-page focused), `sound.md`.

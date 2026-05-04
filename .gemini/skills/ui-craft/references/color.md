@@ -9,7 +9,7 @@ Strategic color application, palette building, dark mode, and design tokens.
 More color ≠ better. Strategic color beats rainbow vomit. Every color needs a purpose.
 
 ### Application UI Color Balance
-The 60-30-10 rule is for interior design and marketing sites — not application UI. Craft SaaS products (Linear, Vercel, Notion, Stripe) follow a different pattern:
+The 60-30-10 rule is for interior design and marketing sites — not application UI. Mature SaaS products follow a different pattern:
 - **90%+ neutral tones** — grays, whites, subtle warm/cool tints for surfaces and text
 - **One accent color, used sparingly** — buttons, links, focus rings, emphasis states
 - **Secondary colors only for semantic meaning** — success green, warning amber, error red

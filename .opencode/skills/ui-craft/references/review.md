@@ -4,6 +4,51 @@ Systematic methodology for reviewing interface quality — visual design, intera
 
 ---
 
+## Feedback Hierarchy
+
+Evaluate in order: Value → Ease of Use → Delight. Aesthetic feedback that arrives before Value and Ease is feedback misallocation — it tells the team to polish a thing that may not be solving the right problem, or polish a thing the user can't actually use.
+
+### 1. Value — does this solve the problem the user came for?
+
+- Confirm the surface answers the user's question (cite the brief.md success metric if available).
+- Test against the primary user (also from brief.md) — does the path from arrival to outcome exist, and is it the shortest path the design allows?
+- Findings here block all subsequent feedback. If Value fails, the visual review is not yet useful.
+- Examples of Value findings:
+  - "User cannot find the report they came to read — search is hidden in a settings menu."
+  - "The empty state is decorative but doesn't explain how to add the first item."
+  - "Primary CTA leads somewhere unexpected — clicked Save, taken to a list view, no confirmation."
+
+### 2. Ease of Use — can the user accomplish the task?
+
+- Path length: count clicks/taps from arrival to outcome. Compare against the user's expectation.
+- State coverage: every state the user encounters has explicit affordance (loading, empty, error, partial, success).
+- Friction points: where does the user need to think, type, or wait? Each friction point earns a finding.
+- Accessibility floor: if a path is unusable for a keyboard or screen-reader user, it's an Ease of Use failure (not a Delight failure — defer this in your head before promoting).
+- Cross-ref: `accessibility.md`, `state-design.md`, `forms.md`.
+
+### 3. Delight — does it feel polished?
+
+- This is the layer most reviews start with — and most reviews stay here, missing the failures above.
+- Delight findings are real and valuable, but they are **the last 20% of leverage**, not the first.
+- The full Delight pass is the Finish Bar (`references/finish-bar.md` — 10 passes).
+- Common Delight findings: hierarchy ratios off, type weights inconsistent, motion missing, microcopy generic, surface stack flat.
+
+### How to triage
+
+- Start by reading the surface against the brief (Value).
+- If Value findings exist, write them as the first section of the report. Recommend the team fix Value before considering Delight feedback. **Do not include Delight findings in a report where Value is failing — it dilutes the signal.**
+- If Value passes, evaluate Ease of Use. Same rule: surface Ease findings before Delight.
+- If Value and Ease both pass, run the Finish Bar.
+- The brief's principles can downgrade or defer findings (e.g., a brief that records "speed over completeness" defers some Ease findings about progressive disclosure).
+
+### When to skip Value-first
+
+- Pure visual review at the request of design (e.g., "review this hero animation") — the user has explicitly scoped to Delight. Honor it; note in the report header that Value was not assessed.
+- Library/component reviews where the component is generic and Value depends on consumer code. Run Ease and Delight only.
+- Brand/marketing surfaces where conversion is the metric — Value is "did the user do the conversion action?" — apply the hierarchy but the bar shifts.
+
+---
+
 ## How to Use
 
 - **`/ui-craft:critique <file>`** — UX critique, flag issues, no code changes

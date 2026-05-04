@@ -33,6 +33,13 @@ Any motion work: hover, enter/exit, modals, drawers, page transitions, scroll re
 
 ## Duration Scale
 
+Perception bands that govern every token below:
+
+- **Under 100ms** — registers as instant. Use for acknowledgment-only feedback (button press ripple, toggle snap). Anything longer in this slot feels laggy.
+- **100–250ms** — registers as a transition but doesn't slow the user. Correct for UI state changes, hover effects, and small reveals.
+- **250–400ms** — noticeable. The user expects a moment of change. Reserve for screen-level events: modal open, drawer slide, page transition.
+- **400ms+** — deliberate and slow. Productive UI has no business here. Reserve for storytelling moments (onboarding, hero animations) used at most once per session.
+
 Five tokens cover ~95% of UI. Pick from this scale; do not invent.
 
 ```css
@@ -70,16 +77,16 @@ Four tokens cover ~95% of UI easing. System defaults — framework libraries hav
 }
 ```
 
-| Token | When to use |
-|-------|-------------|
-| `--ease-out` | Default for almost everything. Entrances, hover, dropdown, modal open. |
-| `--ease-in-out` | Elements already on screen that move or morph (layout changes, repositioning). |
-| `--ease-emphasized` | One element per viewport — hero reveal, primary CTA emphasis. |
-| `--ease-soft` | Gentler alternative for general UI; Material-style products. |
+| Token | Perceptual basis | When to use |
+|-------|-----------------|-------------|
+| `--ease-out` | Decelerates to rest — matches how real objects behave under gravity. Feels natural for anything arriving. | Default for almost everything. Entrances, hover, dropdown, modal open. |
+| `--ease-in-out` | Symmetric ramp — deliberate, reads as intentional but can feel sluggish if overused. | Elements already on screen that move or morph (layout changes, repositioning). |
+| `--ease-emphasized` | Aggressive ease-out — arrives quickly and settles hard. Signals importance and speed of response. | One element per viewport — hero reveal, primary CTA emphasis. |
+| `--ease-soft` | Gentle ease-out with softer deceleration tail — less snappy, more comfortable for dense UI. | Gentler alternative for general UI; Material-style products. |
 
 **Never:**
-- `ease-in` for UI — slow start delays visual feedback. A dropdown with `ease-in` at 300ms *feels* slower than `ease-out` at the same duration.
-- `linear` except loading indicators, marquees, scroll-linked progress, hold-to-delete indicators.
+- `ease-in` for UI — acceleration without deceleration means the element speeds up as it arrives, which reads as a collision, not a landing. A dropdown with `ease-in` at 300ms *feels* slower than `ease-out` at the same duration.
+- `linear` for spatial motion — machine-like and robotic; use only for opacity-only fades, loading bars, marquees, scroll-linked progress, and continuous rotation.
 - Bespoke easings named "smooth" with `cubic-bezier(0.5, 0.5, 0.5, 0.5)` — that's a straight line.
 - Bounce / elastic easing on functional UI — reads dated and draws attention to the animation itself.
 - Different easings on entrance vs exit of the same element.
@@ -145,7 +152,7 @@ If a viewport has more than its budget, cut. Every "let's add one more" compound
 
 > **Pick spring OR tween globally, not per-component.** Mixing in the same app reads as inconsistent. Document the choice in the project's design doc.
 
-Springs feel natural because they simulate real physics — no fixed duration, they settle based on physical parameters.
+Springs feel natural because they simulate real physics — no fixed duration, they settle based on physical parameters. Stiffness controls resistance to displacement: high stiffness means the spring snaps back hard and fast. Damping controls resistance to velocity: low damping lets the element overshoot and oscillate; high damping absorbs the energy and settles immediately. The practical result: high stiffness + high damping = quick, settled, confident. High stiffness + low damping = bouncy and playful. Low stiffness + high damping = slow and heavy. Never tune by feel alone — fix a target feel, then dial parameters to match it.
 
 **Use springs when:**
 - Drag interactions with momentum
@@ -169,19 +176,19 @@ Springs feel natural because they simulate real physics — no fixed duration, t
 ```
 
 **Spring rules:**
-- Keep bounce subtle (0.1-0.3) when used; avoid in most functional UI.
+- Bounce in functional UI is an anti-pattern. The only acceptable use is single-element micro-feedback (heart toggle, badge appearance) where bounce amplitude stays at 0.1-0.3 of base.
 - Balanced parameters: `stiffness: 500, damping: 30` settles quickly; `stiffness: 1000, damping: 5` is too bouncy.
 - Drag release: `{ type: "spring", velocity: info.velocity.x }` preserves input energy.
 - Springs have no fixed duration → constrain via `bounce ≤ 0.25` and `visualDuration`.
 
 **Spring presets:**
 
-| Use case | Config |
-|----------|--------|
-| Cards / containers (smooth settle) | `stiffness: 300, damping: 30` |
-| Pop-ins / badges (snappy) | `stiffness: 500, damping: 25` |
-| Slides / entrances (balanced) | `stiffness: 350, damping: 28` |
-| Drag release | `stiffness: 500, damping: 30` + velocity |
+| Use case | Config | Feel |
+|----------|--------|------|
+| Cards / containers | `stiffness: 300, damping: 30` | Smooth settle — no overshoot, reads as composed |
+| Pop-ins / badges | `stiffness: 500, damping: 25` | Snappy with a very slight bounce — draws the eye without distracting |
+| Slides / entrances | `stiffness: 350, damping: 28` | Balanced — lands confidently, slight energy without playfulness |
+| Drag release | `stiffness: 500, damping: 30` + velocity | Fast return that preserves the momentum the user imparted |
 
 ---
 
@@ -210,6 +217,89 @@ Test: macOS → System Preferences → Accessibility → Display → "Reduce mot
 
 ---
 
+## Rendering Performance
+
+### Pipeline
+
+```
+Layout (expensive) → Paint (moderate) → Composite (cheap)
+```
+
+- **Composite only** (`transform`, `opacity`) — GPU-accelerated, off main thread. Default choice.
+- **Paint** (`color`, `borders`, `gradients`, `filters`) — repaints the layer, moderate cost.
+- **Layout** (`width`, `height`, `margin`, `padding`, `flex`, `grid`) — forces full reflow. Never animate continuously.
+
+Prefer CSS transitions/animations → WAAPI → JS libraries, in that order. Some JS libraries use shorthand props (`x`, `y`, `scale`) that run on the main thread via `requestAnimationFrame` — verify compositor promotion. When in doubt, use explicit `transform` strings.
+
+```js
+// May drop frames (shorthand — main thread)
+animate({ x: 100 })
+// Hardware-accelerated (explicit)
+animate({ transform: "translateX(100px)" })
+```
+
+### FLIP Pattern
+
+Measure once, animate via transform — never animate layout properties directly:
+
+```js
+const first = el.getBoundingClientRect();       // 1. First: measure
+el.classList.add('moved');
+const last = el.getBoundingClientRect();         // 2. Last: apply final state
+el.style.transform = `translateX(${first.left - last.left}px)`; // 3. Invert
+requestAnimationFrame(() => {                    // 4. Play
+  el.style.transition = 'transform 0.3s';
+  el.style.transform = '';
+});
+```
+
+### Scroll-Linked Motion
+
+Prefer CSS Scroll Timelines — runs off main thread:
+
+```css
+.reveal {
+  animation: fade-in linear;
+  animation-timeline: view();
+}
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+```
+
+Prefer `IntersectionObserver` for visibility triggers. Never poll `scrollY` or use `scroll` event listeners for continuous animation — causes layout/paint on every frame.
+
+### Layers & Promotion
+
+`will-change` is surgical and temporary — add it before the animation starts, remove it after:
+
+```css
+.animating { will-change: transform; }
+.done      { will-change: auto; }
+```
+
+Avoid many or large promoted layers — each consumes GPU memory. Validate with DevTools Layers panel when performance matters.
+
+### Blur & Filters
+
+Keep blur ≤ 8px when animating (≤ 20px static). Never on large surfaces — extremely expensive, especially Safari. `backdrop-filter` is costly; never animate it. Reach for `opacity` + `translate` before blur.
+
+### CSS Variables Gotcha
+
+Changing a CSS variable on a parent recalculates all children. Update `transform` directly on the element:
+
+```js
+// Bad: triggers recalc on all children
+element.style.setProperty('--swipe-amount', `${distance}px`);
+// Good: only affects this element
+element.style.transform = `translateY(${distance}px)`;
+```
+
+Never animate inherited CSS variables. Scope animated variables locally.
+
+---
+
 ## Anti-Patterns
 
 - [ ] Bespoke durations (`transition-[153ms]`, `duration: 0.23`). Pick a token.
@@ -224,6 +314,29 @@ Test: macOS → System Preferences → Accessibility → Display → "Reduce mot
 - [ ] Different easings on entrance vs exit of the same element. Asymmetry feels broken.
 - [ ] Exaggerated scale on hover (`1.08+` on CTAs). Keep ≤ 1.02 for functional UI; 1.02-1.05 for cards.
 - [ ] Animating `width` / `height` / `top` / `left` — layout thrash. Use `transform` / `opacity`.
+
+---
+
+## Motion Gap Audit
+
+The most common motion failure is not bad easing — it is missing motion entirely: UI state changes that snap with no transition, modals that appear at full opacity in one frame, lists that teleport items in on mount.
+
+**Audit pattern.** Search the codebase for conditional renders without enter/exit, modal mounts without entry, and list items appearing without stagger. These are the sites most likely to have a motion gap.
+
+Grep patterns for React:
+
+```bash
+# Conditional renders — element may appear/disappear with no transition
+grep -rn '&&\s*(<' src/
+
+# Modals / dialogs — check whether AnimatePresence or CSSTransition wraps the mount
+grep -rn 'useState.*open\|isOpen.*useState' src/
+
+# Lists — check whether items have stagger or enter animation
+grep -rn '\.map(' src/ | grep -v 'test\|spec\|story'
+```
+
+Not every state change deserves motion. The audit surfaces candidates; the **Decision Ladder** (frequency × justification) filters them. A settings panel that opens 50 times a day should snap — that gap is intentional. A first-run modal that appears once deserves an entrance. Apply the ladder before adding motion to every hit.
 
 ---
 
@@ -270,7 +383,6 @@ Map the project's animation library to the token names, not raw values — when 
 
 - `stack.md` — Motion / GSAP / Three.js library specifics (opt-in during Discovery).
 - `modern-css.md` — `@starting-style` for enter-on-mount, View Transitions API.
-- `performance.md` — compositor / GPU gotchas, `will-change` lifecycle, shorthand props.
 - `accessibility.md` — reduced-motion + full interaction rules (keyboard, focus, touch).
 - `../examples/animation-storyboard.md` — multi-stage sequenced animations pattern.
 

@@ -9,6 +9,24 @@ description: "Technical UI audit — a11y, performance, responsive. Produces a p
 
 Run a technical audit of the UI at the target the user described. Load the `ui-craft` skill and apply the audit lens.
 
+## Step 0: Visual capture (mandatory)
+
+Code-only review is insufficient. Every audit/critique starts with the surface as the user sees it. Try the following in order; use the first one available:
+
+1. **Playwright MCP** — if `playwright` MCP server is available, use it. Capture full-page screenshots at three viewports: desktop (1280×800), tablet (768×1024), mobile (375×812). Capture dark mode if the app supports it.
+2. **Browser DevTools / Chrome MCP** — second choice; same viewport set.
+3. **Other browser automation** (`agent-browser`, `cursor-ide-browser`) — third choice.
+4. **Ask the user** — last resort. If no automation is available, request screenshots from the user before proceeding. Be specific:
+   - "Visual review needs screenshots. Please provide:
+     - Full-page at 1280px (desktop)
+     - Full-page at 768px (tablet)
+     - Full-page at 375px (mobile)
+     - Dark mode of each, if supported."
+
+Do not begin the review until visuals are captured or provided. State this explicitly to the user when no automation succeeds — don't silently fall back to code-only review.
+
+If the user declines to provide screenshots, run a code-only pass and clearly mark the report `[CODE-ONLY REVIEW — visual issues not assessed]` at the top so the limitation is explicit.
+
 **Note:** audit is knob-agnostic — accessibility and performance are not tunable.
 
 **Scope (non-negotiable checks):**
@@ -20,7 +38,7 @@ Run a technical audit of the UI at the target the user described. Load the `ui-c
    - Color not the only signal for state
    - Form labels, error association, required indication
    - `prefers-reduced-motion` honored for all animations
-2. **Performance** — read `references/performance.md`:
+2. **Performance** — read `references/motion.md` Rendering Performance section:
    - Only `transform` / `opacity` animated (no `width`/`top`/`height`)
    - No `transition: all`
    - `will-change` scoped to active interaction, removed after

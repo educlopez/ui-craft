@@ -6,7 +6,7 @@ Type scale, font selection, readability, and weight systems.
 
 ## Essentials
 
-Always apply these:
+Apply these in all standard Latin-script web UI unless a specific context overrides:
 
 - **`text-wrap: balance`** for headings; **`text-wrap: pretty`** for body
 - **`font-variant-numeric: tabular-nums`** for data/numbers
@@ -14,7 +14,7 @@ Always apply these:
 - **Smart punctuation**: curly quotes (`&ldquo;` `&rdquo;`), apostrophes (`&rsquo;`), ellipsis (`&hellip;`), em-dash (`&mdash;`)
 - **Non-breaking spaces**: `10&nbsp;MB`, `⌘&nbsp;K`, brand names, `$&nbsp;79/month`
 
-**Font recommendations** — pick one family for body, optionally a second for display. Don't mix more than two.
+**Font recommendations** — pick one family for body, optionally a second for display. In a single product surface, don't mix more than two typefaces; editorial layouts intentionally mix three or more for hierarchy.
 
 | Category | Safe choices |
 |----------|-------------|
@@ -49,8 +49,9 @@ For impact, use 3-5x size jumps, not 1.5x. Pair weight 900 with 200, not 600 wit
 ## Font Selection
 
 ### Principles
-- **Display fonts** for headlines — distinctive, personality-rich
-- **Body fonts** for text — readable, neutral, well-hinted
+- **Display fonts** for headlines — distinctive, personality-rich. A font excellent for display (high contrast, tight spacing) is wrong for body text at 16px.
+- **Body fonts** for running text — readable, neutral, well-hinted at small sizes. A workhorse body font (Charter, IBM Plex Sans) often looks bland at hero scale — that's fine, just don't ask it to do both jobs.
+- **UI fonts** for labels and dense interfaces — optimized x-height, open apertures. Inter and Geist are UI fonts first; using them at 48px display is fine, but don't expect typographic personality.
 - **Monospace** as intentional accent — not as lazy "dev tool" default
 - **Variable fonts** for flexibility — one file, many weights
 - **Subset fonts** — ship only code points/scripts you use
@@ -69,27 +70,38 @@ For impact, use 3-5x size jumps, not 1.5x. Pair weight 900 with 200, not 600 wit
 ```
 
 ### Letter-Spacing by Size
-- **Display text (24px+)**: tighten to `-0.02em` to `-0.04em` — large text has too much built-in spacing
-- **Body text (14-18px)**: leave `letter-spacing` alone — the font designer optimized it
-- **Small text/labels (11-13px)**: slight positive tracking `+0.01em` to `+0.02em` for readability
-- **ALL CAPS labels**: needs `+0.05em` to `+0.1em` tracking to be readable
+
+These rules apply to **Latin script, sans-serif and display faces** unless stated otherwise. Do not adjust tracking on CJK, Arabic, Devanagari, or other non-Latin scripts unless you deeply understand their typographic conventions — the font's built-in metrics handle it. Serif faces are designed with tracking already optimized across sizes; tightening them at display sizes damages their rhythm.
+
+- **Display (≥24px), sans-serif Latin**: tighten to `-0.02em` to `-0.04em` — large sizes optically appear loose at default tracking. `tracking-tight` in Tailwind.
+  > **When it breaks:** serif faces (Playfair, Freight, Garamond) — leave at default. The built-in sidebearings were set for the size.
+- **Body text (14-18px)**: leave `letter-spacing` alone — the font designer optimized it. This holds for all scripts and classifications.
+- **Small text/labels (11-13px), Latin**: slight positive tracking `+0.01em` to `+0.02em` improves readability at tight optical sizes. `tracking-wide` in Tailwind.
+  > **When it breaks:** CJK labels — already have generous inter-glyph spacing; adding more creates uneven color.
+- **ALL CAPS labels, Latin**: `+0.05em` to `+0.1em` — all-caps removes descender space and needs tracking to stay readable. `tracking-widest` in Tailwind.
+  > **When it breaks:** Not a universal Never. ALL CAPS is acceptable for small category labels (10-13px), regulatory text, and utilitarian aesthetics — just always add tracking when you do it.
 
 ### Never
-- Use system fonts when personality matters
-- Mix more than 2-3 font families
+- Use system fonts when personality matters — system stacks are fine for utilitarian UI but they signal "no design intent" in brand-facing contexts
+- Mix more than 2-3 typefaces **in a single product surface** — editorial layouts (magazines, marketing pages) intentionally exceed this for typographic hierarchy
 
 ---
 
 ## Readability
 
 ### Line Length
-- **Body text**: 45-75 characters per line (ideal: 66)
-- **Use `max-width: 65ch`** on text containers
+- **Prose body text**: 45-75 characters per line (ideal: 66). Use `max-width: 65ch` on text containers.
+  > **When it breaks:** UI labels, buttons, table cells, and dense data layouts tolerate much shorter or longer lines. The 65ch rule is for continuous reading, not UI components.
 
 ### Line Height
-- **Body text**: 1.5-1.7
-- **Headlines**: 1.1-1.3
-- **Dense UI (tables, labels)**: 1.2-1.4
+
+Line height is script- and x-height-dependent — no single value works universally.
+
+- **Body text (14-18px), Latin**: 1.5 to 1.65. Tall x-height fonts (Inter, Geist) tolerate the lower end; short x-height faces (Garamond, Freight) may need slightly tighter — test visually.
+- **Display headlines (≥24px)**: 1.05 to 1.2. Headlines need to feel tight; a 1.5 line-height on a 48px heading looks airy and unintentional.
+- **UI labels and dense interfaces**: 1.3 to 1.4. Enough air to avoid collision, not so much that the interface feels sparse.
+- **CJK scripts**: 1.7 to 1.85 — CJK glyphs have different vertical metrics and need more inter-line clearance than Latin at the same size.
+  > **When it breaks:** Applying 1.5 body line-height to display text; applying CJK ratios to Latin body text (creates too much vertical space).
 
 ### Text Wrapping
 ```css
@@ -112,7 +124,7 @@ p, li, dd      { text-wrap: pretty; }
 .data-table { font-family: var(--font-mono, monospace); }
 ```
 
-- **Always `tabular-nums`** for number comparisons (tables, prices, stats)
+- **`tabular-nums`** for any numbers that align vertically in columns (tables, prices, stats) — this is a near-universal rule for data UI; the exception is decorative numerals in display headings where proportional figures look better
 - **Truncate dense UI**: `truncate` or `line-clamp-*`
 - **Flex children need `min-w-0`** to allow truncation
 
