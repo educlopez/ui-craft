@@ -48,7 +48,7 @@ The rules that make the biggest difference between "AI-generated" and "designed 
 |--------|------------------|
 | Pre-build: write the project's design brief | Run `/brief` → see [brief.md](references/brief.md) |
 | Pre-build: establish or audit token spine | Run `/tokens` → see [tokens.md](references/tokens.md) |
-| Build a complete surface end-to-end ("build me a dashboard") | Run `/craft <surface>` → outcome recipe: [recipe-dashboard.md](references/recipe-dashboard.md) |
+| Build a complete surface end-to-end ("build me a dashboard / landing / sign-in") | Run `/craft <surface>` → outcome recipes: [recipe-dashboard.md](references/recipe-dashboard.md), [recipe-landing.md](references/recipe-landing.md), [recipe-auth.md](references/recipe-auth.md) |
 | Pick a ready-made theme (no token system exists) | [themes.md](references/themes.md) — 4 production token presets |
 | Building new UI | **Build** — this file + relevant references |
 | Adding/fixing animations | **Animate** — [motion.md](references/motion.md) |
@@ -260,6 +260,8 @@ Tiered by signal. Tier 1 is required reading before writing any UI; lower tiers 
 | Reference | When to Read |
 |-----------|--------------|
 | [recipe-dashboard.md](references/recipe-dashboard.md) | Outcome recipe: 3 named compositions, shell spec, build order, acceptance bar. Load on `/craft dashboard` or any "build me a dashboard" request. |
+| [recipe-landing.md](references/recipe-landing.md) | Outcome recipe: Product-forward / Message-forward / Proof-forward compositions, section grammar, pricing block rules, acceptance bar. Load on `/craft landing` or any "build me a landing" request. |
+| [recipe-auth.md](references/recipe-auth.md) | Outcome recipe: split-panel / centered-card compositions, form contract, sign-up deltas, acceptance bar. Load on `/craft auth` or any sign-in/sign-up build. |
 | [themes.md](references/themes.md) | 4 named production token presets (Graphite, Porcelain, Carbon, Signal). Load when no token system exists. |
 | [dashboard.md](references/dashboard.md) | Dashboards, metric cards, charts, tables, sidebar, filters. |
 | [forms.md](references/forms.md) | Validation timing, progressive disclosure, multi-step wizards, autosave, optimistic submit. |

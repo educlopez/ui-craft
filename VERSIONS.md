@@ -1,5 +1,15 @@
 # Versions
 
+## v0.21.0 (2026-06-11) — recipes: landing + auth
+
+Extends the v0.20 outcome layer to the two highest-visibility surfaces after dashboards. Both recipes were validated by building real screenshots with them first (the repo's refreshed hero-with and signin-with marketing assets are their output).
+
+**New:**
+
+- `references/recipe-landing.md` — 27th reference. Three compositions selected by what exists to show: **Product-forward** (text left F-pattern, real product shot cropped at fold + right edge as scroll tease, floating proof card), **Message-forward** (centered Z-pattern with deliberately asymmetric proof — for pre-launch with no product to show), **Proof-forward** (compact hero, evidence-led, for sales-led B2B). Section grammar with one-question-per-section ordering, pricing-block rules (recommended-plan highlight without burying siblings, sticky compare headers, % discounts under $100 / absolute above, genuine-scarcity-only), CTA three-level hierarchy, dual-benefit headline guidance, 10-item acceptance bar.
+- `references/recipe-auth.md` — 28th reference. Two compositions (split-panel with tinted-neutral brand panel / centered card for utility apps), strict form contract (360-400px column, SSO ordering by usage, lowercase divider, no asterisks, inline Forgot-password, enabled submit validating on press, security-aware error copy), sign-up deltas (minimum fields, next-step disclosure), 8-item acceptance bar. Names the full-bleed saturated brand panel as the #1 AI tell on auth screens.
+- SKILL.md routing + Tier 2 updated; `/craft` now routes `dashboard`, `landing`, `auth`.
+
 ## v0.20.0 (2026-06-11) — outcome layer: recipes, themes, /craft
 
 Strategic shift from rules-first to outcome-first: "build me a dashboard" must produce shippable, designer-grade output by default. Competitive research (v0/Lovable/Bolt system prompts, skills-market scan) located the unowned territory: surface-level outcome recipes, ready-to-ship theme presets, and stack-agnostic composition intelligence inside the user's own codebase. Brand abstraction constraint reaffirmed — recipes describe patterns with exact values, never by product name.

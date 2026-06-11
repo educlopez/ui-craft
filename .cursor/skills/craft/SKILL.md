@@ -9,7 +9,7 @@ description: "One-shot build pipeline for a complete surface from an outcome rec
 
 Load the `ui-craft` skill. This command BUILDS — it ends with working code that passes the recipe's acceptance bar.
 
-Recipes available: `dashboard` → `references/recipe-dashboard.md`. If the target the user described names a surface with no recipe yet (landing, settings, auth), say so and fall back to standard Build mode with the closest references — do not improvise a fake recipe.
+Recipes available: `dashboard` → `references/recipe-dashboard.md` · `landing` → `references/recipe-landing.md` · `auth` (sign-in/sign-up) → `references/recipe-auth.md`. If the target the user described names a surface with no recipe yet (settings, docs, e-commerce), say so and fall back to standard Build mode with the closest references — do not improvise a fake recipe.
 
 ---
 
