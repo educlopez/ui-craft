@@ -1,10 +1,20 @@
 # UI Craft
 
-A design engineering skill for AI coding agents. Teaches your agent to build interfaces with real design taste — not gradient cards and bounce animations.
+**Ship designer-grade UI by default.** A design engineering skill for AI coding agents — ask for a dashboard, get one you'd put in production. Not gradient cards and bounce animations.
 
 **Website:** [skills.smoothui.dev](https://skills.smoothui.dev)
 
 ![UI Craft](assets/og.png)
+
+## Ask for a surface. Ship it.
+
+```
+/craft dashboard
+```
+
+Three questions (or none — the defaults are strong), a named composition, a production theme preset, and a build that must pass a **10-item acceptance bar** before it reports done: *"would a designer retouch this?"* If a box fails, it isn't done.
+
+For everything else — reviews, animations, forms, polish — the skill routes by intent: just describe what you're building.
 
 ## What it does
 
