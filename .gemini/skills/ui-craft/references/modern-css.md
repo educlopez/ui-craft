@@ -292,7 +292,7 @@ Native `<dialog>` and `[popover]` enforce correct semantics and ARIA roles autom
 
 ## `interpolate-size: allow-keywords`
 
-Browsers historically refused to animate to intrinsic sizes (`height: auto`, `width: max-content`) because the value isn't known until layout. `interpolate-size: allow-keywords` opts in to browser-side interpolation of these values, enabling accordion and disclosure patterns without JS measurement. Chrome 129+ as of early 2026; progressive enhancement everywhere else.
+Browsers historically refused to animate to intrinsic sizes (`height: auto`, `width: max-content`) because the value isn't known until layout. `interpolate-size: allow-keywords` opts in to browser-side interpolation of these values, enabling accordion and disclosure patterns without JS measurement. Baseline 2025 — supported in all current major browsers; keep the JS fallback only if you support older releases.
 
 ```css
 :root {
@@ -404,7 +404,7 @@ Beyond the basic size query. Use for component-level responsiveness where viewpo
 }
 ```
 
-Style queries read custom properties from the container (behind a flag in some browsers as of early 2026; Chrome ships it).
+Style queries read custom properties from the container (custom-property style queries are Baseline 2025 — supported in all current major browsers).
 
 ### Named containers for predictable scoping
 ```css

@@ -252,7 +252,7 @@ Source: Miller, G. A. (1956). "The Magical Number Seven, Plus or Minus Two."
 **When load-bearing:** Nav depth, form section counts, onboarding flows, step counts.
 
 **How to score:**
-- **PASS** — navigation ≤ 7 items per level; forms chunked into ≤ 5 sections; multi-step flows ≤ 5 steps or with clear progress
+- **PASS** — navigation ≤ 7 items per level; forms chunked into ≤ 5 sections; multi-step flows ≤ 5 steps or with clear progress. (Wizard ceiling is 5, not 7: each step holds multiple fields, and each field consumes working-memory slots of its own.)
 - **FAIL** — 14-item top nav; a single-page form with 23 ungrouped fields; a checkout with 9 steps and no progress indicator
 
 ### Tesler's Law

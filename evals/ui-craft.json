@@ -78,5 +78,29 @@
   {
     "query": "convert this bash script to zsh. keeps hitting compat issues with globbing (shopt -s nullglob doesn't work) and array subscripts on my mac",
     "should_trigger": false
+  },
+  {
+    "query": "build me an analytics dashboard for our b2b saas. i don't know anything about design — just make it look professional and ready to ship without me touching it",
+    "should_trigger": true
+  },
+  {
+    "query": "hazme un dashboard de métricas para la app. que quede muy bien de serie, que no se note que lo hizo una IA",
+    "should_trigger": true
+  },
+  {
+    "query": "my app has no design system or tokens at all. pick a theme that looks intentional and then build the admin dashboard with it. react + tailwind",
+    "should_trigger": true
+  },
+  {
+    "query": "this dashboard is 8 identical KPI cards in a grid, colored top borders, green/red trend arrows, and a pie chart. make it look actually designed. src/app/overview/page.tsx",
+    "should_trigger": true
+  },
+  {
+    "query": "the dashboard metrics API endpoint is timing out — add a postgres index on events(created_at) and cache the aggregation. no frontend changes",
+    "should_trigger": false
+  },
+  {
+    "query": "add a /api/export route that dumps the dashboard data to CSV. backend only, the UI button already exists",
+    "should_trigger": false
   }
 ]

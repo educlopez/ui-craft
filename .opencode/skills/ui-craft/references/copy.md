@@ -49,6 +49,8 @@ Target ~8th-grade reading level (Flesch-Kincaid ~70+, grade ~8). Rules of thumb:
 - Concrete nouns over abstractions ("invoice" beats "billing artifact").
 - Active voice ("You signed in" beats "Sign-in was completed").
 - One idea per sentence.
+- **Front-load.** The key word or fact opens the sentence, heading, and notification — readers and screen-reader users decide whether to continue from the first words. Inverted pyramid for blocks: conclusion → support → background.
+- **Abbreviations are a tax.** Spell terms out; if an acronym must repeat, define it on first use ("estimated arrival (ETA)") and stay consistent after.
 
 **Example rewrite:**
 
@@ -70,7 +72,7 @@ Every product needs a glossary. Same concept → same word, everywhere.
 - `user` / `member` / `account` / `seat` — pick one per concept and stick.
 - `project` / `workspace` / `board` — pick one per level of hierarchy.
 - `delete` / `remove` / `archive` / `trash` — these mean different things; don't alias.
-- `sign in` / `log in` — pick one (Apple uses `sign in`, Google uses `log in`; either is fine, mixing is not).
+- `sign in` / `log in` — both are standard; pick one and never mix.
 - `save` / `publish` / `update` — same action under three names in three surfaces is a finding.
 
 **Red flag:** in a review, grep the codebase for every verb on every button. If `Save` / `Update` / `Apply` appear on forms that do the same thing, file it.
@@ -139,6 +141,14 @@ Rules agents routinely ignore. Every one is shippable to production the day the 
 - **Action reveals consequence.** "Send invite" tells the user exactly what happens. "Submit form" does not.
 - **One primary per view section** — solid for primary, outline/ghost for secondary.
 - **Disabled states explain why** — not just grayed out, never rely on color alone.
+
+---
+
+## Numbers & Control Labels
+
+- Numerals, never spelled out: "245", not "two hundred forty-five" — numerals have distinct shapes and scan faster. Group thousands ("12,400"); huge numbers go hybrid ("1 billion", "2.4M") so nobody counts zeros.
+- Form labels drop possessives: "Email", not "My email" or "Your email" — the possessive adds a word and an ambiguity (whose?).
+- Button labels are verb + noun ("Save post", "Delete message"): readable out of context, which is exactly how screen-reader users jumping between controls hear them.
 
 ---
 

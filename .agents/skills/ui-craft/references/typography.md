@@ -26,7 +26,7 @@ Apply these in all standard Latin-script web UI unless a specific context overri
 
 ## Type Hierarchy
 
-Create a clear scale from most important to least. Count distinct sizes/weights — too many creates noise, too few loses hierarchy.
+Create a clear scale from most important to least. Count distinct sizes/weights — too many creates noise, too few loses hierarchy. Two weights (regular + one of semibold/bold) cover most products; every added weight is another hierarchy level readers must decode. For long-form reading (articles, docs) the body floor is 18px — 14-16px serves UI labels and controls, not sustained reading.
 
 ### Scale (Recommended)
 ```css
@@ -43,6 +43,8 @@ Create a clear scale from most important to least. Count distinct sizes/weights 
 
 ### Dramatic Scale (Bold Design)
 For impact, use 3-5x size jumps, not 1.5x. Pair weight 900 with 200, not 600 with 400.
+
+Match scale ratio to product type: dense apps want small ratios (1.125-1.2 — many usable levels in limited space); marketing and editorial want large ones (1.333-1.618 — drama). One scale can't serve both surfaces well.
 
 ---
 

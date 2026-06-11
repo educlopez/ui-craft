@@ -8,7 +8,7 @@ A design engineering skill for AI coding agents. Teaches your agent to build int
 
 ## What it does
 
-UI Craft gives AI coding agents the design knowledge they're missing. Not templates. Not component libraries. Actual craft knowledge — 23 domain references of opinionated rules about how interfaces should look, move, and feel, plus 18 slash commands to run focused passes on existing code. Stack-agnostic by design.
+UI Craft gives AI coding agents the design knowledge they're missing. Not templates. Not component libraries. Actual craft knowledge — 26 domain references of opinionated rules about how interfaces should look, move, and feel, plus 19 slash commands to run focused passes on existing code. Stack-agnostic by design.
 
 Every UI gets tested against a single question: *"Would someone believe AI made this?"* If yes, it starts over.
 
@@ -37,7 +37,7 @@ npx skills add educlopez/ui-craft
 
 Works with **Claude Code, Codex, Cursor, Gemini, OpenCode, Windsurf**, and any agent that supports the [Agent Skills](https://skills.sh) spec.
 
-Each agent gets a pre-built mirror under a dedicated folder (`.codex/`, `.cursor/`, `.gemini/`, `.opencode/`, `.agents/`). The main `ui-craft` skill lands as a peer skill; each of the 18 slash commands is materialized as its own sub-skill in non-Claude harnesses (since only Claude Code understands slash commands — other agents see them as skills triggered by intent like "audit my UI", "polish this page").
+Each agent gets a pre-built mirror under a dedicated folder (`.codex/`, `.cursor/`, `.gemini/`, `.opencode/`, `.agents/`). The main `ui-craft` skill lands as a peer skill; each of the 19 slash commands is materialized as its own sub-skill in non-Claude harnesses (since only Claude Code understands slash commands — other agents see them as skills triggered by intent like "audit my UI", "polish this page").
 
 **Full reference docs:** [skills.smoothui.dev/docs](https://skills.smoothui.dev/docs).
 
@@ -87,7 +87,7 @@ For playful and brutalist aesthetics (Clay / Gumroad / Duolingo / Arc-playful, N
 
 ## Slash commands
 
-Eighteen focused passes, each applying a single lens from the skill.
+Nineteen focused passes, each applying a single lens from the skill.
 
 **Decision spine & finalize:**
 
@@ -112,6 +112,7 @@ Eighteen focused passes, each applying a single lens from the skill.
 
 | Command | Does |
 |---------|------|
+| `/ui-craft:craft` | **One-shot surface build.** Outcome recipe pipeline — 3 inputs (or silent defaults) → named composition → theme preset → build order → acceptance bar. Currently: `dashboard`. |
 | `/ui-craft:shape` | **Wireframe-first.** ASCII layout + content inventory + state list + open questions before any JSX. Run when starting a new screen. |
 | `/ui-craft:animate` | Add / fix motion. Honors `MOTION_INTENSITY` + chosen stack. |
 | `/ui-craft:adapt` | Responsive pass — mobile, tablet, desktop, touch, safe areas. |
@@ -138,10 +139,12 @@ The skill detects your intent and routes automatically.
 | **Review** | "Review this component" | Audits for generic AI patterns, accessibility gaps, and missed details |
 | **Polish** | "Polish this dashboard" | Finds the twenty small things that turn "done" into "crafted" |
 
-## 23 domain references
+## 26 domain references
 
 | Domain | Covers |
 |--------|--------|
+| Dashboard recipe | Outcome blueprint: 3 named compositions (Overview / Command / Analytics), exact shell spec, build order, shippable acceptance bar. Run via `/craft dashboard` |
+| Theme presets | 4 named production token stacks (Graphite, Porcelain, Carbon, Signal) — full OKLCH color, type, radius, shadow, motion; light + dark both intentional |
 | Motion | Decision ladder, duration + easing token scales, interaction rules, choreography, motion budget, reduced-motion contract. Rendering performance (compositor, FLIP, scroll timelines, will-change lifecycle) |
 | Layout | Spacing systems, optical alignment, layered shadows, visual hierarchy |
 | Typography | `text-wrap: balance`, tabular-nums, font scale, curly quotes |
@@ -214,7 +217,7 @@ ui-craft/
 ├── skills/
 │   ├── ui-craft/                 # Main skill
 │   │   ├── SKILL.md              # Slim entry — knobs, discovery, anti-slop, routing
-│   │   └── references/           # 20 domain references (accessibility, motion, layout,
+│   │   └── references/           # 26 domain references (accessibility, motion, layout,
 │   │                             #   typography, color, modern-css, responsive,
 │   │                             #   sound, copy, review, dashboard, inspiration, stack,
 │   │                             #   heuristics, personas, state-design, dataviz,
@@ -223,7 +226,7 @@ ui-craft/
 │   ├── ui-craft-minimal/          # Variant — Linear/Notion aesthetic
 │   ├── ui-craft-editorial/        # Variant — Medium/Substack aesthetic
 │   └── ui-craft-dense-dashboard/  # Variant — Bloomberg/Retool aesthetic
-├── commands/                      # 18 Claude Code slash commands (source of truth)
+├── commands/                      # 19 Claude Code slash commands (source of truth)
 ├── examples/
 │   ├── animation-storyboard.md   # Multi-stage animation pattern template
 │   └── presets/

@@ -133,6 +133,7 @@ if (existsSync(commandsDir)) {
     check(`commands/${file} frontmatter parses`, fm !== null)
     if (fm) {
       check(`commands/${file} has description`, Boolean(fm.description))
+      check(`commands/${file} has argument-hint`, Boolean(fm["argument-hint"]))
     }
   }
 }

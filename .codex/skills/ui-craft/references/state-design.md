@@ -176,3 +176,11 @@ Before any interactive surface ships, every item on this list is designed (not n
 | 8+ | all of the above plus partial, conflict, offline |
 
 Missing a required state is a finding. Fix before declaring the happy path "done."
+
+---
+
+## Cross-Refs
+
+- `heuristics.md` — visibility of system status (Nielsen #1) is the principle behind the loading/partial states; use it to argue severity.
+- `forms.md` — validation timing and error-state placement for form surfaces.
+- `recipe-dashboard.md` — states are a build step (step 6), not polish; skeletons mirror final layout geometry.

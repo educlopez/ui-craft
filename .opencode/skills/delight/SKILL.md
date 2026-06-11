@@ -1,6 +1,6 @@
 ---
 name: delight
-description: "Add purposeful moments of joy — micro-interactions, not decorative animation. Invoke when the user asks for delight on their UI, or mentions 'delight' alongside design / UI / frontend work."
+description: "Delight pass — adds one or two memorable micro-interactions (copy specificity, hover choreography, state transitions, one signature detail) without decoration or confetti. Use when the UI works but feels generic, or when the user says "make it feel special" / "add some personality". Invoke when the user asks for delight on their UI, or mentions 'delight' alongside design / UI / frontend work."
 ---
 
 <!-- AUTO-GENERATED. Do not edit here. Source: skills/ui-craft/ + commands/*.md. Regenerate with `node scripts/sync-harnesses.mjs`. -->

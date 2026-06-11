@@ -95,6 +95,10 @@ Using all four at once creates noise. Mature interfaces use one or two.
 
 ---
 
+### Serial Position Effect
+
+First and last items in a sequence are remembered best (primacy + recency). Put the critical item first or last in nav lists, onboarding steps, and feature rows — never buried mid-sequence. Mid-list is where options go to be forgotten.
+
 ## Composition Strategies
 
 ### Symmetry vs. Asymmetry
@@ -121,6 +125,14 @@ This matters most for:
 ### Rule of Thirds (use only with hero imagery)
 
 The rule of thirds creates dynamic tension by placing subjects at grid intersections rather than center. In interfaces without strong photographic content it adds complexity without benefit. Reserve it for editorial layouts and landing pages with full-bleed images.
+
+---
+
+## Alignment Discipline
+
+- **Max 1-2 alignment types per section.** Every additional alignment axis is another anchor the eye must re-find; mixed left/center/right in one view reads as unplanned.
+- **Mixed text sizes on one line align to the shared baseline**, not to vertical centers — center-aligning a 24px number next to a 13px label makes the label float.
+- **Truncate the middle, not the end**, when items share long prefixes ("Quarterly report — … — Q3 2026"): the differentiating ends are what users scan for.
 
 ---
 

@@ -1,5 +1,5 @@
 ---
-description: Audit and fill in the UX that works when things go wrong — the stuff AI skips.
+description: Production-readiness pass — audits and implements the full non-happy-path matrix: loading skeletons, empty states, error messages, partial data, i18n, offline, permissions, and first-run guidance. Use when preparing a surface for production or when the user says "it crashes on empty data" / "there's no loading state" / "harden this".
 argument-hint: "[file or component path]"
 ---
 

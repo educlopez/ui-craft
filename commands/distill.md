@@ -1,5 +1,5 @@
 ---
-description: Strip to essence. Cut every section that doesn't earn its space.
+description: Reduction pass — cuts content, structure, visuals, and dead code that doesn't answer a user question or drive an action, respecting CRAFT_LEVEL. Use when the UI feels cluttered, has too many CTAs, walls of text, or decorative noise, or when the user says "simplify this" / "it feels too busy".
 argument-hint: "[file or component path]"
 ---
 

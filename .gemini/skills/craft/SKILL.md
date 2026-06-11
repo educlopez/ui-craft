@@ -1,0 +1,34 @@
+---
+name: craft
+description: "One-shot build pipeline for a complete surface from an outcome recipe — inputs (or defaults) → composition → theme → build order → acceptance bar. Use when the user asks for a whole surface ("build me a dashboard", "hazme un dashboard") and expects a shippable result, not component-level help. Invoke when the user asks for craft on their UI, or mentions 'craft' alongside design / UI / frontend work."
+---
+
+<!-- AUTO-GENERATED. Do not edit here. Source: skills/ui-craft/ + commands/*.md. Regenerate with `node scripts/sync-harnesses.mjs`. -->
+
+**Context:** this sub-skill is one lens of the broader `ui-craft` skill. If the `ui-craft` skill is also installed, read its SKILL.md first for Discovery + Anti-Slop + Craft Test, then apply the specific lens below.
+
+Load the `ui-craft` skill. This command BUILDS — it ends with working code that passes the recipe's acceptance bar.
+
+Recipes available: `dashboard` → `references/recipe-dashboard.md`. If the target the user described names a surface with no recipe yet (landing, settings, auth), say so and fall back to standard Build mode with the closest references — do not improvise a fake recipe.
+
+---
+
+## Step 1 — Inputs
+
+Run Stack Detection + Discovery Step 1 (existing tokens, `.ui-craft/brief.md`).
+
+Ask the recipe's Step 0 questions in ONE compact prompt, pre-filling anything the target the user described or the brief already answers. If the user declines, says "you decide", or has answered before in this session: apply the recipe defaults silently and say which were applied. Never ask twice; never block.
+
+## Step 2 — Lock the plan
+
+From the answers: composition + theme preset (or existing tokens) + density. Print a 5-line plan — composition name, hero metric, theme, what's above the fold, what's deferred below — and proceed without waiting unless the user objects.
+
+## Step 3 — Build
+
+Follow the recipe's Build order EXACTLY (tokens → shell → hero tier → primary region → remaining tiers → states → keyboard → finish). Load the references each step names. States and keyboard are build steps, not polish — a surface without empty/loading/error states is not done.
+
+## Step 4 — Acceptance bar
+
+Run the recipe's acceptance checklist against the built surface. Fix every unchecked item before reporting — the bar is the definition of done, not a suggestion. Then report: checklist results, the one signature detail included, and any item the user explicitly waived.
+
+At CRAFT_LEVEL ≥ 8, finish with the full `/finalize` gate instead of the recipe's minimum passes.

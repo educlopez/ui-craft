@@ -1,6 +1,6 @@
 # Principles Catalog
 
-A worked-example bank of opinionated design principles, organized by product category. Use as seed material for the principles workshop in `/brief`. Do not adopt these literally — adapt to your specific product, user, and constraints. The point is to see what opinionated, actionable, distinctive principles look like in practice.
+A worked-example bank of opinionated design principles, organized by product category. Use as seed material for the principles workshop in `/brief`. Do not adopt these literally — adapt to your specific product, user, and constraints. The point is to see what opinionated, actionable, distinctive principles look like in practice. Many entries are product-specific manifestations of the heuristics in `heuristics.md` — they complement the scored methodology, they don't replace it.
 
 ---
 

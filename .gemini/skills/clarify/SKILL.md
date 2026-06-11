@@ -1,6 +1,6 @@
 ---
 name: clarify
-description: "UX copy pass — buttons, errors, empty states, form hints. Clarity over cleverness. Invoke when the user asks for clarify on their UI, or mentions 'clarify' alongside design / UI / frontend work."
+description: "UX copy review across buttons, errors, empty states, and form hints — critiques by default, applies only on request. Use when copy feels vague, generic, or AI-sounding, or when the user says "fix the labels", "improve error messages", or "review the copy". Invoke when the user asks for clarify on their UI, or mentions 'clarify' alongside design / UI / frontend work."
 ---
 
 <!-- AUTO-GENERATED. Do not edit here. Source: skills/ui-craft/ + commands/*.md. Regenerate with `node scripts/sync-harnesses.mjs`. -->

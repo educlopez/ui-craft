@@ -140,3 +140,11 @@ function play(sound: HTMLAudioElement) {
   sound.play();
 }
 ```
+
+---
+
+## Cross-Refs
+
+- `accessibility.md` — the full reduced-motion contract; `prefers-reduced-motion` as a sound-sensitivity proxy lives there.
+- `motion.md` — sound duration should match the duration of the action it accompanies, the same pairing rule as interaction timing.
+- `state-design.md` — sound cues for state transitions (error, success) must never be the only signal; pair with the visual state.

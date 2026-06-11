@@ -61,7 +61,7 @@ Use these only when integrating with an existing system. New code should prefer 
 - Touch targets **44x44px minimum**
 - Swipe gestures where appropriate
 - Bottom sheets instead of dropdowns
-- **Thumbs-first design** — controls within thumb reach
+- **Thumbs-first design** — primary and navigational actions inside the bottom-center thumb zone; destructive or cancel actions deliberately OUTSIDE easy reach. **Why:** the thumb zone optimizes for the action you want repeated; placing "Delete" there optimizes for accidents.
 - More spacing between interactive elements
 
 ### Content

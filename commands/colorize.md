@@ -1,5 +1,5 @@
 ---
-description: Introduce color strategically — 90% neutral, one accent, 3-5 placements.
+description: Color strategy pass — introduces a single accent at 3-5 intentional placements, or reduces an over-colored UI back to 90% neutral. Use when the UI has no color identity, uses blue by default, or is shouting with too many competing accents.
 argument-hint: "[file or component path]"
 ---
 

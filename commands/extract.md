@@ -1,5 +1,5 @@
 ---
-description: Pull repeated patterns into components and lift magic values into tokens.
+description: Refactoring pass — extracts repeated Tailwind class combos and markup into components, and lifts magic values into design tokens. Use when the codebase has obvious duplication, hardcoded hex values or pixel sizes, or when the user says "clean this up" / "extract components" / "tokenize styles".
 argument-hint: "[file or component path]"
 ---
 
