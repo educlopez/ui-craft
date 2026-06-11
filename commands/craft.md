@@ -5,7 +5,7 @@ argument-hint: "[surface: dashboard] [optional: persona, theme preset, density]"
 
 Load the `ui-craft` skill. This command BUILDS — it ends with working code that passes the recipe's acceptance bar.
 
-Recipes available: `dashboard` → `references/recipe-dashboard.md`. If `$ARGUMENTS` names a surface with no recipe yet (landing, settings, auth), say so and fall back to standard Build mode with the closest references — do not improvise a fake recipe.
+Recipes available: `dashboard` → `references/recipe-dashboard.md` · `landing` → `references/recipe-landing.md` · `auth` (sign-in/sign-up) → `references/recipe-auth.md`. If `$ARGUMENTS` names a surface with no recipe yet (settings, docs, e-commerce), say so and fall back to standard Build mode with the closest references — do not improvise a fake recipe.
 
 ---
 
