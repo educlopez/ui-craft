@@ -58,5 +58,25 @@
   {
     "query": "build the admin panel for managing users, orgs, and feature flags. this is an internal tool, data-heavy, needs filters and bulk actions",
     "should_trigger": false
+  },
+  {
+    "query": "build me a profile settings page that looks shippable out of the box — clean, confident, monochrome with one accent. vercel-like quality. app/settings/profile/page.tsx",
+    "should_trigger": true
+  },
+  {
+    "query": "quiero una página de inicio que se vea como linear o vercel — mucho espacio en blanco, tipografía apretada, sin sombras ni gradientes. nextjs 15, tailwind v4",
+    "should_trigger": true
+  },
+  {
+    "query": "the changelog page at app/changelog/page.tsx needs a minimal overhaul. currently bloated with icons and color. want hairline borders, monospaced dates, one accent max",
+    "should_trigger": true
+  },
+  {
+    "query": "editorial long-form article page with drop caps, warm serif font, pull quotes, and subtle paper texture. nextjs, file at app/journal/[slug]/page.tsx",
+    "should_trigger": false
+  },
+  {
+    "query": "configure the ci pipeline to run vitest on every pr and publish coverage to codecov. github actions",
+    "should_trigger": false
   }
 ]

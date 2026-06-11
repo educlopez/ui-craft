@@ -10,7 +10,7 @@ Each persona has a checklist. Every un-ticked box is a finding. Rank findings us
 
 **Tagline:** Never used this product category. Doesn't know what's possible.
 
-**Profile:** 28, mobile-only, moderate English literacy, small-business owner evaluating the product for the first time. Comes in cold from a social ad. Has 90 seconds before she bounces. Doesn't know industry jargon and won't Google it.
+**Profile:** 28, mobile-only, moderate English literacy, small-business owner evaluating the product for the first time. Comes in cold from a social ad. Has 90 seconds before she bounces. Doesn't know industry jargon and won't search for it.
 
 **Journey:** Land → understand what the product does → decide whether to sign up → complete signup → reach the "first value" moment (whatever that is for this app).
 

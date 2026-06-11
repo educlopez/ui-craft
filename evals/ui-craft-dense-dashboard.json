@@ -58,5 +58,25 @@
   {
     "query": "add a settings dialog to the admin dashboard at components/admin/settings-dialog.tsx. modal with form fields — save, cancel, destructive delete",
     "should_trigger": false
+  },
+  {
+    "query": "build a data reconciliation panel that looks shippable for an ops team — retool-like quality, dense row layout, status badges, inline action menus. src/app/reconciliation/page.tsx",
+    "should_trigger": true
+  },
+  {
+    "query": "construye un panel de auditoría interno para revisar logs de transacciones — tabla densa con filtros, exportación csv, estado de cada registro. react + tailwind, pensado para operadores",
+    "should_trigger": true
+  },
+  {
+    "query": "our data eng team needs a pipeline health monitor: DAG run table, per-task status dots, p50/p95 duration columns, retry count. very operator-focused, keyboard shortcuts a plus",
+    "should_trigger": true
+  },
+  {
+    "query": "clean minimal settings page for a developer tool — linear-like, whitespace-heavy, monochrome, one accent. not a data tool",
+    "should_trigger": false
+  },
+  {
+    "query": "set up drizzle orm with postgres for the admin panel backend. migrations, seed script, connection pooling via pg",
+    "should_trigger": false
   }
 ]

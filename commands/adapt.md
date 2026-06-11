@@ -1,5 +1,5 @@
 ---
-description: Responsive pass — mobile, tablet, desktop, touch, safe areas.
+description: Responsive layout pass covering breakpoints, touch targets, safe areas, and fluid type. Use when the UI has layout or touch issues on mobile/tablet, when adding a new screen that hasn't been tested across viewports, or when the user says "make it responsive" / "fix mobile layout".
 argument-hint: "[file or component path]"
 ---
 

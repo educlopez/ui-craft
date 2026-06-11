@@ -30,7 +30,7 @@ Evaluate in order: Value → Ease of Use → Delight. Aesthetic feedback that ar
 
 - This is the layer most reviews start with — and most reviews stay here, missing the failures above.
 - Delight findings are real and valuable, but they are **the last 20% of leverage**, not the first.
-- The full Delight pass is the Finish Bar (`references/finish-bar.md` — 10 passes).
+- The full Delight pass is the Finish Bar (`finish-bar.md` — 10 passes).
 - Common Delight findings: hierarchy ratios off, type weights inconsistent, motion missing, microcopy generic, surface stack flat.
 
 ### How to triage

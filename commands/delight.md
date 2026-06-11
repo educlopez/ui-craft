@@ -1,5 +1,5 @@
 ---
-description: Add purposeful moments of joy — micro-interactions, not decorative animation.
+description: Delight pass — adds one or two memorable micro-interactions (copy specificity, hover choreography, state transitions, one signature detail) without decoration or confetti. Use when the UI works but feels generic, or when the user says "make it feel special" / "add some personality".
 argument-hint: "[file or component path]"
 ---
 

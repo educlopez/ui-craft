@@ -1,5 +1,5 @@
 ---
-description: Final polish pass — the compound details that separate "done" from "crafted".
+description: Final craft pass applying the compound details from the polish checklist — micro-typography, spacing rhythm, hover states, and a signature detail — directly to code. Use when the surface is functionally complete but feels unfinished, or when the user says "polish this" / "it looks generic" / "add the final touches".
 argument-hint: "[file or component path]"
 ---
 

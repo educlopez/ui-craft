@@ -29,14 +29,14 @@ The rules that make the biggest difference between "AI-generated" and "designed 
 0. **Ask before assuming** — never default accent, font, or style. Analyze project, then ask. Use Knob defaults only when the user explicitly declines to specify.
 1. **Sentence case by default** — uppercase = template. Exception: 11-13px category labels with wide tracking.
 2. **90%+ neutral, one accent** — mostly black/white/gray; single brand color. NEVER *default* to blue — if your brand is blue, that's different.
-3. **Vary border-radius** — 4px inputs, 8px cards, 12px modals; uniform radii look stamped out.
-4. **Real SVG icons, not emoji** — Lucide, Heroicons, Phosphor.
+3. **Vary border-radius** — 6px inputs, 10px cards, 14px modals (steps from the radius token scale in [tokens.md](references/tokens.md)); uniform radii look stamped out.
+4. **Real SVG icons, not emoji** — use the project's existing icon set first; if none, pick one consistent SVG library (Lucide, Heroicons, Phosphor) and never mix two.
 5. **Tight letter-spacing on large headings** — `tracking-tight` or `-0.02em`+ above 24px.
-6. **One body font, optionally a second for display** — never mix three. Inter/Geist/DM Sans are safe.
+6. **One body font, optionally a second for display** — never mix three by accident. Inter/Geist/DM Sans are safe fallbacks when no brand font exists.
 7. **Layered shadows over flat borders** — ambient + direct light.
 8. **Exit faster than enter** — ~75% of entrance duration.
 9. **Plain secondary text for comparisons** — "+12.5% from last month", not a colored pill.
-10. **Accent budget: 3-5 placements per above-the-fold viewport** — CTA, one key metric, active states. **Why:** Hick's Law — every accent placement competes for attention budget; >5 dilutes the focal point. Modals and overlays count as their own viewport.
+10. **Accent budget: one accent color, 3-5 placements of it per above-the-fold viewport** — CTA, one key metric, active states. **Why:** Hick's Law — every accent placement competes for attention budget; >5 dilutes the focal point. Modals and overlays count as their own viewport.
 11. **Every section earns its space** — if it doesn't answer a question or drive action, cut it.
 12. **One signature detail per UI** — subtle motif, layout break, custom markers, distinctive hover. This is what makes it feel designed.
 
@@ -48,20 +48,27 @@ The rules that make the biggest difference between "AI-generated" and "designed 
 |--------|------------------|
 | Pre-build: write the project's design brief | Run `/brief` → see [brief.md](references/brief.md) |
 | Pre-build: establish or audit token spine | Run `/tokens` → see [tokens.md](references/tokens.md) |
+| Build a complete surface end-to-end ("build me a dashboard") | Run `/craft <surface>` → outcome recipe: [recipe-dashboard.md](references/recipe-dashboard.md) |
+| Pick a ready-made theme (no token system exists) | [themes.md](references/themes.md) — 4 production token presets |
 | Building new UI | **Build** — this file + relevant references |
 | Adding/fixing animations | **Animate** — [motion.md](references/motion.md) |
 | Reviewing existing UI | **Review** — [review.md](references/review.md) |
 | Polishing existing UI | **Polish** — this file + [review.md](references/review.md) Polish Pass |
 | Multi-stage animations | [animation-storyboard.md](../../examples/animation-storyboard.md) |
 | Layout / spacing | [layout.md](references/layout.md) |
-| Typography | [typography.md](references/typography.md) |
-| Color / theming / dark mode | [color.md](references/color.md) |
-| Accessibility / a11y audit | [accessibility.md](references/accessibility.md) |
+| Typography (focused pass: `/typeset`) | [typography.md](references/typography.md) |
+| Color / theming / dark mode (focused pass: `/colorize`) | [color.md](references/color.md) |
+| Accessibility / a11y audit (technical audit: `/audit`) | [accessibility.md](references/accessibility.md) |
+| UX critique, no code changes | Run `/critique` — [review.md](references/review.md) + [inspiration.md](references/inspiration.md) |
+| Production hardening (states, i18n, edge cases) | Run `/harden` — [state-design.md](references/state-design.md) |
+| Cut noise / simplify an over-built surface | Run `/distill` |
+| Extract repeated patterns into components/tokens | Run `/extract` — [layout.md](references/layout.md), [typography.md](references/typography.md), [color.md](references/color.md) |
+| Purposeful micro-interactions | Run `/delight` — [motion.md](references/motion.md) |
 | Animation performance | [motion.md](references/motion.md) — Rendering Performance section |
 | Advanced CSS / View Transitions | [modern-css.md](references/modern-css.md) |
 | Sound design | [sound.md](references/sound.md) |
-| UX copy / voice / tone / microcopy | [copy.md](references/copy.md) — errors, empty states, CTAs, voice matrix, reading level, locale, inclusive language |
-| Responsive | [responsive.md](references/responsive.md) |
+| UX copy / voice / tone / microcopy (focused pass: `/clarify`) | [copy.md](references/copy.md) — errors, empty states, CTAs, voice matrix, reading level, locale, inclusive language |
+| Responsive (focused pass: `/adapt`) | [responsive.md](references/responsive.md) |
 | Three.js / GSAP / Motion | [stack.md](references/stack.md) — **OPT-IN ONLY — do not load unless user chose Motion/GSAP/Three.js in Discovery Step 2** |
 | Scored critique / PM-ready audit | [heuristics.md](references/heuristics.md) + [personas.md](references/personas.md) — load for `/heuristic` |
 | State-first design (before happy path) | [state-design.md](references/state-design.md) — load for `/unhappy` |
@@ -70,6 +77,7 @@ The rules that make the biggest difference between "AI-generated" and "designed 
 | Wireframe-first / shape a new screen | Run `/shape` before coding; see state lattice + content inventory |
 | AI / chat / streaming surfaces | [ai-chat.md](references/ai-chat.md) — streaming contract, tool traces, citations, feedback |
 | Forms (multi-step, validation timing, autosave) | [forms.md](references/forms.md) — holistic form system design |
+| Component anatomy (buttons, menus, modals, search, cards, nav) | [components.md](references/components.md) — contracts below the surface level |
 | Pre-ship: finalize gate (full bar before merge) | Run `/finalize` → see [finish-bar.md](references/finish-bar.md) |
 | Ambiguous | Ask which mode |
 
@@ -81,7 +89,7 @@ The rules that make the biggest difference between "AI-generated" and "designed 
 
 Detect the styling approach from signals: Tailwind (`tailwind.config.*`, `@tailwind`), CSS Modules (`*.module.css`), styled-components/Emotion (`styled(...)`, `css\`...\``), CSS-in-JS (`*.styles.ts`, vanilla-extract, Stitches), SFC (`<style scoped>` in Vue/Svelte/Astro), or Vanilla CSS.
 
-**Rules:** never fight the project's stack; never mix approaches. All design rules are universal — only syntax changes. Reference files are CSS-first with Tailwind translations. When in doubt, match existing patterns.
+**Rules:** never fight the project's stack; never mix approaches. The design rules hold across stacks — only the syntax changes. (Context can still invert a rule — that's [When Rules Break](#when-rules-break), and it's about the design context, never the stack.) Reference files are CSS-first with Tailwind translations. When in doubt, match existing patterns.
 
 ### Tailwind Translations (common)
 
@@ -158,7 +166,7 @@ Anti-slop says what to avoid. Craft says what to aim for.
 **Landing pages** (detail in [inspiration.md](references/inspiration.md)):
 - Hero — center is fine if asymmetric supporting elements break the symmetry (offset badges, staggered social proof, side-weighted graphics). Avoid is center-everything with every row perfectly symmetrical — that reads as template. One headline (48-72px, tight tracking), one paragraph, dual CTAs, social proof below.
 - Features: 2-3 asymmetric rows with real visuals (chart, timeline, funnel). NEVER uniform 3-column icon grids.
-- Sections breathe: 120-200px between majors, varied for rhythm. Every section answers one question.
+- Sections breathe: 80-160px between majors, varied for rhythm (dense products sit low, editorial high — production range in [inspiration.md](references/inspiration.md)). Every section answers one question.
 - Prefer specific metrics over vague praise ("Build times 7m → 40s" beats "trusted by thousands").
 
 **Dashboards** (detail in [dashboard.md](references/dashboard.md)):
@@ -175,12 +183,13 @@ Every rule above has a context where it inverts. Stating the rule is half the wo
 - **"Avoid pie charts"** — for two-segment proportional comparisons (e.g., used vs. free storage on a single device), a donut with center label is acceptable. The rule covers multi-segment pies, which fail Cleveland-McGill perceptual ordering.
 - **"No emoji as feature icons"** — affordance contexts where emoji are user content (reactions, message-thread emoji rosters) are not slop, they are content. The rule covers decorative emoji standing in for designed icons.
 - **"Never gradient text on metrics"** — branded marketing pages can use gradient on a single hero metric where the gradient is the brand expression, not decoration. Inside-the-product metrics still follow the rule.
+- **"Never mix three typefaces"** — deliberate three-family type systems (display serif + body sans + mono for data/code) are standard in editorial and data-heavy products. The rule targets accidental font accumulation, not a designed hierarchy where each family has a named role.
 
 **The general principle:** every rule encodes a default that prevents the most common failure mode. When the context inverts the failure mode, the rule may invert too. The work is recognizing the inversion, not memorizing exceptions.
 
 ### Animation Decision Ladder
 
-> **Should this animate?** → High-frequency? No. Not communicating hierarchy/state/space? Cut it. Otherwise: <300ms, GPU-only, `prefers-reduced-motion` honored.
+> **Should this animate?** → High-frequency? No. Not communicating hierarchy/state/space? Cut it. Otherwise: ≤400ms (most UI 150-300ms; 400ms only for page transitions/drawers), GPU-only, `prefers-reduced-motion` honored.
 
 Full ladder, easing, springs, stagger, interaction contract → [motion.md](references/motion.md) (**Decision Ladder**).
 
@@ -250,8 +259,11 @@ Tiered by signal. Tier 1 is required reading before writing any UI; lower tiers 
 
 | Reference | When to Read |
 |-----------|--------------|
+| [recipe-dashboard.md](references/recipe-dashboard.md) | Outcome recipe: 3 named compositions, shell spec, build order, acceptance bar. Load on `/craft dashboard` or any "build me a dashboard" request. |
+| [themes.md](references/themes.md) | 4 named production token presets (Graphite, Porcelain, Carbon, Signal). Load when no token system exists. |
 | [dashboard.md](references/dashboard.md) | Dashboards, metric cards, charts, tables, sidebar, filters. |
 | [forms.md](references/forms.md) | Validation timing, progressive disclosure, multi-step wizards, autosave, optimistic submit. |
+| [components.md](references/components.md) | Component anatomy contracts: buttons (padding ratio, icon-side semantics), menus (5-option threshold, scroll affordance), modals (verb labels, ways out), search, content cards, nav bar. |
 | [ai-chat.md](references/ai-chat.md) | Streaming contract, 7-state affordance model for AI surfaces, tool traces, citations, generative UI. |
 | [review.md](references/review.md) | Critique methodology, Polish Pass, common issues, component craft. Load when reviewing or refining. |
 | [finish-bar.md](references/finish-bar.md) | 10-pass finishing protocol. Load on `/finalize` or CRAFT_LEVEL ≥ 8. |

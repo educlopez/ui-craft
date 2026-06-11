@@ -58,5 +58,25 @@
   {
     "query": "polish this pricing page — tabular-nums on amounts, curly quotes in testimonials, text-wrap: balance on headlines",
     "should_trigger": false
+  },
+  {
+    "query": "build a writer's portfolio homepage that looks shippable and premium out of the box — editorial hierarchy, playfair display headings, warm off-white background, byline meta. nextjs 15",
+    "should_trigger": true
+  },
+  {
+    "query": "quiero que la página de artículos se vea como una revista — titulares en serif, columna de lectura ancha, citas destacadas, ritmo vertical limpio. app/articulos/[slug]/page.tsx",
+    "should_trigger": true
+  },
+  {
+    "query": "redesign app/learn/[course]/page.tsx — long-form content, table of contents sidebar, reading progress indicator, medium-style typography. no dashboard chrome",
+    "should_trigger": true
+  },
+  {
+    "query": "internal analytics panel for editorial team — article performance table, filter by author/date/tag, sortable columns, sparkline views. data-heavy operator tool",
+    "should_trigger": false
+  },
+  {
+    "query": "write a jest test for the rss feed generator at src/lib/rss.ts — cover empty feed, single item, and special characters in title",
+    "should_trigger": false
   }
 ]

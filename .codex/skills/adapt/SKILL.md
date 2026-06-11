@@ -1,6 +1,6 @@
 ---
 name: adapt
-description: "Responsive pass — mobile, tablet, desktop, touch, safe areas. Invoke when the user asks for adapt on their UI, or mentions 'adapt' alongside design / UI / frontend work."
+description: "Responsive layout pass covering breakpoints, touch targets, safe areas, and fluid type. Use when the UI has layout or touch issues on mobile/tablet, when adding a new screen that hasn't been tested across viewports, or when the user says "make it responsive" / "fix mobile layout". Invoke when the user asks for adapt on their UI, or mentions 'adapt' alongside design / UI / frontend work."
 ---
 
 <!-- AUTO-GENERATED. Do not edit here. Source: skills/ui-craft/ + commands/*.md. Regenerate with `node scripts/sync-harnesses.mjs`. -->

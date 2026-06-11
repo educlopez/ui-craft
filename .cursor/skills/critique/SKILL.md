@@ -1,6 +1,6 @@
 ---
 name: critique
-description: "UX critique — hierarchy, clarity, anti-slop. No code changes unless asked. Invoke when the user asks for critique on their UI, or mentions 'critique' alongside design / UI / frontend work."
+description: "Design lens critique covering visual hierarchy, clarity, and anti-slop patterns — produces a findings table, no code edits unless asked. Use when the user wants a design review, says "what's wrong with this UI", or needs a second opinion before a handoff or presentation. Invoke when the user asks for critique on their UI, or mentions 'critique' alongside design / UI / frontend work."
 ---
 
 <!-- AUTO-GENERATED. Do not edit here. Source: skills/ui-craft/ + commands/*.md. Regenerate with `node scripts/sync-harnesses.mjs`. -->

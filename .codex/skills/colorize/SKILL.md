@@ -1,6 +1,6 @@
 ---
 name: colorize
-description: "Introduce color strategically — 90% neutral, one accent, 3-5 placements. Invoke when the user asks for colorize on their UI, or mentions 'colorize' alongside design / UI / frontend work."
+description: "Color strategy pass — introduces a single accent at 3-5 intentional placements, or reduces an over-colored UI back to 90% neutral. Use when the UI has no color identity, uses blue by default, or is shouting with too many competing accents. Invoke when the user asks for colorize on their UI, or mentions 'colorize' alongside design / UI / frontend work."
 ---
 
 <!-- AUTO-GENERATED. Do not edit here. Source: skills/ui-craft/ + commands/*.md. Regenerate with `node scripts/sync-harnesses.mjs`. -->

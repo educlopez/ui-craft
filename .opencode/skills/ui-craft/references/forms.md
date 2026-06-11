@@ -33,10 +33,20 @@ The most-botched decision in form UX. Wrong timing feels punitive; right timing 
 
 Where error messages live on the page. Details on copy tone are in `copy.md`.
 
-- **Below the input, not above.** Users read top-to-bottom; the error follows the field it describes.
+- **Errors below the input; hints and help text ABOVE it.** Errors appear after typing, so below-field placement follows reading order. Hints are needed *while* typing — below the field they get covered by autofill menus and the mobile keyboard; above the field they stay visible.
 - **Red border on the input itself**, plus message, plus icon (`⚠` or field-specific). Color alone fails WCAG and color-blind users — pair color with shape/text.
 - **Scroll to first error on submit** if not in view. Focus it so screen readers announce it immediately.
 - **Summary at the top is additive, not a replacement.** For long forms, an aria-live summary box ("3 fields need attention") helps — but every field still has its own inline error.
+
+---
+
+## Field Layout
+
+- **Single column.** Multi-column forms break downward momentum, create fill-order ambiguity, and screen-magnifier users miss the second column entirely. Exception: short, intrinsically paired fields (MM/YY + CVC) sit side by side.
+- **Labels above inputs, within ~16px.** Top labels eliminate the zig-zag eye path of side labels; more distance than that and the label detaches from its field.
+- **Selection widgets by option count:** 2-5 → radios or segmented control, stacked vertically (horizontal invites mis-taps); 6-10 → radios if vertical space allows, dropdown if tight; >10 → autocomplete/type-ahead; huge taxonomies (1000+ occupations) → cascade two fields (category → item) to avoid choice paralysis. Numeric nudges → stepper with horizontal +/- and 48px targets, never a dropdown of numbers.
+- **Checkbox vs toggle:** checkbox = applies on submit; toggle = applies immediately. Label checkboxes positively ("Allow automatic updates", never "Don't allow…") — test by replacing the checked box with "yes": the sentence must still make sense.
+- **Submit button aligns with the fields' left edge** in stacked forms — the eye travels straight down the column and lands on it. Exception: single inline field (search, newsletter) → button attached to the field's right.
 - **Never remove an error until the user changes the field.** Clearing it on re-focus without re-validation hides the problem.
 
 ---
@@ -45,9 +55,12 @@ Where error messages live on the page. Details on copy tone are in `copy.md`.
 
 Show fields only when relevant. A form with 20 visible fields reads as homework; the same form with 6 visible and 14 revealed-on-relevance feels considerate.
 
-- **Conditional fields appear smoothly** — use `animation-timeline` or a 200ms height/opacity transition, not a pop-in. See `modern-css.md` for `interpolate-size: allow-keywords`.
+- **Conditional fields appear smoothly** — use a 200ms height/opacity transition (`interpolate-size: allow-keywords` enables height-to-auto), not a pop-in. See `modern-css.md`.
 - **Group related fields under a shared section header** — billing address separate from shipping address separate from payment.
 - **Optional fields behind a "More options" toggle** if there are more than 2. Most users don't need them; showing them upfront adds cognitive load for no gain.
+- **Never make users guess which fields are required.** Two valid schools: mark only the optional minority with "(optional)" (lighter), or mark both — asterisk on required plus "(optional)" (most explicit; favors scanners and screen-reader users). Pick per audience and form length — but never rely on intro text ("all fields required unless noted"): users scan forms, they don't read preambles. If you use asterisks, they're black/neutral, never red — red is reserved for error states. Skip marking entirely in single-field familiar forms (login, newsletter).
+- **Field width hints at expected content length** — postal code and CVC narrow, full name and address wide. Uniform full-width fields discard a free affordance.
+- **Inputs sit on solid surfaces** — never semi-translucent fills over imagery; legibility collapses for low-vision users and in bright ambient light.
 - **Mobile multi-step forms: max 5-7 fields per step.** **Why:** Hick's Law — decision time grows logarithmically with options on-screen, and mobile reading width amplifies the effect. Forms longer than 7 fields exceed the page-scanning time (~7 seconds) before the user begins typing. Desktop tolerates higher density when the form has a clear scan structure (left-aligned labels, grouped fieldsets).
 - **Conditional reveal is one-way** until submit — don't hide a field the user has filled, even if the condition changes. Instead, disable it with a note.
 
@@ -58,8 +71,10 @@ Show fields only when relevant. A form with 20 visible fields reads as homework;
 When a form is too long for one screen, or the steps represent logical phases (account → plan → payment → confirm).
 
 - **Progress indicator.** Numbered steps + current/total + short label per step. Not just "Step 3 of 5" — "Step 3 of 5: Payment."
+- **State the cost upfront.** "3 steps, about 2 minutes, you'll need your ID" before step 1 — unknown length is why users abandon at step 2.
+- **Order steps easy → hard.** Name and email before payment details: early wins build completion momentum; opening with the hardest ask maximizes abandonment.
 - **Back button always available.** Moving back preserves all state; never re-fetch or reset.
-- **Forward gated by current-step validity.** The "Next" button disables until required fields are valid — with a tooltip/inline message explaining what's missing.
+- **Prefer an always-enabled "Next" that validates on press.** A disabled button can't say why it's disabled, gives no feedback when pressed, and is invisible to some assistive tech. If you do gate, the explanation must be visible inline — never tooltip-only, never silent.
 - **Save draft automatically** between steps. See Autosave below.
 - **Resume on return.** If the user leaves and comes back, restore to the last completed step, not step 1.
 - **Review step before final submit.** Summary of all entries grouped by section, with an "Edit" link per section that jumps back to that step and returns. Users catch their own errors cheaper than servers do.
@@ -147,7 +162,7 @@ Deleting accounts, subscriptions, workspaces, or data from within a settings for
 Form sins that invalidate the rest of the work:
 
 - **Placeholder as the only label.** Disappears on focus → user forgets what the field was. Accessibility and memory fail.
-- **Required asterisks without a legend.** User doesn't know `*` means required unless you say so somewhere visible.
+- **Red required asterisks, or marking convention explained nowhere.** Red is the error color — a field can't be "in error" before the user touches it. Asterisks are black; the marking scheme is self-evident or legended. See Progressive Disclosure for the optional-vs-required marking decision.
 - **Red validation on mount.** Nothing is wrong yet — don't punish arrival.
 - **Disabled submit button with no explanation.** User can't fix what they can't see. Tooltip or inline hint explains what's missing.
 - **Clearing the whole form on one error.** Preserve every valid field; only reset the invalid one.

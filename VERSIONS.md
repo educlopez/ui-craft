@@ -1,5 +1,55 @@
 # Versions
 
+## v0.20.0 (2026-06-11) — outcome layer: recipes, themes, /craft
+
+Strategic shift from rules-first to outcome-first: "build me a dashboard" must produce shippable, designer-grade output by default. Competitive research (v0/Lovable/Bolt system prompts, skills-market scan) located the unowned territory: surface-level outcome recipes, ready-to-ship theme presets, and stack-agnostic composition intelligence inside the user's own codebase. Brand abstraction constraint reaffirmed — recipes describe patterns with exact values, never by product name.
+
+**New:**
+
+- `references/recipe-dashboard.md` — first outcome recipe. Three named compositions (Overview / Command / Analytics) selected by persona + 60-second decision, exact shell spec, component inventory wired to existing contracts, strict build order (tokens → shell → hero → states → keyboard → finish), and a 10-item acceptance bar defining "would a designer retouch this?".
+- `references/themes.md` — four named production token presets (Graphite / Porcelain / Carbon / Signal): full OKLCH neutral ramps, accent + semantic colors, type, radius profile, shadows, motion tokens; light and dark both intentional; APCA verification rule; preset-choice table keyed to brief language.
+- `commands/craft.md` — `/craft <surface>` one-shot pipeline: inputs (or silent defaults) → composition → build order → acceptance bar enforced before reporting. 19th command.
+- 6 new eval scenarios: outcome requests ("build me a dashboard", Spanish variant), anti-slop remediation, no-token-system theming, plus 2 backend negatives — the first evals testing the skill's headline anti-slop/outcome claims.
+
+**Fixed (fresh adversarial audit, 4 parallel reviewers):**
+
+- `forms.md` — removed wrong `animation-timeline` recommendation for conditional fields (that property is scroll-driven animations); now transition + `interpolate-size: allow-keywords`.
+- SKILL.md radius quick-start (4/8/12px) aligned to the tokens.md radius scale (6/10/14px, with pointer).
+- Accent budget disambiguated: "one accent color, 3-5 placements of it" (color identity vs placement slot).
+- Section spacing reconciled with inspiration.md observed range: 80-160px varied, cross-referenced.
+- Animation Decision Ladder ceiling aligned with motion.md/finish-bar: ≤400ms (was <300ms, contradicting `--motion-slow: 400ms`).
+- Brand-name regressions pruned: motion.md Sources (Material/Apple HIG/IBM Carbon dropped; WCAG 2.3.3 vs `prefers-reduced-motion` citation un-conflated), copy.md sign-in/log-in rule de-branded.
+- modern-css.md freshness: `interpolate-size` and custom-property style queries marked Baseline 2025 (were "Chrome only / behind flag").
+- dataviz.md: Okabe-Ito 8-value hex array added inline; viridis/cividis no longer attributed to Matplotlib.
+
+**Closed out (remaining audit items):**
+
+- Routing table now exposes all 19 commands: focused-pass commands annotated on their intent rows (`/typeset`, `/colorize`, `/audit`, `/clarify`, `/adapt`) and 5 new rows added (`/critique`, `/harden`, `/distill`, `/extract`, `/delight`). Previously 10 of 18 commands were invisible to agents routing through SKILL.md.
+- 13 command descriptions rewritten from imperative instructions to trigger-condition form ("…. Use when <concrete user phrasings>"); 6 already compliant, untouched.
+- Variant evals completed to the README-specified 20 queries each (were 15): each gains an outcome request, a cross-variant negative, a non-UI negative, and a Spanish-language query.
+- Judgment fixes in SKILL.md: "all rules are universal" reconciled with When Rules Break; three-typeface exception registered (deliberate display/body/mono hierarchies); icon rule made project-first; "safe fonts" scoped to no-brand-font fallback.
+- Silo cleanup: Cross-Refs footers added to sound.md and state-design.md; principles-catalog ↔ heuristics relationship stated; review.md internal path normalized; personas.md de-branded ("won't search for it").
+- tokens.md "No exceptions" scoped (prototypes/standalone components exempt until a second surface appears); color.md tinted-neutral rule registers the achromatic-system exception; heuristics.md explains the wizard 5-step ceiling vs Miller's 7±2.
+- `scripts/validate.mjs` now actually checks `argument-hint` on commands (the header comment claimed it; the code didn't).
+
+**Knowledge ingest (component-anatomy pass):**
+
+- `references/components.md` — new, 26th reference. Anatomy-level contracts distilled (in our own words, judgment-style) from an external component-design study: buttons (horizontal ≈ 2× vertical padding, desktop 32-40px vs touch 44-48px with the why, icon-left = action vs icon-right = destination semantics, height/font centering parity), menus (≤5 options = no dropdown, cut-item scroll affordance, searchable-sheet escalation, inline shortcuts), modals (verb-labeled buttons never Yes/No, three ways out, when a modal isn't warranted), search (no-results as a fork not a wall), content cards (grid-rhythm clamping, aspect-ratio consistency), nav bars (sticky plane separator values, variable-background contrast variants).
+- `forms.md` — mark optional fields instead of required (with the inversion case), field width as content-length affordance, no inputs on translucent fills; required-asterisk anti-pattern upgraded accordingly.
+- `responsive.md` — thumb-zone rule now carries the inversion: destructive/cancel actions deliberately outside easy reach.
+- Rejected from the same source (conflicts with anti-slop core): gradient fills + inner shadows on product buttons, 60-30-10 palette framing (our 90% neutral + accent budget is stricter and stays). Pricing-psychology and hero-copy material parked for the v0.21 landing recipe.
+
+**Knowledge ingest (logic-of-UI pass, second source):**
+
+- `forms.md` — two of our own rules overturned with better arguments and rewritten as judgment calls: hints now go ABOVE the field (autofill menus and the mobile keyboard occlude below-field text while typing; errors stay below since they appear after typing), and the multi-step "Next" gate flipped to prefer always-enabled + validate-on-press (disabled buttons can't explain themselves and break assistive tech). The optional-vs-required marking rule rewritten to present both schools (mark optional minority vs mark both) with the real invariants: never rely on intro text, asterisks black never red, skip marking in single-field forms. New Field Layout section: single-column rule with the paired-fields exception, labels-above within 16px, selection-widget ladder by option count (2-5 radios → 6-10 contextual → >10 autocomplete → 1000+ cascading fields), steppers for numeric nudges, checkbox (on-submit) vs toggle (immediate) semantics with the positive-phrasing "yes" test.
+- `components.md` — button tier contracts (one primary per context, secondary ≥3:1 outline, tertiary underline as a11y requirement not decoration), avoid-disabled-buttons with the alternatives ladder, icon-weight matching, and a destructive-action friction ladder scaled to blast radius (undo toast → verb-labeled confirm + named items → type-to-confirm/checkbox gate before the button activates).
+- `color.md` — dark-mode elevation via stepped transparency (white 6/8/12% over base; light mode mirrors with black 4-9%) instead of hand-picked grays, with the why: transparent fills stay consistent at every elevation.
+- `typography.md` — two-weight discipline, 18px floor for long-form reading (14-16px is for UI labels), scale ratio matched to product type (1.125-1.2 dense apps, 1.333-1.618 marketing/editorial).
+- `copy.md` — numerals + hybrid big numbers ("2.4M"), labels drop possessives ("Email" not "My email"), verb+noun button labels readable out of screen-reader context.
+- `layout.md` — Alignment Discipline section: max 1-2 alignment types per section, baseline alignment for mixed sizes, middle truncation for shared-prefix items.
+- Validations from the same source (no change needed): APCA Lc tiers match ours, sentence case, pure-black eye-strain rule, 3-part error messages, single-accent-for-interaction, conventional form field shapes.
+- Second-tier pass from the same source: link affordance exclusivity + visible icon labels (components.md), front-loading/inverted pyramid + abbreviation tax (copy.md), Serial Position Effect (layout.md), multi-step cost-upfront + easy→hard ordering and submit-button left alignment (forms.md), one-hue five-role palette recipe + reusable state-overlay tokens (color.md).
+
 ## v0.19.0 (2026-05-03) — close the audit chapter
 
 v0.16, v0.17, and v0.18 progressively prune+ground+scoped every reference file. v0.19 closes the audit chapter: a triage of the 18 slash commands confirmed the prior releases' brand-cleanup and grounding work propagated through, and `dashboard.md` (one of the 4 strongest references per the original audit, but the only Tier 1 file that hadn't received a Why-clause pass) was brought to the same standard as the v0.18-grounded files.

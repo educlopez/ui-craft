@@ -1,5 +1,5 @@
 ---
-description: State-first design pass. Generate or audit the UI's loading, empty, error, partial, conflict, and offline states — before the happy path.
+description: State-first design pass — inventories and implements all non-happy states (loading, empty, error, partial, conflict, offline) before the happy path, and refactors impossible boolean state to proper state machines. Use when starting a new screen, reviewing an existing one for edge-case gaps, or when the user says "handle the error state" / "add loading states" / "what happens when data is missing".
 argument-hint: "[file or component path]"
 ---
 

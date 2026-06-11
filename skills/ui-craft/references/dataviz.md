@@ -54,7 +54,7 @@ Three families. Choose by the data's semantics, not by taste.
 
 For ordinal or continuous magnitude: revenue, count, score. Use perceptually uniform palettes.
 
-- **viridis, cividis** (Matplotlib) — perceptually uniform, colorblind-safe, print-safe.
+- **viridis, cividis** (perceptually uniform sequential — available in every charting stack) — colorblind-safe, print-safe.
 - **YlGnBu, YlOrRd** (ColorBrewer) — classic sequential, works on light backgrounds.
 
 Never use a rainbow (hue-only) palette for sequential data. Hue is not ordered — the eye cannot rank red vs green by magnitude. Ordered magnitude needs a luminance ramp (viridis, cividis, YlOrRd). Hue-only is also colorblind-hostile: red-green deficiency affects approximately 8% of men and 0.5% of women (Birch 2012; Sharpe et al. 1999) — exactly the mid-spectrum of a rainbow.
@@ -70,7 +70,8 @@ For values with a neutral zero: surplus/deficit, above/below average, net promot
 
 For discrete groups with no order: regions, departments, products.
 
-- **Okabe-Ito** (Okabe & Ito 2008, colorblind-safe, 8 hues).
+- **Okabe-Ito** (Okabe & Ito 2008, colorblind-safe, 8 hues). Values, in series order:
+  `#E69F00` orange, `#56B4E9` sky blue, `#009E73` bluish green, `#F0E442` yellow, `#0072B2` blue, `#D55E00` vermillion, `#CC79A7` reddish purple, `#000000` black.
 - **Cap at 7 hues.** After that, hues become indistinguishable. Options: (a) group remainder into "Other", (b) repeat hues with patterns, (c) direct-label each series and drop the legend.
 
 ### Never-defaults

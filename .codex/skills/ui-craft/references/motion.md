@@ -390,7 +390,5 @@ Map the project's animation library to the token names, not raw values — when 
 
 ## Sources
 
-- Material Design — Motion guidelines.
-- Apple Human Interface Guidelines — "Motion" and "Accessibility."
-- IBM Carbon — Motion tokens.
-- W3C — `prefers-reduced-motion`, WCAG 2.3.3.
+- W3C — CSS Media Queries Level 5: `prefers-reduced-motion`.
+- WCAG 2.3.3 (AAA) — Animation from Interactions.

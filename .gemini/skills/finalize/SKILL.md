@@ -1,6 +1,6 @@
 ---
 name: finalize
-description: "Pre-ship gate — runs detector, verifies brief and tokens, applies the 10-pass finish bar, ranks findings by feedback hierarchy. Invoke when the user asks for finalize on their UI, or mentions 'finalize' alongside design / UI / frontend work."
+description: "Pre-ship gate — runs detector, verifies brief and tokens, applies the 10-pass finish bar, ranks findings by feedback hierarchy. Use when the user wants to ship, merge, or finalize a surface and needs a verdict (READY / NOT READY / BLOCKED) before committing. Invoke when the user asks for finalize on their UI, or mentions 'finalize' alongside design / UI / frontend work."
 ---
 
 <!-- AUTO-GENERATED. Do not edit here. Source: skills/ui-craft/ + commands/*.md. Regenerate with `node scripts/sync-harnesses.mjs`. -->

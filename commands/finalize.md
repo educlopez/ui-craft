@@ -1,5 +1,5 @@
 ---
-description: Pre-ship gate — runs detector, verifies brief and tokens, applies the 10-pass finish bar, ranks findings by feedback hierarchy.
+description: Pre-ship gate — runs detector, verifies brief and tokens, applies the 10-pass finish bar, ranks findings by feedback hierarchy. Use when the user wants to ship, merge, or finalize a surface and needs a verdict (READY / NOT READY / BLOCKED) before committing.
 argument-hint: "[file or surface path; defaults to current working surface]"
 ---
 

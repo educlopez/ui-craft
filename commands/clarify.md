@@ -1,5 +1,5 @@
 ---
-description: UX copy pass — buttons, errors, empty states, form hints. Clarity over cleverness.
+description: UX copy review across buttons, errors, empty states, and form hints — critiques by default, applies only on request. Use when copy feels vague, generic, or AI-sounding, or when the user says "fix the labels", "improve error messages", or "review the copy".
 argument-hint: "[file or component path]"
 ---
 
