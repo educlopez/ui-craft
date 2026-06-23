@@ -6,7 +6,7 @@ Defines the format of `.ui-craft/brief.md` — the durable artifact that anchors
 
 ## The Brief Format
 
-The brief is a single markdown file at `.ui-craft/brief.md`. Five sections, all required, all short. No preamble. No mission statements.
+The brief is a single markdown file at `.ui-craft/brief.md`. Five required sections, all short, plus an optional sixth that grows over time. No preamble. No mission statements.
 
 ---
 
@@ -81,6 +81,19 @@ Short. Declarative. Each item should prevent at least one future feature request
 
 ---
 
+### 6. Learned constraints (optional, append-only)
+
+Corrections the user has made to design output on this project — the brief teaching itself. Starts empty; grows whenever the user rejects or redirects a choice. Each entry is dated and pins the rule plus the reason, so it generalizes instead of pattern-matching one literal case.
+
+```markdown
+- **2026-06-23** — No gradient backgrounds on hero/landing surfaces. *Why:* brand reads restrained; flashy undercuts trust.
+- **2026-06-20** — Button press feedback caps at `scale(0.97)`. *Why:* user found 0.92 exaggerated.
+```
+
+These are project-scoped design facts, not a general memory store — they live in the brief because they *are* design decisions, just learned rather than stated up front. They rank with the principles (section 3): a learned constraint overrides a skill default but never the accessibility/correctness floor.
+
+---
+
 ## How the Brief Gets Used
 
 Read `.ui-craft/brief.md` first when working on any UI. It is Discovery Phase Step 1.
@@ -130,6 +143,16 @@ Date each addition. Never delete past principles — if a principle is supersede
 ```
 
 The brief is append-mostly. The team should be able to trace why a principle changed.
+
+---
+
+## Self-Correction
+
+When the user corrects design output — "no así", "no me gusta", "always do X here", "never Z", or reverses a non-default choice in a way that reads as a standing preference — append it to section 6 (run `/remember`). Capture the **why**, not just the what; phrase it so a future build can apply it without this conversation's context; confirm in one line where it landed. Don't re-litigate a correction already recorded. If a correction would breach the accessibility/correctness floor, apply the closest compliant interpretation and say so — never store an unsafe rule.
+
+This is project-scoped, and it lives in the brief by design — ui-craft is a UI skill, not a general memory engine.
+
+**Optional cross-project bridge.** If the user wants a correction applied across *all* their projects (not just this one), that's general memory, outside the brief's scope. When an external memory service is available to the agent, mirror the constraint there so other projects inherit it; otherwise note that cross-project recall needs such a service. The brief remains the canonical project store either way.
 
 ---
 
