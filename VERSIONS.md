@@ -1,5 +1,19 @@
 # Versions
 
+## v0.24.0 (2026-06-23) — two-store memory system
+
+Reworks the v0.23 flat learning file into a real, tiered memory **system** — modeled on persistent agent memory (engram / MemGPT-style tiers / mem0) but implemented as plain files so it works identically across every harness with no database, MCP, or network. Adds a second reach: the user's cross-project memory, not just the current repo.
+
+**Changed:**
+
+- `references/memory.md` — rewritten. **Two stores:** project (`.ui-craft/memory/`, committable) and user/global (`~/.ui-craft/memory/`, follows the user across all their projects). Each store is a **directory** with two tiers — an always-loaded `INDEX.md` (+ `profile.md`) acting as core/recall memory, plus atomic per-memory files (frontmatter: `id`/`type`/`scope`/`status`/`supersedes`/`tags` + why + apply) read on demand by hook (archival memory). Four-tier **precedence ladder** (hard a11y/correctness floor > project > user/global > skill defaults — specific beats general, nothing beats the floor). Defines reach selection on write (cross-project signals → global, else project), conflict **supersession**, hygiene, a three-way **promotion funnel** (project → global → upstream skill PR), and an **optional engram bridge** (mirror to an engram MCP if present; files stay canonical).
+
+**New:**
+
+- `commands/remember.md` (`/remember`) — record a convention/correction; picks project vs global reach, writes the atomic file + index hook, handles supersession, keeps the floor.
+- `commands/memory-lint.md` (`/memory-lint`) — audits both stores for conflicts, orphan supersedes, index drift, stale claims, missing-why, over-cap, and promotion candidates. 21 commands total.
+- SKILL.md — Discovery loads both stores (global then project); Core Rule *Memory & Self-Correction* updated to the four-tier ladder + reach selection; routing + Tier 1 table updated.
+
 ## v0.23.0 (2026-06-23) — project memory + self-correction
 
 A portable, file-based learning layer so the skill remembers each project's conventions and the corrections a user makes — without ever weakening its quality floor. No database, no MCP, no network: one markdown file in the user's repo, read at Discovery, appended to when corrected. Works the same across all five harness mirrors.
