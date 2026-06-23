@@ -172,6 +172,7 @@ p, li, dd      { text-wrap: pretty; }
 
 ## Anti-aliasing
 
+- **Root smoothing (macOS):** apply `-webkit-font-smoothing: antialiased` + `-moz-osx-font-smoothing: grayscale` once on `html` (Tailwind: `antialiased` on the root element). macOS renders text heavier than intended by default; this thins it for crisper text. Set it ONCE at the root — never per-element, or smoothed and unsmoothed text end up with visibly different weights. No-op on other platforms, safe to apply universally.
 - Scaling text via `transform` can change smoothing
 - Prefer animating a wrapper instead of text node directly
 - If artifacts persist: `translateZ(0)` or `will-change: transform` to promote layer

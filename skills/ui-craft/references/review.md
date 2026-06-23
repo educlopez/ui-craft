@@ -152,6 +152,7 @@ Frame as missed opportunities:
 - [ ] Exit faster than enter
 - [ ] Stagger delays ≤ 50ms per item
 - [ ] `prefers-reduced-motion` respected
+- [ ] No entrance animation on first paint for default-state elements (`initial={false}` on `AnimatePresence`)
 
 ### Interaction Audit
 
@@ -188,6 +189,8 @@ Full checklist lives in `accessibility.md` (**Quick Checklist** + **Forms**). Fa
 - [ ] `theme-color` matches background
 - [ ] `tabular-nums` for number comparisons
 - [ ] `text-wrap: balance` on headings
+- [ ] Images have inset outline `black/10` (light) / `white/10` (dark) — never tinted
+- [ ] `-webkit-font-smoothing: antialiased` on root (macOS)
 
 ### Performance Audit
 - [ ] Only compositor props animated (`transform`, `opacity`)
