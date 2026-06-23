@@ -18,7 +18,7 @@ For everything else — reviews, animations, forms, polish — the skill routes 
 
 ## What it does
 
-UI Craft gives AI coding agents the design knowledge they're missing. Not templates. Not component libraries. Actual craft knowledge — 28 domain references of opinionated rules about how interfaces should look, move, and feel, plus 19 slash commands to run focused passes on existing code. Stack-agnostic by design.
+UI Craft gives AI coding agents the design knowledge they're missing. Not templates. Not component libraries. Actual craft knowledge — 28 domain references of opinionated rules about how interfaces should look, move, and feel, plus 21 slash commands to run focused passes on existing code. Stack-agnostic by design.
 
 Every UI gets tested against a single question: *"Would someone believe AI made this?"* If yes, it starts over.
 
@@ -47,11 +47,17 @@ npx skills add educlopez/ui-craft
 
 Works with **Claude Code, Codex, Cursor, Gemini, OpenCode, Windsurf**, and any agent that supports the [Agent Skills](https://skills.sh) spec.
 
-Each agent gets a pre-built mirror under a dedicated folder (`.codex/`, `.cursor/`, `.gemini/`, `.opencode/`, `.agents/`). The main `ui-craft` skill lands as a peer skill; each of the 19 slash commands is materialized as its own sub-skill in non-Claude harnesses (since only Claude Code understands slash commands — other agents see them as skills triggered by intent like "audit my UI", "polish this page").
+Each agent gets a pre-built mirror under a dedicated folder (`.codex/`, `.cursor/`, `.gemini/`, `.opencode/`, `.agents/`). The main `ui-craft` skill lands as a peer skill; each of the 21 slash commands is materialized as its own sub-skill in non-Claude harnesses (since only Claude Code understands slash commands — other agents see them as skills triggered by intent like "audit my UI", "polish this page").
 
 **Full reference docs:** [skills.smoothui.dev/docs](https://skills.smoothui.dev/docs).
 
 ### Alternative installation
+
+**Claude Code plugin marketplace** (native plugin — installs the skill + all slash commands):
+```
+/plugin marketplace add educlopez/ui-craft
+/plugin install ui-craft
+```
 
 **Clone:**
 ```bash
@@ -149,7 +155,7 @@ The skill detects your intent and routes automatically.
 | **Review** | "Review this component" | Audits for generic AI patterns, accessibility gaps, and missed details |
 | **Polish** | "Polish this dashboard" | Finds the twenty small things that turn "done" into "crafted" |
 
-## 28 domain references
+## 29 domain references
 
 | Domain | Covers |
 |--------|--------|
@@ -227,16 +233,16 @@ ui-craft/
 ├── skills/
 │   ├── ui-craft/                 # Main skill
 │   │   ├── SKILL.md              # Slim entry — knobs, discovery, anti-slop, routing
-│   │   └── references/           # 28 domain references (accessibility, motion, layout,
+│   │   └── references/           # 29 domain references (accessibility, motion, layout,
 │   │                             #   typography, color, modern-css, responsive,
 │   │                             #   sound, copy, review, dashboard, inspiration, stack,
 │   │                             #   heuristics, personas, state-design, dataviz,
-│   │                             #   ai-chat, forms, brief, tokens,
+│   │                             #   ai-chat, forms, brief, tokens, memory,
 │   │                             #   finish-bar, principles-catalog)
 │   ├── ui-craft-minimal/          # Variant — Linear/Notion aesthetic
 │   ├── ui-craft-editorial/        # Variant — Medium/Substack aesthetic
 │   └── ui-craft-dense-dashboard/  # Variant — Bloomberg/Retool aesthetic
-├── commands/                      # 19 Claude Code slash commands (source of truth)
+├── commands/                      # 21 Claude Code slash commands (source of truth)
 ├── examples/
 │   ├── animation-storyboard.md   # Multi-stage animation pattern template
 │   └── presets/
