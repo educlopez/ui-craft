@@ -1,18 +1,22 @@
 # Versions
 
-## v0.24.0 (2026-06-23) — two-store memory system
+## v0.25.0 (2026-06-23) — self-correction folds into the brief
 
-Reworks the v0.23 flat learning file into a real, tiered memory **system** — modeled on persistent agent memory (engram / MemGPT-style tiers / mem0) but implemented as plain files so it works identically across every harness with no database, MCP, or network. Adds a second reach: the user's cross-project memory, not just the current repo.
+Settles the memory direction. UI Craft is a UI design skill, not a general memory engine — so the standalone memory store added in v0.23–v0.24 was the wrong shape. v0.25 folds project-scoped self-correction back into the artifact that already holds design decisions, the brief, and treats cross-project memory as an external concern reached through an optional bridge.
 
 **Changed:**
 
-- `references/memory.md` — rewritten. **Two stores:** project (`.ui-craft/memory/`, committable) and user/global (`~/.ui-craft/memory/`, follows the user across all their projects). Each store is a **directory** with two tiers — an always-loaded `INDEX.md` (+ `profile.md`) acting as core/recall memory, plus atomic per-memory files (frontmatter: `id`/`type`/`scope`/`status`/`supersedes`/`tags` + why + apply) read on demand by hook (archival memory). Four-tier **precedence ladder** (hard a11y/correctness floor > project > user/global > skill defaults — specific beats general, nothing beats the floor). Defines reach selection on write (cross-project signals → global, else project), conflict **supersession**, hygiene, a three-way **promotion funnel** (project → global → upstream skill PR), and an **optional engram bridge** (mirror to an engram MCP if present; files stay canonical).
+- `references/brief.md` — new **section 6, Learned constraints** (append-only, dated, each pinning rule + why): the brief teaching itself from corrections. New **Self-Correction** section: when the user rejects or redirects a choice, record it as a learned constraint (`/remember`); learned constraints rank with the principles — override skill defaults, never the accessibility/correctness floor.
+- `commands/remember.md` — rewritten to append a learned constraint to the brief; cross-project reach mirrors to an external memory service only if one is available, otherwise stays in the brief.
+- SKILL.md — Discovery notes the brief's learned constraints; Core Rule reframed to **Self-Correction** (brief-based); routing + Tier 1 table updated.
 
-**New:**
+**Removed:**
 
-- `commands/remember.md` (`/remember`) — record a convention/correction; picks project vs global reach, writes the atomic file + index hook, handles supersession, keeps the floor.
-- `commands/memory-lint.md` (`/memory-lint`) — audits both stores for conflicts, orphan supersedes, index drift, stale claims, missing-why, over-cap, and promotion candidates. 21 commands total.
-- SKILL.md — Discovery loads both stores (global then project); Core Rule *Memory & Self-Correction* updated to the four-tier ladder + reach selection; routing + Tier 1 table updated.
+- The standalone memory store and its `/memory-lint` command — superseded by the brief-based approach. Project state stays in `.ui-craft/brief.md`; general cross-project memory belongs to an external service, not this skill. 28 references, 20 commands.
+
+## v0.24.0 (2026-06-23) — tiered memory store (superseded by v0.25)
+
+Reworked the v0.23 learning file into a tiered, file-based store with a second cross-project reach. Superseded by v0.25, which folds project self-correction back into the brief and treats cross-project memory as external — see above.
 
 ## v0.23.0 (2026-06-23) — project memory + self-correction
 
