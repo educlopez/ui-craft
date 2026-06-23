@@ -156,6 +156,18 @@ On non-neutral backgrounds, tint borders/shadows/text toward the same hue:
 - Subtle colored dividers
 - Colored focus indicators
 
+### Image Outlines
+Give `<img>` a subtle `1px` inset outline so images sit at the same depth as bordered/shadowed surfaces — and the outline color is **non-negotiable**:
+- **Light mode:** pure black at low opacity — `rgba(0,0,0,0.1)` (Tailwind `outline-black/10`).
+- **Dark mode:** pure white — `rgba(255,255,255,0.1)` (Tailwind `dark:outline-white/10`).
+- **Never** a tinted near-black/near-white from the palette (slate/zinc/neutral, `#0a0a0a`, `#f5f5f7`) and never the accent/ink hue. A tinted outline picks up the surface underneath and reads as dirt on the image edge — this is the one place the hue-consistency rule above does NOT apply.
+- Use `outline` + `outline-offset: -1px` (inset), not `border` — keeps the image its intended size and adds nothing to layout.
+
+```css
+img { outline: 1px solid rgba(0,0,0,0.1); outline-offset: -1px; }
+/* dark: rgba(255,255,255,0.1) */
+```
+
 ---
 
 ## Design Rules
