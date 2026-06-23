@@ -117,6 +117,7 @@ General interaction rules (keyboard timing, touch targets, `overscroll-behavior`
 6. **Unique keys** (not index) for dynamic lists — enables smooth add/remove.
 7. **List reordering** needs layout animation mode, not sequential mode.
 8. **Wait modes nearly double perceived duration** — use shorter durations when sequencing enter/exit.
+9. **Suppress enter animation on first paint.** Elements already in their default state on page load must not animate in — only on later state changes. With Motion, set `initial={false}` on `AnimatePresence` (icon swaps, tabs, toggles, segmented controls). Exception: a deliberate first-time entrance (staggered hero, loading sequence) relies on `initial` — don't kill it there. Verify on a hard refresh. This is the fix for the "entrance on every page load" anti-pattern below.
 
 Stagger example:
 

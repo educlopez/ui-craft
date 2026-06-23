@@ -1,5 +1,19 @@
 # Versions
 
+## v0.22.0 (2026-06-23) — interface detail polish
+
+Three net-new finish-level rules folded in from an external interface-detail technique scan, each pinned to exact values and made auditable in the review checklist. All were genuine gaps — the rest of the scanned set already lived in the skill.
+
+**New:**
+
+- `references/typography.md` — root font smoothing rule: `-webkit-font-smoothing: antialiased` + `-moz-osx-font-smoothing: grayscale` applied once on `html` (macOS renders text heavier by default; this thins it). Set once at the root, never per-element, or weights look inconsistent.
+- `references/color.md` — image outlines: inset `1px` outline at `rgba(0,0,0,0.1)` light / `rgba(255,255,255,0.1)` dark, `outline-offset: -1px`. Color is non-negotiable — never a tinted near-black/near-white or the accent hue (tinted picks up the surface and reads as dirt on the edge). The one place the hue-consistency rule is explicitly overridden.
+- `references/motion.md` — Choreography rule #9: suppress entrance animation on first paint for default-state elements (`initial={false}` on `AnimatePresence`), with the deliberate-hero/loading exception called out.
+
+**Audit:**
+
+- `references/review.md` — three checklist lines added (Animation + Design audits) so the new rules are caught in review passes.
+
 ## v0.21.0 (2026-06-11) — recipes: landing + auth
 
 Extends the v0.20 outcome layer to the two highest-visibility surfaces after dashboards. Both recipes were validated by building real screenshots with them first (the repo's refreshed hero-with and signin-with marketing assets are their output).
