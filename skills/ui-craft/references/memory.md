@@ -43,8 +43,8 @@ Each store is a directory, not one flat file. This gives two tiers — a cheap a
 
 ```markdown
 # ui-craft memory index
-- [no-gradient-hero](2026-06-23-no-gradient-hero.md) — never gradients on hero here · #color #hero #brand
-- [press-scale](2026-06-20-press-scale.md) — cap button press at scale(0.97) · #motion #button
+- no-gradient-hero → 2026-06-23-no-gradient-hero.md — never gradients on hero here · #color #hero #brand
+- press-scale → 2026-06-20-press-scale.md — cap button press at scale(0.97) · #motion #button
 ```
 
 **profile.md** — autodetected project shape (stack, tokens, brand hue, font, style). Always loaded; refreshed when the stack changes. (Project store only — the global store has no single project to profile.)
