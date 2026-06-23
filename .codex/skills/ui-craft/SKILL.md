@@ -79,6 +79,8 @@ The rules that make the biggest difference between "AI-generated" and "designed 
 | Forms (multi-step, validation timing, autosave) | [forms.md](references/forms.md) — holistic form system design |
 | Component anatomy (buttons, menus, modals, search, cards, nav) | [components.md](references/components.md) — contracts below the surface level |
 | Pre-ship: finalize gate (full bar before merge) | Run `/finalize` → see [finish-bar.md](references/finish-bar.md) |
+| Remember a convention or correction (project or all-projects) | Run `/remember` → [memory.md](references/memory.md) |
+| Audit / clean the memory stores (conflicts, stale, supersede) | Run `/memory-lint` → [memory.md](references/memory.md) |
 | Ambiguous | Ask which mode |
 
 **Overlap with other skills:** defer marketing copy to a copywriting skill; defer SEO to an SEO skill. UI Craft is the visual and interaction layer.
@@ -107,7 +109,7 @@ Before applying any design decisions, discover what the project has and what the
 
 **First, check for `.ui-craft/brief.md`.** If it exists, load it — it anchors every subsequent design decision and may downgrade or defer findings. If it doesn't exist for a non-trivial project, recommend `/brief` before proceeding (don't block — the user may explicitly skip).
 
-**Then check for `.ui-craft/memory.md`.** If it exists, load it: apply its **Profile** as known facts (skip questions it already answers) and treat each active **Learned** entry as a binding constraint. Memory overrides skill defaults but never the hard floor (a11y, correctness, Critical anti-slop). See [memory.md](references/memory.md). Absent file → behave as normal; it's additive, never required.
+**Then load memory — two stores.** Read the user/global index `~/.ui-craft/memory/INDEX.md` first, then the project index `.ui-craft/memory/INDEX.md` + `profile.md`. Apply `profile` as known facts (skip questions it answers); for the current task, pull the full memory files whose index hooks match. Treat each active entry as a binding constraint, resolved by the ladder (project > global > defaults; never over the a11y/correctness floor). See [memory.md](references/memory.md). Absent stores → behave as normal; memory is additive, never required.
 
 Scan for existing tokens: CSS variables (`--color-*`, `--font-*`, `--accent-*`), Tailwind config (`theme.extend.*`), globals.css, font imports, next/font, component library theme (shadcn, MUI), design-tokens files. Build an inventory (accent, fonts, radius, shadows). If the project has an intentional system, respect it. Don't override.
 
@@ -189,15 +191,16 @@ Every rule above has a context where it inverts. Stating the rule is half the wo
 
 **The general principle:** every rule encodes a default that prevents the most common failure mode. When the context inverts the failure mode, the rule may invert too. The work is recognizing the inversion, not memorizing exceptions.
 
-### Project Memory & Self-Correction
+### Memory & Self-Correction
 
-The skill learns each project through `.ui-craft/memory.md` (loaded at Discovery). Resolve every decision top-down — higher tier always wins:
+The skill learns through two file-based memory stores loaded at Discovery — **project** (`.ui-craft/memory/`, this repo) and **user/global** (`~/.ui-craft/memory/`, all the user's projects). Each is a directory: an always-loaded `INDEX.md` (+ `profile.md`) plus atomic memory files read on demand by hook. Resolve every decision top-down — higher tier always wins:
 
 1. **Hard floor** — a11y (keyboard, focus-visible, APCA, reduced-motion), correctness, Critical anti-slop. Never overridden by memory.
-2. **Project memory** — `Profile` + active `Learned` entries. Overrides skill defaults.
-3. **Skill defaults** — references + Knobs.
+2. **Project memory** — most specific. Overrides global + defaults.
+3. **User/global memory** — the user's cross-project rules. Overrides defaults.
+4. **Skill defaults** — references + Knobs.
 
-**When the user corrects you** — "no así", "no me gusta", "always do X here", "never Z", or a reversal that reads as a standing preference — append a `Learned` entry capturing the **why** (not just the what) and a phrasing-as-rule **Apply** line, then confirm in one line where you saved it. Don't re-litigate a correction already in memory. If a correction would breach the hard floor, apply the closest compliant interpretation and say so. Full contract (format, write triggers, supersede + hygiene, upstream funnel) → [memory.md](references/memory.md).
+**When the user corrects you** — "no así", "no me gusta", "always do X", "never Z", or a reversal that reads as a standing preference — write an atomic memory capturing the **why** (not just the what) and a phrasing-as-rule **Apply** line, add its index hook, then confirm in one line where it landed. **Choose the reach:** cross-project signals ("in all my projects", "siempre que trabajes conmigo") → global store; "here/this project" or no signal → project store (default); ambiguous personal taste → ask once. Don't re-litigate a correction already in memory. If a correction would breach the hard floor, apply the closest compliant interpretation and say so. Full contract (two stores, format, write triggers, promotion + upstream funnel, hygiene, optional engram bridge) → [memory.md](references/memory.md).
 
 ### Animation Decision Ladder
 
@@ -261,7 +264,7 @@ Tiered by signal. Tier 1 is required reading before writing any UI; lower tiers 
 | Reference | When to Read |
 |-----------|--------------|
 | [brief.md](references/brief.md) | Durable design brief at `.ui-craft/brief.md` — read first, anchors every decision. Run `/brief` if absent. |
-| [memory.md](references/memory.md) | Project memory + self-correction at `.ui-craft/memory.md` — learned conventions and corrections. Read at Discovery; append when the user corrects you. Overrides defaults, never the a11y floor. |
+| [memory.md](references/memory.md) | Two-store memory + self-correction — project (`.ui-craft/memory/`) + user/global (`~/.ui-craft/memory/`). Read at Discovery; write when the user corrects you (`/remember`). Overrides defaults, never the a11y floor. |
 | [tokens.md](references/tokens.md) | 3-layer token spine (primitive → semantic → component). Both modes intentional. Run `/tokens` to audit or establish. |
 | [inspiration.md](references/inspiration.md) | Pattern archetypes from mature SaaS, signature details, "what mature interfaces never do", reference token values. **Read first** — highest signal in the skill. |
 | [accessibility.md](references/accessibility.md) | WCAG, keyboard, focus, forms, ARIA, checklist. **Required before forms or interactive components.** |
