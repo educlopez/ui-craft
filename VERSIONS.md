@@ -1,5 +1,16 @@
 # Versions
 
+## v0.23.0 (2026-06-23) — project memory + self-correction
+
+A portable, file-based learning layer so the skill remembers each project's conventions and the corrections a user makes — without ever weakening its quality floor. No database, no MCP, no network: one markdown file in the user's repo, read at Discovery, appended to when corrected. Works the same across all five harness mirrors.
+
+**New:**
+
+- `references/memory.md` — 29th reference. Defines `.ui-craft/memory.md` (sits beside the existing `.ui-craft/brief.md`): a **Profile** block (autodetected stack/tokens/style) + an append-only **Learned** log of corrections (each entry pins *what*, *why*, *apply-as-rule*, *scope*). Specifies the three-tier **precedence ladder** (hard a11y/correctness floor > project memory > skill defaults — memory can invert a default but never the floor), read-at-Discovery and write-on-correction behavior, supersede + hygiene rules, and the **upstream funnel** (project-specific corrections stay local; corrections that reveal a baseline gap become PR candidates against the skill).
+- SKILL.md — Discovery Step 1 now loads `.ui-craft/memory.md` after the brief; new Core Rule **Project Memory & Self-Correction** (precedence ladder + correction-write trigger); Tier 1 reference table updated.
+
+**Why it matters:** corrections stop being re-litigated every session, the skill adapts per-project while keeping one curated high-quality UI baseline, and the local memory doubles as a discovery pipeline for improving the skill itself.
+
 ## v0.22.0 (2026-06-23) — interface detail polish
 
 Three net-new finish-level rules folded in from an external interface-detail technique scan, each pinned to exact values and made auditable in the review checklist. All were genuine gaps — the rest of the scanned set already lived in the skill.
