@@ -1,0 +1,22 @@
+{
+  "name": "ui-craft-mcp",
+  "version": "0.1.0",
+  "description": "ui-craft MCP server — deterministic design-quality gate (anti-slop, tokens, acceptance-bar)",
+  "type": "module",
+  "bin": {
+    "ui-craft-mcp": "src/server.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "test": "node --test",
+    "start": "node src/server.mjs"
+  },
+  "files": [
+    "src"
+  ],
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.29.0"
+  }
+}
