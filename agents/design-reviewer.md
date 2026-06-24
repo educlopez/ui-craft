@@ -1,6 +1,6 @@
 ---
 name: design-reviewer
-description: "Adversarial design critique on a diff, file, or rendered surface. Use to review UI/design quality, audit a diff/PR for design issues, or run an adversarial design critique. One of a parallel verify team alongside a11y-auditor."
+description: "Adversarial design critique on a diff, file, or rendered surface. Use to review UI/design quality or audit a diff/PR for design issues. One of a parallel verify team alongside a11y-auditor."
 tools: Read, Grep, Glob
 model: sonnet
 color: purple

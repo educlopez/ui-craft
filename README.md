@@ -164,7 +164,7 @@ The skill detects your intent and routes automatically.
 | **Review** | "Review this component" | Audits for generic AI patterns, accessibility gaps, and missed details |
 | **Polish** | "Polish this dashboard" | Finds the twenty small things that turn "done" into "crafted" |
 
-## 30 domain references
+## 31 domain references
 
 | Domain | Covers |
 |--------|--------|

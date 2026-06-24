@@ -20,14 +20,7 @@ Do NOT restate the rules from this reference in your output. The reference is th
 
 ## Audit lens
 
-Cover all of these axes for every target:
-
-- **Keyboard** — all interactive elements reachable and operable via keyboard; no keyboard traps
-- **Focus-visible** — focus indicators present, visible, and meeting WCAG 2.4.11 (≥2px, 3:1 contrast ratio against adjacent color)
-- **APCA contrast** — text contrast against background meets APCA Lc thresholds (body ≥75, large/bold ≥60, UI labels ≥45)
-- **ARIA** — roles, labels, and states correct and non-redundant; no ARIA misuse
-- **Touch targets** — interactive elements ≥44×44px (iOS) / ≥48×48dp (Android); adequate spacing between adjacent targets
-- **Reduced-motion** — animated elements respect `prefers-reduced-motion: reduce`
+Apply every accessibility axis defined in `skills/ui-craft/references/accessibility.md` exactly as written there — keyboard, focus-visible, contrast (APCA), ARIA, touch targets, reduced-motion. Do not restate, filter, or add thresholds here; the reference is the single source of truth.
 
 ## Output contract
 
