@@ -3,3 +3,4 @@ CLAUDE.md
 .DS_Store
 **/.DS_Store
 node-compile-cache/
+.atl/

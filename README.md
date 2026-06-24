@@ -41,31 +41,39 @@ More before/after comparisons on the [landing page](https://skills.smoothui.dev)
 
 ## Install
 
-```bash
-npx skills add educlopez/ui-craft
-```
+### Claude Code — recommended
 
-Works with **Claude Code, Codex, Cursor, Gemini, OpenCode, Windsurf**, and any agent that supports the [Agent Skills](https://skills.sh) spec.
+Install as a native plugin (the skill + all 20 slash commands):
 
-Each agent gets a pre-built mirror under a dedicated folder (`.codex/`, `.cursor/`, `.gemini/`, `.opencode/`, `.agents/`). The main `ui-craft` skill lands as a peer skill; each of the 20 slash commands is materialized as its own sub-skill in non-Claude harnesses (since only Claude Code understands slash commands — other agents see them as skills triggered by intent like "audit my UI", "polish this page").
-
-**Full reference docs:** [skills.smoothui.dev/docs](https://skills.smoothui.dev/docs).
-
-### Alternative installation
-
-**Claude Code plugin marketplace** (native plugin — installs the skill + all slash commands):
 ```
 /plugin marketplace add educlopez/ui-craft
 /plugin install ui-craft
 ```
 
-**Clone:**
+This uses Claude Code's own plugin system, so it's not affected by the global-path issue noted below.
+
+### Codex, Cursor, Gemini, OpenCode, Windsurf — and any Agent Skills agent
+
 ```bash
-git clone https://github.com/educlopez/ui-craft.git ~/.skills/ui-craft
+npx skills add educlopez/ui-craft
 ```
 
-**Git submodule:**
+Works with any agent that supports the [Agent Skills](https://skills.sh) spec. Each agent gets a pre-built mirror under a dedicated folder (`.codex/`, `.cursor/`, `.gemini/`, `.opencode/`, `.agents/`). The main `ui-craft` skill lands as a peer skill; each slash command is materialized as its own sub-skill in non-Claude harnesses (other agents trigger them by intent: "audit my UI", "polish this page").
+
+> [!note]
+> **Using `npx skills add -g` with Claude Code?** The skills CLI installs global skills to `~/.agents/skills`, but Claude Code reads `~/.claude/skills` ([vercel-labs/skills#693](https://github.com/vercel-labs/skills/issues/693)). If the skill isn't picked up, use the plugin install above, install per-project (drop `-g`), or symlink it:
+> ```bash
+> ln -s ~/.agents/skills/ui-craft ~/.claude/skills/ui-craft
+> ```
+
+**Full reference docs:** [skills.smoothui.dev/docs](https://skills.smoothui.dev/docs).
+
+### Other ways
+
 ```bash
+# Clone
+git clone https://github.com/educlopez/ui-craft.git ~/.skills/ui-craft
+# Git submodule
 git submodule add https://github.com/educlopez/ui-craft.git .skills/ui-craft
 ```
 
