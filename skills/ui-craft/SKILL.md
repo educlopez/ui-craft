@@ -77,6 +77,7 @@ The rules that make the biggest difference between "AI-generated" and "designed 
 | Forms (multi-step, validation timing, autosave) | [forms.md](references/forms.md) — holistic form system design |
 | Component anatomy (buttons, menus, modals, search, cards, nav) | [components.md](references/components.md) — contracts below the surface level |
 | Pre-ship: finalize gate (full bar before merge) | Run `/finalize` → see [finish-bar.md](references/finish-bar.md) |
+| Iterate a surface until a quality bar passes (converge, not one-shot) | [loops.md](references/loops.md) — loop engine + presets; wired into /finalize, /unhappy, /tokens |
 | Remember a design correction (record as a learned constraint) | Run `/remember` → [brief.md](references/brief.md) |
 | Ambiguous | Ask which mode |
 
@@ -188,6 +189,10 @@ Every rule above has a context where it inverts. Stating the rule is half the wo
 
 **The general principle:** every rule encodes a default that prevents the most common failure mode. When the context inverts the failure mode, the rule may invert too. The work is recognizing the inversion, not memorizing exceptions.
 
+### Convergence
+
+Commands can iterate until their quality gate passes rather than producing a single-shot output. The engine never fakes a render and always reports honest confidence. See [loops.md](references/loops.md).
+
 ### Self-Correction
 
 When the user corrects design output — "no así", "no me gusta", "always do X here", "never Z", or a reversal that reads as a standing preference — record it as a **learned constraint** in the brief (section 6; run `/remember`). Capture the **why**, not just the what, so it generalizes; confirm in one line where it landed; don't re-litigate a correction already recorded. Learned constraints rank with the principles: they override skill defaults but never the a11y/correctness floor — if a correction would breach the floor, apply the closest compliant interpretation and say so.
@@ -276,6 +281,7 @@ Tiered by signal. Tier 1 is required reading before writing any UI; lower tiers 
 | [ai-chat.md](references/ai-chat.md) | Streaming contract, 7-state affordance model for AI surfaces, tool traces, citations, generative UI. |
 | [review.md](references/review.md) | Critique methodology, Polish Pass, common issues, component craft. Load when reviewing or refining. |
 | [finish-bar.md](references/finish-bar.md) | 10-pass finishing protocol. Load on `/finalize` or CRAFT_LEVEL ≥ 8. |
+| [loops.md](references/loops.md) | Loop engine: read→evaluate→fix-one→re-evaluate→stop contract + 3 presets. Load when converging /finalize, /unhappy, or /tokens audit. |
 | [principles-catalog.md](references/principles-catalog.md) | 42 example design principles across 8 product categories. Load during `/brief` principles workshop branch as conversation seed. |
 
 ### Tier 3 — Foundations (read for the relevant discipline)

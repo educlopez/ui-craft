@@ -1,5 +1,25 @@
 # Versions
 
+## v0.26.0 (2026-06-24) — loop engine
+
+Adds an iterate-until-converged loop engine so commands can run until a binary quality gate passes — not just produce a single-shot report. The engine is purely declarative (no runtime); it lives in a new reference file and is wired into three existing commands.
+
+**New:**
+
+- `references/loops.md` — 29th reference file. Engine contract (5 fields), numbered loop procedure, renderer detection ladder (5 rungs, OPT-IN only for npx), honesty/confidence contract, 3 presets, preset block template for future additions.
+
+**Changed:**
+
+- `commands/finalize.md` — Step 6b: convergence mode (opt-in); runs `visual-anti-slop` preset; explicitly notes that the findings-only hard-stop is lifted ONLY in convergence mode.
+- `commands/unhappy.md` — convergence note after Step 4: run `state-coverage` preset; re-inventory until all required states present or budget.
+- `commands/tokens.md` — converge mode in Step 3: run `token-consistency` preset; re-scan until zero off-system values or budget.
+- `references/finish-bar.md` — short Convergence mode clause (re-run from Pass 1 after each fix until Done or budget; no pass duplication).
+- `references/state-design.md` — 1-line gate framing linking the lattice to the `state-coverage` preset.
+- `references/tokens.md` — 1-line gate framing linking the off-system-value definition to the `token-consistency` preset.
+- `skills/ui-craft/SKILL.md` — 1 Routing row, 1 Tier-2 Reference Files row, 1 Core Rule pointer, all linking to loops.md.
+
+29 references, 20 commands.
+
 ## v0.25.0 (2026-06-23) — self-correction folds into the brief
 
 Settles the memory direction. UI Craft is a UI design skill, not a general memory engine — so the standalone memory store added in v0.23–v0.24 was the wrong shape. v0.25 folds project-scoped self-correction back into the artifact that already holds design decisions, the brief, and treats cross-project memory as an external concern reached through an optional bridge.
