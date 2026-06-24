@@ -7,11 +7,16 @@ on:
       # Fix 11: check-anti-slop depends on scripts/detect.mjs — changes there must trigger MCP CI
       - 'scripts/detect.mjs'
       - 'scripts/detect.test.mjs'
+      # eval harness — also triggers when eval sources change
+      - 'evals/quality/**'
+      - 'scripts/eval.mjs'
   pull_request:
     paths:
       - 'mcp/**'
       - 'scripts/detect.mjs'
       - 'scripts/detect.test.mjs'
+      - 'evals/quality/**'
+      - 'scripts/eval.mjs'
 
 jobs:
   mcp-test:
@@ -26,3 +31,17 @@ jobs:
         run: cd mcp && npm install
       - name: Run MCP tests
         run: cd mcp && npm test
+
+  quality-eval:
+    name: Quality Eval Harness
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      # No npm install — eval harness is zero-dep (node built-ins only)
+      - name: Run eval unit tests
+        run: node --test evals/quality/*.test.mjs
+      - name: Run baseline regression gate
+        run: node scripts/eval.mjs --baseline

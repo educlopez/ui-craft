@@ -41,6 +41,11 @@ while IFS= read -r file; do
   git show ":$file" > "$TMPDIR/$file" 2>/dev/null || true
 done <<< "$STAGED"
 
+# Copy the repo config file so the detector respects .uicraftrc.json ignore patterns.
+if [ -f "$REPO_ROOT/.uicraftrc.json" ]; then
+  cp "$REPO_ROOT/.uicraftrc.json" "$TMPDIR/.uicraftrc.json"
+fi
+
 cd "$TMPDIR"
 if node "$REPO_ROOT/scripts/detect.mjs" . ; then
   exit 0

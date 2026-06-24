@@ -1,6 +1,7 @@
 {
   "extends": "recommended",
   "ignore": [
-    "scripts/fixtures/**"
+    "scripts/fixtures/**",
+    "evals/quality/fixtures/**"
   ]
 }
