@@ -107,6 +107,14 @@ If a tier has no findings, omit the section header entirely.
 
 ---
 
+## Step 6b — Convergence mode (explicit opt-in only)
+
+Convergence mode activates ONLY when the user explicitly says "run in convergence mode", "converge until the bar passes", or uses a `--converge` flag. A vague "keep going", "fix it", or "make it pass" does NOT trigger convergence — the default remains findings-only (Step 7 hard-stop applies).
+
+When explicitly triggered: load `skills/ui-craft/references/loops.md` and run preset `visual-anti-slop` (budget the default loop budget defined in loops.md, hard cap 5). Emit the pre-flight cost notice before iteration 1. After each single highest-impact fix, re-run finalize Steps 2–6 (this command's own steps) until READY or budget exhausted. **Note:** finalize's findings-only hard-stop (Step 7) is lifted ONLY inside convergence mode — fixes are applied during iteration.
+
+---
+
 ## Step 7 — Hard stops
 
 Do not edit any file. Do not propose code changes inline. The verdict is the output. If the user asks for fixes after reading the report, respond to that as a separate request.

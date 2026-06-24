@@ -2,6 +2,8 @@
 
 Every design decision in a project references a three-layer token system established before any component is written. The layers are: **primitive** (raw values named for what they are), **semantic** (contextual meaning, switches between themes), and **component** (specific usage, created on demand). The scope is projects: throwaway prototypes and single standalone components may run on primitives alone — but the moment a second surface appears, build the spine.
 
+This 3-layer contract and the off-system-value definition (any color, radius, or spacing value not drawn from the token system) are the evaluation source for the `token-consistency` loop preset (see `../SKILL.md` → loops.md).
+
 ---
 
 ## The Three Layers

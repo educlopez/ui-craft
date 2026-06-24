@@ -36,6 +36,8 @@ Mark each cell as **designed** (exists in code), **missing** (must add), or **N/
 
 If `CRAFT_LEVEL` is unknown, default to 7.
 
+**Convergence note:** To iterate until all required states are present, load `skills/ui-craft/references/loops.md` and run preset `state-coverage` (budget = the default loop budget defined in loops.md): after stubbing the highest-priority missing required state, re-inventory until all knob-required states are present or budget exhausted. Emit the pre-flight cost notice before iteration 1.
+
 **Output:** edit the code directly. After each file, print the Review Format table from SKILL.md:
 
 | Before | After | Why |

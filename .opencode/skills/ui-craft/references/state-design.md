@@ -10,6 +10,8 @@ Design every state before writing any JSX. Stub the ones the knob level doesn't 
 
 Every component-that-touches-data has this set. For each, design the visual AND the copy before coding.
 
+This table is the evaluation source for the `state-coverage` loop preset (see `../SKILL.md` → loops.md).
+
 | State | What to design | Common mistake |
 |-------|---------------|----------------|
 | **Idle** | Default resting state. Primary action obvious. | Treating "empty form" as idle — it's actually Empty. |
