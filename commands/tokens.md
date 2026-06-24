@@ -52,7 +52,9 @@ Output format:
 
 Show what's missing. Do not propose code during audit unless the user asks.
 
-**Converge mode:** load `../skills/ui-craft/references/loops.md` preset `token-consistency` (budget 3); emit the pre-flight cost notice; after fixing the top off-system value (raw hex color, arbitrary radius, or magic spacing), re-scan until zero off-system values or budget exhausted.
+### Step 3b — Converge mode (explicit opt-in)
+
+Load `skills/ui-craft/references/loops.md` preset `token-consistency` (budget = the default loop budget defined in loops.md). Emit the pre-flight cost notice. After fixing the top off-system value (raw hex color, arbitrary radius, or magic spacing), re-scan until zero off-system values or budget exhausted.
 
 ---
 
