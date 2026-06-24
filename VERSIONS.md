@@ -1,5 +1,23 @@
 # Versions
 
+## v0.28.0 (2026-06-24) — design agent pack
+
+Adds a two-agent parallel verify team as a new artifact class in the ui-craft plugin: `design-reviewer` (adversarial design critique) and `a11y-auditor` (accessibility audit). Both are read-only, fresh-context, and tool-scoped (Read/Grep/Glob). This is an additive Claude-Code-plugin-only layer — the skill, commands, and harness mirrors are unchanged.
+
+**New:**
+
+- `agents/design-reviewer.md` — adversarial design critic. Loads `references/review.md`, the Anti-Slop and Craft Test sections from `SKILL.md`, and `references/heuristics.md`. Returns severity-tagged findings (Critical / Warning / Suggestion, `file:line`). No edits. Invokable as `ui-craft:design-reviewer`.
+- `agents/a11y-auditor.md` — accessibility auditor. Loads `references/accessibility.md`. Covers keyboard, focus-visible, APCA contrast, ARIA, touch targets, reduced-motion. Returns severity-tagged findings. No edits. Invokable as `ui-craft:a11y-auditor`.
+- `references/agents.md` — 31st reference file. Describes the agent pack: roles, agent-vs-command guidance (fresh-context parallel delegation vs. inline commands), and parallel verify-team usage pattern (delegate both on the same diff simultaneously).
+
+**Changed:**
+
+- `skills/ui-craft/SKILL.md` — Routing table: new row directing parallel design-verify intent to `ui-craft:design-reviewer` + `ui-craft:a11y-auditor` with agent-vs-command distinction noted. Tier-4 Reference Files: new `agents.md` row.
+
+**Architecture note:** Auto-discovery is used — `agents/` dir at plugin root, no `plugin.json` change. The `agents` field in plugin.json is optional and, if present, replaces default scan rather than extending it — leaving `plugin.json` as `{skills, commands}` is the lowest-risk and correct approach. Rollback: delete `agents/` + `references/agents.md`, revert SKILL.md/VERSIONS/README.
+
+30 references (+ 1 agents reference = 31 total), 21 commands, 2 agents.
+
 ## v0.27.0 (2026-06-24) — spec-driven design
 
 Closes the ephemeral gap between brief (why) and build (how) by persisting the composition decision as `.ui-craft/spec.md` and chaining all existing pipeline phases into one guided meta-command `/sddesign`.
