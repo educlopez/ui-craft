@@ -17,7 +17,8 @@ import { randomBytes } from 'node:crypto';
  * @returns {{ findings: Array, summary: { total: number, errors: number, warnings: number } }}
  */
 export async function checkAntiSlop({ code, path } = {}) {
-  if (!code && !path) {
+  // Fix 4: use `=== undefined` so empty string code: '' is treated as valid input (0 findings)
+  if (code === undefined && !path) {
     return {
       error: 'Input required: provide either `code` (string) or `path` (file path or directory)',
       findings: [],
@@ -50,11 +51,10 @@ export async function checkAntiSlop({ code, path } = {}) {
   try {
     result = await scan(target);
   } catch (e) {
-    if (tempFile) {
-      try { unlinkSync(tempFile); } catch {}
-    }
+    // Fix 10: removed dead unlinkSync here — finally block below always cleans up
+    // Fix 9: use e?.message ?? e for non-Error safety
     return {
-      error: `Scan failed: ${e.message}`,
+      error: `Scan failed: ${e?.message ?? e}`,
       findings: [],
       summary: { total: 0, errors: 0, warnings: 0 },
     };

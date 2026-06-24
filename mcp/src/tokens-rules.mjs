@@ -13,8 +13,9 @@
 // Allowed border-radius px values: 0, 2, 6, 10, 14, 20, 9999
 const ALLOWED_RADIUS_PX = new Set([0, 2, 6, 10, 14, 20, 9999]);
 
-// Allowed spacing px values: 4, 8, 16, 24, 32, 48, 64, 96 (8pt scale + 4px base)
-const ALLOWED_SPACING_PX = new Set([4, 8, 16, 24, 32, 48, 64, 96]);
+// Allowed spacing px values: 0, 4, 8, 16, 24, 32, 48, 64, 96
+// Fix 3: 0/0px is always legal for spacing (e.g. padding: 0px resets are valid)
+const ALLOWED_SPACING_PX = new Set([0, 4, 8, 16, 24, 32, 48, 64, 96]);
 
 // Semantic z-index values from tokens.md
 const ALLOWED_Z = new Set([0, 1, 10, 20, 30, 40, 50, 60]);
@@ -51,9 +52,40 @@ export function scanTokens(code, filename = '<inline>') {
   // 5. Magic z-index integer: z-index: N (not in token set)
   const zIndexRe = /z-index\s*:\s*(\d+)/g;
 
+  // Fix 2: Track block-comment state across lines.
+  // `inBlockComment` is true when the current position is inside a /* ... */ block.
+  let inBlockComment = false;
+
   for (let i = 0; i < lines.length; i++) {
     const lineNum = i + 1;
     const lineText = lines[i];
+
+    // Fix 2: Capture block-comment state at START of this line, then advance to end-of-line state.
+    const blockCommentAtLineStart = inBlockComment;
+
+    // Advance inBlockComment to reflect the end of this line.
+    {
+      let tmp = lineText;
+      let state = inBlockComment;
+      while (tmp.length > 0) {
+        if (!state) {
+          const open = tmp.indexOf('/*');
+          if (open === -1) break;
+          state = true;
+          tmp = tmp.slice(open + 2);
+        } else {
+          const close = tmp.indexOf('*/');
+          if (close === -1) break;
+          state = false;
+          tmp = tmp.slice(close + 2);
+        }
+      }
+      inBlockComment = state;
+    }
+
+    // If the entire line starts inside a block comment, skip all rules.
+    // (Lines partially inside a block comment are handled per-match in the color rule below.)
+    if (blockCommentAtLineStart) continue;
 
     // Rule: tokens/color — raw hex not in CSS var definition
     // Skip lines that define a CSS custom property (--var: #hex is fine, it IS the token)
@@ -62,11 +94,39 @@ export function scanTokens(code, filename = '<inline>') {
       let m;
       hexColorRe.lastIndex = 0;
       while ((m = hexColorRe.exec(lineText)) !== null) {
-        // Skip if inside a var() call context — heuristic: preceded by `var(--`
         const before = lineText.slice(0, m.index);
+
+        // Skip if inside a var() call context — heuristic: preceded by `var(--`
         if (/var\([^)]*$/.test(before)) continue;
-        // Skip if in a comment
-        if (/\/\/.*$/.test(before) || /\/\*/.test(before)) continue;
+
+        // Fix 1: detect line comment only when // is NOT part of :// and NOT inside url(...)
+        // Strip url(...) blocks from `before`, then check for a standalone // that opens a comment.
+        const beforeNoUrl = before.replace(/url\([^)]*\)/gi, 'url()');
+        // Match // not preceded by : (i.e. not part of ://)
+        if (/(?<!:)\/\//.test(beforeNoUrl)) continue;
+
+        // Fix 2: skip if match is inside a block comment opened earlier on this same line
+        // Walk `before` to see if we entered a /* without a closing */ before this match.
+        {
+          let tmp = before;
+          let inBlock = false; // line started outside a block comment (blockCommentAtLineStart already handled)
+          let insideBlock = false;
+          while (tmp.length > 0) {
+            if (!inBlock) {
+              const open = tmp.indexOf('/*');
+              if (open === -1) break;
+              inBlock = true;
+              tmp = tmp.slice(open + 2);
+            } else {
+              const close = tmp.indexOf('*/');
+              if (close === -1) { insideBlock = true; break; }
+              inBlock = false;
+              tmp = tmp.slice(close + 2);
+            }
+          }
+          if (insideBlock || inBlock) continue;
+        }
+
         findings.push({
           rule: 'tokens/color',
           line: lineNum,
@@ -131,7 +191,7 @@ export function scanTokens(code, filename = '<inline>') {
             line: lineNum,
             snippet: m[0],
             fix: `Replace with a token: var(--space-xs/sm/md/lg/xl/2xl/3xl/4xl) — allowed: ${[...ALLOWED_SPACING_PX].join(', ')}px`,
-            expected: 'One of: 4, 8, 16, 24, 32, 48, 64, 96px (8pt scale)',
+            expected: 'One of: 0, 4, 8, 16, 24, 32, 48, 64, 96px (8pt scale)',
             severity: 'warning',
             file: filename,
           });

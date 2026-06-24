@@ -117,3 +117,60 @@ test('tokens_lint: CSS custom property definitions are not flagged as off-system
   const colorFindings = result.findings.filter((f) => f.rule === 'tokens/color');
   assert.equal(colorFindings.length, 0, `CSS custom property definitions should not be flagged`);
 });
+
+// Fix 1: hex after url(//cdn...) must still be flagged (url // is not a line comment)
+test('tokens_lint: hex after url(//cdn...) is correctly flagged (fix 1 false-negative)', async () => {
+  const code = `
+.card {
+  background: url(//cdn.example.com/x); color: #ff0000;
+}
+`;
+  const result = await tokensLint({ code });
+
+  assert.ok(!result.error, `Should not error: ${result.error}`);
+  const colorFindings = result.findings.filter((f) => f.rule === 'tokens/color');
+  assert.ok(colorFindings.length > 0, `Expected tokens/color finding for #ff0000 after url(//cdn...), got 0`);
+});
+
+// Fix 2: hex inside /* ... */ block comment must NOT be flagged
+test('tokens_lint: hex inside block comment is not flagged (fix 2 false-positive)', async () => {
+  const code = `
+/*
+ * fallback: #ff0000
+ * also: #3b82f6
+ */
+.card {
+  color: var(--accent-500);
+}
+`;
+  const result = await tokensLint({ code });
+
+  assert.ok(!result.error, `Should not error: ${result.error}`);
+  const colorFindings = result.findings.filter((f) => f.rule === 'tokens/color');
+  assert.equal(colorFindings.length, 0, `Hex values inside block comments should not be flagged, got: ${JSON.stringify(colorFindings)}`);
+});
+
+// Fix 3: padding: 0px must NOT be flagged
+test('tokens_lint: padding: 0px is not flagged (fix 3)', async () => {
+  const code = `
+.card {
+  padding: 0px;
+  margin: 0px;
+}
+`;
+  const result = await tokensLint({ code });
+
+  assert.ok(!result.error, `Should not error: ${result.error}`);
+  const spacingFindings = result.findings.filter((f) => f.rule === 'tokens/spacing');
+  assert.equal(spacingFindings.length, 0, `padding: 0px and margin: 0px should not be flagged, got: ${JSON.stringify(spacingFindings)}`);
+});
+
+// Fix 4: empty string code is valid input → 0 findings, no error
+test('tokens_lint: code: "" (empty string) → 0 findings, no error (fix 4)', async () => {
+  const result = await tokensLint({ code: '' });
+
+  assert.ok(!result.error, `Should not error on empty string: ${result.error}`);
+  assert.ok(Array.isArray(result.findings), 'findings should be array');
+  assert.equal(result.findings.length, 0, `Expected 0 findings for empty input`);
+  assert.equal(result.summary.total, 0);
+});

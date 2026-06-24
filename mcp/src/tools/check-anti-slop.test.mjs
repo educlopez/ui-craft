@@ -91,3 +91,13 @@ test('check_anti_slop: nonexistent path → structured error, no crash', async (
   assert.ok(Array.isArray(result.findings), 'findings should be array');
   assert.equal(typeof result.summary.total, 'number');
 });
+
+// Fix 4: empty string code is valid input → 0 findings, no error
+test('check_anti_slop: code: "" (empty string) → 0 findings, no error (fix 4)', async () => {
+  const result = await checkAntiSlop({ code: '' });
+
+  assert.ok(!result.error, `Should not error on empty string: ${result.error}`);
+  assert.ok(Array.isArray(result.findings), 'findings should be array');
+  assert.equal(result.findings.length, 0, `Expected 0 findings for empty input`);
+  assert.equal(result.summary.total, 0);
+});

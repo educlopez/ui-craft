@@ -4,9 +4,14 @@ on:
   push:
     paths:
       - 'mcp/**'
+      # Fix 11: check-anti-slop depends on scripts/detect.mjs — changes there must trigger MCP CI
+      - 'scripts/detect.mjs'
+      - 'scripts/detect.test.mjs'
   pull_request:
     paths:
       - 'mcp/**'
+      - 'scripts/detect.mjs'
+      - 'scripts/detect.test.mjs'
 
 jobs:
   mcp-test:

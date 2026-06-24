@@ -5,7 +5,7 @@
  * Data source: bundled acceptance-data.json (hand-derived from recipe-*.md + finish-bar.md).
  */
 
-import { createRequire } from 'node:module';
+// Fix 8: removed unused `import { createRequire }` from 'node:module'
 import { fileURLToPath } from 'node:url';
 import { join, dirname } from 'node:path';
 import { readFileSync } from 'node:fs';
@@ -21,7 +21,8 @@ try {
   acceptanceData = null;
 }
 
-const KNOWN_SURFACES = ['dashboard', 'landing', 'auth', 'generic'];
+// Fix 7: derive KNOWN_SURFACES from acceptanceData so it can't drift from the JSON
+const KNOWN_SURFACES = acceptanceData ? Object.keys(acceptanceData) : ['dashboard', 'landing', 'auth', 'generic'];
 
 /**
  * Return acceptance checklist items for the given surface.
