@@ -9,6 +9,10 @@ Recipes available: `dashboard` → `references/recipe-dashboard.md` · `landing`
 
 ---
 
+## Step 0 — Load spec (if present)
+
+Before anything else: if `.ui-craft/spec.md` exists and contains a `## Surface: <name>` section whose name matches `$ARGUMENTS`, load that section now. Its chosen composition, component inventory, state lattice, and **acceptance bar take precedence over the recipe defaults** for all downstream steps. Note which acceptance bar items came from the spec vs. recipe defaults.
+
 ## Step 1 — Inputs
 
 Run Stack Detection + Discovery Step 1 (existing tokens, `.ui-craft/brief.md`).

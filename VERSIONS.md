@@ -1,5 +1,23 @@
 # Versions
 
+## v0.27.0 (2026-06-24) — spec-driven design
+
+Closes the ephemeral gap between brief (why) and build (how) by persisting the composition decision as `.ui-craft/spec.md` and chaining all existing pipeline phases into one guided meta-command `/sddesign`.
+
+**New:**
+
+- `references/spec.md` — 30th reference file. Defines the `.ui-craft/spec.md` artifact: per-surface `## Surface: <name>` sections, each with chosen composition/recipe, layout skeleton (ASCII inline), component inventory wired to `components.md` contracts, state lattice (sourced from `state-design.md`), and acceptance bar (from the recipe). Append-mostly; multiple surfaces coexist as sections. Mirrors `brief.md` style (frontmatter-free).
+- `commands/sddesign.md` — 21st command. Orchestrate-only meta-command that walks brief → tokens → spec → build → converge → ship. Calls existing phase commands at each gate; never re-implements their rules. Skippable gates with degraded-mode honesty; progress shown as a phase checklist. Respects brief §6 + a11y floor precedence.
+
+**Changed:**
+
+- `commands/shape.md` — Step 6 added: opt-in offer to persist shape output to `.ui-craft/spec.md`. Print-only remains the default; the write executes only on explicit user confirmation.
+- `skills/ui-craft/SKILL.md` — Routing table: new `/sddesign` row (full spec-driven pipeline); existing `/craft` row updated to clarify "one-shot build" vs `/sddesign` "full pipeline". Tier-2 Reference Files: new `spec.md` row.
+
+**Naming note:** The command is `/sddesign` (one word, no hyphen) to avoid collision with the SDD-phase skill family (`sdd-explore`, `sdd-design` agent phase, etc.). These are different systems: `/sddesign` is a ui-craft pipeline meta-command; `sdd-*` is the spec-driven development orchestration layer.
+
+30 references, 21 commands.
+
 ## v0.26.0 (2026-06-24) — loop engine
 
 Adds an iterate-until-converged loop engine so commands can run until a binary quality gate passes — not just produce a single-shot report. The engine is purely declarative (no runtime); it lives in a new reference file and is wired into three existing commands.
