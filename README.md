@@ -164,7 +164,7 @@ The skill detects your intent and routes automatically.
 | **Review** | "Review this component" | Audits for generic AI patterns, accessibility gaps, and missed details |
 | **Polish** | "Polish this dashboard" | Finds the twenty small things that turn "done" into "crafted" |
 
-## 30 domain references
+## 31 domain references
 
 | Domain | Covers |
 |--------|--------|
@@ -194,6 +194,28 @@ The skill detects your intent and routes automatically.
 | AI / chat surfaces | Streaming contract, 7-state model, tool traces, citations, feedback affordances, generative UI, conversation layout |
 | Forms | Validation timing, progressive disclosure, multi-step wizards, autosave, optimistic submit, field-specific patterns |
 | Composition spec | `.ui-craft/spec.md` format — per-surface composition choice, layout skeleton, component inventory, state lattice, acceptance bar. Written by `/shape` Step 6, consumed by `/sddesign` and `/craft`. |
+
+## Agents
+
+Two read-only Claude Code plugin agents form the ui-craft **parallel verify team**. They complement the slash commands — they do not replace them.
+
+| Agent | Invocation | Does |
+|-------|-----------|------|
+| **design-reviewer** | `ui-craft:design-reviewer` | Adversarial design critique — loads review rules, anti-slop signals, and Nielsen/design-law heuristics. Returns severity-tagged findings (Critical / Warning / Suggestion, `file:line`). No edits. |
+| **a11y-auditor** | `ui-craft:a11y-auditor` | Accessibility audit — keyboard, focus-visible, APCA contrast, ARIA, touch targets, reduced-motion. Returns severity-tagged findings. No edits. |
+
+Both agents are **read-only** (tools: Read, Grep, Glob) and run in a **fresh context**, making them suitable for dedicated review passes and PR audits where you want independent judgment uncontaminated by the build session.
+
+### Parallel verify team
+
+Delegate both agents simultaneously on the same diff or file for a full design + a11y sweep in one pass:
+
+> Delegate `ui-craft:design-reviewer` and `ui-craft:a11y-auditor` together on [target]. Run both simultaneously. Each returns an independent severity-tagged findings table.
+
+**When to use agents vs. commands:**
+
+- **Agents** — fresh context, parallel, read-only. Best for final review passes, PR audits, and CI-style verification. Invoke as `ui-craft:design-reviewer` / `ui-craft:a11y-auditor`.
+- **Commands** (`/critique`, `/audit`) — inline in the caller's context, sequential. Best for interactive build sessions where you want a quick lens mid-work.
 
 ## Framework agnostic
 
@@ -240,15 +262,18 @@ The brief and tokens land as durable artifacts at `.ui-craft/brief.md` and the p
 
 ```
 ui-craft/
+├── agents/                        # 2 Claude Code plugin agents (auto-discovered)
+│   ├── design-reviewer.md        # Adversarial design critic — read-only, severity-tagged output
+│   └── a11y-auditor.md           # Accessibility auditor — read-only, severity-tagged output
 ├── skills/
 │   ├── ui-craft/                 # Main skill
 │   │   ├── SKILL.md              # Slim entry — knobs, discovery, anti-slop, routing
-│   │   └── references/           # 30 domain references (accessibility, motion, layout,
+│   │   └── references/           # 31 domain references (accessibility, motion, layout,
 │   │                             #   typography, color, modern-css, responsive,
 │   │                             #   sound, copy, review, dashboard, inspiration, stack,
 │   │                             #   heuristics, personas, state-design, dataviz,
 │   │                             #   ai-chat, forms, brief, tokens,
-│   │                             #   finish-bar, principles-catalog, spec)
+│   │                             #   finish-bar, principles-catalog, spec, agents)
 │   ├── ui-craft-minimal/          # Variant — Linear/Notion aesthetic
 │   ├── ui-craft-editorial/        # Variant — Medium/Substack aesthetic
 │   └── ui-craft-dense-dashboard/  # Variant — Bloomberg/Retool aesthetic
