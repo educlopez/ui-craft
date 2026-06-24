@@ -18,7 +18,7 @@ For everything else — reviews, animations, forms, polish — the skill routes 
 
 ## What it does
 
-UI Craft gives AI coding agents the design knowledge they're missing. Not templates. Not component libraries. Actual craft knowledge — 29 domain references of opinionated rules about how interfaces should look, move, and feel, plus 20 slash commands to run focused passes on existing code. Stack-agnostic by design.
+UI Craft gives AI coding agents the design knowledge they're missing. Not templates. Not component libraries. Actual craft knowledge — 30 domain references of opinionated rules about how interfaces should look, move, and feel, plus 21 slash commands to run focused passes on existing code. Stack-agnostic by design.
 
 Every UI gets tested against a single question: *"Would someone believe AI made this?"* If yes, it starts over.
 
@@ -43,7 +43,7 @@ More before/after comparisons on the [landing page](https://skills.smoothui.dev)
 
 ### Claude Code — recommended
 
-Install as a native plugin (the skill + all 20 slash commands):
+Install as a native plugin (the skill + all 21 slash commands):
 
 ```
 /plugin marketplace add educlopez/ui-craft
@@ -111,7 +111,7 @@ For playful and brutalist aesthetics (Clay / Gumroad / Duolingo / Arc-playful, N
 
 ## Slash commands
 
-Nineteen focused passes, each applying a single lens from the skill.
+Twenty focused passes, each applying a single lens from the skill.
 
 **Decision spine & finalize:**
 
@@ -136,6 +136,7 @@ Nineteen focused passes, each applying a single lens from the skill.
 
 | Command | Does |
 |---------|------|
+| `/ui-craft:sddesign` | **Full spec-driven pipeline.** brief → tokens → shape → craft → converge → ship. Writes `.ui-craft/spec.md`. Run when starting a net-new surface. |
 | `/ui-craft:craft` | **One-shot surface build.** Outcome recipe pipeline — 3 inputs (or silent defaults) → named composition → theme preset → build order → acceptance bar. Surfaces: `dashboard`, `landing`, `auth`. |
 | `/ui-craft:shape` | **Wireframe-first.** ASCII layout + content inventory + state list + open questions before any JSX. Run when starting a new screen. |
 | `/ui-craft:animate` | Add / fix motion. Honors `MOTION_INTENSITY` + chosen stack. |
@@ -163,7 +164,7 @@ The skill detects your intent and routes automatically.
 | **Review** | "Review this component" | Audits for generic AI patterns, accessibility gaps, and missed details |
 | **Polish** | "Polish this dashboard" | Finds the twenty small things that turn "done" into "crafted" |
 
-## 29 domain references
+## 30 domain references
 
 | Domain | Covers |
 |--------|--------|
@@ -192,6 +193,7 @@ The skill detects your intent and routes automatically.
 | Data viz | Cleveland-McGill perceptual hierarchy, chart selection matrix, ColorBrewer + Okabe-Ito palettes, direct labeling, Tufte |
 | AI / chat surfaces | Streaming contract, 7-state model, tool traces, citations, feedback affordances, generative UI, conversation layout |
 | Forms | Validation timing, progressive disclosure, multi-step wizards, autosave, optimistic submit, field-specific patterns |
+| Composition spec | `.ui-craft/spec.md` format — per-surface composition choice, layout skeleton, component inventory, state lattice, acceptance bar. Written by `/shape` Step 6, consumed by `/sddesign` and `/craft`. |
 
 ## Framework agnostic
 
@@ -241,16 +243,16 @@ ui-craft/
 ├── skills/
 │   ├── ui-craft/                 # Main skill
 │   │   ├── SKILL.md              # Slim entry — knobs, discovery, anti-slop, routing
-│   │   └── references/           # 29 domain references (accessibility, motion, layout,
+│   │   └── references/           # 30 domain references (accessibility, motion, layout,
 │   │                             #   typography, color, modern-css, responsive,
 │   │                             #   sound, copy, review, dashboard, inspiration, stack,
 │   │                             #   heuristics, personas, state-design, dataviz,
 │   │                             #   ai-chat, forms, brief, tokens,
-│   │                             #   finish-bar, principles-catalog)
+│   │                             #   finish-bar, principles-catalog, spec)
 │   ├── ui-craft-minimal/          # Variant — Linear/Notion aesthetic
 │   ├── ui-craft-editorial/        # Variant — Medium/Substack aesthetic
 │   └── ui-craft-dense-dashboard/  # Variant — Bloomberg/Retool aesthetic
-├── commands/                      # 20 Claude Code slash commands (source of truth)
+├── commands/                      # 21 Claude Code slash commands (source of truth)
 ├── examples/
 │   ├── animation-storyboard.md   # Multi-stage animation pattern template
 │   └── presets/

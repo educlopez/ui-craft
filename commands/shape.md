@@ -98,8 +98,19 @@ Mark each as **required** / **optional (why)** / **N/A**.
   - **Typography hierarchy plan** — display / headline / body / label sizes and weights, before code.
 - At `CRAFT_LEVEL ≤ 4`, strip Step 4 to `idle / loading / error` only. Skip the motion shape.
 
+**Step 6 — Offer to persist to `.ui-craft/spec.md` (opt-in).**
+
+After printing all five steps, offer to write the output as a spec section:
+
+> "Write this shape to `.ui-craft/spec.md` as `## Surface: <name>`? (Persists the composition choice, layout, and acceptance bar for the build phase.)"
+
+- **User confirms →** format the output as a `## Surface: <name>` section following the template in `../skills/ui-craft/references/spec.md`, then write or append to `.ui-craft/spec.md`. Confirm in one line: "Written to `.ui-craft/spec.md` → `## Surface: <name>`."
+- **User declines →** do not write any file. The printed output stands. Note: "spec.md not written — the pipeline continues without a persisted acceptance bar."
+
+Print-only is the default when `/shape` is run standalone. Step 6 is the offer; it does not execute unless the user explicitly confirms.
+
 **Output contract.**
 
-- Produce a single Markdown block with all five steps, in order. Nothing else.
+- Produce a single Markdown block with all five steps, in order. Step 6 is the optional offer that follows.
 - Do **NOT** write JSX, CSS, or component code in this command.
 - End the output with: _"Ready to build? Review the shape, confirm the open questions, then run `/ui-craft:audit` (or use Build mode) once the code exists."_
