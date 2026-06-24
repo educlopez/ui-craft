@@ -46,8 +46,8 @@ Mobile
 
 | Region | Component | Contract ref |
 |--------|-----------|--------------|
-| header | Nav bar | [components.md](components.md) → Nav bar |
-| hero | Headline + CTA | [components.md](components.md) → Buttons |
+| header | Nav bar | components.md → Nav bar |
+| hero | Headline + CTA | components.md → Buttons |
 | … | … | … |
 
 ### State lattice

@@ -111,7 +111,7 @@ For playful and brutalist aesthetics (Clay / Gumroad / Duolingo / Arc-playful, N
 
 ## Slash commands
 
-Twenty focused passes, each applying a single lens from the skill.
+Twenty single-lens passes — plus the `/sddesign` pipeline that chains them.
 
 **Decision spine & finalize:**
 

@@ -1,6 +1,6 @@
 ---
-description: Full spec-driven pipeline — walks brief → tokens → shape → craft → converge → ship in one guided run. Writes `.ui-craft/spec.md`. Run when starting a net-new surface from scratch.
-argument-hint: "[surface description]"
+description: Full spec-driven pipeline — walks brief → tokens → shape (spec) → craft (build) → converge → ship in one guided run. Writes `.ui-craft/spec.md`. Run when starting a net-new surface from scratch.
+argument-hint: "[surface: dashboard | landing | auth | <custom name>]"
 ---
 
 Run the spec-driven design pipeline for `$ARGUMENTS`. Load the `ui-craft` skill.
@@ -25,7 +25,7 @@ When in doubt: call the phase command, don't inline its steps.
 Print this at the start and update it after each gate resolves:
 
 ```
-[ ] brief   [ ] tokens   [ ] spec   [ ] craft   [ ] converge   [ ] ship
+[ ] brief   [ ] tokens   [ ] shape (spec)   [ ] craft (build)   [ ] converge   [ ] ship
 ```
 
 Use `[✓]` for completed/skipped-with-artifact, `[>]` for the current gate, `[–]` for skipped-without-artifact (degraded).
@@ -54,30 +54,32 @@ Check: does a token spine exist? (Look for CSS variables `--color-*`, `--font-*`
 - User confirms → run `/tokens`. When it completes, mark `[✓] tokens`.
 - User declines → mark `[–] tokens`. Note downstream impact: "no token spine → craft will establish a minimal inline token set; it won't match an existing system."
 
-### Gate 3 — Spec
+### Gate 3 — Shape (spec)
 
-Run `/shape` for the surface described in `$ARGUMENTS`. Shape produces its full five-step output (content inventory, ASCII layout, state list, open questions). When shape completes, its Step 6 offers to persist the output to `.ui-craft/spec.md`.
+**Existing-surface guard:** Before running `/shape`, check if `.ui-craft/spec.md` already contains a `## Surface: <name>` block for this surface. If it does, do NOT re-run shape and blindly append a duplicate section — offer to update the existing section or skip shape (the spec already exists).
 
-- User confirms persist → `.ui-craft/spec.md` is written (or the surface section is appended). Mark `[✓] spec`.
-- User declines persist → mark `[–] spec (unsaved)`. Note downstream impact: "no spec.md → craft will build against shape's printed output; acceptance bar will not be persisted."
+Run `/shape` for the surface described in `$ARGUMENTS`. Shape produces its full five-step output (content inventory, ASCII layout, state list, open questions).
 
-### Gate 4 — Build
+**Persist in pipeline (default):** Inside the `/sddesign` pipeline, shape's Step 6 spec persist is the default — it is auto-confirmed unless the user explicitly opts out of the spec gate. The persist writes `.ui-craft/spec.md` (or appends the surface section). This is the whole point of the pipeline.
+
+- Persist completes → `.ui-craft/spec.md` is written (or the surface section is appended). Mark `[✓] shape (spec)`.
+- User explicitly opts out of persist → mark `[–] shape (spec, unsaved)`. Note downstream impact: "no spec.md → craft (build) will build against shape's printed output; acceptance bar will not be persisted."
+
+### Gate 4 — Craft (build)
 
 Run `/craft <surface>` where `<surface>` matches the description in `$ARGUMENTS`.
 
-If `[✓] spec` was set, craft builds against the acceptance bar recorded in `.ui-craft/spec.md` for this surface. Every acceptance bar item must be green before craft reports done.
+`/craft` loads `.ui-craft/spec.md` before building. If `[✓] shape (spec)` was set, the spec's chosen composition, component inventory, state lattice, and acceptance bar take precedence over recipe defaults — every acceptance bar item from the spec must be green before craft reports done.
 
-If `[–] spec (unsaved)`, craft builds against the shape output printed to the terminal. Note in the checklist.
+If `[–] shape (spec, unsaved)`, craft builds against the shape output printed to the terminal. Note in the checklist.
 
-Mark `[✓] craft` when the build completes.
+Mark `[✓] craft (build)` when the build completes.
 
 ### Gate 5 — Converge
 
 Run the `visual-anti-slop` preset from `../skills/ui-craft/references/loops.md`. This iterates — evaluate → fix one → re-evaluate — until the zero-critical gate passes or the budget is exhausted (default budget: 3 iterations).
 
-After the loop completes, run `/finalize` to apply the finish bar.
-
-- If the loop gate passes and finalize has no blockers → mark `[✓] converge`.
+- If the loop gate passes (zero critical findings) → mark `[✓] converge`.
 - If budget exhausted with open findings → mark `[>] converge (open findings)`. List unresolved findings from the loop report.
 
 ### Gate 6 — Ship
@@ -87,12 +89,12 @@ Run `/finalize` verdict. Finalize reports READY / NOT READY / BLOCKED based on t
 Print the final verdict and the complete resolved checklist:
 
 ```
-[✓] brief   [✓] tokens   [✓] spec   [✓] craft   [✓] converge   [✓] ship
+[✓] brief   [✓] tokens   [✓] shape (spec)   [✓] craft (build)   [✓] converge   [✓] ship
 ```
 
 **Degraded-mode honesty.** If any gate was marked `[–]`, list them in the ship verdict with their downstream impacts:
 
-> "Skipped gates: tokens (skipped) → token spine not validated; spec (unsaved) → acceptance bar not persisted. These gaps reduce the ship verdict's confidence."
+> "Skipped gates: tokens (skipped) → token spine not validated; shape (spec, unsaved) → acceptance bar not persisted. These gaps reduce the ship verdict's confidence."
 
 ---
 
