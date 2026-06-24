@@ -82,6 +82,7 @@ The rules that make the biggest difference between "AI-generated" and "designed 
 | Pre-ship: finalize gate (full bar before merge) | Run `/finalize` → see [finish-bar.md](references/finish-bar.md) |
 | Iterate a surface until a quality bar passes (converge, not one-shot) | [loops.md](references/loops.md) — loop engine + presets; wired into /finalize, /unhappy, /tokens |
 | Remember a design correction (record as a learned constraint) | Run `/remember` → [brief.md](references/brief.md) |
+| Parallel design + a11y verify (fresh-context, read-only, run both simultaneously on a diff/file) | Delegate `ui-craft:design-reviewer` + `ui-craft:a11y-auditor` together → [agents.md](references/agents.md). Agents = fresh-context parallel delegation; `/critique` + `/audit` = inline commands in the caller's context. Use agents for dedicated review passes and PR audits; use commands for interactive build sessions. |
 | Ambiguous | Ask which mode |
 
 **Overlap with other skills:** defer marketing copy to a copywriting skill; defer SEO to an SEO skill. UI Craft is the visual and interaction layer.
@@ -308,3 +309,4 @@ Tiered by signal. Tier 1 is required reading before writing any UI; lower tiers 
 | [personas.md](references/personas.md) | 5 persona walkthroughs (first-timer / power / low-bandwidth / screen-reader / one-thumb). Load for `/heuristic --persona=<name>`. |
 | [state-design.md](references/state-design.md) | State lattice — idle / loading / empty / error / partial / conflict / offline. Load for `/unhappy`. |
 | [dataviz.md](references/dataviz.md) | Cleveland-McGill perceptual hierarchy, chart selection matrix, ColorBrewer/Okabe-Ito palettes, Tufte, direct labeling. Load when designing charts. |
+| [agents.md](references/agents.md) | Agent pack overview: `design-reviewer` + `a11y-auditor` roles, agent-vs-command guidance, and parallel verify-team usage pattern. Load when setting up or describing the verify team. |
