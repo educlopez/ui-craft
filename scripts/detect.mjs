@@ -13,6 +13,7 @@ import { promises as fs } from "node:fs";
 import * as fsSync from "node:fs";
 import path from "node:path";
 import readline from "node:readline";
+import { pathToFileURL } from "node:url";
 
 const VERSION = "0.5.0";
 
@@ -40,24 +41,25 @@ const dim = (s) => c("2", s);
 const bold = (s) => c("1", s);
 
 // --- Rules ---------------------------------------------------------------
-//
-// @typedef {Object} Rule
-// @property {string} id            - slug identifier, also the machine key
-// @property {"critical"|"major"|"warn"} severity - default severity
-// @property {string} description   - short human label
-// @property {string} fix           - one-line suggestion
-// @property {"line"|"file"} [scope] - "line" (default) or "file"
-// @property {(line: string, ctx: Object) => false | true | { snippet: string }} [match]
-// @property {(content: string, lines: string[], ctx: Object) =>
-//            Array<{ line: number, snippet: string }>} [matchFile]
-// @property {(content: string) => { content: string, fixed: number }} [fix_apply]
-//
+
+/**
+ * @typedef {Object} Rule
+ * @property {string} id            - slug identifier, also the machine key
+ * @property {"critical"|"major"|"warn"} severity - default severity
+ * @property {string} description   - short human label
+ * @property {string} fix           - one-line suggestion
+ * @property {"line"|"file"} [scope] - "line" (default) or "file"
+ * @property {(line: string, ctx: Object) => false | true | { snippet: string }} [match]
+ * @property {(content: string, lines: string[], ctx: Object) =>
+ *            Array<{ line: number, snippet: string }>} [matchFile]
+ * @property {(content: string) => { content: string, fixed: number }} [fix_apply]
+ */
+
 // Per-line rules are checked once per line. File-level rules return an array
 // of findings (line is just the first occurrence for reporting).
-// --------------------------------------------------------------------------
 
 /** @type {Rule[]} */
-const rules = [
+export const rules = [
   // ===== ORIGINAL 11 RULES (unchanged behavior) =====
   {
     id: "transition-all",
@@ -1175,7 +1177,7 @@ async function walk(dir, out = []) {
   return out;
 }
 
-function scanFile(filePath, content, config) {
+export function scanFile(filePath, content, config) {
   const findings = [];
   const lines = content.split(/\r?\n/);
   const ext = path.extname(filePath);
@@ -1384,6 +1386,97 @@ function severityToSarifLevel(sev) {
   if (sev === "major") return "warning";
   if (sev === "warn") return "warning";
   return "note";
+}
+
+// --- Programmatic API ----------------------------------------------------
+
+/**
+ * Scan a target path and return findings.
+ *
+ * @param {string} target - Path to a file or directory to scan. Defaults to ".".
+ * @param {{ config?: object }} [opts] - Optional options object.
+ *   config: a parsed config object (same shape as .uicraftrc.json); overrides
+ *           the on-disk config search when provided.
+ * @returns {Promise<{ version: string, summary: object, findings: object[] }>}
+ *   The same object that `--json` prints to stdout, with file paths relative to cwd.
+ */
+export async function scan(target = ".", { config: configOverride } = {}) {
+  const resolved = path.resolve(target);
+
+  let stat;
+  try {
+    stat = await fs.stat(resolved);
+  } catch (err) {
+    // Path does not exist — return a structured error result with zero findings.
+    return {
+      version: VERSION,
+      summary: { files_scanned: 0, files_flagged: 0, errors: 0, warnings: 0, auto_fixed: 0 },
+      findings: [],
+      error: `cannot read path "${target}": ${err.message}`,
+    };
+  }
+
+  // Load config: use override if provided, else search disk.
+  let config = configOverride ?? null;
+  if (config === null) {
+    const configStartDir = stat.isDirectory() ? resolved : path.dirname(resolved);
+    ({ config } = await loadConfig(configStartDir));
+  }
+
+  let files = [];
+  if (stat.isDirectory()) {
+    files = await walk(resolved);
+  } else if (stat.isFile()) {
+    const ext = path.extname(resolved);
+    if (SCAN_EXTENSIONS.has(ext)) files = [resolved];
+  }
+
+  // Apply config-level ignore globs.
+  if (config && Array.isArray(config.ignore)) {
+    const configStartDir = stat.isDirectory() ? resolved : path.dirname(resolved);
+    files = files.filter((f) => !isIgnoredByConfig(f, config, configStartDir));
+  }
+
+  // Run scan.
+  const allFindings = [];
+  for (const f of files) {
+    let content;
+    try {
+      content = await fs.readFile(f, "utf8");
+    } catch {
+      continue;
+    }
+    const fileFindings = scanFile(f, content, config);
+    allFindings.push(...fileFindings);
+  }
+
+  const flaggedFiles = new Set(allFindings.map((f) => f.file));
+  const errors = allFindings.filter((f) => f.severity === "critical").length;
+  const majors = allFindings.filter((f) => f.severity === "major").length;
+  const warnings = allFindings.filter((f) => f.severity === "warn").length;
+
+  const summary = {
+    files_scanned: files.length,
+    files_flagged: flaggedFiles.size,
+    errors,
+    warnings: majors + warnings,
+    auto_fixed: 0,
+  };
+
+  const cwd = process.cwd();
+  return {
+    version: VERSION,
+    summary,
+    findings: allFindings.map((f) => ({
+      file: path.relative(cwd, f.file),
+      line: f.line,
+      severity: f.severity,
+      rule: f.rule,
+      description: f.description,
+      snippet: f.snippet,
+      fix: f.fix,
+    })),
+  };
 }
 
 // --- Main ----------------------------------------------------------------
@@ -1860,55 +1953,34 @@ async function main() {
   }
 
   // ===== NORMAL SCAN =====
-  const findings = [];
-  for (const f of files) {
-    let content;
-    try {
-      content = await fs.readFile(f, "utf8");
-    } catch {
-      continue;
-    }
-    const fileFindings = scanFile(f, content, config);
-    findings.push(...fileFindings);
-  }
+  // Delegate to the exported scan() function so programmatic callers get the same result.
+  const scanResult = await scan(targetRaw, { config });
 
-  const flaggedFiles = new Set(findings.map((f) => f.file));
-  const errors = findings.filter((f) => f.severity === "critical").length;
-  const majors = findings.filter((f) => f.severity === "major").length;
-  const warnings = findings.filter((f) => f.severity === "warn").length;
-  // Exit code is driven by "error" severity (critical) only. major + warn → 0
-  // unless config promoted to error (which is mapped to "critical" already).
-  const errorCount = errors;
-  const warningCount = majors + warnings;
+  // Derive absolute-path findings for SARIF by mapping scan() relative paths back to absolute.
+  // scan() already ran once — no second disk read or rule evaluation needed.
+  const cwd = process.cwd();
+  const absFindings = scanResult.findings.map((f) => ({
+    ...f,
+    file: path.resolve(cwd, f.file),
+  }));
 
-  const summary = {
-    files_scanned: files.length,
-    files_flagged: flaggedFiles.size,
-    errors: errorCount,
-    warnings: warningCount,
-    auto_fixed: 0,
-  };
+  const { summary } = scanResult;
+  // Exit code is driven by "error" severity (critical) only.
+  const errorCount = summary.errors;
+  const warningCount = summary.warnings;
 
   if (flags.sarif) {
-    const sarif = toSarif(findings, rules);
+    const sarif = toSarif(absFindings, rules);
     process.stdout.write(JSON.stringify(sarif, null, 2) + "\n");
     process.exit(errorCount > 0 ? 1 : 0);
   }
 
   if (flags.json) {
     const out = {
-      version: VERSION,
+      version: scanResult.version,
       summary,
       config: configPath ? { path: configPath, overrides: overrideCount } : null,
-      findings: findings.map((f) => ({
-        file: path.relative(process.cwd(), f.file),
-        line: f.line,
-        severity: f.severity,
-        rule: f.rule,
-        description: f.description,
-        snippet: f.snippet,
-        fix: f.fix,
-      })),
+      findings: scanResult.findings,
     };
     process.stdout.write(JSON.stringify(out, null, 2) + "\n");
     process.exit(errorCount > 0 ? 1 : 0);
@@ -1923,7 +1995,7 @@ async function main() {
   );
 
   const byFile = new Map();
-  for (const f of findings) {
+  for (const f of absFindings) {
     if (!byFile.has(f.file)) byFile.set(f.file, []);
     byFile.get(f.file).push(f);
   }
@@ -1938,7 +2010,7 @@ async function main() {
     }
   }
 
-  if (findings.length === 0) {
+  if (absFindings.length === 0) {
     process.stdout.write(dim("No anti-slop patterns found.\n"));
   }
 
@@ -1954,7 +2026,9 @@ async function main() {
   process.exit(errorCount > 0 ? 1 : 0);
 }
 
-main().catch((err) => {
-  process.stderr.write(`error: ${err.stack || err.message}\n`);
-  process.exit(2);
-});
+if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch((err) => {
+    process.stderr.write(`error: ${err.stack || err.message}\n`);
+    process.exit(2);
+  });
+}
