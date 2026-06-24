@@ -27,6 +27,8 @@ test("scan() on slop fixture returns {version, summary, findings} shape", async 
   assert.ok(typeof result.summary.warnings === "number", "summary.warnings must be a number");
   assert.ok(Array.isArray(result.findings), "findings must be an array");
   assert.ok(result.findings.length > 0, "slop fixture must produce at least one finding");
+  // summary.warnings folds both "major" and "warn" severities together, so
+  // errors + warnings === total findings length (not just warn-severity count).
   assert.equal(
     result.summary.errors + result.summary.warnings,
     result.findings.length,
@@ -59,7 +61,7 @@ test("scan() on clean fixture returns empty findings and summary.total === 0", a
 });
 
 // ---------------------------------------------------------------------------
-// 2.3 — CLI parity: ui-craft-detect --json findings == scan() findings
+// 2.3 — CLI parity: ui-craft-detect --json output == scan() output (full)
 // ---------------------------------------------------------------------------
 test("CLI --json findings match scan() findings (parity)", async () => {
   // Run CLI
@@ -76,7 +78,12 @@ test("CLI --json findings match scan() findings (parity)", async () => {
   const cliResult = JSON.parse(cliStdout);
   const scanResult = await scan(SLOP_FIXTURE);
 
-  // Compare findings arrays deep-equal (sorted by rule+line for stability).
+  // Compare version + summary envelope.
+  assert.equal(cliResult.version, scanResult.version, "version must match between CLI and scan()");
+  assert.deepStrictEqual(cliResult.summary, scanResult.summary, "summary must match between CLI and scan()");
+
+  // Full deep comparison of findings (all fields: rule, line, severity, file,
+  // description, snippet, fix) — sorted by rule+line for stability.
   const sortKey = (f) => `${f.rule}:${f.line}`;
   const cliFindings = [...cliResult.findings].sort((a, b) =>
     sortKey(a).localeCompare(sortKey(b))
@@ -85,18 +92,43 @@ test("CLI --json findings match scan() findings (parity)", async () => {
     sortKey(a).localeCompare(sortKey(b))
   );
 
-  assert.equal(
-    cliFindings.length,
-    scanFindings.length,
-    "CLI and scan() must return the same number of findings"
+  assert.deepStrictEqual(
+    cliFindings,
+    scanFindings,
+    "CLI and scan() must return identical findings (all fields)"
   );
+});
 
-  for (let i = 0; i < cliFindings.length; i++) {
-    assert.equal(cliFindings[i].rule, scanFindings[i].rule, `finding[${i}].rule must match`);
-    assert.equal(cliFindings[i].line, scanFindings[i].line, `finding[${i}].line must match`);
-    assert.equal(cliFindings[i].severity, scanFindings[i].severity, `finding[${i}].severity must match`);
-    assert.equal(cliFindings[i].file, scanFindings[i].file, `finding[${i}].file must match`);
+// ---------------------------------------------------------------------------
+// 2.6 — CLI --sarif: produces valid SARIF JSON and correct exit code
+// ---------------------------------------------------------------------------
+test("CLI --sarif produces valid SARIF output and exits with code 1 on slop", () => {
+  let sarifStdout;
+  let exitCode = 0;
+  try {
+    sarifStdout = execFileSync(process.execPath, [DETECT_MJS, SLOP_FIXTURE, "--sarif"], {
+      encoding: "utf8",
+    });
+  } catch (err) {
+    // CLI exits 1 when there are error-severity findings — capture stdout anyway.
+    sarifStdout = err.stdout;
+    exitCode = err.status;
   }
+
+  // Must be parseable JSON.
+  let sarif;
+  assert.doesNotThrow(() => {
+    sarif = JSON.parse(sarifStdout);
+  }, "SARIF output must be valid JSON");
+
+  // Must have the SARIF 2.1.0 shape.
+  assert.ok(Array.isArray(sarif.runs), "SARIF must have a runs array");
+  assert.ok(sarif.runs.length > 0, "SARIF runs must be non-empty");
+  assert.ok(Array.isArray(sarif.runs[0].results), "SARIF runs[0] must have a results array");
+  assert.ok(sarif.runs[0].results.length > 0, "SARIF results must be non-empty for slop fixture");
+
+  // Exit code must be 1 (slop fixture has critical findings).
+  assert.equal(exitCode, 1, "CLI must exit with code 1 for slop fixture with --sarif");
 });
 
 // ---------------------------------------------------------------------------

@@ -41,21 +41,22 @@ const dim = (s) => c("2", s);
 const bold = (s) => c("1", s);
 
 // --- Rules ---------------------------------------------------------------
-//
-// @typedef {Object} Rule
-// @property {string} id            - slug identifier, also the machine key
-// @property {"critical"|"major"|"warn"} severity - default severity
-// @property {string} description   - short human label
-// @property {string} fix           - one-line suggestion
-// @property {"line"|"file"} [scope] - "line" (default) or "file"
-// @property {(line: string, ctx: Object) => false | true | { snippet: string }} [match]
-// @property {(content: string, lines: string[], ctx: Object) =>
-//            Array<{ line: number, snippet: string }>} [matchFile]
-// @property {(content: string) => { content: string, fixed: number }} [fix_apply]
-//
+
+/**
+ * @typedef {Object} Rule
+ * @property {string} id            - slug identifier, also the machine key
+ * @property {"critical"|"major"|"warn"} severity - default severity
+ * @property {string} description   - short human label
+ * @property {string} fix           - one-line suggestion
+ * @property {"line"|"file"} [scope] - "line" (default) or "file"
+ * @property {(line: string, ctx: Object) => false | true | { snippet: string }} [match]
+ * @property {(content: string, lines: string[], ctx: Object) =>
+ *            Array<{ line: number, snippet: string }>} [matchFile]
+ * @property {(content: string) => { content: string, fixed: number }} [fix_apply]
+ */
+
 // Per-line rules are checked once per line. File-level rules return an array
 // of findings (line is just the first occurrence for reporting).
-// --------------------------------------------------------------------------
 
 /** @type {Rule[]} */
 export const rules = [
@@ -1955,17 +1956,13 @@ async function main() {
   // Delegate to the exported scan() function so programmatic callers get the same result.
   const scanResult = await scan(targetRaw, { config });
 
-  // Re-derive absolute findings for SARIF (scan() returns relative paths; we need abs for toSarif).
-  const absFindings = [];
-  for (const f of files) {
-    let content;
-    try {
-      content = await fs.readFile(f, "utf8");
-    } catch {
-      continue;
-    }
-    absFindings.push(...scanFile(f, content, config));
-  }
+  // Derive absolute-path findings for SARIF by mapping scan() relative paths back to absolute.
+  // scan() already ran once — no second disk read or rule evaluation needed.
+  const cwd = process.cwd();
+  const absFindings = scanResult.findings.map((f) => ({
+    ...f,
+    file: path.resolve(cwd, f.file),
+  }));
 
   const { summary } = scanResult;
   // Exit code is driven by "error" severity (critical) only.
