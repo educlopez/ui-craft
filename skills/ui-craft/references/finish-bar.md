@@ -223,6 +223,12 @@ The bar is a tool, not a ritual. Skipping it without recording why is the only w
 
 ---
 
+## Convergence mode
+
+When invoked under a loop preset (e.g., `visual-anti-slop` from `loops.md`), the bar re-runs from **Pass 1** after each single highest-impact fix — full, not partial (passes are order-dependent). Repeat until Done (zero Critical, zero Major) or the loop budget is exhausted. The loop controls iteration count and stop conditions; the bar supplies the evaluative lens only.
+
+---
+
 ## Cross-References
 
 - `brief.md` — which passes can be deferred and which are non-negotiable for this product; voice axes for Pass 8.
