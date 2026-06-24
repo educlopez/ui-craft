@@ -343,6 +343,29 @@ npx ui-craft-detect init-hook --dry-run        # preview without writing
 
 The native hook scans only staged file content (via `git show :path`), so working-tree noise is ignored. Skip ad-hoc with `git commit --no-verify`. This repo's own `.githooks/pre-commit` also auto-bumps `marketplace.json` CalVer on every commit.
 
+## MCP Server
+
+[![npm version](https://img.shields.io/npm/v/ui-craft-mcp?style=flat-square&label=ui-craft-mcp)](https://www.npmjs.com/package/ui-craft-mcp)
+
+The `ui-craft-mcp` package exposes three deterministic design-quality tools over the [Model Context Protocol](https://modelcontextprotocol.io/) (stdio transport). Works with Claude Desktop, Cursor, and any MCP-compatible client.
+
+**Boundary:** the MCP server is the **checks layer** — deterministic, rule-based, identical output for identical input. The `SKILL.md` is the **taste layer** — judgment, aesthetics, architectural decisions. These never overlap.
+
+| Tool | What it does |
+|------|-------------|
+| `check_anti_slop` | 33-rule anti-slop scanner via `scan()` from `ui-craft-detect` — in-process, no subprocess |
+| `tokens_lint` | Off-system token detector: raw hex colors, non-scale radius/spacing px, magic z-index |
+| `acceptance_bar` | Acceptance checklist for a UI surface (`dashboard`, `landing`, `auth`, `generic`) — data only, no scoring |
+
+**Quick start:**
+
+```bash
+# Wire in your project's .mcp.json:
+{ "mcpServers": { "ui-craft": { "command": "npx", "args": ["ui-craft-mcp"] } } }
+```
+
+See [`mcp/README.md`](mcp/README.md) for full install, tool docs, and the `acceptance-data.json` regen note.
+
 ## Maintaining harness mirrors
 
 ```bash

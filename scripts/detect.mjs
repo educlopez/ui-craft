@@ -2026,7 +2026,7 @@ async function main() {
   process.exit(errorCount > 0 ? 1 : 0);
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   main().catch((err) => {
     process.stderr.write(`error: ${err.stack || err.message}\n`);
     process.exit(2);

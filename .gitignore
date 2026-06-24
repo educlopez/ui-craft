@@ -4,3 +4,5 @@ CLAUDE.md
 **/.DS_Store
 node-compile-cache/
 .atl/
+node_modules/
+mcp/node_modules/

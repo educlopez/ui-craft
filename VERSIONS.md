@@ -1,5 +1,31 @@
 # Versions
 
+## v0.29.0 (2026-06-24) — MCP server + detect.mjs scan() export
+
+Adds a self-contained `mcp/` package exposing three deterministic design-quality tools over stdio MCP. Also refactors `scripts/detect.mjs` to export a `scan()` function callable in-process (used by the MCP server). The CLI (`ui-craft-detect`) behavior is byte-identical — only an export and an entry guard are added.
+
+**New (`mcp/` package — `ui-craft-mcp` npm, version 0.1.0):**
+
+- `mcp/src/server.mjs` — stdio MCP server using `@modelcontextprotocol/sdk` v1.29.0 (`McpServer` + `registerTool` API + `StdioServerTransport`). Registers exactly 3 tools.
+- `mcp/src/tools/check-anti-slop.mjs` — `check_anti_slop` tool: calls `scan()` from `scripts/detect.mjs` in-process; returns `{ findings, summary }`.
+- `mcp/src/tools/tokens-lint.mjs` — `tokens_lint` tool: regex scanner for off-system hex colors, non-scale radius/spacing px, magic z-index. Rule IDs: `tokens/color`, `tokens/radius`, `tokens/spacing`, `tokens/z-index`.
+- `mcp/src/tokens-rules.mjs` — exported regex ruleset derived from `references/tokens.md`.
+- `mcp/src/tools/acceptance-bar.mjs` — `acceptance_bar` tool: returns bundled checklist per surface (dashboard/landing/auth/generic). Data only, no scoring.
+- `mcp/src/acceptance-data.json` — static acceptance items hand-derived from `recipe-dashboard.md`, `recipe-landing.md`, `recipe-auth.md` (## Acceptance bar), and `finish-bar.md` (10 passes). Regen-on-recipe-edit: manual for v1.
+- `mcp/src/server.test.mjs`, `mcp/src/tools/*.test.mjs` — 30 `node:test` tests (zero deps): tool registration, dispatch, happy paths, bad-input structured errors, token hit/miss, acceptance surfaces.
+- `mcp/package.json` — `ui-craft-mcp`, v0.1.0, `type: module`, `bin: ui-craft-mcp`, `engines: node>=18`, dep `@modelcontextprotocol/sdk@1.29.0`.
+- `mcp/README.md` — install, tool docs, boundary note, acceptance-data regen note.
+- `.mcp.json.example` — wiring template for `.mcp.json` (`npx ui-craft-mcp`).
+- `.github/workflows/mcp-test.yml` — separate CI job: `cd mcp && npm install && npm test`. Does not touch `validate.mjs` or `sync-harnesses.mjs`.
+
+**Changed:**
+
+- `scripts/detect.mjs` — added `export async function scan(target, { config } = {})` returning `{ version, summary, findings }`. Added CLI-entry guard (`import.meta.url === pathToFileURL(process.argv[1]).href`). Exported `rules` and `scanFile`. `ui-craft-detect` CLI behavior unchanged.
+- `README.md` — added MCP section with tool table and quick-start wiring.
+- `VERSIONS.md` — this entry.
+
+**Architecture:** `mcp/` is a self-contained package; root `package.json` has zero new dependencies. `validate.mjs` scope (`plugin.json`, `SKILL.md` frontmatter, reference links) excludes `mcp/` — gate stays green. Tag `v0.29.0` covers both skill and MCP; `mcp/package.json` version `0.1.0` is the npm-independent version.
+
 ## v0.28.0 (2026-06-24) — design agent pack
 
 Adds a two-agent parallel verify team as a new artifact class in the ui-craft plugin: `design-reviewer` (adversarial design critique) and `a11y-auditor` (accessibility audit). Both are read-only, fresh-context, and tool-scoped (Read/Grep/Glob). This is an additive Claude-Code-plugin-only layer — the skill, commands, and harness mirrors are unchanged.
