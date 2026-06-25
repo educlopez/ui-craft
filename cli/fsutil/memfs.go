@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -154,6 +155,11 @@ func (m *MemFS) Remove(name string) error {
 		delete(m.files, key)
 		return nil
 	}
+	// Also support removing tracked directories (for backup prune).
+	if _, ok := m.dirs[key]; ok {
+		delete(m.dirs, key)
+		return nil
+	}
 	return &os.PathError{Op: "remove", Path: name, Err: os.ErrNotExist}
 }
 
@@ -163,4 +169,72 @@ func (m *MemFS) Open(name string) (io.ReadCloser, error) {
 		return nil, err
 	}
 	return io.NopCloser(bytes.NewReader(data)), nil
+}
+
+// memDirEntry implements os.DirEntry for MemFS directory listings.
+type memDirEntry struct {
+	name  string
+	isDir bool
+	info  fs.FileInfo
+}
+
+func (e *memDirEntry) Name() string { return e.name }
+func (e *memDirEntry) IsDir() bool  { return e.isDir }
+func (e *memDirEntry) Type() fs.FileMode {
+	if e.isDir {
+		return fs.ModeDir
+	}
+	return 0
+}
+func (e *memDirEntry) Info() (fs.FileInfo, error) { return e.info, nil }
+
+// ReadDir returns the entries in the directory identified by name.
+// It lists both files and immediate subdirectories that are children of name.
+func (m *MemFS) ReadDir(name string) ([]os.DirEntry, error) {
+	key := m.clean(name)
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	// The dir must exist.
+	if _, ok := m.dirs[key]; !ok {
+		return nil, &os.PathError{Op: "readdir", Path: name, Err: os.ErrNotExist}
+	}
+
+	seen := make(map[string]bool)
+	var entries []os.DirEntry
+
+	// Find immediate child files.
+	for fpath, f := range m.files {
+		parent := filepath.Dir(fpath)
+		if parent != key {
+			continue
+		}
+		childName := filepath.Base(fpath)
+		if seen[childName] {
+			continue
+		}
+		seen[childName] = true
+		fi := memFileInfo{name: childName, f: f}
+		entries = append(entries, &memDirEntry{name: childName, isDir: false, info: fi})
+	}
+
+	// Find immediate child directories.
+	for dpath := range m.dirs {
+		if filepath.Dir(dpath) != key || dpath == key {
+			continue
+		}
+		childName := filepath.Base(dpath)
+		if seen[childName] {
+			continue
+		}
+		seen[childName] = true
+		fi := memDirInfo{name: childName}
+		entries = append(entries, &memDirEntry{name: childName, isDir: true, info: fi})
+	}
+
+	// Sort for determinism.
+	sort.Slice(entries, func(i, j int) bool {
+		return entries[i].Name() < entries[j].Name()
+	})
+	return entries, nil
 }
