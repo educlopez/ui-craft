@@ -69,6 +69,12 @@ release:
   github:
     owner: educlopez
     name: ui-craft
+  # keep-existing: release.yml (VERSIONS.md auto-release) creates the GitHub
+  # release + notes first; cli-release.yml fires on the tag it created, so the
+  # release already exists. goreleaser must NOT recreate or overwrite it —
+  # only attach the binaries (+ push the Homebrew/Scoop formulae). This avoids
+  # the two workflows clobbering each other on the same vX.Y.Z tag.
+  mode: keep-existing
   draft: false
   prerelease: auto
   name_template: "{{ .ProjectName }} {{ .Tag }}"
