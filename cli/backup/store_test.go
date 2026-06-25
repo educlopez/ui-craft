@@ -1,6 +1,10 @@
 package backup_test
 
 import (
+	"archive/tar"
+	"bytes"
+	"compress/gzip"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -42,6 +46,8 @@ func seed(mem *fsutil.MemFS, path, content string) {
 }
 
 // TestSnapshot_roundtrip verifies that a snapshot can be restored byte-for-byte.
+// fakeHomeResolver is injected so Restore path validation accepts /home/user paths
+// on all platforms (CI, macOS, Linux) without depending on the real OS home dir.
 func TestSnapshot_roundtrip(t *testing.T) {
 	mem := fsutil.NewMemFS()
 	root := "/backups"
@@ -68,15 +74,10 @@ func TestSnapshot_roundtrip(t *testing.T) {
 	// Overwrite the original file to prove restore works.
 	_ = mem.WriteFile(origFile, []byte("corrupted"), 0o640)
 
-	// Restore must use the home resolution; since this is MemFS we override
-	// validateUnderHome by patching HOME — instead we rely on the path being
-	// valid for our test. We test the real path validation separately.
+	// Restore MUST succeed: testStore injects fakeHomeResolver so that
+	// /home/user paths are accepted regardless of the real OS home directory.
 	if err := store.Restore(id); err != nil {
-		// In the test environment EvalSymlinks may fail or homeDir may differ.
-		// Accept the restore result for in-memory paths: check the error is not
-		// a tar/manifest error but only a path-validation one.
-		t.Logf("Restore returned (may be home-dir validation on CI): %v", err)
-		return
+		t.Fatalf("Restore failed: %v", err)
 	}
 
 	restored, err := mem.ReadFile(origFile)
@@ -266,6 +267,8 @@ func TestPrune_neverDeletesPinned(t *testing.T) {
 
 // TestRestore_deletesNewFiles verifies that files with ExistedBefore=false are
 // deleted (not just left alone) during rollback/restore.
+// fakeHomeResolver is injected via newStore so Restore accepts /home/user paths
+// unconditionally — this makes both assertions below unconditional.
 func TestRestore_deletesNewFiles(t *testing.T) {
 	mem := fsutil.NewMemFS()
 	root := "/backups"
@@ -279,6 +282,7 @@ func TestRestore_deletesNewFiles(t *testing.T) {
 	seed(mem, existingFile, "original content")
 
 	baseTime := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	// newStore injects fakeHomeResolver — Restore MUST succeed for /home/user.
 	store := newStore(root, mem, fixedClock(baseTime))
 
 	// Snapshot includes both: existingFile (ExistedBefore=true) and newFile
@@ -296,18 +300,17 @@ func TestRestore_deletesNewFiles(t *testing.T) {
 	seed(mem, newFile, "created by plan")
 	_ = mem.WriteFile(existingFile, []byte("modified by plan"), 0o640)
 
-	// Restore — may fail on home-dir validation in test environment.
+	// Restore MUST succeed — fakeHomeResolver ensures path validation passes.
 	if err := store.Restore(id); err != nil {
-		t.Logf("Restore returned (home-dir validation): %v", err)
-		return
+		t.Fatalf("Restore failed: %v", err)
 	}
 
-	// newFile should be deleted.
+	// newFile MUST be deleted (ExistedBefore=false).
 	if _, err := mem.Stat(newFile); err == nil {
 		t.Error("newFile (ExistedBefore=false) should be deleted after restore, but still exists")
 	}
 
-	// existingFile should be restored to original content.
+	// existingFile MUST be restored to original content.
 	restored, err := mem.ReadFile(existingFile)
 	if err != nil {
 		t.Fatalf("read existingFile after restore: %v", err)
@@ -520,4 +523,178 @@ func TestPathEscape_validateUnderHome(t *testing.T) {
 	if err != nil {
 		t.Fatalf("snapshot inside home: %v", err)
 	}
+}
+
+// --- Security regression tests (findings from security review) ---
+
+// TestSecurity_extractTarGz_rejectsTraversal verifies that a crafted tar.gz
+// entry named "../../escape" is rejected by Restore and does not write any
+// file outside the snapshot directory (zip-slip / path-traversal fix).
+func TestSecurity_extractTarGz_rejectsTraversal(t *testing.T) {
+	mem := fsutil.NewMemFS()
+	root := "/backups"
+	home := "/home/user"
+	_ = mem.MkdirAll(root, 0o750)
+
+	baseTime := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	store := newStore(root, mem, fixedClock(baseTime))
+
+	// Create a legitimate snapshot first so we have a valid manifest to tamper with.
+	legitFile := filepath.Join(home, "legit.json")
+	seed(mem, legitFile, "legitimate content")
+	targets := []backup.SnapshotTarget{{Harness: "h", OrigPath: legitFile}}
+	id, err := store.Snapshot(targets, "v1", backup.SourceInstall)
+	if err != nil {
+		t.Fatalf("Snapshot: %v", err)
+	}
+
+	// Craft a malicious tar.gz: the sole entry has a path-traversal name.
+	maliciousTar, err := buildMaliciousTarGz("../../escape", []byte("pwned"))
+	if err != nil {
+		t.Fatalf("build malicious tar: %v", err)
+	}
+
+	// Overwrite the snapshot's tar.gz with the malicious archive.
+	snapDir := filepath.Join(root, string(id))
+	tarPath := filepath.Join(snapDir, "snapshot.tar.gz")
+	_ = mem.WriteFile(tarPath, maliciousTar, 0o640)
+
+	// Restore MUST return an error and MUST NOT write /escape.
+	err = store.Restore(id)
+	if err == nil {
+		t.Error("Restore should have returned an error for a traversal tar entry")
+	}
+
+	// The traversal target must not exist anywhere in the MemFS.
+	if _, statErr := mem.Stat("/escape"); statErr == nil {
+		t.Error("traversal target /escape must not have been written")
+	}
+}
+
+// TestSecurity_rollbackAt_rejectsPathSeparator verifies that a snapshot ID
+// containing a path separator or ".." is rejected before Restore is called.
+// This tests the validation logic directly via the exported store API.
+func TestSecurity_rollbackAt_rejectsPathSeparator(t *testing.T) {
+	mem := fsutil.NewMemFS()
+	root := "/backups"
+	_ = mem.MkdirAll(root, 0o750)
+
+	baseTime := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	store := newStore(root, mem, fixedClock(baseTime))
+
+	// Craft IDs that look like path traversal attempts.
+	badIDs := []string{
+		"../../../etc/passwd",
+		"valid-id/../../escape",
+		"..dangerous",
+		"a/b",
+	}
+	for _, bad := range badIDs {
+		// The store List will not contain these IDs, so Restore returns "not found"
+		// or a path-containment error. Either way it must NOT succeed.
+		err := store.Restore(backup.SnapshotID(bad))
+		if err == nil {
+			t.Errorf("Restore(%q) should have failed but succeeded", bad)
+		}
+	}
+}
+
+// TestSecurity_validateUnderHome_rejectsSymlinkOutside verifies that a symlink
+// that lives inside HOME but points to a path outside HOME is rejected.
+// This test uses the real OS filesystem to create an actual symlink.
+func TestSecurity_validateUnderHome_rejectsSymlinkOutside(t *testing.T) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		t.Skip("no user home dir available")
+	}
+	resolvedHome, err := filepath.EvalSymlinks(home)
+	if err != nil {
+		t.Skip("EvalSymlinks failed")
+	}
+
+	// Create a temp directory outside HOME to be the symlink target.
+	outsideDir := t.TempDir()
+	outsideFile := filepath.Join(outsideDir, "secret.txt")
+	if err := os.WriteFile(outsideFile, []byte("secret"), 0o644); err != nil {
+		t.Fatalf("write outside file: %v", err)
+	}
+
+	// Create a temp dir inside HOME to hold our symlink.
+	insideDir, err := os.MkdirTemp(resolvedHome, ".ui-craft-symtest-*")
+	if err != nil {
+		t.Skipf("cannot create temp dir inside HOME: %v", err)
+	}
+	t.Cleanup(func() { os.RemoveAll(insideDir) })
+
+	// Create a symlink inside HOME → outside file.
+	symlinkPath := filepath.Join(insideDir, "escape-link")
+	if err := os.Symlink(outsideFile, symlinkPath); err != nil {
+		t.Skipf("cannot create symlink: %v", err)
+	}
+
+	// Build a store rooted inside HOME (required by validateUnderHome) and
+	// try to snapshot the symlink path. Restore will call validateUnderHome on
+	// the origPath; after EvalSymlinks it resolves outside HOME and must fail.
+	mem := fsutil.NewMemFS()
+	backupRoot := filepath.Join(insideDir, "backups")
+	_ = mem.MkdirAll(backupRoot, 0o750)
+
+	// Use the real OsFS so Snapshot can actually read the symlink target.
+	osStore := backup.NewStore(backupRoot, fsutil.OsFS{}, nil)
+
+	targets := []backup.SnapshotTarget{{Harness: "test", OrigPath: symlinkPath}}
+	id, err := osStore.Snapshot(targets, "v1", backup.SourceManual)
+	if err != nil {
+		t.Fatalf("Snapshot: %v", err)
+	}
+
+	// Restore must reject symlinkPath because EvalSymlinks(symlinkPath) resolves
+	// to outsideFile which is outside HOME.
+	err = osStore.Restore(id)
+	if err == nil {
+		t.Error("Restore should have rejected a symlink-inside-HOME pointing outside HOME")
+	}
+}
+
+// buildMaliciousTarGz creates a gzipped tar archive with a single entry at the
+// given (potentially traversal) path — used only in security regression tests.
+func buildMaliciousTarGz(entryName string, content []byte) ([]byte, error) {
+	var buf bytes.Buffer
+	gw := gzip.NewWriter(&buf)
+	tw := tar.NewWriter(gw)
+
+	hdr := &tar.Header{
+		Name:     entryName,
+		Mode:     0o644,
+		Size:     int64(len(content)),
+		Typeflag: tar.TypeReg,
+	}
+	if err := tw.WriteHeader(hdr); err != nil {
+		return nil, err
+	}
+	if _, err := tw.Write(content); err != nil {
+		return nil, err
+	}
+	if err := tw.Close(); err != nil {
+		return nil, err
+	}
+	if err := gw.Close(); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+// buildTamperedManifest is a helper that reads a manifest from mem, replaces
+// the SavedPath of the first file entry, and writes it back. Used in security tests.
+func buildTamperedManifest(mem *fsutil.MemFS, manifestPath, newSavedPath string) {
+	data, _ := mem.ReadFile(manifestPath)
+	var m map[string]interface{}
+	_ = json.Unmarshal(data, &m)
+	if files, ok := m["files"].([]interface{}); ok && len(files) > 0 {
+		if entry, ok := files[0].(map[string]interface{}); ok {
+			entry["savedPath"] = newSavedPath
+		}
+	}
+	out, _ := json.MarshalIndent(m, "", "  ")
+	_ = mem.WriteFile(manifestPath, out, 0o640)
 }

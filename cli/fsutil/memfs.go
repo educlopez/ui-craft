@@ -163,6 +163,28 @@ func (m *MemFS) Remove(name string) error {
 	return &os.PathError{Op: "remove", Path: name, Err: os.ErrNotExist}
 }
 
+// RemoveAll removes path and any children it contains (files and directories
+// with the given path as a prefix), mirroring os.RemoveAll behaviour.
+// It is a no-op when path does not exist and never returns an error in that case.
+func (m *MemFS) RemoveAll(name string) error {
+	key := m.clean(name)
+	prefix := key + string(filepath.Separator)
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	for fpath := range m.files {
+		if fpath == key || strings.HasPrefix(fpath, prefix) {
+			delete(m.files, fpath)
+		}
+	}
+	for dpath := range m.dirs {
+		if dpath == key || strings.HasPrefix(dpath, prefix) {
+			delete(m.dirs, dpath)
+		}
+	}
+	return nil
+}
+
 func (m *MemFS) Open(name string) (io.ReadCloser, error) {
 	data, err := m.ReadFile(name)
 	if err != nil {

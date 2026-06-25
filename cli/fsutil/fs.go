@@ -30,6 +30,9 @@ type FileSystem interface {
 	// Remove removes the named file or empty directory.
 	Remove(name string) error
 
+	// RemoveAll removes path and any children it contains, like os.RemoveAll.
+	RemoveAll(path string) error
+
 	// Open opens the named file for reading.
 	Open(name string) (io.ReadCloser, error)
 }
@@ -64,6 +67,8 @@ func (OsFS) MkdirAll(path string, perm fs.FileMode) error { return os.MkdirAll(p
 func (OsFS) Rename(oldpath, newpath string) error { return os.Rename(oldpath, newpath) }
 
 func (OsFS) Remove(name string) error { return os.Remove(name) }
+
+func (OsFS) RemoveAll(path string) error { return os.RemoveAll(path) }
 
 func (OsFS) Open(name string) (io.ReadCloser, error) { return os.Open(name) }
 
