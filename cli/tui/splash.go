@@ -32,6 +32,13 @@ var arenArt = []string{
 type SplashModel struct {
 	version string
 	done    bool
+	width   int
+}
+
+// WithWidth returns a copy of the model with the given terminal width set.
+func (m SplashModel) WithWidth(w int) SplashModel {
+	m.width = w
+	return m
 }
 
 // NewSplashModel creates a new SplashModel for the given binary version string.

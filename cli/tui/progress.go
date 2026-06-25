@@ -20,7 +20,20 @@ type ProgressModel struct {
 	applying  bool
 	err       error
 	noHarness bool // true when the error is the "no harness detected" sentinel
+	width     int  // terminal width, updated via WithWidth
 }
+
+// WithWidth returns a copy of the model with the given terminal width set.
+func (m ProgressModel) WithWidth(w int) ProgressModel {
+	m.width = w
+	return m
+}
+
+// Err returns the apply error, or nil if there was no error.
+func (m ProgressModel) Err() error { return m.err }
+
+// IsNoHarness returns true when the error is the "no harness detected" sentinel.
+func (m ProgressModel) IsNoHarness() bool { return m.noHarness }
 
 // NewProgressModel creates a ProgressModel in the "applying" state.
 func NewProgressModel() ProgressModel {

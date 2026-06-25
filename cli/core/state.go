@@ -49,6 +49,10 @@ type InstallState struct {
 	MirrorVersion string `json:"mirrorVersion"`
 	// Harnesses contains one entry per harness that has had components installed.
 	Harnesses []HarnessState `json:"harnesses"`
+	// LastUpdateCheck is the RFC3339 timestamp of the most recent launch-time
+	// update check against the GitHub releases API. Used by the 24h TTL gate.
+	// Written by CheckForUpdate; omitted when empty (never checked yet).
+	LastUpdateCheck string `json:"lastUpdateCheck,omitempty"`
 }
 
 // stateDir returns the directory that holds state.json.

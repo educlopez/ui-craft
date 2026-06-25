@@ -25,6 +25,7 @@ const (
 	ConfirmScreen                       // plan summary + confirmation
 	ApplyScreen                         // progress during apply
 	DoneScreen                          // success/failure summary
+	ErrorScreen                         // dedicated error display
 )
 
 // AppModel is the Bubble Tea root model. It routes to the appropriate
@@ -35,18 +36,26 @@ type AppModel struct {
 	version    string
 	projectDir string
 
+	// Terminal dimensions — updated on every tea.WindowSizeMsg.
+	width  int
+	height int
+
 	// Sub-models
 	splash          SplashModel
 	harnessSelect   HarnessSelectModel
 	componentSelect SelectComponentModel
 	confirm         ConfirmModel
 	progress        ProgressModel
+	errorModel      ErrorModel
 
 	// State shared across screens
 	detected   []core.DetectedHarness
 	selected   []core.DetectedHarness
 	components []component.Component
 	err        error
+
+	// updateResult holds the outcome of the background update-check goroutine.
+	updateResult core.UpdateResult
 
 	// planCapture is set by runApplyCmd just before dispatching to core.Apply.
 	// Tests that inject applyOverride can read this to verify the plan the TUI
@@ -62,6 +71,10 @@ type AppModel struct {
 	// the splash → detect transition. This is the injection seam for tests that
 	// need to control which harnesses are "detected" without real disk probing.
 	detectOverride func() []core.DetectedHarness
+
+	// updateCheckOverride, when non-nil, replaces updateCheckCmd in Init().
+	// Tests inject this to avoid real network calls.
+	updateCheckOverride tea.Cmd
 }
 
 // NewAppModel creates the initial AppModel.
@@ -76,18 +89,41 @@ func NewAppModel(version, projectDir string) AppModel {
 	}
 }
 
-// Init starts the Bubble Tea program.
+// Init starts the Bubble Tea program. It fires the splash Init() and kicks off
+// the background update-check goroutine concurrently.
 func (m AppModel) Init() tea.Cmd {
-	return m.splash.Init()
+	updateCmd := updateCheckCmd(m.version)
+	if m.updateCheckOverride != nil {
+		updateCmd = m.updateCheckOverride
+	}
+	return tea.Batch(m.splash.Init(), updateCmd)
 }
 
 // Update is the root message dispatcher.
 func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	// Global quit keybinding.
+	// Global quit keybinding — intercept before sub-models.
 	if key, ok := msg.(tea.KeyMsg); ok {
-		if key.String() == "ctrl+c" {
+		switch key.String() {
+		case "ctrl+c", "q", "esc":
 			return m, tea.Quit
 		}
+	}
+
+	// Handle terminal resize globally — store dimensions and propagate.
+	if ws, ok := msg.(tea.WindowSizeMsg); ok {
+		m.width = ws.Width
+		m.height = ws.Height
+		// Propagate to sub-models that care about width.
+		m.splash = m.splash.WithWidth(ws.Width)
+		m.progress = m.progress.WithWidth(ws.Width)
+		m.errorModel = m.errorModel.WithWidth(ws.Width)
+		return m, nil
+	}
+
+	// Handle background update-check result.
+	if ur, ok := msg.(updateResultMsg); ok {
+		m.updateResult = ur.result
+		return m, nil
 	}
 
 	switch m.screen {
@@ -163,11 +199,24 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		updated, cmd := m.progress.Update(msg)
 		m.progress = updated.(ProgressModel)
 		if m.progress.IsDone() {
+			if m.progress.HasError() && !m.progress.IsNoHarness() {
+				// Route real apply errors to the dedicated error screen.
+				m.errorModel = NewErrorModel(m.progress.Err(), m.width)
+				m.screen = ErrorScreen
+				return m, nil
+			}
 			m.screen = DoneScreen
 		}
 		return m, cmd
 
 	case DoneScreen:
+		if _, ok := msg.(tea.KeyMsg); ok {
+			return m, tea.Quit
+		}
+		return m, nil
+
+	case ErrorScreen:
+		// Any key quits from the error screen.
 		if _, ok := msg.(tea.KeyMsg); ok {
 			return m, tea.Quit
 		}
@@ -188,8 +237,17 @@ func (m AppModel) View() string {
 		return m.componentSelect.View()
 	case ConfirmScreen:
 		return m.confirm.View()
-	case ApplyScreen, DoneScreen:
+	case ApplyScreen:
 		return m.progress.View()
+	case DoneScreen:
+		v := m.progress.View()
+		// Append update advisory when available (non-blocking, shown after result).
+		if line := core.UpdateAdvisoryLine(m.updateResult); line != "" {
+			v += "\n" + accentStyle().Render(line) + "\n"
+		}
+		return v
+	case ErrorScreen:
+		return m.errorModel.View()
 	}
 	return ""
 }
