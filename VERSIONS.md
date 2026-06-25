@@ -1,5 +1,64 @@
 # Versions
 
+## v0.30.0 (2026-06-25) — design-quality eval harness + score_ui MCP tool
+
+Adds a deterministic composite design-quality scorer (`evals/quality/score.mjs`) that composes three source-static signal dimensions into a single 0-100 UICraftScore + letter grade. Delivered in two PRs: PR 1 shipped the eval core, fixtures, baselines, CLI benchmark, and CI gate; PR 2 (this entry) adds the `score_ui` MCP tool and closes the v0.30 release.
+
+**Scoring formula (deterministic, zero deps):**
+
+`score = 100 − (antiSlop_crit×8) − (antiSlop_major×4) − (antiSlop_warn×1) − (token_findings×2) − (a11y_crit×8) − (a11y_major×4)`, clamped [0, 100].
+
+Grade bands: A ≥ 90 · B ≥ 80 · C ≥ 70 · D ≥ 60 · F < 60.
+
+**Three dimensions:**
+
+- **anti_slop** — 33 rules from `scripts/detect.mjs` `scan()`. Severities: critical (−8), major (−4), warn (−1).
+- **token_discipline** — regex scanner via `mcp/src/tokens-rules.mjs` `scanTokens()`. Flat −2 per finding (error or warning).
+- **a11y** — 5 new static checks in `evals/quality/a11y-static.mjs` (no rule-id overlap with detect.mjs — verified and documented): `img-no-alt` (critical), `non-semantic-interactive` (critical), `positive-tabindex` (major), `aria-invalid-no-describedby` (major), `no-reduced-motion` (major, file-scope). Severities: critical (−8), major (−4).
+
+**New files (PR 1 — eval harness):**
+
+- `evals/quality/a11y-static.mjs` — 5 new a11y checks, exports `scanA11y` + `a11yRules`. Zero deps.
+- `evals/quality/score.mjs` — shared scoring core; exports `scoreUI`, `WEIGHTS`, `GRADE_BANDS`, `EVAL_VERSION`, `_buildResult`. Imports: `scan()` (scripts/detect.mjs), `scanTokens()` (mcp/src/tokens-rules.mjs), `scanA11y()` (./a11y-static.mjs).
+- `evals/quality/score.test.mjs` — 46 node:test tests: formula unit, a11y hit/miss, regression fixture gate, separation assertion, edge cases.
+- `evals/quality/baselines.json` — baseline bands (±5–10 margin) for 8 fixtures: 4 slop (scores 0–60) + 4 designer (scores 100). Separation holds: min(designer) > max(slop).
+- `evals/quality/fixtures/slop/*.tsx` (4 files) — intentional violations across all 3 dims.
+- `evals/quality/fixtures/designer/*.tsx` (4 files) — clean: token system, semantic elements, alt text, reduced-motion guards.
+- `scripts/eval.mjs` — CLI + benchmark runner: single-file, directory, `--baseline`, `--json`, `--threshold`, `--min`. Zero deps. Exit codes 0/1/2. `--baseline` → 8/8 in-band gate.
+- `evals/README.md` — updated with `quality/` section: formula, checks, fixtures, baselines, how to run.
+- `.github/workflows/mcp-test.yml` — added path triggers for `evals/quality/**` + `scripts/eval.mjs`. Added `quality-eval` job (no npm install, runs at repo root): `node --test evals/quality/*.test.mjs` + `node scripts/eval.mjs --baseline`. Existing `mcp-test` job untouched.
+- `.uicraftrc.json` — added `evals/quality/fixtures/**` to ignore list (prevents pre-commit double-flagging intentional slop fixtures).
+- `.githooks/pre-commit` — copies `.uicraftrc.json` into hook's temp dir so ignore patterns apply.
+
+**New files (PR 2 — score_ui MCP tool):**
+
+- `mcp/src/tools/score-ui.mjs` — `score_ui` MCP tool adapter. `import { scoreUI } from '../../../evals/quality/score.mjs'` (same cross-package relative import pattern as `check-anti-slop.mjs → ../../../scripts/detect.mjs`). Input: `{ code?, path? }`. Output: UICraftScore envelope. Structured error on bad input or caught exception.
+- `mcp/src/tools/score-ui.test.mjs` — 10 node:test tests: slop → low score, clean → high score, envelope shape, bad-input structured error, parity with direct `scoreUI()`, path inputs within baseline bands.
+
+**Changed (PR 2):**
+
+- `mcp/src/server.mjs` — registered `score_ui` as the 4th tool. Header comment updated (3 → 4 tools). Import of `scoreUiTool` from `./tools/score-ui.mjs`. Comment documents the cross-package import and mcp `files:["src"]` publish-packaging note (consistent with existing `check_anti_slop` behavior — flag if standalone npm publish is needed).
+- `mcp/src/server.test.mjs` — updated to reflect 4 tools; imports `scoreUiTool`; adds `score_ui` to tool-name set assertion.
+- `README.md` — added "Design-quality score" section with formula, CLI, MCP tool.
+- `VERSIONS.md` — this entry.
+
+**Architecture — cross-package import decision (ADR-1):**
+
+The scoring core lives in `evals/quality/score.mjs` and is imported by both `scripts/eval.mjs` and the `score_ui` MCP tool via relative cross-package imports. This mirrors the shipped v0.29 pattern (`mcp/src/tools/check-anti-slop.mjs → ../../../scripts/detect.mjs`) — no new precedent created. The `mcp/package.json` `files: ["src"]` does NOT include `evals/`; `score_ui` is available in the repo-local server (via `.mcp.json` `npx`/local path). Flag for npm publish: add `../evals/quality` to mcp `files` if standalone publish is needed.
+
+**Baseline regen procedure:** when intentionally changing rule weights or adding new rules, run `node scripts/eval.mjs --baseline` to see current scores, then update `evals/quality/baselines.json` bands to match + ±5–10 margin. Re-run `node --test evals/quality/*.test.mjs` to confirm 46/46. Commit baselines + rule change together.
+
+**Verification (all green):**
+
+- `node --test evals/quality/*.test.mjs` → 46/46 pass
+- `node scripts/eval.mjs --baseline` → 8/8 in band, exit 0
+- `node --test scripts/detect.test.mjs` → 8/8 pass (unchanged)
+- `node scripts/validate.mjs` → 96/96 pass (unchanged)
+- `cd mcp && node --test` → 46/46 pass (35 existing + 10 score_ui + 1 server.test update)
+- Root `package.json`: zero new deps
+
+This is the final phase of the skill → system roadmap started in v0.20 (outcome layer) → v0.27 (spec-driven design) → v0.28 (agent pack) → v0.29 (MCP server) → v0.30 (deterministic quality gate).
+
 ## v0.29.0 (2026-06-24) — MCP server + detect.mjs scan() export
 
 Adds a self-contained `mcp/` package exposing three deterministic design-quality tools over stdio MCP. Also refactors `scripts/detect.mjs` to export a `scan()` function callable in-process (used by the MCP server). The CLI (`ui-craft-detect`) behavior is byte-identical — only an export and an entry guard are added.

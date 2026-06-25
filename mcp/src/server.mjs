@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * ui-craft MCP server
- * Deterministic design-quality gate: 3 tools, stdio transport.
+ * Deterministic design-quality gate: 4 tools, stdio transport.
  *
  * SDK: @modelcontextprotocol/sdk v1.29.0
  * API: McpServer.registerTool() + StdioServerTransport
@@ -10,6 +10,10 @@
  *   check_anti_slop  — flags anti-slop patterns via scripts/detect.mjs scan()
  *   tokens_lint      — flags off-system token values (color, radius, spacing, z-index)
  *   acceptance_bar   — returns acceptance checklist for a UI surface
+ *   score_ui         — composite UICraftScore (anti-slop + tokens + a11y) via evals/quality/score.mjs
+ *                      Note: score_ui imports from ../../../evals/quality/ — consistent with
+ *                      check_anti_slop importing ../../../scripts/ (same cross-package pattern).
+ *                      mcp files:["src"] does NOT include evals/; available in repo-local server.
  *
  * Boundary: NO taste or judgment rules in this server.
  * All subjective/aesthetic rules live exclusively in SKILL.md.
@@ -20,6 +24,7 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { checkAntiSlop } from './tools/check-anti-slop.mjs';
 import { tokensLint } from './tools/tokens-lint.mjs';
 import { acceptanceBar } from './tools/acceptance-bar.mjs';
+import { scoreUiTool } from './tools/score-ui.mjs';
 
 const server = new McpServer(
   {
@@ -153,6 +158,53 @@ server.registerTool(
         error: `Unexpected error: ${e.message}`,
         surface: args.surface ?? null,
         items: [],
+      };
+    }
+    const isError = Boolean(result.error);
+    return {
+      content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+      isError,
+    };
+  }
+);
+
+// ─── Tool: score_ui ──────────────────────────────────────────────────────────
+
+server.registerTool(
+  'score_ui',
+  {
+    title: 'Score UI',
+    description:
+      'Composite design-quality scorer (UICraftScore). Combines three deterministic dimensions into ' +
+      'a single 0-100 score + letter grade (A/B/C/D/F) + per-dimension subscores and findings. ' +
+      'Dimensions: anti-slop (33 rules via ui-craft-detect), token-discipline (raw hex / off-scale values), ' +
+      'and static a11y (5 checks: img-no-alt, non-semantic-interactive, positive-tabindex, ' +
+      'aria-invalid-no-describedby, no-reduced-motion). ' +
+      'Accepts either a `code` string (inline source) or a `path` string (file). ' +
+      'Formula: score = 100 − (antiSlop_crit×8) − (antiSlop_major×4) − (antiSlop_warn×1) ' +
+      '− (token_findings×2) − (a11y_crit×8) − (a11y_major×4), clamped [0,100]. ' +
+      'Returns { overall: {score, grade}, dimensions: {anti_slop, token_discipline, a11y}, version }.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        code: {
+          type: 'string',
+          description: 'Inline source code to score (alternative to path)',
+        },
+        path: {
+          type: 'string',
+          description: 'File path to score (alternative to code)',
+        },
+      },
+    },
+  },
+  async (args) => {
+    let result;
+    try {
+      result = await scoreUiTool(args);
+    } catch (e) {
+      result = {
+        error: `Unexpected error: ${e?.message ?? String(e)}`,
       };
     }
     const isError = Boolean(result.error);
