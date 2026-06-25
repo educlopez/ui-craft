@@ -46,6 +46,7 @@ The rules that make the biggest difference between "AI-generated" and "designed 
 
 | Intent | Mode / Reference |
 |--------|------------------|
+| New here / unsure where to begin | Run `/start` → reads the project, reports what's available now, routes you to the right next step |
 | Pre-build: write the project's design brief | Run `/brief` → see [brief.md](references/brief.md) |
 | Pre-build: establish or audit token spine | Run `/tokens` → see [tokens.md](references/tokens.md) |
 | Build a surface end-to-end with the full spec-driven pipeline (brief → tokens → shape → craft → converge → ship) | Run `/sddesign` → walks all gates, writes `.ui-craft/spec.md`, orchestrates existing phase commands |

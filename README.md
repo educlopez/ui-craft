@@ -16,6 +16,8 @@ Three questions (or none — the defaults are strong), a named composition, a pr
 
 For everything else — reviews, animations, forms, polish — the skill routes by intent: just describe what you're building.
 
+**New here?** Run `/start` — it reads your project (framework, tokens, brief, existing UI) and tells you what ui-craft can do right now, then points you at the right next step.
+
 ## What it does
 
 UI Craft gives AI coding agents the design knowledge they're missing. Not templates. Not component libraries. Actual craft knowledge — opinionated rules about how interfaces should look, move, and feel — plus the tooling to verify the result. Stack-agnostic by design.
@@ -29,7 +31,7 @@ You don't have to learn any of it to benefit. It grows with you.
 | Layer | You do | You get |
 |-------|--------|---------|
 | **1 · Just install it** | Nothing — ask for UI the way you always do | The agent designs with taste: real hierarchy, system tokens, no AI slop. Same prompt, shippable result. |
-| **2 · Drive it** | Run a slash command (`/craft`, `/sddesign`, `/finalize`, …) | Focused passes — build a surface, run a scored critique, gate a ship. 21 commands, one lens each. |
+| **2 · Drive it** | Run `/start` to see your options, then a slash command (`/craft`, `/sddesign`, `/finalize`, …) | Focused passes — build a surface, run a scored critique, gate a ship. 22 commands, one lens each. |
 | **3 · Verify it** | Wire the agents / MCP / CLI into review or CI | Independent design + a11y review, a deterministic 0-100 quality score, an anti-slop gate on every commit. |
 
 **Start at Layer 1.** Most people never leave it — that's the point. Layers 2 and 3 are there the day you want them.
@@ -55,7 +57,7 @@ More before/after comparisons on the [landing page](https://skills.smoothui.dev)
 
 ### Claude Code — recommended
 
-Install as a native plugin (the skill + all 21 slash commands):
+Install as a native plugin (the skill + all 22 slash commands):
 
 ```
 /plugin marketplace add educlopez/ui-craft
@@ -123,7 +125,13 @@ For playful and brutalist aesthetics (Clay / Gumroad / Duolingo / Arc-playful, N
 
 ## Slash commands
 
-Twenty single-lens passes — plus the `/sddesign` pipeline that chains them.
+Twenty single-lens passes, plus `/sddesign` (the pipeline that chains them) and `/start` (the front door).
+
+**Front door:**
+
+| Command | Does |
+|---------|------|
+| `/ui-craft:start` | **Run this first.** Reads the project (framework, tokens, brief, spec, existing UI) and reports what ui-craft can do right now, then routes you to the right next step. Read-only — no code changes. |
 
 **Decision spine & finalize:**
 
@@ -289,7 +297,7 @@ ui-craft/
 │   ├── ui-craft-minimal/          # Variant — Linear/Notion aesthetic
 │   ├── ui-craft-editorial/        # Variant — Medium/Substack aesthetic
 │   └── ui-craft-dense-dashboard/  # Variant — Bloomberg/Retool aesthetic
-├── commands/                      # 21 Claude Code slash commands (source of truth)
+├── commands/                      # 22 Claude Code slash commands (source of truth)
 ├── examples/
 │   ├── animation-storyboard.md   # Multi-stage animation pattern template
 │   └── presets/
