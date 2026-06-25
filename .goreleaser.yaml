@@ -19,7 +19,7 @@ before:
   hooks:
     # Verify that mirrors/ was populated before goreleaser runs.
     # This guard catches any CI step-ordering bug (gotcha #5).
-    - sh -c 'test -d cli/assets/mirrors && find cli/assets/mirrors -not -name .gitkeep -not -name VERSION -type f | grep -q . || (echo "ERROR: cli/assets/mirrors/ is empty — run sync-harnesses step first (gotcha #5)" && exit 1)'
+    - "sh -c \"test -d cli/assets/mirrors && find cli/assets/mirrors -not -name .gitkeep -not -name VERSION -type f | grep -q . || (echo 'ERROR: cli/assets/mirrors/ is empty - run sync-harnesses step first' && exit 1)\""
 
 builds:
   - id: ui-craft
@@ -47,7 +47,7 @@ builds:
 
 archives:
   - id: ui-craft-archive
-    builds:
+    ids:
       - ui-craft
     name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
     format_overrides:
@@ -73,26 +73,27 @@ release:
   prerelease: auto
   name_template: "{{ .ProjectName }} {{ .Tag }}"
 
-brews:
+homebrew_casks:
   - name: ui-craft
+    ids:
+      - ui-craft
     repository:
       owner: educlopez
       name: homebrew-ui-craft
       token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
-    # Installs as: brew install educlopez/ui-craft/ui-craft
-    url_template: "https://github.com/educlopez/ui-craft/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
+    # Installs as: brew install --cask educlopez/ui-craft/ui-craft
+    url:
+      template: "https://github.com/educlopez/ui-craft/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
     commit_author:
       name: github-actions[bot]
       email: 41898282+github-actions[bot]@users.noreply.github.com
-    commit_msg_template: "chore: update ui-craft formula to {{ .Tag }}"
+    commit_msg_template: "chore: update ui-craft cask to {{ .Tag }}"
     homepage: "https://skills.smoothui.dev"
     description: "ui-craft CLI — install the UI Craft design system into any AI agent harness"
     license: "MIT"
-    directory: Formula
-    install: |
-      bin.install "ui-craft"
-    test: |
-      system "#{bin}/ui-craft", "version"
+    directory: Casks
+    binaries:
+      - ui-craft
 
 scoops:
   - name: ui-craft
