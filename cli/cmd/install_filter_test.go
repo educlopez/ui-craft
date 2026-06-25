@@ -380,4 +380,3 @@ func TestUpdateComponentsFilter_stateReplay(t *testing.T) {
 // Ensure cmd package exports are accessible.
 var _ = cmd.SetDetectAllFn
 var _ = cmd.SetFlags
-var _ = cmd.SetAssertMirrorsFreshFn

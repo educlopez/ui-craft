@@ -7,21 +7,23 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-// arenArt is the Aren dog ASCII art loaded at init time from the embedded asset.
-// Each element is one rendered row. The art is hand-crafted (no converter tool
-// produced output suitable for embedding as plain text rows without ANSI).
+// arenArt is the Aren dog braille art (24×12), generated from the ui-craft logo.
+// Reproduced with: chafa -f symbols --symbols braille -c none --size 24x12 public/icon.png
+// Each element is one rendered row; the lipgloss gradient-band renderer below
+// colorises them at display time.
 var arenArt = []string{
-	`     /\_____/\`,
-	`    (  o   o  )`,
-	`    (  =   =  )`,
-	`   / \  ~~~  / \`,
-	`  /   \     /   \`,
-	` / /|  \___/  |\ \`,
-	`/_/ |_________|  \_\`,
-	`    |         |`,
-	`    |_________|`,
-	`   /|         |\`,
-	`  /_|_________|_\`,
+	`⠀⠀⣠⣴⣶⣶⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣶⣶⣦⣄⠀⠀`,
+	`⢀⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣷⡀`,
+	`⣼⣿⡿⠛⠛⠻⢿⣿⣿⠋⠀⠀⠹⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣧`,
+	`⣿⣿⠁⠀⠀⠀⠀⠻⡏⠀⣠⣤⣠⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿`,
+	`⣿⣿⣆⣀⣴⡖⠀⠀⢩⣤⣿⣹⡿⠛⠛⠛⠛⠛⠛⠛⠛⣿⣿⡝`,
+	`⣿⣿⣿⣿⣿⡇⠀⠀⠻⣤⠟⠉⠀⠀⠀⠀⠀⠀⠀⠀⠀⢸⣿⣿`,
+	`⣿⣿⣿⣿⣿⡇⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣠⣿⣿⣿`,
+	`⣿⣿⣿⣿⣿⠇⠀⠀⠀⢠⣤⣀⡀⠀⠀⠀⢀⣀⣤⣾⣿⣿⣿⣿`,
+	`⣿⣿⣿⣿⣿⠀⠀⠀⠀⠈⠿⣿⣿⣿⣿⡿⠿⠛⠋⠉⠀⠀⡇⠈`,
+	`⢻⣿⣿⣿⣿⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠃⠀`,
+	`⠈⢿⣿⣿⣿⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⡠⠊⠀⠀`,
+	`⠀⠀⠙⠻⢿⡏⠉⠁⠀⠀⠀⠀⠀⠀⠀⠀⠈⠉⠉⠁⠀⠀⠀⠀`,
 }
 
 // SplashModel is the Bubble Tea model for the Aren dog splash screen.

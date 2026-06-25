@@ -3,7 +3,7 @@ VERSION       ?= dev
 MIRROR_VERSION ?= dev
 LDFLAGS       := -X main.version=$(VERSION) -X main.mirrorVersion=$(MIRROR_VERSION)
 
-.PHONY: build test lint clean gen-mirrors ci-build check-agent-copies release-local check
+.PHONY: build test lint clean gen-mirrors check-mirrors ci-build check-agent-copies release-local check
 
 ## build: compile the binary for the current OS/arch (development build).
 build:
@@ -21,9 +21,10 @@ lint:
 clean:
 	rm -f $(BINARY)
 
-## gen-mirrors: run sync-harnesses.mjs and copy output into assets/mirrors/.
-## This MUST be run before `make build` in CI (gotcha #5: CI ordering).
-## Requires Node.js; output is gitignored — do NOT commit generated mirrors.
+## gen-mirrors: regenerate harness mirrors from skills/ and commit the result.
+## Mirrors are committed directly (gentle-ai model — no gen-before-build).
+## After running this target, stage and commit cli/assets/mirrors/ changes.
+## Requires Node.js.
 gen-mirrors:
 	@echo "==> Running sync-harnesses.mjs..."
 	cd .. && npm ci --ignore-scripts && node scripts/sync-harnesses.mjs
@@ -45,7 +46,46 @@ gen-mirrors:
 			echo "  WARNING: $$src_dir not found (skipping $$harness)"; \
 		fi; \
 	done
-	@echo "==> gen-mirrors complete."
+	@echo "==> gen-mirrors complete. Stage and commit cli/assets/mirrors/ to persist."
+
+## check-mirrors: verify committed mirrors match current skills/ output.
+## Fails (non-zero) if cli/assets/mirrors/ would change after regeneration.
+## Run in CI to catch forgotten `make gen-mirrors && git add` before merge.
+check-mirrors:
+	@echo "==> Checking committed mirrors for drift..."
+	@tmpdir=$$(mktemp -d); \
+	cd .. && node scripts/sync-harnesses.mjs > /dev/null 2>&1; \
+	for harness in claude cursor codex gemini opencode; do \
+		src_dir=""; \
+		case "$$harness" in \
+			claude)   src_dir=".agents/skills"   ;; \
+			cursor)   src_dir=".cursor/skills"   ;; \
+			codex)    src_dir=".codex/skills"    ;; \
+			gemini)   src_dir=".gemini/skills"   ;; \
+			opencode) src_dir=".opencode/skills" ;; \
+		esac; \
+		if [ -d "$$src_dir" ]; then \
+			cp -r "$$src_dir" "$$tmpdir/$$harness"; \
+		fi; \
+	done; \
+	cd cli; \
+	fail=0; \
+	for harness in claude cursor codex gemini opencode; do \
+		if [ ! -d "$$tmpdir/$$harness" ]; then continue; fi; \
+		if ! diff -r --brief "assets/mirrors/$$harness" "$$tmpdir/$$harness" > /dev/null 2>&1; then \
+			echo "  DRIFT: assets/mirrors/$$harness differs from current $$harness skills output"; \
+			diff -r "assets/mirrors/$$harness" "$$tmpdir/$$harness" || true; \
+			fail=1; \
+		else \
+			echo "  OK: $$harness mirrors match"; \
+		fi; \
+	done; \
+	rm -rf "$$tmpdir"; \
+	if [ $$fail -ne 0 ]; then \
+		echo "==> check-mirrors FAILED: run 'make gen-mirrors' and commit cli/assets/mirrors/"; \
+		exit 1; \
+	fi; \
+	echo "==> check-mirrors passed."
 
 ## check-agent-copies: diff repo-root agents/ against cli/assets/agents/claude/.
 ## Fails (non-zero) if the committed copies diverge from the canonical sources.
@@ -76,14 +116,13 @@ check-agent-copies:
 	fi; \
 	echo "==> check-agent-copies passed."
 
-## ci-build: full CI build: gen-mirrors then build binary.
-## Step order is enforced to satisfy gotcha #5 (mirror freshness).
-ci-build: gen-mirrors build
+## ci-build: build binary. Mirrors are committed so no gen step is required.
+ci-build: build
 
 ## release-local: build a snapshot release with goreleaser (no publish, no tag required).
 ## Requires goreleaser installed: go install github.com/goreleaser/goreleaser/v2@latest
-## Must run gen-mirrors first (gotcha #5 — mirrors must be populated before go:embed).
-release-local: gen-mirrors
+## Mirrors are committed — no gen-mirrors step needed before build.
+release-local:
 	@echo "==> Building snapshot release with goreleaser..."
 	cd .. && MIRROR_VERSION=$(MIRROR_VERSION) goreleaser release --snapshot --clean --config .goreleaser.yaml
 

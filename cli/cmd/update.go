@@ -42,11 +42,6 @@ installed components for the harness.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		out := cmd.OutOrStdout()
 
-		// Freshness guard: prevent running with placeholder/empty embedded mirrors.
-		if err := assets.AssertMirrorsFresh(); err != nil {
-			return err
-		}
-
 		compFlag, _ := cmd.Flags().GetString("component")
 
 		// Validate --harness flag before any work.

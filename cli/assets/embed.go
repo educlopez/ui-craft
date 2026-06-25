@@ -1,16 +1,14 @@
 // Package assets exposes the embedded harness mirrors, scaffold templates, and
 // splash art that are bundled into the ui-craft binary at build time.
 //
-// CI ordering dependency (gotcha #5):
+// Harness mirrors are committed directly under cli/assets/mirrors/<harness>/
+// (gentle-ai model — no generate step, no runtime freshness guard). If mirrors
+// are missing, //go:embed fails at BUILD time with a clear error — that is the
+// intended signal. To regenerate mirrors from source, run `make gen-mirrors`
+// and commit the result.
 //
-//	The `sync-harnesses.mjs` script MUST run and copy its output into
-//	cli/assets/mirrors/<harness>/ BEFORE `go build` executes.  The init()
-//	guard below will panic if the mirrors subtree is empty, catching any CI
-//	step-ordering bug at build verification time rather than at install time.
-//
-// TODO(gotcha#5): Once CI wiring lands (Slice 5), the mirrorsFSNonEmpty()
-// assertion in init() will fire against real mirror content.  Until then the
-// placeholder VERSION file keeps the embed valid and the guard dormant.
+// Mirror drift (skills/ edited without regenerating mirrors) is caught at PR
+// time by the `make check-mirrors` / CI check-mirrors step.
 //
 // Review agent definitions (Slice 8):
 //
@@ -27,7 +25,6 @@ package assets
 
 import (
 	"embed"
-	"fmt"
 	"io/fs"
 	"strings"
 )
@@ -93,8 +90,7 @@ func MirrorVersion() string {
 // Mirror returns the embedded sub-filesystem for the named harness
 // (e.g. "claude", "cursor", "codex", "gemini", "opencode"). The returned
 // fs.FS is rooted at mirrors/<harness>/ so callers can walk it directly.
-// Returns nil when the harness subtree does not exist in the embedded mirrors
-// (e.g. CI sync step did not run — see gotcha #5).
+// Returns nil when the harness subtree does not exist in the embedded mirrors.
 func Mirror(harnessName string) fs.FS {
 	path := "mirrors/" + harnessName
 	// Validate that the subtree directory actually exists in the embed before
@@ -135,77 +131,4 @@ func Agents(harnessName string) fs.FS {
 		return nil
 	}
 	return sub
-}
-
-// mirrorsFSNonEmpty returns true when at least one non-.gitkeep file exists
-// under the mirrors/ subtree. Used by the init() guard below.
-func mirrorsFSNonEmpty() bool {
-	found := false
-	_ = fs.WalkDir(mirrorsFS, "mirrors", func(path string, d fs.DirEntry, err error) error {
-		if err != nil || d.IsDir() {
-			return nil
-		}
-		// .gitkeep and VERSION are scaffold-only; real content = anything else.
-		base := d.Name()
-		if base == ".gitkeep" {
-			return nil
-		}
-		if path == "mirrors/VERSION" {
-			return nil
-		}
-		found = true
-		return fs.SkipAll
-	})
-	return found
-}
-
-// expectedHarnesses lists the harness subtrees that must be present in the
-// mirrors/ embed once CI has run sync-harnesses.mjs (gotcha #5).
-var expectedHarnesses = []string{"claude", "cursor", "codex", "gemini", "opencode"}
-
-// mirrorHarnessPresent returns true when at least one non-.gitkeep file exists
-// under mirrors/<harness>/.
-func mirrorHarnessPresent(harnessName string) bool {
-	found := false
-	root := "mirrors/" + harnessName
-	_ = fs.WalkDir(mirrorsFS, root, func(path string, d fs.DirEntry, err error) error {
-		if err != nil || d.IsDir() {
-			return nil
-		}
-		if d.Name() != ".gitkeep" {
-			found = true
-			return fs.SkipAll
-		}
-		return nil
-	})
-	return found
-}
-
-// AssertMirrorsFresh returns an error if any expected harness subtree is missing
-// real content. This is called at install/update time (not in init()) so
-// development builds and tests using fixture mirrors are unaffected. CI ensures
-// sync-harnesses.mjs runs before go build, making real mirrors available
-// (gotcha #5).
-//
-// Call this as the FIRST statement in any cmd RunE that performs WriteSkill ops.
-func AssertMirrorsFresh() error {
-	for _, h := range expectedHarnesses {
-		if !mirrorHarnessPresent(h) {
-			return fmt.Errorf("assets: mirrors/%s/ is empty or placeholder — run `make gen-mirrors` before building (gotcha #5)", h)
-		}
-	}
-	return nil
-}
-
-// assertMirrorsFreshSeam is the init()-time seam. During development (Slices
-// 1–5) mirrors/ may contain only placeholders, so we skip the panic to allow
-// `go build ./...` and `go test ./...` to pass without a CI sync step.
-// The real freshness check is performed at install time via AssertMirrorsFresh.
-func assertMirrorsFreshSeam() {
-	// No-op at init time: AssertMirrorsFresh() is called at install time instead.
-	// This preserves go build / go test ergonomics on developer machines.
-}
-
-func init() {
-	assertMirrorsFreshSeam()
 }

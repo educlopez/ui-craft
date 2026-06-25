@@ -37,14 +37,6 @@ func SetUpdateDetectAllFn(fn func([]harness.Harness) []core.DetectedHarness) fun
 	return func() { updateDetectAllFn = prev }
 }
 
-// SetAssertMirrorsFreshFn replaces the freshness guard for testing.
-// It returns a restore function that must be called (via defer) to reset the var.
-func SetAssertMirrorsFreshFn(fn func() error) func() {
-	prev := assertMirrorsFreshFn
-	assertMirrorsFreshFn = fn
-	return func() { assertMirrorsFreshFn = prev }
-}
-
 // SetNativePluginDetectFn replaces the native plugin detection for testing.
 // It returns a restore function that must be called (via defer) to reset the var.
 func SetNativePluginDetectFn(fn func() bool) func() {

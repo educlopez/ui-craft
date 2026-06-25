@@ -35,11 +35,6 @@ var detectAllFn = func(reg []harness.Harness) []core.DetectedHarness {
 	return core.DetectAll(reg)
 }
 
-// assertMirrorsFreshFn is injectable for testing to bypass the freshness guard.
-var assertMirrorsFreshFn = func() error {
-	return assets.AssertMirrorsFresh()
-}
-
 // installCmd implements the detect → plan → apply pipeline.
 var installCmd = &cobra.Command{
 	Use:          "install",
@@ -47,12 +42,6 @@ var installCmd = &cobra.Command{
 	SilenceUsage: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		out := cmd.OutOrStdout()
-
-		// Freshness guard: prevent running with placeholder/empty embedded mirrors.
-		// Must be first so users get a clear error before any detection or I/O.
-		if err := assertMirrorsFreshFn(); err != nil {
-			return err
-		}
 
 		// Resolve project directory early so both TUI and non-interactive paths
 		// use the same value.

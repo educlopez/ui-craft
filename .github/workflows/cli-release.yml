@@ -7,13 +7,9 @@ name: CLI Release (goreleaser)
 # Distinct from release.yml (which only creates the GitHub Release note from
 # VERSIONS.md). This workflow builds and publishes the Go binary.
 #
-# Step order is MANDATORY (gotcha #5 — mirror freshness):
-#   1. Checkout
-#   2. Setup Node + run sync-harnesses.mjs  ← generates mirrors
-#   3. Copy generated mirrors into cli/assets/mirrors/<harness>/
-#   4. Verify mirrors are non-empty         ← build-time assertion
-#   5. Setup Go
-#   6. goreleaser release                   ← go:embed captures fresh mirrors
+# Mirrors are committed directly (gentle-ai model — no gen-before-build).
+# The build is self-contained: checkout → setup-go → goreleaser.
+# Mirror drift is caught at PR time by the check-mirrors CI step (validate.yml).
 
 on:
   push:
@@ -39,46 +35,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      # ── Step 2: Setup Node + generate harness mirrors ─────────────────────
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: "npm"
-
-      - name: Install npm dependencies
-        run: npm ci --ignore-scripts
-
-      - name: Generate harness mirrors (sync-harnesses.mjs)
-        run: node scripts/sync-harnesses.mjs
-
-      # ── Step 3: Copy generated mirrors into cli/assets/mirrors/ ───────────
-      # Each harness dir is copied from the repo's dotfile dirs into the Go
-      # embed path so go:embed picks them up at build time (gotcha #5).
-      - name: Copy mirrors into cli/assets/mirrors/
-        run: |
-          set -euo pipefail
-
-          copy_harness() {
-            local harness="$1"
-            local src_dir="$2"
-            local dst_dir="cli/assets/mirrors/$harness"
-
-            if [ -d "$src_dir" ]; then
-              mkdir -p "$dst_dir"
-              cp -r "$src_dir/." "$dst_dir/"
-              echo "  Copied $src_dir → $dst_dir"
-            else
-              echo "  WARNING: $src_dir not found — skipping $harness"
-            fi
-          }
-
-          copy_harness "claude"   ".claude/skills"
-          copy_harness "cursor"   ".cursor/skills"
-          copy_harness "codex"    ".codex/skills"
-          copy_harness "gemini"   ".gemini/skills"
-          copy_harness "opencode" ".opencode/skills"
-
       - name: Ensure cli/assets/agents/ is present
         run: |
           # Agent definitions are committed directly (not CI-generated), so this
@@ -89,31 +45,6 @@ jobs:
             echo "cli/assets/agents/ OK"
           fi
 
-      # ── Step 4: Mirror freshness assertion ────────────────────────────────
-      # Fail the build here — before go build — if mirrors are still placeholder.
-      - name: Assert mirrors are non-empty (gotcha #5 freshness guard)
-        run: |
-          set -euo pipefail
-          fail=0
-          for harness in claude cursor codex gemini opencode; do
-            dir="cli/assets/mirrors/$harness"
-            # Count non-.gitkeep files
-            count=$(find "$dir" -type f ! -name '.gitkeep' ! -name 'VERSION' 2>/dev/null | wc -l)
-            if [ "$count" -eq 0 ]; then
-              echo "ERROR: cli/assets/mirrors/$harness/ has no real content — sync-harnesses step may have failed"
-              fail=1
-            else
-              echo "OK: cli/assets/mirrors/$harness/ has $count file(s)"
-            fi
-          done
-          if [ "$fail" -ne 0 ]; then
-            echo ""
-            echo "One or more harness mirror dirs are empty. The release aborted to prevent"
-            echo "shipping a binary with placeholder mirrors. Fix: verify sync-harnesses.mjs"
-            echo "output and the copy step above."
-            exit 1
-          fi
-
       # Set MIRROR_VERSION from the top-level package.json version
       - name: Set MIRROR_VERSION env
         run: |
@@ -121,14 +52,14 @@ jobs:
           echo "MIRROR_VERSION=$MIRROR_VERSION" >> "$GITHUB_ENV"
           echo "Mirror version: $MIRROR_VERSION"
 
-      # ── Step 5: Setup Go ──────────────────────────────────────────────────
+      # ── Step 2: Setup Go ──────────────────────────────────────────────────
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
           go-version: "1.23"
           cache-dependency-path: cli/go.sum
 
-      # ── Step 6: goreleaser release ────────────────────────────────────────
+      # ── Step 3: goreleaser release ────────────────────────────────────────
       - name: Run goreleaser
         uses: goreleaser/goreleaser-action@v6
         with:
