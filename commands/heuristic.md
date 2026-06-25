@@ -1,5 +1,5 @@
 ---
-description: Produce a scored heuristic critique of the UI using Nielsen's 10 + 6 design laws + optional persona walkthroughs. Outputs a machine-parseable scorecard.
+description: Produce a scored heuristic critique of the UI using Nielsen's 10 + 6 design laws + optional persona walkthroughs. Outputs a machine-parseable scorecard plus a 0-100 UsabilityScore (the judged companion to the deterministic UICraftScore).
 argument-hint: "[file or component path] [--persona=<name>]"
 ---
 
@@ -24,12 +24,15 @@ For every heuristic, write a concrete finding — quote text, count elements, na
 
 **Step 5 — Rank findings by impact tag.** Impact order: `blocks-conversion > adds-friction > reduces-trust > minor-polish`. Include at most 5 findings in the ranked list; cut anything at `minor-polish` unless there are no higher-impact findings.
 
-**Step 6 — Output.** Use the exact scorecard format in `references/heuristics.md`:
+**Step 6 — Compute the UsabilityScore.** Roll the scorecard into a 0-100 number + grade per the **UsabilityScore** formula in `references/heuristics.md`: `heuristic_base = round(((mean(nielsen_scores) − 1) / 4) × 100)`, minus `5 × (failed design laws)`, clamped [0,100]. Same A/B/C/D/F bands as UICraftScore. Always label it `(judged)` — it is **not** deterministic and must never gate CI. If the args include `--json`, also emit the machine-readable block. If the user asks for the full picture, build the **Extended quality report** by fetching the deterministic UICraftScore (`node scripts/eval.mjs <path> --json` or the `score_ui` MCP tool) and placing both side by side — never average them.
+
+**Step 7 — Output.** Use the exact scorecard format in `references/heuristics.md`:
 
 1. `## Heuristic Scorecard` table
 2. `## Design Law Audit` table
 3. `## Persona Walkthrough` table (only if `--persona=` was passed)
 4. `## Top findings (ranked by impact)` — numbered list, 3-5 items
+5. `## UsabilityScore` block — the 0-100 score + grade + component breakdown
 
 **Knob awareness:** knob-agnostic. Usability is not a knob — a 2 is a 2 whether `CRAFT_LEVEL` is 3 or 9. Do not soften scores based on `CRAFT_LEVEL`.
 

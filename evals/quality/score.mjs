@@ -8,6 +8,14 @@
  *   token_discipline → scanTokens() from mcp/src/tokens-rules.mjs
  *   a11y           → scanA11y()   from ./a11y-static.mjs
  *
+ * This score is DETERMINISTIC and reproducible by design — identical input
+ * always yields the identical score. The judged usability dimension
+ * (UsabilityScore) deliberately lives OUTSIDE this module: it is host-agent
+ * judgment via the rubric in references/heuristics.md, surfaced by the
+ * /heuristic command. The two compose in an "extended report" but are never
+ * averaged — collapsing reproducible + judged would hide the distinction
+ * this module exists to guarantee.
+ *
  * Zero external deps. Node 18+.
  */
 

@@ -439,6 +439,19 @@ Returns `{ overall: { score, grade }, dimensions: { anti_slop, token_discipline,
 
 See [`evals/README.md`](evals/README.md) for how to run the regression gate, add fixtures, and regen baselines after rule changes.
 
+### UsabilityScore — the judged companion
+
+UICraftScore is deterministic, which also bounds it: static analysis can't see *experience* friction (a confusing flow, a missing undo, a 2-second save with no feedback). **UsabilityScore** covers that axis — a 0-100 score + grade rolled up from the `/heuristic` scorecard (Nielsen's 10 + 6 design laws):
+
+```
+heuristic_base = round( ((mean(nielsen_scores) − 1) / 4) × 100 )   # 10 scores, each 1–5
+UsabilityScore = clamp( heuristic_base − 5 × (failed design laws) , 0 , 100 )
+
+Same bands as UICraftScore: A ≥ 90 · B ≥ 80 · C ≥ 70 · D ≥ 60 · F < 60
+```
+
+It is **judged, not deterministic** — computed by the host agent from the rubric (zero deps, no API key, works in any harness), so it may vary run to run. **Gate CI on UICraftScore; use UsabilityScore for review depth.** The two render side by side in an *extended report* and are deliberately **never averaged** — that would hide which number is reproducible. Run it with `/heuristic <path>`; rubric + formula live in [`heuristics.md`](skills/ui-craft/references/heuristics.md).
+
 ## MCP Server
 
 [![npm version](https://img.shields.io/npm/v/ui-craft-mcp?style=flat-square&label=ui-craft-mcp)](https://www.npmjs.com/package/ui-craft-mcp)

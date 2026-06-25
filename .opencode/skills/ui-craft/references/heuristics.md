@@ -328,3 +328,76 @@ The `/ui-craft:heuristic` command outputs **exactly** this structure. Do not inv
 - The first row of each heuristic table is the short-name version (not the verbose Nielsen title). The heuristic is unambiguous from context.
 - The `Top findings` list is a rank, not a re-listing. Include only findings at `reduces-trust` or worse. Cap at 5.
 - Scores of 4-5 don't need a finding row unless the grader wants to surface what's working. Blank findings for 4-5 rows are fine; the Score column carries the signal.
+
+---
+
+## UsabilityScore (0-100) — the judged companion to UICraftScore
+
+The scorecard above is qualitative. **UsabilityScore** rolls it into one 0-100 number + letter grade so it composes with the deterministic **UICraftScore** (`evals/quality/score.mjs`) and so a PM or CI run has a single figure to track.
+
+> **Judged, not deterministic.** UsabilityScore is computed by the host agent from this rubric — it reflects judgment and *may vary run to run*. It is **not** reproducible the way UICraftScore is. Never gate CI on UsabilityScore; gate on the deterministic UICraftScore and use UsabilityScore for review depth. Always label it `(judged)` when reporting.
+
+### Formula
+
+Deterministic *given the scores* — the same scorecard always yields the same number. Only the act of scoring is judgment.
+
+```
+heuristic_base = round( ((mean(nielsen_scores) − 1) / 4) × 100 )   # 10 Nielsen scores, each 1–5
+law_penalty    = (number of FAILED design laws) × 5                # 6 laws, −5 each (max −30)
+UsabilityScore = clamp( heuristic_base − law_penalty , 0 , 100 )
+```
+
+Grade bands are **identical to UICraftScore** for cross-comparison: **A ≥ 90 · B ≥ 80 · C ≥ 70 · D ≥ 60 · F < 60**.
+
+Properties: all-5s with all laws passing → 100 (A). All-3s, all laws pass → 50 (F). The base maps the 1–5 mean linearly onto 0–100 (1→0, 3→50, 5→100); each failed law is a flat −5 because laws are physics/psychology violations with measurable cost.
+
+### Worked example (the scorecard above)
+
+Nielsen scores `2,4,3,4,4,3,2,3,1,3` → mean `2.9` → base `round(((2.9−1)/4)×100)` = **48**.
+Failed laws: Fitts, Doherty, Tesler = 3 → penalty `15`.
+`UsabilityScore = clamp(48 − 15, 0, 100)` = **33 / F**. (A genuinely broken UI scores in the F band — as it should.)
+
+### Output
+
+Append this block to the `/ui-craft:heuristic` output, after Top findings:
+
+```markdown
+## UsabilityScore
+
+**33 / F** (judged) · heuristic base 48 − law penalty 15
+
+| Component | Value |
+|-----------|-------|
+| Nielsen mean (1–5) | 2.9 |
+| Heuristic base (0–100) | 48 |
+| Failed design laws | 3 (Fitts, Doherty, Tesler) |
+| Law penalty | −15 |
+| **UsabilityScore** | **33 / F** |
+```
+
+Machine-readable form (emit when a caller asks for `--json`, or when invoked by `/sddesign` / an extended report):
+
+```json
+{
+  "usability": { "score": 33, "grade": "F", "judged": true },
+  "components": { "nielsen_mean": 2.9, "heuristic_base": 48, "failed_laws": 3, "law_penalty": 15 },
+  "version": "usability-1.0"
+}
+```
+
+### Extended quality report (optional combine)
+
+When the user wants the full quality picture, place the judged UsabilityScore beside the deterministic UICraftScore. Get the deterministic score with `node scripts/eval.mjs <path> --json` or the `score_ui` MCP tool, then render:
+
+```markdown
+## Extended quality report
+
+| Score | Value | Reproducible? |
+|-------|-------|---------------|
+| UICraftScore | 82 / B | ✅ deterministic — identical every run |
+| UsabilityScore | 33 / F | ❌ judged — LLM judgment, may vary |
+
+Gate CI on UICraftScore. Use UsabilityScore to prioritize review depth — a high deterministic score with a low UsabilityScore means the code is clean but the *experience* has friction the static rules can't see.
+```
+
+The two scores are intentionally **not** averaged into one figure: one is reproducible and one is judged, and collapsing them would hide that distinction — the exact property the deterministic score exists to protect.
