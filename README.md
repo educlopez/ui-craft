@@ -237,6 +237,20 @@ Delegate both agents simultaneously on the same diff or file for a full design +
 - **Agents** — fresh context, parallel, read-only. Best for final review passes, PR audits, and CI-style verification. Invoke as `ui-craft:design-reviewer` / `ui-craft:a11y-auditor`.
 - **Commands** (`/critique`, `/audit`) — inline in the caller's context, sequential. Best for interactive build sessions where you want a quick lens mid-work.
 
+## When to use what
+
+UI Craft surfaces the same craft knowledge five ways. They don't compete — each fits a different moment. The two axes that decide: **does it write code?** and **is it judgment or a deterministic check?**
+
+| Surface | What it is | Reach for it when | Writes code? | Judgment / deterministic | Runs |
+|---------|------------|-------------------|:------------:|--------------------------|------|
+| **The skill** (passive) | Always-on design knowledge + anti-slop, triggered by intent | You're building or editing any UI — the default | ✅ | Judgment | Inline, every harness |
+| **Slash commands** | Focused single-lens passes (`/craft`, `/shape`, `/polish`, `/heuristic`, `/finalize`, …) | You want one specific pass, mid-work | Build/transform ✅ · review passes ❌ | Judgment | Inline, your session |
+| **Agents** (`design-reviewer`, `a11y-auditor`) | Read-only verify team, fresh context, parallel | Final review / PR audit — you want independent judgment uncontaminated by the build session | ❌ | Judgment | Claude Code |
+| **MCP tools** (`check_anti_slop`, `tokens_lint`, `acceptance_bar`, `score_ui`) | Deterministic checks an agent calls | A programmatic gate inside any MCP client, or a reproducible score | ❌ | Deterministic | MCP client / CI |
+| **CLI** (`ui-craft-detect`, `scripts/eval.mjs`) | Zero-dep scanners + the UICraftScore | Git hooks, CI, or any pipeline with no agent in the loop | ❌ | Deterministic | Terminal / CI |
+
+**The short version:** *taste that writes code* → the skill + commands. *Independent review, no edits* → the agents. *A check that must be identical every run* → MCP or the CLI. New to it or unsure? Run `/start` and it picks for you.
+
 ## Framework agnostic
 
 The skill detects your project's styling approach and adapts:
