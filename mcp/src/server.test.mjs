@@ -12,8 +12,9 @@ import assert from 'node:assert/strict';
 import { checkAntiSlop } from './tools/check-anti-slop.mjs';
 import { tokensLint } from './tools/tokens-lint.mjs';
 import { acceptanceBar } from './tools/acceptance-bar.mjs';
+import { scoreUiTool } from './tools/score-ui.mjs';
 
-// --- Verify the 3 expected tool implementations exist and are callable ---
+// --- Verify the 4 expected tool implementations exist and are callable ---
 
 test('server tool registry: check_anti_slop handler exists and is async function', () => {
   assert.equal(typeof checkAntiSlop, 'function');
@@ -32,18 +33,24 @@ test('server tool registry: acceptance_bar handler exists and is synchronous fun
   assert.equal(typeof acceptanceBar, 'function');
 });
 
-test('server lists exactly 3 distinct tool names', () => {
-  const toolNames = ['check_anti_slop', 'tokens_lint', 'acceptance_bar'];
-  assert.equal(toolNames.length, 3);
+test('server tool registry: score_ui handler exists and is async function', () => {
+  assert.equal(typeof scoreUiTool, 'function');
+  const result = scoreUiTool({});
+  assert.ok(result instanceof Promise, 'scoreUiTool should return a Promise');
+});
+
+test('server lists exactly 4 distinct tool names', () => {
+  const toolNames = ['check_anti_slop', 'tokens_lint', 'acceptance_bar', 'score_ui'];
+  assert.equal(toolNames.length, 4);
   // All names distinct
-  assert.equal(new Set(toolNames).size, 3);
+  assert.equal(new Set(toolNames).size, 4);
 });
 
 // --- Unknown tool call: structured error, no exception ---
 
 test('unknown tool call returns structured error, does not throw', async () => {
   // Simulate what server dispatch does for an unknown tool
-  const knownTools = { check_anti_slop: checkAntiSlop, tokens_lint: tokensLint, acceptance_bar: acceptanceBar };
+  const knownTools = { check_anti_slop: checkAntiSlop, tokens_lint: tokensLint, acceptance_bar: acceptanceBar, score_ui: scoreUiTool };
   const toolName = 'nonexistent_tool';
 
   let result;

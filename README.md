@@ -343,11 +343,73 @@ npx ui-craft-detect init-hook --dry-run        # preview without writing
 
 The native hook scans only staged file content (via `git show :path`), so working-tree noise is ignored. Skip ad-hoc with `git commit --no-verify`. This repo's own `.githooks/pre-commit` also auto-bumps `marketplace.json` CalVer on every commit.
 
+## Design-quality score
+
+**UICraftScore** is a deterministic 0-100 composite that turns three static-analysis signals into a single defensible grade. It gives you objective, reproducible design-quality evidence — not vibes.
+
+**Formula:**
+
+```
+score = 100
+      − (antiSlop_critical × 8) − (antiSlop_major × 4) − (antiSlop_warn × 1)
+      − (token_findings × 2)
+      − (a11y_critical × 8) − (a11y_major × 4)
+
+clamped [0, 100]  ·  A ≥ 90  ·  B ≥ 80  ·  C ≥ 70  ·  D ≥ 60  ·  F < 60
+```
+
+Three dimensions, each with its own subscore:
+
+| Dimension | Source | Penalty |
+|-----------|--------|---------|
+| **anti_slop** | 33 rules from `ui-craft-detect` | critical −8 · major −4 · warn −1 |
+| **token_discipline** | Raw hex / off-scale radius / spacing / z-index | −2 per finding (flat) |
+| **a11y** | 5 new static checks (no overlap with detect.mjs): `img-no-alt`, `non-semantic-interactive`, `positive-tabindex`, `aria-invalid-no-describedby`, `no-reduced-motion` | critical −8 · major −4 |
+
+The formula, weights, and grade bands are published in `evals/quality/score.mjs` (`WEIGHTS`, `GRADE_BANDS`). Hand-authored fixtures in `evals/quality/fixtures/` and bands in `evals/quality/baselines.json` form the regression gate.
+
+**Run the CLI benchmark:**
+
+```bash
+# Score a single file
+node scripts/eval.mjs src/components/Hero.tsx
+
+# Score a directory
+node scripts/eval.mjs src/components/
+
+# Run the full regression gate (8 fixtures — slop vs. designer separation)
+node scripts/eval.mjs --baseline
+
+# JSON output (CI-friendly)
+node scripts/eval.mjs src/components/Hero.tsx --json
+
+# Fail if score below threshold (default 70)
+node scripts/eval.mjs src/components/Hero.tsx --threshold 80
+```
+
+Exit codes: `0` clean / in-band · `1` below threshold or out of band · `2` arg error.
+
+**Score via MCP tool (`score_ui`):**
+
+The `score_ui` tool in the MCP server exposes the same scorer to any MCP-compatible client:
+
+```json
+// Call score_ui with inline code:
+{ "code": "<your tsx source>" }
+
+// Or with a file path:
+{ "path": "src/components/Hero.tsx" }
+```
+
+Returns `{ overall: { score, grade }, dimensions: { anti_slop, token_discipline, a11y }, version }` — the same envelope as the CLI `--json` output.
+
+See [`evals/README.md`](evals/README.md) for how to run the regression gate, add fixtures, and regen baselines after rule changes.
+
 ## MCP Server
 
 [![npm version](https://img.shields.io/npm/v/ui-craft-mcp?style=flat-square&label=ui-craft-mcp)](https://www.npmjs.com/package/ui-craft-mcp)
 
-The `ui-craft-mcp` package exposes three deterministic design-quality tools over the [Model Context Protocol](https://modelcontextprotocol.io/) (stdio transport). Works with Claude Desktop, Cursor, and any MCP-compatible client.
+The `ui-craft-mcp` package exposes four deterministic design-quality tools over the [Model Context Protocol](https://modelcontextprotocol.io/) (stdio transport). Works with Claude Desktop, Cursor, and any MCP-compatible client.
 
 **Boundary:** the MCP server is the **checks layer** — deterministic, rule-based, identical output for identical input. The `SKILL.md` is the **taste layer** — judgment, aesthetics, architectural decisions. These never overlap.
 
@@ -356,6 +418,7 @@ The `ui-craft-mcp` package exposes three deterministic design-quality tools over
 | `check_anti_slop` | 33-rule anti-slop scanner via `scan()` from `ui-craft-detect` — in-process, no subprocess |
 | `tokens_lint` | Off-system token detector: raw hex colors, non-scale radius/spacing px, magic z-index |
 | `acceptance_bar` | Acceptance checklist for a UI surface (`dashboard`, `landing`, `auth`, `generic`) — data only, no scoring |
+| `score_ui` | Composite UICraftScore (0-100 + grade + per-dim subscores) via `evals/quality/score.mjs` — all three dimensions in one call |
 
 **Quick start:**
 
