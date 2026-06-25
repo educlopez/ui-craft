@@ -127,16 +127,16 @@ func (h ClaudeHarness) WriteMCP(w fsutil.FileSystem, server MCPServer) (Change, 
 	prior, readErr := w.ReadFile(target)
 	existed := readErr == nil
 
-	result, err := fsutil.WriteFileAtomic(w, target, data, 0o644)
+	wr, err := fsutil.WriteFileAtomic(w, target, data, 0o644)
 	if err != nil {
 		return Change{}, fmt.Errorf("claude: write MCP config %s: %w", target, err)
 	}
-	_ = result // Changed field is informational; caller can compare PriorBytes.
 
 	return Change{
 		FilePath:      target,
 		PriorBytes:    prior,
 		ExistedBefore: existed,
+		Changed:       wr.Changed,
 		Strategy:      SeparateFiles,
 	}, nil
 }

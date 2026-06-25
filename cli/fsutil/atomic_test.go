@@ -96,6 +96,32 @@ func TestWriteFileAtomic_emptyContent(t *testing.T) {
 	}
 }
 
+// TestWriteFileAtomic_OsFS_nestedDirCreation verifies that WriteFileAtomic creates
+// a not-yet-existing nested parent directory on the real OS filesystem before
+// writing. This covers the case where the target dir (e.g. ~/.claude/mcp/) does
+// not exist when install runs for the first time.
+func TestWriteFileAtomic_OsFS_nestedDirCreation(t *testing.T) {
+	base := t.TempDir()
+	// Construct a path three levels deep that does not exist yet.
+	target := base + "/a/b/c/mcp.json"
+	osfs := fsutil.OsFS{}
+
+	result, err := fsutil.WriteFileAtomic(osfs, target, []byte(`{"ok":true}`), 0o644)
+	if err != nil {
+		t.Fatalf("WriteFileAtomic into nested non-existent dir: %v", err)
+	}
+	if !result.Changed {
+		t.Error("expected Changed=true on first write into new dir")
+	}
+	got, readErr := os.ReadFile(target)
+	if readErr != nil {
+		t.Fatalf("ReadFile after nested write: %v", readErr)
+	}
+	if string(got) != `{"ok":true}` {
+		t.Errorf("content: got %q, want %q", got, `{"ok":true}`)
+	}
+}
+
 // TestWriteFileAtomic_OsFS_idempotent runs the idempotent check against a real
 // temp directory to confirm the OS-path code also respects the byte-compare.
 func TestWriteFileAtomic_OsFS_idempotent(t *testing.T) {

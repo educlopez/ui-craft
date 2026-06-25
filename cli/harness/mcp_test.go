@@ -386,6 +386,41 @@ func TestWriteMCP_geminiIdempotent(t *testing.T) {
 	}
 }
 
+// TestWriteMCP_geminiMalformedBase checks that a corrupt settings.json falls
+// back to {} and still writes our key (gotcha #2), and that MalformedBase is
+// set on the returned Change so callers can warn the user.
+func TestWriteMCP_geminiMalformedBase(t *testing.T) {
+	mem := fsutil.NewMemFS()
+	h := GeminiHarness{}
+	target := h.ConfigPaths().MCPConfig
+
+	if err := mem.WriteFile(target, []byte(`{not valid json`), 0o644); err != nil {
+		t.Fatalf("setup: %v", err)
+	}
+
+	change, err := h.WriteMCP(mem, uiCraftServer)
+	if err != nil {
+		t.Fatalf("WriteMCP on malformed base: %v", err)
+	}
+	if !change.MalformedBase {
+		t.Error("expected MalformedBase=true for corrupt settings.json")
+	}
+
+	m := readJSON(t, mem, target)
+	if jsonGet(t, m, "mcpServers", "ui-craft") == nil {
+		t.Fatal("ui-craft missing after malformed-base recovery")
+	}
+
+	// Snapshot/backup path: ExistedBefore must be true so the backup store
+	// captured the corrupt file before rewrite.
+	if !change.ExistedBefore {
+		t.Error("ExistedBefore should be true — the corrupt file existed before the write")
+	}
+	if change.PriorBytes == nil {
+		t.Error("PriorBytes should be non-nil so the snapshot captured the corrupt original")
+	}
+}
+
 // --------------------------------------------------------------------------
 // OpenCode — MergeIntoSettings (JSONC)
 // --------------------------------------------------------------------------
@@ -493,5 +528,40 @@ func TestWriteMCP_opencodePreservesExistingServer(t *testing.T) {
 	}
 	if jsonGet(t, m, "mcp", "ui-craft") == nil {
 		t.Error("ui-craft not added")
+	}
+}
+
+// TestWriteMCP_opencodeMalformedBase checks that a corrupt opencode.json falls
+// back to {} and still writes our key (gotcha #2), and that MalformedBase is
+// set on the returned Change so callers can warn the user.
+func TestWriteMCP_opencodeMalformedBase(t *testing.T) {
+	mem := fsutil.NewMemFS()
+	h := OpenCodeHarness{}
+	target := h.ConfigPaths().MCPConfig
+
+	if err := mem.WriteFile(target, []byte(`{not valid json`), 0o644); err != nil {
+		t.Fatalf("setup: %v", err)
+	}
+
+	change, err := h.WriteMCP(mem, uiCraftServer)
+	if err != nil {
+		t.Fatalf("WriteMCP on malformed base: %v", err)
+	}
+	if !change.MalformedBase {
+		t.Error("expected MalformedBase=true for corrupt opencode.json")
+	}
+
+	m := readJSON(t, mem, target)
+	if jsonGet(t, m, "mcp", "ui-craft") == nil {
+		t.Fatal("ui-craft missing after malformed-base recovery")
+	}
+
+	// Snapshot/backup path: ExistedBefore must be true and PriorBytes non-nil
+	// so the backup store captured the corrupt file before rewrite.
+	if !change.ExistedBefore {
+		t.Error("ExistedBefore should be true — the corrupt file existed before the write")
+	}
+	if change.PriorBytes == nil {
+		t.Error("PriorBytes should be non-nil so the snapshot captured the corrupt original")
 	}
 }

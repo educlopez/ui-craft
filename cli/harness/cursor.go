@@ -107,7 +107,7 @@ func (h CursorHarness) WriteMCP(w fsutil.FileSystem, server MCPServer) (Change, 
 		return Change{}, fmt.Errorf("cursor: marshal MCP overlay: %w", err)
 	}
 
-	merged, err := filemerge.MergeJSONObjects(existing, overlayJSON)
+	mr, err := filemerge.MergeJSONObjectsEx(existing, overlayJSON)
 	if err != nil {
 		return Change{}, fmt.Errorf("cursor: merge MCP config: %w", err)
 	}
@@ -117,7 +117,8 @@ func (h CursorHarness) WriteMCP(w fsutil.FileSystem, server MCPServer) (Change, 
 		prior = nil
 	}
 
-	if _, err := fsutil.WriteFileAtomic(w, target, merged, 0o644); err != nil {
+	wr, err := fsutil.WriteFileAtomic(w, target, mr.Data, 0o644)
+	if err != nil {
 		return Change{}, fmt.Errorf("cursor: write MCP config %s: %w", target, err)
 	}
 
@@ -125,6 +126,8 @@ func (h CursorHarness) WriteMCP(w fsutil.FileSystem, server MCPServer) (Change, 
 		FilePath:      target,
 		PriorBytes:    prior,
 		ExistedBefore: existed,
+		Changed:       wr.Changed,
+		MalformedBase: mr.MalformedBase,
 		Strategy:      ConfigFile,
 	}, nil
 }

@@ -14,6 +14,47 @@ import (
 	"unicode"
 )
 
+// MergeResult is returned by MergeJSONObjectsEx and carries the merged bytes
+// plus a flag indicating whether the base was malformed.
+type MergeResult struct {
+	// Data is the merged, indented JSON output.
+	Data []byte
+	// MalformedBase is true when the base input was not valid JSON (after JSONC
+	// comment stripping). The merge succeeded by treating base as {} — callers
+	// should warn the user that their existing file was unreadable and has been
+	// replaced by a fresh config containing only the overlay keys.
+	MalformedBase bool
+}
+
+// MergeJSONObjectsEx is like MergeJSONObjects but also reports whether the
+// base was malformed via MergeResult.MalformedBase. Prefer this form in
+// callers that surface diagnostics to the user.
+func MergeJSONObjectsEx(base, overlay []byte) (MergeResult, error) {
+	cleanBase := stripJSONC(base)
+	cleanOverlay := stripJSONC(overlay)
+
+	var baseMap map[string]any
+	malformed := false
+	if err := json.Unmarshal(cleanBase, &baseMap); err != nil {
+		// Gotcha #2: malformed base → fall back to empty map, but record it.
+		baseMap = make(map[string]any)
+		malformed = true
+	}
+
+	var overlayMap map[string]any
+	if err := json.Unmarshal(cleanOverlay, &overlayMap); err != nil {
+		return MergeResult{}, fmt.Errorf("filemerge: overlay is not valid JSON: %w", err)
+	}
+
+	merged := deepMerge(baseMap, overlayMap)
+
+	out, err := json.MarshalIndent(merged, "", "  ")
+	if err != nil {
+		return MergeResult{}, fmt.Errorf("filemerge: marshal merged result: %w", err)
+	}
+	return MergeResult{Data: append(out, '\n'), MalformedBase: malformed}, nil
+}
+
 // MergeJSONObjects deep-merges overlay into base and returns the result as
 // indented JSON. It supports JSONC input (base and overlay may contain //
 // line comments, /* block comments */, and trailing commas).
@@ -28,30 +69,14 @@ import (
 // If base is malformed JSON (after comment stripping), the merge falls back
 // to treating base as {} — the overlay is still applied and the result is
 // returned. This implements gotcha #2: a corrupt user config must never block
-// an install.
+// an install. Use MergeJSONObjectsEx when you need to detect and report this
+// fallback to the user.
 func MergeJSONObjects(base, overlay []byte) ([]byte, error) {
-	// Strip JSONC comments from both inputs before parsing.
-	cleanBase := stripJSONC(base)
-	cleanOverlay := stripJSONC(overlay)
-
-	var baseMap map[string]any
-	if err := json.Unmarshal(cleanBase, &baseMap); err != nil {
-		// Gotcha #2: malformed base → fall back to empty map.
-		baseMap = make(map[string]any)
-	}
-
-	var overlayMap map[string]any
-	if err := json.Unmarshal(cleanOverlay, &overlayMap); err != nil {
-		return nil, fmt.Errorf("filemerge: overlay is not valid JSON: %w", err)
-	}
-
-	merged := deepMerge(baseMap, overlayMap)
-
-	out, err := json.MarshalIndent(merged, "", "  ")
+	res, err := MergeJSONObjectsEx(base, overlay)
 	if err != nil {
-		return nil, fmt.Errorf("filemerge: marshal merged result: %w", err)
+		return nil, err
 	}
-	return append(out, '\n'), nil
+	return res.Data, nil
 }
 
 // deepMerge recursively merges src into dst. src values take precedence, but

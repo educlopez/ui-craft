@@ -115,7 +115,7 @@ func (h GeminiHarness) WriteMCP(w fsutil.FileSystem, server MCPServer) (Change, 
 		return Change{}, fmt.Errorf("gemini: marshal MCP overlay: %w", err)
 	}
 
-	merged, err := filemerge.MergeJSONObjects(existing, overlayJSON)
+	mr, err := filemerge.MergeJSONObjectsEx(existing, overlayJSON)
 	if err != nil {
 		return Change{}, fmt.Errorf("gemini: merge settings.json: %w", err)
 	}
@@ -125,7 +125,8 @@ func (h GeminiHarness) WriteMCP(w fsutil.FileSystem, server MCPServer) (Change, 
 		prior = nil
 	}
 
-	if _, err := fsutil.WriteFileAtomic(w, target, merged, 0o644); err != nil {
+	wr, err := fsutil.WriteFileAtomic(w, target, mr.Data, 0o644)
+	if err != nil {
 		return Change{}, fmt.Errorf("gemini: write settings.json %s: %w", target, err)
 	}
 
@@ -133,6 +134,8 @@ func (h GeminiHarness) WriteMCP(w fsutil.FileSystem, server MCPServer) (Change, 
 		FilePath:      target,
 		PriorBytes:    prior,
 		ExistedBefore: existed,
+		Changed:       wr.Changed,
+		MalformedBase: mr.MalformedBase,
 		Strategy:      MergeIntoSettings,
 	}, nil
 }

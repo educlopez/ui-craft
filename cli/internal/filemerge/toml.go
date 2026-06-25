@@ -59,10 +59,14 @@ func UpsertTOMLTableKey(content, tableName, keyName string, entry map[string]any
 
 	// Replace the existing block: keep lines before the header, write new
 	// header + values, then continue from the next section header (or EOF).
+	// Both [table] and [[array-of-tables]] headers begin a new structural
+	// section, so stop at ANY line whose first non-space character sequence is
+	// "[". Skipping [[...]] (the old behaviour) caused array-of-tables blocks
+	// that followed our section to be swallowed and discarded.
 	endIdx := headerIdx + 1
 	for endIdx < len(lines) {
 		t := strings.TrimSpace(lines[endIdx])
-		if strings.HasPrefix(t, "[") && !strings.HasPrefix(t, "[[") {
+		if strings.HasPrefix(t, "[") {
 			break
 		}
 		endIdx++

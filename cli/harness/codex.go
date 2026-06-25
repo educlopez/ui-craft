@@ -116,7 +116,8 @@ func (h CodexHarness) WriteMCP(w fsutil.FileSystem, server MCPServer) (Change, e
 		prior = nil
 	}
 
-	if _, err := fsutil.WriteFileAtomic(w, target, []byte(updated), 0o644); err != nil {
+	wr, err := fsutil.WriteFileAtomic(w, target, []byte(updated), 0o644)
+	if err != nil {
 		return Change{}, fmt.Errorf("codex: write TOML config %s: %w", target, err)
 	}
 
@@ -124,6 +125,7 @@ func (h CodexHarness) WriteMCP(w fsutil.FileSystem, server MCPServer) (Change, e
 		FilePath:      target,
 		PriorBytes:    prior,
 		ExistedBefore: existed,
+		Changed:       wr.Changed,
 		Strategy:      TOMLFile,
 	}, nil
 }

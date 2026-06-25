@@ -138,8 +138,9 @@ func (h OpenCodeHarness) WriteMCP(w fsutil.FileSystem, server MCPServer) (Change
 		return Change{}, fmt.Errorf("opencode: marshal MCP overlay: %w", err)
 	}
 
-	// MergeJSONObjects handles JSONC (strips comments + trailing commas before parse).
-	merged, err := filemerge.MergeJSONObjects(existing, overlayJSON)
+	// MergeJSONObjectsEx handles JSONC (strips comments + trailing commas before
+	// parse) and reports whether the base was malformed (gotcha #2).
+	mr, err := filemerge.MergeJSONObjectsEx(existing, overlayJSON)
 	if err != nil {
 		return Change{}, fmt.Errorf("opencode: merge opencode.json: %w", err)
 	}
@@ -149,7 +150,8 @@ func (h OpenCodeHarness) WriteMCP(w fsutil.FileSystem, server MCPServer) (Change
 		prior = nil
 	}
 
-	if _, err := fsutil.WriteFileAtomic(w, target, merged, 0o644); err != nil {
+	wr, err := fsutil.WriteFileAtomic(w, target, mr.Data, 0o644)
+	if err != nil {
 		return Change{}, fmt.Errorf("opencode: write opencode.json %s: %w", target, err)
 	}
 
@@ -157,6 +159,8 @@ func (h OpenCodeHarness) WriteMCP(w fsutil.FileSystem, server MCPServer) (Change
 		FilePath:      target,
 		PriorBytes:    prior,
 		ExistedBefore: existed,
+		Changed:       wr.Changed,
+		MalformedBase: mr.MalformedBase,
 		Strategy:      MergeIntoSettings,
 	}, nil
 }

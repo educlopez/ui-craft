@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -90,13 +89,19 @@ var installCmd = &cobra.Command{
 				continue
 			}
 			// Determine if the file was already configured (no change) or newly written.
+			// Use Change.Changed (set by WriteFileAtomic's byte-compare) rather than
+			// re-reading and comparing bytes — the latter is unreliable for JSON because
+			// key ordering may differ between MarshalIndent calls.
 			status := "configured"
 			for _, ch := range result.Changes {
 				if ch.FilePath == t.SnapPath {
-					// When PriorBytes equals the current file content, nothing changed.
-					current, _ := osfs.ReadFile(ch.FilePath)
-					if ch.ExistedBefore && bytes.Equal(ch.PriorBytes, current) {
-						status = "already configured"
+					if !ch.Changed {
+						status = "already configured (no change)"
+					}
+					// Malformed-base warning: the user's existing config was corrupt.
+					// The transactional snapshot already backed it up before rewrite.
+					if ch.MalformedBase {
+						fmt.Fprintf(out, "  WARNING: %s was malformed JSON; original backed up before rewrite.\n", ch.FilePath)
 					}
 					break
 				}

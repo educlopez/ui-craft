@@ -65,6 +65,16 @@ type Change struct {
 	PriorBytes []byte
 	// ExistedBefore is true when the file already existed before this write.
 	ExistedBefore bool
+	// Changed is true when the file bytes actually changed (or were newly
+	// created). False means the content was already identical — no write was
+	// performed. Use this field (not a PriorBytes comparison) to decide whether
+	// to report "configured" vs "already configured (no change)".
+	Changed bool
+	// MalformedBase is true when the harness's existing config file was present
+	// but contained malformed JSON. The merge fell back to {} (the overlay was
+	// still applied and a clean file was written), and callers should warn the
+	// user that the original corrupt file was snapshotted before rewrite.
+	MalformedBase bool
 	// Strategy is the idempotency strategy that was applied.
 	Strategy WriteStrategy
 }
