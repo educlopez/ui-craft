@@ -1,8 +1,8 @@
 package tui
 
 import (
+	"fmt"
 	"io/fs"
-	"os"
 	"strings"
 	"testing"
 
@@ -53,8 +53,8 @@ func detectedFake(name string, supported map[component.Component]bool) core.Dete
 // in both color and no-color modes.
 func TestSplashModel_rendersWithoutPanic(t *testing.T) {
 	t.Run("color mode", func(t *testing.T) {
-		os.Unsetenv("NO_COLOR")
-		os.Setenv("TERM", "xterm-256color")
+		t.Setenv("NO_COLOR", "")
+		t.Setenv("TERM", "xterm-256color")
 		m := NewSplashModel("v1.0.0")
 		view := m.View()
 		if view == "" {
@@ -76,7 +76,7 @@ func TestSplashModel_rendersWithoutPanic(t *testing.T) {
 	})
 
 	t.Run("TERM=dumb mode", func(t *testing.T) {
-		os.Unsetenv("NO_COLOR")
+		t.Setenv("NO_COLOR", "")
 		t.Setenv("TERM", "dumb")
 		m := NewSplashModel("v0.9.0")
 		view := m.View()
@@ -205,40 +205,158 @@ func TestSelectComponent_zeroSelectionRejected(t *testing.T) {
 	}
 }
 
-// ─── ADR-2: plan-building parity test ─────────────────────────────────────
+// ─── ADR-2: real plan-building parity test ────────────────────────────────
 
-// TestAppModel_planBuildingParity verifies that the TUI path and the --yes path
-// build the same InstallPlan for the same inputs (ADR-2 guarantee).
+// driveToApply drives AppModel through the full TUI flow (splash → detect →
+// [harness-select if multiple] → component-select → confirm) and returns the
+// model at the moment it transitions to ApplyScreen and fires runApplyCmd.
+// It uses detectOverride and applyOverride as test seams.
+//
+// The test asserts that the InstallPlan the TUI builds (captured via planCapture)
+// matches the plan the --yes non-interactive path would produce for the same
+// harness/component selection — proving ADR-2: TUI does not diverge from core.Apply.
 func TestAppModel_planBuildingParity(t *testing.T) {
-	detected := []core.DetectedHarness{
-		detectedFake("claude", map[component.Component]bool{
-			component.SkillCommands: true,
-			component.MCPGates:      true,
-			component.DesignMemory:  true,
-		}),
+	// Supported components for this fake harness — only SkillCommands + MCPGates.
+	supported := map[component.Component]bool{
+		component.SkillCommands: true,
+		component.MCPGates:      true,
 	}
-	selected := []component.Component{component.SkillCommands, component.MCPGates}
-
-	// Both paths call the identical core.Plan function.
-	tuiPlan := core.Plan(detected, selected, nil, nil, nil, "/tmp/test-project")
-	yesPlan := core.Plan(detected, selected, nil, nil, nil, "/tmp/test-project")
-
-	if len(tuiPlan.Targets) != len(yesPlan.Targets) {
-		t.Fatalf("TUI plan has %d targets, --yes plan has %d — they must match",
-			len(tuiPlan.Targets), len(yesPlan.Targets))
+	fakeDetected := []core.DetectedHarness{
+		detectedFake("claude", supported),
 	}
-	for i := range tuiPlan.Targets {
-		tt := tuiPlan.Targets[i]
-		yt := yesPlan.Targets[i]
-		if tt.Harness.Name() != yt.Harness.Name() {
-			t.Errorf("target %d: TUI harness=%s, --yes harness=%s", i, tt.Harness.Name(), yt.Harness.Name())
+
+	// applyInvoked tracks whether applyOverride was called (i.e. core.Apply path reached).
+	applyInvoked := false
+	var capturedPlan core.InstallPlan
+
+	m := NewAppModel("v1.0.0", "/tmp/parity-test")
+	m.detectOverride = func() []core.DetectedHarness { return fakeDetected }
+	m.planCapture = &capturedPlan
+	m.applyOverride = func(plan core.InstallPlan) ([]harness.Change, error) {
+		applyInvoked = true
+		return nil, nil
+	}
+
+	// Step 1: Advance past splash → detect transition.
+	m2, _ := m.Update(splashDoneMsg{})
+	m = m2.(AppModel)
+
+	// After splashDoneMsg: single harness → should skip harness selection,
+	// land directly on SelectComponentScreen.
+	if m.screen != SelectComponentScreen {
+		t.Fatalf("expected SelectComponentScreen after single-harness detect, got %v", m.screen)
+	}
+
+	// Step 2: Confirm component selection with defaults (SkillCommands + MCPGates pre-checked).
+	m3, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	m = m3.(AppModel)
+
+	// Should advance to ConfirmScreen.
+	if m.screen != ConfirmScreen {
+		t.Fatalf("expected ConfirmScreen after component confirm, got %v", m.screen)
+	}
+
+	// Step 3: Confirm the plan.
+	m4, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	m = m4.(AppModel)
+
+	// Should advance to ApplyScreen and emit the apply Cmd.
+	if m.screen != ApplyScreen {
+		t.Fatalf("expected ApplyScreen after confirm, got %v", m.screen)
+	}
+	if cmd == nil {
+		t.Fatal("expected a non-nil cmd from confirm → apply transition")
+	}
+
+	// Execute the cmd synchronously to trigger applyOverride and planCapture.
+	msg := cmd()
+	if !applyInvoked {
+		t.Error("applyOverride was not invoked — core.Apply path was never reached")
+	}
+
+	// Deliver the result to the model to advance to DoneScreen.
+	resultMsg, ok := msg.(ApplyResultMsg)
+	if !ok {
+		t.Fatalf("expected ApplyResultMsg, got %T", msg)
+	}
+	m5, _ := m.Update(resultMsg)
+	m = m5.(AppModel)
+
+	// Step 4: Build the reference plan the --yes non-interactive path would produce
+	// for the same inputs, using the same core.Plan function.
+	// The TUI's selected harnesses and components are m.selected and m.components.
+	refPlan := core.Plan(
+		m.selected,
+		m.components,
+		nil, // no FS needed — Plan only uses FS for write ops, not target building
+		func(_ string) fs.FS { return nil },
+		func() fs.FS { return nil },
+		"/tmp/parity-test",
+	)
+
+	// Step 5: Compare the TUI plan (capturedPlan) with the reference plan (refPlan).
+	// Both must have the same number of targets with identical harness/component/skip.
+	if len(capturedPlan.Targets) != len(refPlan.Targets) {
+		t.Fatalf("TUI plan has %d targets, ref plan has %d — ADR-2 violated",
+			len(capturedPlan.Targets), len(refPlan.Targets))
+	}
+	for i := range capturedPlan.Targets {
+		tt := capturedPlan.Targets[i]
+		rt := refPlan.Targets[i]
+		if tt.Harness.Name() != rt.Harness.Name() {
+			t.Errorf("target %d: TUI harness=%s, ref harness=%s", i, tt.Harness.Name(), rt.Harness.Name())
 		}
-		if tt.Component != yt.Component {
-			t.Errorf("target %d: TUI component=%s, --yes component=%s", i, tt.Component, yt.Component)
+		if tt.Component != rt.Component {
+			t.Errorf("target %d: TUI component=%s, ref component=%s", i, tt.Component, rt.Component)
 		}
-		if tt.Skip != yt.Skip {
-			t.Errorf("target %d: TUI skip=%v, --yes skip=%v", i, tt.Skip, yt.Skip)
+		if tt.Skip != rt.Skip {
+			t.Errorf("target %d: TUI skip=%v, ref skip=%v", i, tt.Skip, rt.Skip)
 		}
+	}
+}
+
+// ─── No-harness path test ─────────────────────────────────────────────────
+
+// TestAppModel_noHarnessPath verifies that when DetectAll returns no harnesses:
+//   - The model transitions directly to DoneScreen (not a crash).
+//   - View() does not panic.
+//   - core.Apply (applyOverride) is NEVER invoked.
+//   - The View does NOT claim a rollback occurred.
+func TestAppModel_noHarnessPath(t *testing.T) {
+	applyInvoked := false
+
+	m := NewAppModel("v1.0.0", "/tmp/no-harness-test")
+	m.detectOverride = func() []core.DetectedHarness { return nil } // empty
+	m.applyOverride = func(_ core.InstallPlan) ([]harness.Change, error) {
+		applyInvoked = true
+		return nil, nil
+	}
+
+	// Advance past splash.
+	m2, _ := m.Update(splashDoneMsg{})
+	m = m2.(AppModel)
+
+	// Must land on DoneScreen immediately.
+	if m.screen != DoneScreen {
+		t.Fatalf("expected DoneScreen when no harnesses detected, got %v", m.screen)
+	}
+
+	// View must not panic.
+	view := m.View()
+
+	// View must NOT claim a rollback.
+	if strings.Contains(strings.ToLower(view), "rolled back") {
+		t.Errorf("no-harness view must not say 'rolled back'; got: %q", view)
+	}
+
+	// core.Apply must not have been called.
+	if applyInvoked {
+		t.Error("core.Apply must not be invoked when no harnesses are detected")
+	}
+
+	// View should mention that nothing was detected / nothing to install.
+	if !strings.Contains(strings.ToLower(view), "no supported") {
+		t.Errorf("no-harness view should mention no harness found; got: %q", view)
 	}
 }
 
@@ -260,13 +378,15 @@ func TestAppModel_suppressSplashOnVersion(t *testing.T) {
 
 // ─── ConfirmModel tests ────────────────────────────────────────────────────
 
-// TestConfirmModel_cancelReturnsClean verifies ctrl+c marks the model cancelled.
+// TestConfirmModel_cancelReturnsClean verifies "q" marks the model cancelled.
+// Note: ctrl+c is intercepted globally by AppModel.Update before reaching
+// ConfirmModel, so it is not handled in ConfirmModel.Update.
 func TestConfirmModel_cancelReturnsClean(t *testing.T) {
 	m := NewConfirmModel(nil, nil)
-	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyCtrlC})
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("q")})
 	m2 := updated.(ConfirmModel)
 	if !m2.IsCancelled() {
-		t.Error("ctrl+c at confirm must mark model as cancelled")
+		t.Error("'q' at confirm must mark model as cancelled")
 	}
 	if m2.IsConfirmed() {
 		t.Error("cancelled confirm must not also be confirmed")
@@ -279,14 +399,14 @@ func TestConfirmModel_cancelReturnsClean(t *testing.T) {
 func TestNoColorDetection(t *testing.T) {
 	t.Run("NO_COLOR set", func(t *testing.T) {
 		t.Setenv("NO_COLOR", "1")
-		os.Unsetenv("TERM")
+		t.Setenv("TERM", "xterm-256color")
 		if !noColor() {
 			t.Error("noColor() must return true when NO_COLOR is set")
 		}
 	})
 
 	t.Run("TERM=dumb", func(t *testing.T) {
-		os.Unsetenv("NO_COLOR")
+		t.Setenv("NO_COLOR", "")
 		t.Setenv("TERM", "dumb")
 		if !noColor() {
 			t.Error("noColor() must return true when TERM=dumb")
@@ -324,5 +444,25 @@ func TestProgressModel_rendersResultOnDone(t *testing.T) {
 	view := m2.View()
 	if !strings.Contains(view, "claude") {
 		t.Errorf("done view should contain harness name, got: %q", view)
+	}
+}
+
+// TestProgressModel_noHarnessMessage verifies that a no-harness error does NOT
+// produce a "rolled back" message and DOES show the "nothing to install" message.
+func TestProgressModel_noHarnessMessage(t *testing.T) {
+	m := NewProgressModel()
+	updated, _ := m.Update(ApplyResultMsg{
+		Err: fmt.Errorf("%s", errNoHarness),
+	})
+	m2 := updated.(ProgressModel)
+	if !m2.IsDone() {
+		t.Error("progress model must be done after error ApplyResultMsg")
+	}
+	view := m2.View()
+	if strings.Contains(strings.ToLower(view), "rolled back") {
+		t.Errorf("no-harness view must not say 'rolled back'; got: %q", view)
+	}
+	if !strings.Contains(strings.ToLower(view), "no supported") {
+		t.Errorf("no-harness view must say 'no supported ...'; got: %q", view)
 	}
 }

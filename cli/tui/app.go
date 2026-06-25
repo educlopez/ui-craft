@@ -2,10 +2,8 @@ package tui
 
 import (
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
-	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/educlopez/ui-craft/cli/assets"
@@ -49,6 +47,21 @@ type AppModel struct {
 	selected   []core.DetectedHarness
 	components []component.Component
 	err        error
+
+	// planCapture is set by runApplyCmd just before dispatching to core.Apply.
+	// Tests that inject applyOverride can read this to verify the plan the TUI
+	// passed — the ADR-2 parity seam.
+	planCapture *core.InstallPlan
+
+	// applyOverride, when non-nil, replaces the full runApplyCmd implementation.
+	// Signature: given the InstallPlan the TUI built, return (changes, error).
+	// Production code leaves this nil and uses core.Apply via the default path.
+	applyOverride func(plan core.InstallPlan) ([]harness.Change, error)
+
+	// detectOverride, when non-nil, replaces core.DetectAll(harness.All()) in
+	// the splash → detect transition. This is the injection seam for tests that
+	// need to control which harnesses are "detected" without real disk probing.
+	detectOverride func() []core.DetectedHarness
 }
 
 // NewAppModel creates the initial AppModel.
@@ -83,10 +96,16 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.splash = updated.(SplashModel)
 		if m.splash.IsDone() {
 			// Auto-detect harnesses and advance to harness-select.
-			m.detected = core.DetectAll(harness.All())
+			if m.detectOverride != nil {
+				m.detected = m.detectOverride()
+			} else {
+				m.detected = core.DetectAll(harness.All())
+			}
 			if len(m.detected) == 0 {
-				// No harnesses found — show error on done screen.
-				m.err = fmt.Errorf("no supported AI coding harness detected")
+				// No harnesses found — show informational message on done screen.
+				// Use errNoHarness sentinel so ProgressModel shows the correct
+				// "nothing to install" message (not a false rollback message).
+				m.err = fmt.Errorf("%s", errNoHarness)
 				m.screen = DoneScreen
 				m.progress = NewProgressModel()
 				// Mark progress as done with error by delivering an ApplyResultMsg.
@@ -178,24 +197,52 @@ func (m AppModel) View() string {
 // runApplyCmd returns a Bubble Tea Cmd that calls core.Plan + core.Apply
 // and delivers an ApplyResultMsg to the model.
 // This is the ADR-2 guarantee: the identical core.Apply path used by --yes.
+//
+// When m.applyOverride is non-nil (test seam), the plan is still built via
+// core.Plan (same as production) and captured in m.planCapture; then the
+// override is called instead of core.Apply. This lets tests assert that the
+// TUI produces the identical plan the --yes path would produce.
 func (m AppModel) runApplyCmd() tea.Cmd {
+	// Capture selected/components before entering the goroutine so the closure
+	// is safe against any future mutations.
+	selected := m.selected
+	components := m.components
+	projectDir := m.projectDir
+	version := m.version
+	override := m.applyOverride
+	planPtr := m.planCapture
+
 	return func() tea.Msg {
 		osfs := fsutil.OsFS{}
+
+		plan := core.Plan(
+			selected,
+			components,
+			osfs,
+			assets.Mirror,
+			assets.TemplateFS,
+			projectDir,
+		)
+
+		// Capture the plan for test assertions (planCapture is a pointer set by
+		// the test before calling runApplyCmd).
+		if planPtr != nil {
+			*planPtr = plan
+		}
+
+		if override != nil {
+			changes, err := override(plan)
+			if err != nil {
+				return ApplyResultMsg{Err: err}
+			}
+			return ApplyResultMsg{Changes: changes}
+		}
 
 		home, _ := os.UserHomeDir()
 		backupRoot := filepath.Join(home, ".ui-craft-backups")
 		backupStore := backup.NewStore(backupRoot, osfs, nil)
 
-		plan := core.Plan(
-			m.selected,
-			m.components,
-			osfs,
-			assets.Mirror,
-			assets.TemplateFS,
-			m.projectDir,
-		)
-
-		result, err := core.Apply(plan, osfs, backupStore, m.version)
+		result, err := core.Apply(plan, osfs, backupStore, version)
 		if err != nil {
 			return ApplyResultMsg{Err: err}
 		}
@@ -208,19 +255,16 @@ func (m AppModel) runApplyCmd() tea.Cmd {
 
 // RunTUI starts the Bubble Tea program and blocks until the user exits.
 // version is the binary version string; projectDir is the --dir value.
-// Returns a non-nil error only when the TUI itself fails to start.
+// Returns a non-nil error when the TUI cannot run (no terminal) or when
+// the TUI itself fails. cmd/install.go already routes non-TTY / --yes to
+// the non-interactive path before calling RunTUI.
 func RunTUI(version, projectDir string) error {
-	model := NewAppModel(version, projectDir)
-
-	var opts []tea.ProgramOption
 	if noColor() || !IsTerminal() {
-		// Defensive: redirect I/O to /dev/null when not a TTY. cmd/install.go
-		// guards on IsTerminal() before calling RunTUI, but belt-and-suspenders.
-		opts = append(opts, tea.WithInput(strings.NewReader("")))
-		opts = append(opts, tea.WithOutput(io.Discard))
+		return fmt.Errorf("interactive TUI requires a terminal; use --yes for non-interactive install")
 	}
 
-	p := tea.NewProgram(model, opts...)
+	model := NewAppModel(version, projectDir)
+	p := tea.NewProgram(model)
 	_, err := p.Run()
 	return err
 }

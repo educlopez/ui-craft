@@ -8,12 +8,18 @@ import (
 	"github.com/educlopez/ui-craft/cli/harness"
 )
 
+// errNoHarness is the sentinel error message used when DetectAll finds nothing.
+// AppModel sets this on ApplyResultMsg.Err; ProgressModel uses it to show the
+// correct "nothing to install" message instead of a false rollback message.
+const errNoHarness = "no supported AI coding harness detected"
+
 // ProgressModel renders per-target apply progress and the final result summary.
 // It receives Change records from core.Apply via ApplyResultMsg.
 type ProgressModel struct {
-	changes  []harness.Change
-	applying bool
-	err      error
+	changes   []harness.Change
+	applying  bool
+	err       error
+	noHarness bool // true when the error is the "no harness detected" sentinel
 }
 
 // NewProgressModel creates a ProgressModel in the "applying" state.
@@ -31,6 +37,10 @@ func (m ProgressModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.applying = false
 		m.changes = msg.Changes
 		m.err = msg.Err
+		// Detect the no-harness sentinel so View can show the correct message.
+		if msg.Err != nil && msg.Err.Error() == errNoHarness {
+			m.noHarness = true
+		}
 	}
 	return m, nil
 }
@@ -48,9 +58,15 @@ func (m ProgressModel) View() string {
 	}
 
 	if m.err != nil {
-		sb.WriteString(errorStyle().Render("Error: " + m.err.Error()))
-		sb.WriteString("\n")
-		sb.WriteString(mutedStyle().Render("All changes have been rolled back."))
+		if m.noHarness {
+			sb.WriteString(mutedStyle().Render("No supported AI coding harness detected — nothing to install."))
+			sb.WriteByte('\n')
+			sb.WriteString(mutedStyle().Render("Install one of the supported tools and re-run `ui-craft install`."))
+		} else {
+			sb.WriteString(errorStyle().Render("Error: " + m.err.Error()))
+			sb.WriteString("\n")
+			sb.WriteString(mutedStyle().Render("All changes have been rolled back."))
+		}
 		sb.WriteByte('\n')
 		return sb.String()
 	}

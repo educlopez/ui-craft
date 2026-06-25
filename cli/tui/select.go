@@ -308,7 +308,9 @@ func (m ConfirmModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "y", "enter":
 			m.confirmed = true
-		case "n", "ctrl+c", "q":
+		case "n", "q":
+			// Note: ctrl+c is intercepted globally by AppModel.Update before
+			// reaching any sub-model; it is not handled here.
 			m.cancelled = true
 			return m, tea.Quit
 		}
