@@ -75,10 +75,20 @@ var installCmd = &cobra.Command{
 			}
 		}
 
-		// Build plan for all components, wiring MCP and SkillCommands ops.
+		// Resolve project directory for design-memory scaffolding.
+		// --dir flag (flags.Dir) defaults to "." which may be relative;
+		// resolve to an absolute path so scaffold writes land in the right place.
+		projectDir := flags.Dir
+		if projectDir == "" || projectDir == "." {
+			if cwd, err := os.Getwd(); err == nil {
+				projectDir = cwd
+			}
+		}
+
+		// Build plan for all components, wiring MCP, SkillCommands, and DesignMemory ops.
 		selected := component.All()
 		osfs := fsutil.OsFS{}
-		plan := core.Plan(detected, selected, osfs, assets.Mirror)
+		plan := core.Plan(detected, selected, osfs, assets.Mirror, assets.TemplateFS, projectDir)
 
 		// Backup store root: ~/.ui-craft-backups
 		home, _ := os.UserHomeDir()
@@ -149,6 +159,36 @@ var installCmd = &cobra.Command{
 				}
 			}
 			fmt.Fprintf(out, "  %s/mcp-gates: %s\n", t.Harness.Name(), status)
+		}
+
+		// Report design-memory results.
+		// DesignMemory is project-scoped (one .ui-craft/ per project dir, not per
+		// harness), so we deduplicate: report on the first target that ran the op.
+		designMemoryReported := false
+		for _, t := range plan.Targets {
+			if t.Component != component.DesignMemory {
+				continue
+			}
+			if t.Skip {
+				if !designMemoryReported {
+					fmt.Fprintf(out, "\ndesign-memory: skipped (%s)\n", t.SkipReason)
+					designMemoryReported = true
+				}
+				continue
+			}
+			if !designMemoryReported {
+				status := "scaffolded"
+				for _, ch := range result.Changes {
+					if ch.Component == component.DesignMemory.String() && ch.HarnessName == t.Harness.Name() {
+						if !ch.Changed {
+							status = "already scaffolded"
+						}
+						break
+					}
+				}
+				fmt.Fprintf(out, "\ndesign-memory: %s → %s/.ui-craft/\n", status, projectDir)
+				designMemoryReported = true
+			}
 		}
 		return nil
 	},
