@@ -31,7 +31,7 @@ gen-mirrors:
 	@for harness in claude cursor codex gemini opencode; do \
 		src_dir=""; \
 		case "$$harness" in \
-			claude)   src_dir="../.claude/skills"   ;; \
+			claude)   src_dir="../.agents/skills"   ;; \
 			cursor)   src_dir="../.cursor/skills"   ;; \
 			codex)    src_dir="../.codex/skills"    ;; \
 			gemini)   src_dir="../.gemini/skills"   ;; \
