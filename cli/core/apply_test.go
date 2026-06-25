@@ -123,7 +123,7 @@ func TestApply_success(t *testing.T) {
 		},
 	}
 
-	result, err := core.Apply(plan, mem, store, "v1.0.0")
+	result, err := core.Apply(plan, mem, store, "v1.0.0", false)
 	if err != nil {
 		t.Fatalf("Apply: %v", err)
 	}
@@ -200,7 +200,7 @@ func TestApply_midPlanRollback(t *testing.T) {
 		},
 	}
 
-	_, err := core.Apply(plan, mem, store, "v1.0.0")
+	_, err := core.Apply(plan, mem, store, "v1.0.0", false)
 	if err == nil {
 		t.Fatal("Apply should have returned an error on mid-plan failure")
 	}
@@ -260,7 +260,7 @@ func TestApply_skipsTargetsWithSkipTrue(t *testing.T) {
 		},
 	}
 
-	result, err := core.Apply(plan, mem, store, "v1.0.0")
+	result, err := core.Apply(plan, mem, store, "v1.0.0", false)
 	if err != nil {
 		t.Fatalf("Apply: %v", err)
 	}
@@ -310,7 +310,7 @@ func TestApply_prunesAfterSuccess(t *testing.T) {
 		},
 	}
 
-	if _, err := core.Apply(plan, mem, store, "v1.0.0"); err != nil {
+	if _, err := core.Apply(plan, mem, store, "v1.0.0", false); err != nil {
 		t.Fatalf("Apply: %v", err)
 	}
 
@@ -380,7 +380,7 @@ func TestApply_rollbackDeletesCreatedFiles(t *testing.T) {
 		},
 	}
 
-	_, err := core.Apply(plan, mem, store, "v1.0.0")
+	_, err := core.Apply(plan, mem, store, "v1.0.0", false)
 	if err == nil {
 		t.Fatal("Apply should have returned an error")
 	}
@@ -594,7 +594,7 @@ func TestReviewAgents_rollbackPreservesUserAgent(t *testing.T) {
 		SnapPath:  failPath,
 	})
 
-	_, applyErr := core.Apply(plan, mem, store, "v0-test")
+	_, applyErr := core.Apply(plan, mem, store, "v0-test", false)
 	if applyErr == nil {
 		t.Fatal("Apply should have returned an error (failing sentinel op)")
 	}
@@ -687,7 +687,7 @@ func TestDesignMemory_partialScaffoldRollbackSafety(t *testing.T) {
 		SnapPath:  failPath,
 	})
 
-	_, applyErr := core.Apply(plan, mem, store, "v0-test")
+	_, applyErr := core.Apply(plan, mem, store, "v0-test", false)
 	if applyErr == nil {
 		t.Fatal("Apply should have returned an error (failing sentinel op)")
 	}

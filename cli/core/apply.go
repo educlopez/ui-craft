@@ -31,7 +31,25 @@ type ApplyResult struct {
 // that its file is always captured in the pre-snapshot — this closes the
 // partial-write gap where a failing op leaves a newly created file orphaned.
 // The fs parameter is threaded through for future use by write ops.
-func Apply(plan InstallPlan, fs fsutil.FileSystem, store *backup.Store, binaryVersion string) (ApplyResult, error) {
+//
+// When dryRun is true, no snapshot is taken and no write ops are executed.
+// Apply returns an ApplyResult whose Changes slice describes what WOULD be
+// applied (HarnessName and Component set, but no actual filesystem change).
+func Apply(plan InstallPlan, fs fsutil.FileSystem, store *backup.Store, binaryVersion string, dryRun bool) (ApplyResult, error) {
+	if dryRun {
+		var dryChanges []harness.Change
+		for _, t := range plan.Targets {
+			if t.Skip || t.Op == nil {
+				continue
+			}
+			dryChanges = append(dryChanges, harness.Change{
+				HarnessName: t.Harness.Name(),
+				Component:   t.Component.String(),
+				Changed:     true, // assumed would-change in dry-run
+			})
+		}
+		return ApplyResult{Changes: dryChanges}, nil
+	}
 	// --- Phase 0: pre-flight validation ---
 	// Every write op must declare at least one snap path so the pre-snapshot
 	// covers it. SnapPaths supersedes SnapPath when non-empty.

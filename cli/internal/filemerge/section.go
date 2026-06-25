@@ -49,6 +49,32 @@ func UpsertManagedBlock(content, blockContent string) string {
 	return content + "\n" + newBlock + "\n"
 }
 
+// RemoveManagedBlock removes the ui-craft managed block (BEGIN…END inclusive)
+// from content. Content outside the block is preserved verbatim. If no block
+// is found, content is returned unchanged.
+func RemoveManagedBlock(content string) string {
+	beginIdx := strings.Index(content, BeginMarker)
+	endIdx := strings.Index(content, EndMarker)
+	if beginIdx == -1 || endIdx == -1 || beginIdx >= endIdx {
+		// No valid block — strip orphan markers and return.
+		return repairOrphanMarkers(content)
+	}
+
+	before := content[:beginIdx]
+	after := content[endIdx+len(EndMarker):]
+
+	// Trim a leading newline in the section that preceded the block (the
+	// UpsertManagedBlock adds "\n" + block) so we don't leave a double blank line.
+	if strings.HasSuffix(before, "\n\n") {
+		before = before[:len(before)-1]
+	}
+	// Trim a leading newline from after if before already ends with newline.
+	if strings.HasPrefix(after, "\n") && strings.HasSuffix(before, "\n") {
+		after = after[1:]
+	}
+	return before + after
+}
+
 // repairOrphanMarkers removes unpaired BEGIN or END markers. A single BEGIN
 // without a matching END (or vice versa) is silently dropped so that the next
 // UpsertManagedBlock writes a clean, well-formed block.

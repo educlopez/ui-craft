@@ -5,8 +5,11 @@
 package cmd
 
 import (
+	"github.com/educlopez/ui-craft/cli/backup"
 	"github.com/educlopez/ui-craft/cli/core"
+	"github.com/educlopez/ui-craft/cli/fsutil"
 	"github.com/educlopez/ui-craft/cli/harness"
+	"github.com/educlopez/ui-craft/cli/internal/filemerge"
 	"github.com/spf13/cobra"
 )
 
@@ -61,3 +64,39 @@ func SetFlags(h string, components []string, yes bool) func() {
 		flags.Yes = prevY
 	}
 }
+
+// SetDoctorStatfsFn replaces the disk-space probe used by runDoctor.
+// Returns a restore function. NOT safe for parallel tests.
+func SetDoctorStatfsFn(fn func(string) (uint64, error)) func() {
+	prev := doctorStatfsFn
+	doctorStatfsFn = fn
+	return func() { doctorStatfsFn = prev }
+}
+
+// MakeDoctorCmd exposes makeDoctorCmd for test use.
+var MakeDoctorCmd = makeDoctorCmd
+
+// MakeUninstallCmd exposes the uninstall command constructor for test use.
+func MakeUninstallCmd() *cobra.Command { return uninstallCmd }
+
+// RemoveJSONKeyForTest is a thin wrapper over filemerge.RemoveJSONKey for test use.
+func RemoveJSONKeyForTest(src []byte, parent, key string) ([]byte, error) {
+	return filemerge.RemoveJSONKey(src, parent, key)
+}
+
+// NewBackupStoreForTest constructs a backup.Store at the given root for tests.
+func NewBackupStoreForTest(fs fsutil.FileSystem, root string) *backup.Store {
+	return backup.NewStore(root, fs, nil)
+}
+
+// RemoveDir is re-exported for tests that verify the uninstall dir-removal logic.
+func RemoveDir(fs fsutil.FileSystem, dir string) error { return removeDir(fs, dir) }
+
+// RemoveManagedBlockForTest is re-exported for tests that verify managed-block
+// removal in AGENTS.md files.
+func RemoveManagedBlockForTest(content string) string {
+	return filemerge.RemoveManagedBlock(content)
+}
+
+// Expose package-level flags for tests that manipulate them directly.
+var Flags = &flags

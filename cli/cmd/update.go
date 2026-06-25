@@ -227,11 +227,31 @@ installed components for the harness.`,
 		backupRoot := filepath.Join(home, ".ui-craft-backups")
 		backupStore := backup.NewStore(backupRoot, osfs, nil) // nil clock = time.Now
 
+		// --- Dry-run: print what would happen and exit without writing ---
+		if flags.DryRun {
+			fmt.Fprint(out, "\n[dry-run] No files will be written. Showing what would change:\n\n")
+			for _, ut := range updateTargets {
+				plan := core.Plan([]core.DetectedHarness{ut.dh}, ut.components, osfs, assets.Mirror, assets.Agents, assets.TemplateFS, projectDir)
+				for _, t := range plan.Targets {
+					if t.Skip {
+						fmt.Fprintf(out, "  would skip    %s/%s (%s)\n", t.Harness.Name(), t.Component.String(), t.SkipReason)
+						continue
+					}
+					if t.Op == nil {
+						continue
+					}
+					fmt.Fprintf(out, "  would configure %s/%s\n", t.Harness.Name(), t.Component.String())
+				}
+			}
+			fmt.Fprintln(out, "\n[dry-run] Re-run without --dry-run to apply changes.")
+			return nil
+		}
+
 		// Execute per-target update (each target is a harness+components slice).
 		for _, ut := range updateTargets {
 			plan := core.Plan([]core.DetectedHarness{ut.dh}, ut.components, osfs, assets.Mirror, assets.Agents, assets.TemplateFS, projectDir)
 
-			result, applyErr := core.Apply(plan, osfs, backupStore, cmdVersion)
+			result, applyErr := core.Apply(plan, osfs, backupStore, cmdVersion, false)
 			if applyErr != nil {
 				return fmt.Errorf("update %s: apply failed (all changes rolled back): %w", ut.dh.Harness.Name(), applyErr)
 			}

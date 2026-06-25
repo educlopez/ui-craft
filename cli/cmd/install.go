@@ -192,13 +192,30 @@ var installCmd = &cobra.Command{
 		osfs := fsutil.OsFS{}
 		plan := core.Plan(detected, selected, osfs, assets.Mirror, assets.Agents, assets.TemplateFS, projectDir)
 
+		// --- Dry-run: print what would happen and exit without writing ---
+		if flags.DryRun {
+			fmt.Fprint(out, "\n[dry-run] No files will be written. Showing what would change:\n\n")
+			for _, t := range plan.Targets {
+				if t.Skip {
+					fmt.Fprintf(out, "  would skip   %s/%s (%s)\n", t.Harness.Name(), t.Component.String(), t.SkipReason)
+					continue
+				}
+				if t.Op == nil {
+					continue
+				}
+				fmt.Fprintf(out, "  would install %s/%s\n", t.Harness.Name(), t.Component.String())
+			}
+			fmt.Fprintln(out, "\n[dry-run] Re-run without --dry-run to apply changes.")
+			return nil
+		}
+
 		// Backup store root: ~/.ui-craft-backups
 		home, _ := os.UserHomeDir()
 		backupRoot := filepath.Join(home, ".ui-craft-backups")
 		backupStore := backup.NewStore(backupRoot, osfs, nil) // nil clock = time.Now
 
 		// Execute transactional apply.
-		result, applyErr := core.Apply(plan, osfs, backupStore, cmdVersion)
+		result, applyErr := core.Apply(plan, osfs, backupStore, cmdVersion, false)
 		if applyErr != nil {
 			return fmt.Errorf("install: apply failed (all changes rolled back): %w", applyErr)
 		}

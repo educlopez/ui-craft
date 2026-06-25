@@ -131,6 +131,37 @@ func deepMerge(dst, src map[string]any) map[string]any {
 	return dst
 }
 
+// RemoveJSONKey removes a top-level key (or nested key under parentKey) from a
+// JSON (or JSONC) object and returns the cleaned JSON bytes.
+//
+// When parentKey is empty, keyName is removed from the root object.
+// When parentKey is non-empty, keyName is removed from root[parentKey].
+// All other keys at every level are preserved unchanged.
+//
+// If the file is empty or malformed, an empty {}+newline is returned.
+// If the key does not exist the input (minus any JSONC syntax) is returned.
+func RemoveJSONKey(src []byte, parentKey, keyName string) ([]byte, error) {
+	clean := stripJSONC(src)
+	var root map[string]any
+	if err := json.Unmarshal(clean, &root); err != nil {
+		// Malformed — return empty object rather than aborting.
+		return []byte("{}\n"), nil
+	}
+	if parentKey == "" {
+		delete(root, keyName)
+	} else {
+		if child, ok := root[parentKey].(map[string]any); ok {
+			delete(child, keyName)
+			root[parentKey] = child
+		}
+	}
+	out, err := json.MarshalIndent(root, "", "  ")
+	if err != nil {
+		return nil, fmt.Errorf("filemerge: RemoveJSONKey marshal: %w", err)
+	}
+	return append(out, '\n'), nil
+}
+
 // stripJSONC removes JavaScript-style comments and trailing commas from JSON
 // input so that the result can be parsed by Go's standard json.Unmarshal.
 //

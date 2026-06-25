@@ -85,6 +85,50 @@ func UpsertTOMLTableKey(content, tableName, keyName string, entry map[string]any
 	return out, nil
 }
 
+// RemoveTOMLTable removes the [tableName.keyName] section (header + its body
+// lines) from a TOML document. All other sections are preserved verbatim.
+// If the section does not exist the input is returned unchanged.
+func RemoveTOMLTable(content, tableName, keyName string) string {
+	header := fmt.Sprintf("[%s.%s]", tableName, keyName)
+	lines := splitLines(content)
+
+	headerIdx := -1
+	for i, line := range lines {
+		if strings.TrimSpace(line) == header {
+			headerIdx = i
+			break
+		}
+	}
+	if headerIdx == -1 {
+		return content // section not present
+	}
+
+	// Find where the section ends: next section header or EOF.
+	endIdx := headerIdx + 1
+	for endIdx < len(lines) {
+		t := strings.TrimSpace(lines[endIdx])
+		if strings.HasPrefix(t, "[") {
+			break
+		}
+		endIdx++
+	}
+
+	// Drop the blank line immediately before the header if present.
+	start := headerIdx
+	if start > 0 && strings.TrimSpace(lines[start-1]) == "" {
+		start--
+	}
+
+	var result []string
+	result = append(result, lines[:start]...)
+	result = append(result, lines[endIdx:]...)
+	out := strings.Join(result, "\n")
+	if !strings.HasSuffix(out, "\n") && out != "" {
+		out += "\n"
+	}
+	return out
+}
+
 // buildTOMLBlock serialises an entry map into TOML key = value lines.
 // Supported value types: string, []string, int, int64, float64, bool.
 // String values are quoted; arrays of strings are rendered as TOML arrays.

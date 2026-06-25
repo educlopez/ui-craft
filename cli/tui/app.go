@@ -243,7 +243,7 @@ func (m AppModel) runApplyCmd() tea.Cmd {
 		backupRoot := filepath.Join(home, ".ui-craft-backups")
 		backupStore := backup.NewStore(backupRoot, osfs, nil)
 
-		result, err := core.Apply(plan, osfs, backupStore, version)
+		result, err := core.Apply(plan, osfs, backupStore, version, false)
 		if err != nil {
 			return ApplyResultMsg{Err: err}
 		}
