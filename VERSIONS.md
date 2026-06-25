@@ -1,5 +1,15 @@
 # Versions
 
+## v0.30.1 (2026-06-25) — fix: MCP server + plugin manifest actually work
+
+Two shipped-but-broken bugs caught by a functional smoke test (the unit tests bypassed the real server + the manifest validator).
+
+**Fixed:**
+
+- **MCP server crashed on startup.** `McpServer.registerTool` (SDK 1.29) requires a Zod raw shape for `inputSchema`, not a JSON-Schema object — all 4 tools (check_anti_slop, tokens_lint, acceptance_bar, score_ui) failed to register, so the server never booted under a real client. Tools now register; added `zod` dep. The module-level unit tests passed because they called the tool functions directly, skipping the server.
+- **Added a functional stdio smoke test** (`mcp/src/server.smoke.test.mjs`) — spawns the real server via an MCP client, asserts it lists the 4 tools and that calls return content. This is the regression guard that would have caught the above.
+- **Plugin manifest was invalid** → `/plugin marketplace add educlopez/ui-craft` and `claude plugin validate` failed. `plugin.json` was missing the required `name` and used unsupported `skills`/`commands` path-arrays; it now carries `name`/`description`/`version` and relies on auto-discovery (`skills/*/SKILL.md`, `commands/*.md`, `agents/*.md`). `marketplace.json` rewritten from a single-plugin descriptor to the correct marketplace schema (`owner` + `plugins[]`). `claude plugin validate` now passes.
+
 ## v0.30.0 (2026-06-25) — design-quality eval harness + score_ui MCP tool
 
 Adds a deterministic composite design-quality scorer (`evals/quality/score.mjs`) that composes three source-static signal dimensions into a single 0-100 UICraftScore + letter grade. Delivered in two PRs: PR 1 shipped the eval core, fixtures, baselines, CLI benchmark, and CI gate; PR 2 (this entry) adds the `score_ui` MCP tool and closes the v0.30 release.

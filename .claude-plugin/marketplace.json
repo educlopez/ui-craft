@@ -1,11 +1,20 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "ui-craft",
-  "version": "2026.6.25.0731",
-  "description": "The ultimate UI design engineering skill — build, animate, review, and polish interfaces with craft-level quality.",
-  "author": "Eduardo Calvo",
-  "repository": "https://github.com/educlopez/ui-craft",
-  "license": "MIT",
-  "tags": ["ui", "design", "animation", "accessibility", "css", "frontend", "design-system", "polish"],
-  "categories": ["development"]
+  "description": "UI Craft — the design-quality system for AI coding agents: anti-slop UI, spec-driven design, review agents, and MCP quality gates.",
+  "owner": {
+    "name": "Eduardo Calvo",
+    "url": "https://github.com/educlopez"
+  },
+  "plugins": [
+    {
+      "name": "ui-craft",
+      "source": "./",
+      "description": "Design engineering skill + system for AI coding agents: anti-slop UI rules, outcome recipes, spec-driven design (/sddesign), design-review + a11y agents, and MCP quality gates.",
+      "version": "0.30.0",
+      "license": "MIT",
+      "homepage": "https://skills.smoothui.dev",
+      "keywords": ["ui", "design", "accessibility", "css", "frontend", "design-system", "anti-slop"]
+    }
+  ]
 }
