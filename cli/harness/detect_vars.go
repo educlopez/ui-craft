@@ -1,3 +1,6 @@
+// Package-level vars for injectable detection. Tests that use withInjectedDetect
+// MUST NOT call t.Parallel(): lookPath and statPath are shared package-level
+// vars and are not safe for concurrent mutation by multiple test goroutines.
 package harness
 
 import (

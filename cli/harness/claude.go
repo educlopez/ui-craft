@@ -26,20 +26,34 @@ var _ Harness = ClaudeHarness{}
 func (h ClaudeHarness) Name() string { return "claude" }
 
 // configRoot returns the OS-appropriate Claude config root.
+// On Windows, it uses %APPDATA%\Claude; if APPDATA is empty the harness is
+// not detectable and an empty string is returned. On non-Windows systems the
+// Unix path (~/.claude) is used. An empty home dir also yields an empty string.
 func (h ClaudeHarness) configRoot() string {
 	if runtime.GOOS == "windows" {
-		if appdata := os.Getenv("APPDATA"); appdata != "" {
-			return filepath.Join(appdata, "Claude")
+		appdata := os.Getenv("APPDATA")
+		if appdata == "" {
+			// APPDATA missing on Windows — do NOT fall through to Unix path.
+			return ""
 		}
+		return filepath.Join(appdata, "Claude")
 	}
 	home, _ := os.UserHomeDir()
+	if home == "" {
+		return ""
+	}
 	return filepath.Join(home, ".claude")
 }
 
 // Detect checks for ~/.claude/ directory or "claude" on PATH.
 // It uses the package-level lookPath and statPath vars so tests can inject fakes.
+// If configRoot() returns empty (e.g. missing APPDATA on Windows or empty home),
+// the harness is reported as not installed rather than constructing a bogus path.
 func (h ClaudeHarness) Detect() (DetectResult, error) {
 	root := h.configRoot()
+	if root == "" {
+		return DetectResult{Installed: false}, nil
+	}
 
 	// Primary: check directory existence.
 	if _, err := statPath(root); err == nil {

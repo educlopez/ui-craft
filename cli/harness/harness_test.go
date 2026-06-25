@@ -24,11 +24,16 @@ var errNotFound = errors.New("path not found")
 
 // withInjectedDetect replaces the package-level lookPath and statPath vars for
 // the duration of fn, then restores the originals.
+//
+// NOTE: tests using withInjectedDetect MUST NOT call t.Parallel() — the
+// injectable vars are shared package-level state and are not concurrency-safe.
 func withInjectedDetect(
+	t *testing.T,
 	lp func(string) (string, error),
 	sp func(string) (fs.FileInfo, error),
 	fn func(),
 ) {
+	t.Helper()
 	origLook := lookPath
 	origStat := statPath
 	lookPath = lp
@@ -43,7 +48,7 @@ func withInjectedDetect(
 // --- Claude ---
 
 func TestClaudeDetect_installedViaDir(t *testing.T) {
-	withInjectedDetect(
+	withInjectedDetect(t,
 		func(string) (string, error) { return "", errNotFound },
 		func(string) (fs.FileInfo, error) { return fakeFileInfo{"claude"}, nil },
 		func() {
@@ -60,7 +65,7 @@ func TestClaudeDetect_installedViaDir(t *testing.T) {
 }
 
 func TestClaudeDetect_installedViaBinary(t *testing.T) {
-	withInjectedDetect(
+	withInjectedDetect(t,
 		func(file string) (string, error) {
 			if file == "claude" {
 				return "/usr/local/bin/claude", nil
@@ -85,7 +90,7 @@ func TestClaudeDetect_installedViaBinary(t *testing.T) {
 }
 
 func TestClaudeDetect_notInstalled(t *testing.T) {
-	withInjectedDetect(
+	withInjectedDetect(t,
 		func(string) (string, error) { return "", errNotFound },
 		func(string) (fs.FileInfo, error) { return nil, errNotFound },
 		func() {
@@ -104,7 +109,7 @@ func TestClaudeDetect_notInstalled(t *testing.T) {
 // --- Cursor ---
 
 func TestCursorDetect_installedViaDir(t *testing.T) {
-	withInjectedDetect(
+	withInjectedDetect(t,
 		func(string) (string, error) { return "", errNotFound },
 		func(string) (fs.FileInfo, error) { return fakeFileInfo{"cursor"}, nil },
 		func() {
@@ -121,7 +126,7 @@ func TestCursorDetect_installedViaDir(t *testing.T) {
 }
 
 func TestCursorDetect_notInstalled(t *testing.T) {
-	withInjectedDetect(
+	withInjectedDetect(t,
 		func(string) (string, error) { return "", errNotFound },
 		func(string) (fs.FileInfo, error) { return nil, errNotFound },
 		func() {
@@ -139,8 +144,8 @@ func TestCursorDetect_notInstalled(t *testing.T) {
 
 // --- Codex ---
 
-func TestCodexDetect_installed(t *testing.T) {
-	withInjectedDetect(
+func TestCodexDetect_installedViaBinary(t *testing.T) {
+	withInjectedDetect(t,
 		func(file string) (string, error) {
 			if file == "codex" {
 				return "/usr/local/bin/codex", nil
@@ -161,8 +166,25 @@ func TestCodexDetect_installed(t *testing.T) {
 	)
 }
 
+func TestCodexDetect_installedViaDir(t *testing.T) {
+	withInjectedDetect(t,
+		func(string) (string, error) { return "", errNotFound },
+		func(string) (fs.FileInfo, error) { return fakeFileInfo{"codex"}, nil },
+		func() {
+			h := CodexHarness{}
+			res, err := h.Detect()
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if !res.Installed {
+				t.Fatal("expected Installed=true when ~/.codex dir exists (binary-absent fallback)")
+			}
+		},
+	)
+}
+
 func TestCodexDetect_notInstalled(t *testing.T) {
-	withInjectedDetect(
+	withInjectedDetect(t,
 		func(string) (string, error) { return "", errNotFound },
 		func(string) (fs.FileInfo, error) { return nil, errNotFound },
 		func() {
@@ -180,8 +202,8 @@ func TestCodexDetect_notInstalled(t *testing.T) {
 
 // --- Gemini ---
 
-func TestGeminiDetect_installed(t *testing.T) {
-	withInjectedDetect(
+func TestGeminiDetect_installedViaBinary(t *testing.T) {
+	withInjectedDetect(t,
 		func(file string) (string, error) {
 			if file == "gemini" {
 				return "/usr/local/bin/gemini", nil
@@ -202,8 +224,25 @@ func TestGeminiDetect_installed(t *testing.T) {
 	)
 }
 
+func TestGeminiDetect_installedViaDir(t *testing.T) {
+	withInjectedDetect(t,
+		func(string) (string, error) { return "", errNotFound },
+		func(string) (fs.FileInfo, error) { return fakeFileInfo{"gemini"}, nil },
+		func() {
+			h := GeminiHarness{}
+			res, err := h.Detect()
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if !res.Installed {
+				t.Fatal("expected Installed=true when ~/.gemini dir exists (binary-absent fallback)")
+			}
+		},
+	)
+}
+
 func TestGeminiDetect_notInstalled(t *testing.T) {
-	withInjectedDetect(
+	withInjectedDetect(t,
 		func(string) (string, error) { return "", errNotFound },
 		func(string) (fs.FileInfo, error) { return nil, errNotFound },
 		func() {
@@ -221,8 +260,8 @@ func TestGeminiDetect_notInstalled(t *testing.T) {
 
 // --- OpenCode ---
 
-func TestOpenCodeDetect_installed(t *testing.T) {
-	withInjectedDetect(
+func TestOpenCodeDetect_installedViaBinary(t *testing.T) {
+	withInjectedDetect(t,
 		func(file string) (string, error) {
 			if file == "opencode" {
 				return "/usr/local/bin/opencode", nil
@@ -243,8 +282,25 @@ func TestOpenCodeDetect_installed(t *testing.T) {
 	)
 }
 
+func TestOpenCodeDetect_installedViaDir(t *testing.T) {
+	withInjectedDetect(t,
+		func(string) (string, error) { return "", errNotFound },
+		func(string) (fs.FileInfo, error) { return fakeFileInfo{"opencode"}, nil },
+		func() {
+			h := OpenCodeHarness{}
+			res, err := h.Detect()
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if !res.Installed {
+				t.Fatal("expected Installed=true when config dir exists (binary-absent fallback)")
+			}
+		},
+	)
+}
+
 func TestOpenCodeDetect_notInstalled(t *testing.T) {
-	withInjectedDetect(
+	withInjectedDetect(t,
 		func(string) (string, error) { return "", errNotFound },
 		func(string) (fs.FileInfo, error) { return nil, errNotFound },
 		func() {
@@ -305,6 +361,39 @@ func TestSupports_geminiSkipsAgents(t *testing.T) {
 	h := GeminiHarness{}
 	if h.Supports(component.ReviewAgents) {
 		t.Fatal("GeminiHarness must not support ReviewAgents")
+	}
+}
+
+// TestSupports_exhaustiveMatrix iterates component.All() × All() harnesses and
+// asserts the complete expected capability matrix:
+//
+//	SkillCommands / MCPGates / DesignMemory = true for every harness
+//	ReviewAgents = true only for Claude and OpenCode, false for the rest
+//
+// This replaces the false-completeness of testing only universal components:
+// it also exercises each harness explicitly for every component value.
+func TestSupports_exhaustiveMatrix(t *testing.T) {
+	// reviewAgentHarnesses is the set of harness names that must return true
+	// for ReviewAgents.
+	reviewAgentHarnesses := map[string]bool{
+		"claude":   true,
+		"opencode": true,
+	}
+
+	for _, h := range All() {
+		for _, c := range component.All() {
+			got := h.Supports(c)
+			var want bool
+			switch c {
+			case component.SkillCommands, component.MCPGates, component.DesignMemory:
+				want = true
+			case component.ReviewAgents:
+				want = reviewAgentHarnesses[h.Name()]
+			}
+			if got != want {
+				t.Errorf("%s.Supports(%s) = %v, want %v", h.Name(), c, got, want)
+			}
+		}
 	}
 }
 

@@ -106,6 +106,10 @@ type Harness interface {
 
 	// WriteSkill copies the embedded harness mirror into the harness's skills dir.
 	// Slice 2 adapters return ErrNotImplemented.
+	//
+	// TODO(slice-5): this signature will gain a `mirror` parameter (the embedded
+	// harness-specific asset bundle) once the assets package lands in Slice 5.
+	// Update all adapter implementations and callers at that time.
 	WriteSkill(w fsutil.FileSystem) (Change, error)
 
 	// WriteAgents writes review agent definitions into the harness's agent dir.

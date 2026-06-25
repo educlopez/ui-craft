@@ -28,27 +28,51 @@ var _ Harness = OpenCodeHarness{}
 func (h OpenCodeHarness) Name() string { return "opencode" }
 
 // configRoot returns the OS-appropriate OpenCode config root.
-// On Windows, ~/.config equivalent is %APPDATA%.
+// On Windows, it uses %APPDATA%\opencode; if APPDATA is empty the harness is
+// not detectable and an empty string is returned. On non-Windows systems the
+// Unix path (~/.config/opencode) is used. An empty home dir also yields "".
 func (h OpenCodeHarness) configRoot() string {
 	if runtime.GOOS == "windows" {
-		if appdata := os.Getenv("APPDATA"); appdata != "" {
-			return filepath.Join(appdata, "opencode")
+		appdata := os.Getenv("APPDATA")
+		if appdata == "" {
+			// APPDATA missing on Windows — do NOT fall through to Unix path.
+			return ""
 		}
+		return filepath.Join(appdata, "opencode")
 	}
 	home, _ := os.UserHomeDir()
+	if home == "" {
+		return ""
+	}
 	return filepath.Join(home, ".config", "opencode")
 }
 
-// Detect checks for the "opencode" binary on PATH.
+// Detect checks for the "opencode" binary on PATH or the config dir existence.
+// If configRoot() returns empty (e.g. missing APPDATA on Windows or empty home),
+// the harness is reported as not installed rather than constructing a bogus path.
 func (h OpenCodeHarness) Detect() (DetectResult, error) {
+	root := h.configRoot()
+	if root == "" {
+		return DetectResult{Installed: false}, nil
+	}
+
+	// Primary: check config directory existence.
+	if _, err := statPath(root); err == nil {
+		return DetectResult{
+			Installed:  true,
+			ConfigRoot: root,
+		}, nil
+	}
+
+	// Secondary: check binary on PATH.
 	if bin, err := lookPath("opencode"); err == nil {
-		root := h.configRoot()
 		return DetectResult{
 			Installed:  true,
 			ConfigRoot: root,
 			BinaryPath: bin,
 		}, nil
 	}
+
 	return DetectResult{Installed: false}, nil
 }
 

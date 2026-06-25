@@ -26,12 +26,19 @@ func (h CursorHarness) Name() string { return "cursor" }
 
 func (h CursorHarness) configRoot() string {
 	home, _ := os.UserHomeDir()
+	if home == "" {
+		return ""
+	}
 	return filepath.Join(home, ".cursor")
 }
 
 // Detect checks for ~/.cursor/ directory. No PATH binary exists for Cursor.
+// An empty home dir yields not-installed rather than a relative path.
 func (h CursorHarness) Detect() (DetectResult, error) {
 	root := h.configRoot()
+	if root == "" {
+		return DetectResult{Installed: false}, nil
+	}
 	if _, err := statPath(root); err == nil {
 		return DetectResult{
 			Installed:  true,

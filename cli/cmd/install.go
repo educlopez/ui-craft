@@ -22,10 +22,9 @@ var installCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		out := cmd.OutOrStdout()
 
-		detected, err := core.Detect(harness.All())
-		if err != nil {
-			return fmt.Errorf("detection failed: %w", err)
-		}
+		// DetectAll is best-effort: one harness erroring does not abort the rest.
+		// This is a conscious policy: install must be resilient to partial failures.
+		detected := core.DetectAll(harness.All())
 
 		if len(detected) == 0 {
 			fmt.Fprintln(out, "No supported AI coding harness detected.")

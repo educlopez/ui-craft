@@ -24,19 +24,39 @@ func (h GeminiHarness) Name() string { return "gemini" }
 
 func (h GeminiHarness) configRoot() string {
 	home, _ := os.UserHomeDir()
+	if home == "" {
+		return ""
+	}
 	return filepath.Join(home, ".gemini")
 }
 
-// Detect checks for the "gemini" binary on PATH.
+// Detect checks for the "gemini" binary on PATH OR the ~/.gemini config dir.
+// npm-global binaries aren't always on PATH, so a config-dir fallback is
+// provided: if either signal is present the harness is considered installed.
+// An empty home dir yields not-installed rather than a relative path.
 func (h GeminiHarness) Detect() (DetectResult, error) {
+	root := h.configRoot()
+	if root == "" {
+		return DetectResult{Installed: false}, nil
+	}
+
+	// Primary: check binary on PATH.
 	if bin, err := lookPath("gemini"); err == nil {
-		root := h.configRoot()
 		return DetectResult{
 			Installed:  true,
 			ConfigRoot: root,
 			BinaryPath: bin,
 		}, nil
 	}
+
+	// Fallback: check config directory existence.
+	if _, err := statPath(root); err == nil {
+		return DetectResult{
+			Installed:  true,
+			ConfigRoot: root,
+		}, nil
+	}
+
 	return DetectResult{Installed: false}, nil
 }
 
