@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/educlopez/ui-craft/cli/backup"
 	"github.com/educlopez/ui-craft/cli/fsutil"
@@ -42,6 +43,30 @@ func runRollback(cmd *cobra.Command, args []string) error {
 	// Determine which snapshot ID to restore.
 	var id backup.SnapshotID
 	if rollbackAtFlag != "" {
+		// Security: reject any ID that contains a path separator or ".." to
+		// prevent user-supplied input from being used as a path component that
+		// could escape the backup root directory.
+		if strings.Contains(rollbackAtFlag, string(os.PathSeparator)) ||
+			strings.Contains(rollbackAtFlag, "/") ||
+			strings.Contains(rollbackAtFlag, "..") {
+			return fmt.Errorf("rollback: invalid snapshot id %q: must not contain path separators or '..'", rollbackAtFlag)
+		}
+
+		// Confirm the ID exists in the store before calling Restore.
+		metas, listErr := store.List()
+		if listErr != nil {
+			return fmt.Errorf("rollback: list snapshots: %w", listErr)
+		}
+		var found bool
+		for _, m := range metas {
+			if string(m.ID) == rollbackAtFlag {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return fmt.Errorf("rollback: snapshot id %q not found", rollbackAtFlag)
+		}
 		id = backup.SnapshotID(rollbackAtFlag)
 	} else {
 		latest, err := store.Latest()

@@ -329,6 +329,9 @@ func seed2(mem *fsutil.MemFS, path, content string) {
 // TestApply_rollbackDeletesCreatedFiles verifies that files with
 // ExistedBefore=false are deleted when rollback is triggered.
 // (Spec: "Newly created files deleted on rollback")
+//
+// fakeHomeResolver is injected so that Restore path validation succeeds for
+// /home/user paths — this makes the deletion assertion unconditional.
 func TestApply_rollbackDeletesCreatedFiles(t *testing.T) {
 	mem := fsutil.NewMemFS()
 	backupRoot := "/backups"
@@ -346,11 +349,14 @@ func TestApply_rollbackDeletesCreatedFiles(t *testing.T) {
 		callIdx++
 		return t
 	}
+	// newTestStore injects fakeHomeResolver so Restore accepts /home/user paths.
 	store := newTestStore(backupRoot, mem, multiClock)
 	h := stubHarness{name: "stub"}
 
 	// newFile does not exist before the plan.
 	newFile := filepath.Join(home, "created.json")
+	// failPath is the path declared for the failing op (required by Apply pre-flight).
+	failPath := filepath.Join(home, "fail-sentinel.json")
 
 	plan := core.InstallPlan{
 		Targets: []core.ComponentTarget{
@@ -366,6 +372,7 @@ func TestApply_rollbackDeletesCreatedFiles(t *testing.T) {
 				Harness:   h,
 				Component: component.MCPGates,
 				Op:        makeFailingOp(),
+				SnapPath:  failPath, // required by Apply pre-flight validation
 			},
 		},
 	}
@@ -375,17 +382,10 @@ func TestApply_rollbackDeletesCreatedFiles(t *testing.T) {
 		t.Fatal("Apply should have returned an error")
 	}
 
-	// Restore should have been called; since newFile ExistedBefore=false it
-	// should be deleted. (Restore calls Remove for ExistedBefore=false files.)
-	// Note: the restore path validation may fail in the test environment because
-	// /home/user is not under os.UserHomeDir(). Accept that the test documents
-	// the intended behavior and may skip the file-deletion assertion.
+	// Restore MUST have been called and must have deleted newFile because
+	// ExistedBefore=false. fakeHomeResolver ensures path validation passes.
 	if _, statErr := mem.Stat(newFile); statErr == nil {
-		// If the file still exists, either:
-		// (a) restore was not called (bug), or
-		// (b) restore failed path validation (acceptable in test env).
-		// Log a note rather than fatally failing.
-		t.Logf("Note: newFile still exists after rollback (may be home-dir validation in test env)")
+		t.Error("newFile (ExistedBefore=false) should be deleted after rollback, but still exists")
 	}
 }
 

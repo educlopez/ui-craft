@@ -27,23 +27,35 @@ type ApplyResult struct {
 //  4. On success: call store.Prune(DefaultRetentionCount).
 //
 // Skipped targets (ComponentTarget.Skip == true) are silently ignored.
+// Every non-skipped target with an Op MUST declare a non-empty SnapPath so
+// that its file is always captured in the pre-snapshot — this closes the
+// partial-write gap where a failing op leaves a newly created file orphaned.
 // The fs parameter is threaded through for future use by write ops.
 func Apply(plan InstallPlan, fs fsutil.FileSystem, store *backup.Store, binaryVersion string) (ApplyResult, error) {
+	// --- Phase 0: pre-flight validation ---
+	// Every write op must declare a SnapPath so the pre-snapshot covers it.
+	for _, t := range plan.Targets {
+		if t.Skip || t.Op == nil {
+			continue
+		}
+		if t.SnapPath == "" {
+			return ApplyResult{}, fmt.Errorf(
+				"apply: target %s/%s has Op but empty SnapPath — every write op must declare a SnapPath for pre-snapshot coverage",
+				t.Harness.Name(), t.Component.String(),
+			)
+		}
+	}
+
 	// --- Phase 1: collect snapshot targets ---
 	var snapTargets []backup.SnapshotTarget
 	for _, t := range plan.Targets {
 		if t.Skip || t.Op == nil {
 			continue
 		}
-		// SnapPath is the file path this op will write; it may be empty for
-		// ops that don't know their path at plan time (e.g. multi-file ops in
-		// later slices). Only non-empty paths are included in the pre-snapshot.
-		if t.SnapPath != "" {
-			snapTargets = append(snapTargets, backup.SnapshotTarget{
-				Harness:  t.Harness.Name(),
-				OrigPath: t.SnapPath,
-			})
-		}
+		snapTargets = append(snapTargets, backup.SnapshotTarget{
+			Harness:  t.Harness.Name(),
+			OrigPath: t.SnapPath,
+		})
 	}
 
 	// Take the backup snapshot (even if snapTargets is empty — zero-file snapshot

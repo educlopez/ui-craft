@@ -25,10 +25,15 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/educlopez/ui-craft/cli/fsutil"
 )
+
+// maxExtractFileBytes caps how many bytes are read from any single tar entry
+// during extraction to prevent gzip-bomb decompression attacks.
+const maxExtractFileBytes = 64 << 20 // 64 MiB
 
 // DefaultRetentionCount is the number of unpinned snapshots kept by Prune.
 const DefaultRetentionCount = 5
@@ -101,7 +106,12 @@ type Clock func() time.Time
 type HomeResolver func() (string, error)
 
 // Store manages a directory of timestamped snapshots.
+//
+// mu serialises mutating operations (Snapshot, Prune, Restore, deleteSnapshot)
+// so that concurrent callers cannot produce duplicate IDs or corrupt the
+// snapshot directory.
 type Store struct {
+	mu           sync.Mutex
 	root         string
 	fs           fsutil.FileSystem
 	clock        Clock
@@ -142,6 +152,9 @@ type archiveEntry struct {
 // If the resulting snapshot is identical to the most-recent unpinned snapshot
 // (per IsDuplicate), the existing ID is returned and no new snapshot is created.
 func (s *Store) Snapshot(targets []SnapshotTarget, binaryVersion string, source Source) (SnapshotID, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	now := s.clock()
 	// Build a stable snapshot ID: ISO-8601 compact + nanoseconds for uniqueness.
 	id := SnapshotID(now.UTC().Format("20060102T150405") + fmt.Sprintf("-%09d", now.Nanosecond()))
@@ -230,6 +243,9 @@ func (s *Store) Snapshot(targets []SnapshotTarget, binaryVersion string, source 
 // (symlink-resolved). Every SavedPath is validated to resolve under the backup
 // root. Entries that fail validation are rejected with an error.
 func (s *Store) Restore(id SnapshotID) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	snapDir := filepath.Join(s.root, string(id))
 	manifest, err := s.readManifest(snapDir)
 	if err != nil {
@@ -260,7 +276,9 @@ func (s *Store) Restore(id SnapshotID) error {
 
 		if !fm.ExistedBefore {
 			// File was created by the plan — delete it on rollback.
-			_ = s.fs.Remove(fm.OrigPath) // ignore not-exist errors
+			if err := s.fs.Remove(fm.OrigPath); err != nil && !errors.Is(err, fs.ErrNotExist) {
+				return fmt.Errorf("backup: remove created file %s: %w", fm.OrigPath, err)
+			}
 			continue
 		}
 
@@ -288,7 +306,10 @@ func (s *Store) Restore(id SnapshotID) error {
 // Prune deletes the oldest unpinned snapshots beyond keep. Pinned snapshots
 // are never deleted. keep=DefaultRetentionCount (5) is the standard value.
 func (s *Store) Prune(keep int) error {
-	metas, err := s.List()
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	metas, err := s.listLocked()
 	if err != nil {
 		return fmt.Errorf("backup: prune list: %w", err)
 	}
@@ -307,7 +328,7 @@ func (s *Store) Prune(keep int) error {
 	// Delete from the front (oldest) until we are at or below keep.
 	excess := len(unpinned) - keep
 	for i := 0; i < excess; i++ {
-		if err := s.deleteSnapshot(unpinned[i].ID); err != nil {
+		if err := s.deleteSnapshotLocked(unpinned[i].ID); err != nil {
 			return fmt.Errorf("backup: prune delete %s: %w", unpinned[i].ID, err)
 		}
 	}
@@ -326,6 +347,12 @@ func (s *Store) Unpin(id SnapshotID) error {
 
 // List returns a summary of all snapshots, sorted newest-first.
 func (s *Store) List() ([]SnapshotMeta, error) {
+	return s.listLocked()
+}
+
+// listLocked is the lock-free internal implementation of List. Call it only
+// when the caller already holds s.mu.
+func (s *Store) listLocked() ([]SnapshotMeta, error) {
 	entries, err := listSnapshotDirs(s.fs, s.root)
 	if err != nil {
 		return nil, err
@@ -368,8 +395,9 @@ func (s *Store) Latest() (SnapshotID, error) {
 // --- internal helpers ---
 
 // isDuplicate returns true if checksum matches the most-recent unpinned snapshot.
+// Must only be called while s.mu is held (called from Snapshot).
 func (s *Store) isDuplicate(checksum string) (bool, SnapshotID, error) {
-	metas, err := s.List()
+	metas, err := s.listLocked()
 	if err != nil {
 		return false, "", err
 	}
@@ -421,12 +449,19 @@ func (s *Store) setPinned(id SnapshotID, pinned bool) error {
 }
 
 // deleteSnapshot removes the snapshot directory and all its contents.
+// It acquires s.mu; do NOT call from code that already holds s.mu.
 func (s *Store) deleteSnapshot(id SnapshotID) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.deleteSnapshotLocked(id)
+}
+
+// deleteSnapshotLocked removes the snapshot directory recursively.
+// Must only be called while s.mu is held.
+// RemoveAll is used so that a directory with extra/unexpected files still prunes cleanly.
+func (s *Store) deleteSnapshotLocked(id SnapshotID) error {
 	snapDir := filepath.Join(s.root, string(id))
-	// Remove both files then the directory.
-	_ = s.fs.Remove(filepath.Join(snapDir, "snapshot.tar.gz"))
-	_ = s.fs.Remove(filepath.Join(snapDir, "manifest.json"))
-	return s.fs.Remove(snapDir)
+	return s.fs.RemoveAll(snapDir)
 }
 
 // listSnapshotDirs returns the names of all subdirectories in root.
@@ -463,6 +498,13 @@ func sanitizeSavedPath(harness, origPath string) string {
 
 // computeChecksum returns the SHA-256 hex digest of the sorted
 // "path:filehash\n" pairs. Zero-file case returns SHA-256 of empty string.
+//
+// Finding 16 (by design — not a bug): tombstone entries (ExistedBefore=false,
+// content=nil) contribute sha256("") to the checksum. This is intentional: the
+// snapshot records which files were absent before the plan, and the absence of a
+// file is a stable, hash-able fact. Two snapshots with the same set of absent
+// files and the same content for present files will produce the same checksum and
+// correctly deduplicate. Changing this would break dedup semantics.
 func computeChecksum(entries []archiveEntry) string {
 	// Collect path:filehash pairs.
 	type pair struct {
@@ -539,6 +581,14 @@ func (b *byteBuffer) Write(p []byte) (int, error) {
 
 // extractTarGz reads a tar.gz from the filesystem and returns a map of
 // archive-relative path → file contents.
+//
+// Security hardening applied:
+//   - Only tar.TypeReg (regular file) entries are accepted; symlinks, hardlinks,
+//     directories, and device entries are silently skipped to prevent abuse.
+//   - Each entry name is validated via underRoot against a synthetic root "." to
+//     detect path traversal (absolute paths or entries starting with "..").
+//   - Each entry is read through an io.LimitReader capped at maxExtractFileBytes
+//     to prevent gzip-bomb decompression attacks.
 func extractTarGz(filesystem fsutil.FileSystem, tarPath string) (map[string][]byte, error) {
 	f, err := filesystem.Open(tarPath)
 	if err != nil {
@@ -562,9 +612,26 @@ func extractTarGz(filesystem fsutil.FileSystem, tarPath string) (map[string][]by
 		if err != nil {
 			return nil, err
 		}
-		data, err := io.ReadAll(tr)
+
+		// Skip non-regular entries (dirs, symlinks, hardlinks, etc.) to prevent
+		// symlink-based zip-slip and directory-creation attacks.
+		if hdr.Typeflag != tar.TypeReg {
+			continue
+		}
+
+		// Reject absolute paths and path traversal in entry names.
+		if filepath.IsAbs(hdr.Name) {
+			return nil, fmt.Errorf("backup: tar entry %q has absolute path", hdr.Name)
+		}
+		if _, err := underRoot(".", hdr.Name); err != nil {
+			return nil, fmt.Errorf("backup: tar entry %q escapes archive root: %w", hdr.Name, err)
+		}
+
+		// Limit per-entry read to prevent gzip-bomb decompression.
+		limited := io.LimitReader(tr, maxExtractFileBytes)
+		data, err := io.ReadAll(limited)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("backup: read tar entry %q: %w", hdr.Name, err)
 		}
 		result[hdr.Name] = data
 	}
@@ -580,20 +647,70 @@ func resolvedHomeDir() (string, error) {
 	return filepath.EvalSymlinks(home)
 }
 
-// validateUnderHome checks that path resolves under homeDir.
+// validateUnderHome checks that path resolves under homeDir after symlink
+// resolution. Symlink-resolution prevents a symlink inside HOME pointing
+// outside HOME (e.g. ~/escape → /etc) from bypassing the check.
+//
+// Both homeDir and the candidate path are resolved consistently:
+//   - homeDir is itself resolved via EvalSymlinks (best-effort).
+//   - The candidate is resolved via resolveCandidate (walks up to the deepest
+//     existing ancestor then reconstructs the suffix).
+//
+// Resolving homeDir ensures the comparison is correct on systems where the home
+// directory path itself contains symlinks (e.g. macOS /home → /System/Volumes/Data/home).
 func validateUnderHome(path, homeDir string) error {
-	clean := filepath.Clean(path)
-	if !strings.HasPrefix(clean, homeDir+string(filepath.Separator)) && clean != homeDir {
+	// Resolve both homeDir and the candidate via the same ancestor-walk algorithm
+	// so that symlinks at any level of the path hierarchy are treated consistently.
+	// This prevents a path like ~/escape→/etc from appearing "inside" HOME.
+	resolvedHome, homeErr := resolveCandidate(homeDir)
+	if homeErr != nil {
+		// homeDir itself cannot be resolved — fall back to the raw value.
+		resolvedHome = filepath.Clean(homeDir)
+	}
+
+	resolved, err := resolveCandidate(path)
+	if err != nil {
+		// Could not resolve even a parent of the candidate — fall back to Clean.
+		resolved = filepath.Clean(path)
+	}
+
+	if !strings.HasPrefix(resolved, resolvedHome+string(filepath.Separator)) && resolved != resolvedHome {
 		return fmt.Errorf("path %q escapes home directory %q", path, homeDir)
 	}
 	return nil
 }
 
-// validateUnderRoot checks that savedPath does not contain path traversal sequences.
-func validateUnderRoot(savedPath, _ string) error {
-	// savedPath is archive-relative — guard against ".." traversal only.
-	if strings.Contains(savedPath, "..") {
-		return fmt.Errorf("saved path %q contains path traversal", savedPath)
+// resolveCandidate attempts to symlink-resolve path. If the path does not
+// exist, it walks upward through parent directories until it finds one that
+// exists and can be resolved, then appends the unresolved suffix.
+func resolveCandidate(path string) (string, error) {
+	clean := filepath.Clean(path)
+	if resolved, err := filepath.EvalSymlinks(clean); err == nil {
+		return resolved, nil
+	}
+	// Walk up to find the deepest existing ancestor.
+	suffix := filepath.Base(clean)
+	parent := filepath.Dir(clean)
+	for parent != clean {
+		if resolved, err := filepath.EvalSymlinks(parent); err == nil {
+			return filepath.Join(resolved, suffix), nil
+		}
+		suffix = filepath.Join(filepath.Base(parent), suffix)
+		next := filepath.Dir(parent)
+		if next == parent {
+			break
+		}
+		parent = next
+	}
+	return "", fmt.Errorf("cannot resolve %q or any ancestor", path)
+}
+
+// validateUnderRoot checks that savedPath resolves under root using the
+// underRoot helper. The _ placeholder is intentionally replaced with the
+// real root parameter so that traversal attacks are rejected correctly.
+func validateUnderRoot(savedPath, root string) error {
+	if _, err := underRoot(root, savedPath); err != nil {
+		return fmt.Errorf("saved path %q escapes backup root %q: %w", savedPath, root, err)
 	}
 	return nil
 }
