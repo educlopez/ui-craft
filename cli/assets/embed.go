@@ -56,15 +56,6 @@ func ArtFS() fs.FS {
 	return sub
 }
 
-// DesignMemoryTemplate returns the embedded sub-FS for the named design-memory
-// template file (relative to templates/, e.g. "brief.md", "surfaces/example.md").
-// Returns nil when the file does not exist in the embedded templates subtree.
-// Use TemplateFS() to walk the full tree; this helper is for targeted single-file
-// access (e.g. when a caller wants to read one template's bytes directly).
-func DesignMemoryTemplate(name string) ([]byte, error) {
-	return templatesFS.ReadFile("templates/" + name)
-}
-
 // MirrorVersion returns the version stamp embedded in mirrors/VERSION.
 // Returns "unknown" if the file is absent or unreadable.
 func MirrorVersion() string {

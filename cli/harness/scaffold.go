@@ -94,12 +94,6 @@ func ScaffoldDesignMemory(w fsutil.FileSystem, templateFS fs.FS, projectDir stri
 		return ScaffoldResult{}, err
 	}
 
-	// If no template files were found (empty templateFS), allExisted stays true
-	// but changes is empty — treat as already-scaffolded (no-op).
-	if len(changes) > 0 && !allExisted {
-		// At least one file was created.
-	}
-
 	return ScaffoldResult{
 		Changes:    changes,
 		AllExisted: allExisted,

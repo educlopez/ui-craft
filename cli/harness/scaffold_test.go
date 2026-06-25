@@ -26,7 +26,7 @@ func fixtureTemplateFS() fs.FS {
 		"patterns.md": &fstest.MapFile{
 			Data: []byte("# Patterns\n"),
 		},
-		"surfaces/example.md": &fstest.MapFile{
+		"surfaces/_example.md": &fstest.MapFile{
 			Data: []byte("# {Surface Name}\n\n## Layout\n\n## Components\n\n## Notes\n"),
 		},
 	}
@@ -71,7 +71,7 @@ func TestScaffold_firstTime(t *testing.T) {
 		".ui-craft/tokens.md",
 		".ui-craft/decisions.md",
 		".ui-craft/patterns.md",
-		".ui-craft/surfaces/example.md",
+		".ui-craft/surfaces/_example.md",
 	}
 	for _, rel := range expectedFiles {
 		abs := filepath.Join(projectDir, rel)
@@ -143,7 +143,7 @@ func TestScaffold_fullyExists(t *testing.T) {
 	// Pre-populate all template files.
 	uicraftDir := filepath.Join(projectDir, ".ui-craft")
 	_ = mem.MkdirAll(filepath.Join(uicraftDir, "surfaces"), 0o755)
-	for _, name := range []string{"brief.md", "tokens.md", "decisions.md", "patterns.md", "surfaces/example.md"} {
+	for _, name := range []string{"brief.md", "tokens.md", "decisions.md", "patterns.md", "surfaces/_example.md"} {
 		path := filepath.Join(uicraftDir, filepath.FromSlash(name))
 		if _, err := fsutil.WriteFileAtomic(mem, path, []byte("# existing\n"), 0o644); err != nil {
 			t.Fatalf("setup: write %s: %v", name, err)

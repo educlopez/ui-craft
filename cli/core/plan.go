@@ -2,6 +2,7 @@ package core
 
 import (
 	"io/fs"
+	"path/filepath"
 
 	"github.com/educlopez/ui-craft/cli/component"
 	"github.com/educlopez/ui-craft/cli/fsutil"
@@ -76,6 +77,10 @@ type MirrorProvider func(harnessName string) fs.FS
 // returns nil, the target is marked Skip.
 // The filesystem parameter is the FileSystem implementation to use for writes.
 // projectDir is the target project directory (--dir flag value or cwd).
+// NOTE: templateProvider must return the templates/-rooted sub-FS (i.e.
+// assets.TemplateFS(), not the raw embed.FS). If the raw embed.FS were used,
+// ScaffoldDesignMemory would write files under a "templates/" prefix inside
+// .ui-craft/, producing wrong destination paths.
 func Plan(detected []DetectedHarness, selected []component.Component, filesystem fsutil.FileSystem, mirrorProvider MirrorProvider, templateProvider TemplateProvider, projectDir string) InstallPlan {
 	var targets []ComponentTarget
 	for _, dh := range detected {
@@ -160,7 +165,8 @@ func Plan(detected []DetectedHarness, selected []component.Component, filesystem
 					dir = "."
 				}
 				w := filesystem
-				snapPath := dir + "/.ui-craft"
+				// filepath.Join avoids platform-specific string concatenation.
+				snapPath := filepath.Join(dir, ".ui-craft")
 				target.SnapPath = snapPath
 				target.Op = func() (harness.Change, error) {
 					result, err := harness.ScaffoldDesignMemory(w, tmplFS, dir)
@@ -175,9 +181,16 @@ func Plan(detected []DetectedHarness, selected []component.Component, filesystem
 							break
 						}
 					}
+					// ExistedBefore is always true for the aggregate Change so that
+					// rollback does NOT wholesale-RemoveAll the .ui-craft/ directory.
+					// The backup store's per-file snapshot metadata governs which
+					// individual files get deleted on restore (only those with
+					// ExistedBefore=false in the snapshot, i.e. files created this run).
+					// Pre-existing user files (ExistedBefore=true in snapshot) are
+					// restored to their original content and never deleted.
 					return harness.Change{
 						FilePath:      snapPath,
-						ExistedBefore: result.AllExisted,
+						ExistedBefore: true,
 						Changed:       anyChanged,
 					}, nil
 				}
