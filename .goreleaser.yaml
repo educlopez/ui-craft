@@ -7,8 +7,8 @@
 # and copy mirrors into cli/assets/mirrors/ BEFORE goreleaser executes. This
 # file does not enforce that — the workflow does (see .github/workflows/cli-release.yml).
 #
-# Homebrew tap:  educlopez/homebrew-ui-craft  (formula: ui-craft)
-# Scoop bucket:  educlopez/scoop-ui-craft     (manifest: ui-craft)
+# Homebrew tap:  educlopez/homebrew-tap   (shared — also duck-ai + other tools)
+# Scoop bucket:  educlopez/scoop-bucket    (shared)
 # Both use HOMEBREW_TAP_TOKEN (same token for homebrew + scoop push).
 
 version: 2
@@ -79,9 +79,10 @@ homebrew_casks:
       - ui-craft
     repository:
       owner: educlopez
-      name: homebrew-ui-craft
+      name: homebrew-tap
       token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
-    # Installs as: brew install --cask educlopez/ui-craft/ui-craft
+    # Shared tap (also hosts duck-ai and other educlopez tools).
+    # Installs as: brew install --cask educlopez/tap/ui-craft
     url:
       template: "https://github.com/educlopez/ui-craft/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
     commit_author:
@@ -99,7 +100,7 @@ scoops:
   - name: ui-craft
     repository:
       owner: educlopez
-      name: scoop-ui-craft
+      name: scoop-bucket
       token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
     url_template: "https://github.com/educlopez/ui-craft/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
     commit_author:

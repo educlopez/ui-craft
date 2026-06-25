@@ -90,13 +90,13 @@ The `ui-craft` CLI binary detects your installed harnesses and wires skill+comma
 
 **macOS:**
 ```bash
-brew install educlopez/ui-craft/ui-craft
+brew install --cask educlopez/tap/ui-craft
 ```
 
 **Windows (Scoop):**
 ```powershell
-scoop bucket add ui-craft https://github.com/educlopez/scoop-ui-craft
-scoop install ui-craft
+scoop bucket add educlopez https://github.com/educlopez/scoop-bucket
+scoop install educlopez/ui-craft
 ```
 
 **Then run:**

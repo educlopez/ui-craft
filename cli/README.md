@@ -11,14 +11,14 @@ A static Go binary that installs and configures the [UI Craft](https://skills.sm
 ### macOS
 
 ```bash
-brew install educlopez/ui-craft/ui-craft
+brew install --cask educlopez/tap/ui-craft
 ```
 
 ### Windows (Scoop)
 
 ```powershell
-scoop bucket add ui-craft https://github.com/educlopez/scoop-ui-craft
-scoop install ui-craft
+scoop bucket add educlopez https://github.com/educlopez/scoop-bucket
+scoop install educlopez/ui-craft
 ```
 
 ### Direct download
