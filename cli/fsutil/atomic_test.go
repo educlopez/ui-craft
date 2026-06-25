@@ -141,6 +141,52 @@ func TestWriteFileAtomic_OsFS_changesWhenDifferent(t *testing.T) {
 	}
 }
 
+// TestWriteFileAtomic_OsFS_cleanupOnFailure verifies that when the real-disk
+// atomic write fails after creating the temp file (simulated by targeting a
+// path whose parent directory doesn't exist so os.Rename fails), no leftover
+// temp file remains — the deferred cleanup in writeAtomicOS fired correctly.
+func TestWriteFileAtomic_OsFS_cleanupOnFailure(t *testing.T) {
+	dir := t.TempDir()
+	osfs := fsutil.OsFS{}
+
+	// Inject failure at the rename stage: create a directory, do one successful
+	// write into it, then make the directory read-only (0555) so the subsequent
+	// write can create a temp file but the final os.Rename is denied by the OS.
+	// The deferred cleanup in writeAtomicOS must remove the temp file.
+	rodir := dir + "/readonly"
+	if err := os.Mkdir(rodir, 0o755); err != nil {
+		t.Fatalf("setup rodir: %v", err)
+	}
+	targetPath := rodir + "/file.txt"
+	// First write succeeds to create the file.
+	if _, err := fsutil.WriteFileAtomic(osfs, targetPath, []byte("initial"), 0o644); err != nil {
+		t.Fatalf("initial write: %v", err)
+	}
+	// Make the directory read-only so that rename (which requires write perms on
+	// the dir) fails — the temp file created in the same dir should be cleaned up.
+	if err := os.Chmod(rodir, 0o555); err != nil {
+		t.Fatalf("chmod rodir: %v", err)
+	}
+	t.Cleanup(func() { os.Chmod(rodir, 0o755) }) // restore so TempDir cleanup works
+
+	_, err := fsutil.WriteFileAtomic(osfs, targetPath, []byte("updated"), 0o644)
+	if err == nil {
+		// On some systems (e.g. running as root) the chmod trick doesn't block writes.
+		t.Skip("could not trigger rename failure (possibly running as root); skipping cleanup check")
+	}
+
+	// Assert no .ui-craft-tmp-* temp files remain in the directory.
+	entries, readErr := os.ReadDir(rodir)
+	if readErr != nil {
+		t.Fatalf("ReadDir after failure: %v", readErr)
+	}
+	for _, e := range entries {
+		if e.Name() != "file.txt" {
+			t.Errorf("unexpected leftover file in dir after atomic-write failure: %s", e.Name())
+		}
+	}
+}
+
 // renameErrFS wraps MemFS and makes Rename fail, used to test error paths.
 type renameErrFS struct {
 	*fsutil.MemFS

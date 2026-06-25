@@ -96,6 +96,8 @@ func mirrorsFSNonEmpty() bool {
 // TODO(slice5): Remove the placeholder guard once CI sync step is wired.
 // At that point, replace the mirrorsFSNonEmpty check with a stricter assertion
 // that each expected harness subdirectory is present and non-empty.
+//
+//nolint:unused
 func assertMirrorsFreshSeam() {
 	// During development (Slices 1–4) mirrors/ contains only placeholders,
 	// so we skip the assertion. The CI gate is enforced separately.
@@ -104,7 +106,10 @@ func assertMirrorsFreshSeam() {
 	//   if !mirrorsFSNonEmpty() {
 	//       panic("assets: mirrors/ subtree is empty — run sync-harnesses.mjs before go build (gotcha #5)")
 	//   }
-	_ = mirrorsFSNonEmpty // keep the symbol reachable so linters don't complain
+	if mirrorsFSNonEmpty() {
+		// Real content detected — CI sync step ran successfully.
+		// No action needed during Slices 1–4; this branch is a no-op placeholder.
+	}
 }
 
 func init() {

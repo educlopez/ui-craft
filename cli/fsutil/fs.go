@@ -34,11 +34,22 @@ type FileSystem interface {
 	Open(name string) (io.ReadCloser, error)
 }
 
+// realDiskFS is a seam interface that any real-disk FileSystem satisfies.
+// WriteFileAtomic asserts this instead of the concrete OsFS type so that
+// decorator wrappers around OsFS still receive the full fsync atomic path.
+type realDiskFS interface {
+	realDisk() bool
+}
+
 // OsFS is a FileSystem implementation backed by the real OS stdlib.
 type OsFS struct{}
 
 // Compile-time check: OsFS must satisfy FileSystem.
 var _ FileSystem = OsFS{}
+
+// realDisk satisfies the realDiskFS interface, signalling that OsFS writes to
+// the real OS filesystem and WriteFileAtomic should use the fsync path.
+func (OsFS) realDisk() bool { return true }
 
 func (OsFS) Stat(name string) (fs.FileInfo, error) { return os.Stat(name) }
 

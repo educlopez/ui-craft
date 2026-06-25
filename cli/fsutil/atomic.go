@@ -47,7 +47,10 @@ func WriteFileAtomic(filesystem FileSystem, path string, data []byte, perm fs.Fi
 	}
 
 	// --- write through real OS for fsync; fall back for in-memory FS ---
-	if _, ok := filesystem.(OsFS); ok {
+	// Assert the realDiskFS interface instead of the concrete OsFS type so that
+	// any decorator wrapping OsFS (e.g. a logging or metering layer) still gets
+	// the full fsync atomic path rather than silently falling to temp+rename.
+	if _, ok := filesystem.(realDiskFS); ok {
 		return writeAtomicOS(path, data, perm)
 	}
 

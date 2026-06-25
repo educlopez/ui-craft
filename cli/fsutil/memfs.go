@@ -104,6 +104,8 @@ func (m *MemFS) WriteFile(name string, data []byte, perm fs.FileMode) error {
 	return nil
 }
 
+// NOTE: MemFS models Unix-style paths; Windows absolute paths (C:\) are not
+// faithfully modeled. Test infra only; revisit if Windows MemFS tests are added.
 func (m *MemFS) MkdirAll(path string, _ fs.FileMode) error {
 	key := m.clean(path)
 	m.mu.Lock()
@@ -126,6 +128,8 @@ func (m *MemFS) MkdirAll(path string, _ fs.FileMode) error {
 	return nil
 }
 
+// NOTE: MemFS atomic path uses a fixed ".tmp" suffix — concurrent same-path
+// writes would collide on the temp name. MemFS is test-only/single-threaded.
 func (m *MemFS) Rename(oldpath, newpath string) error {
 	oldKey := m.clean(oldpath)
 	newKey := m.clean(newpath)

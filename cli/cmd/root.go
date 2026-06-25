@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"os"
+	"sync"
 
 	"github.com/spf13/cobra"
 )
@@ -27,10 +28,18 @@ MCP gates, review agents, and design-memory — into the harness's native config
 	SilenceUsage: true,
 }
 
+// versionOnce guards AddCommand so that calling Execute more than once
+// (e.g. in tests that reuse the package-level rootCmd) does not register a
+// duplicate "version" subcommand and trigger cobra's duplicate-command panic.
+var versionOnce sync.Once
+
 // Execute wires the binary version into the root command and runs it.
 func Execute(version string) {
 	// Attach the version subcommand with the build-time version string.
-	rootCmd.AddCommand(newVersionCmd(version))
+	// sync.Once ensures idempotency if Execute is called more than once.
+	versionOnce.Do(func() {
+		rootCmd.AddCommand(newVersionCmd(version))
+	})
 
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)

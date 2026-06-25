@@ -52,9 +52,18 @@ func TestVersionCmd_containsMirrorVersion(t *testing.T) {
 }
 
 func TestVersionCmd_defaultVersionIsDev(t *testing.T) {
-	out := runVersion(t, "dev")
-	if !strings.Contains(out, "dev") {
-		t.Errorf("version output %q should contain 'dev'", out)
+	// Pass a binary version distinct from the mirror version so the test can
+	// verify BOTH are wired correctly.  If binary-version injection breaks, the
+	// output will not contain "v9.9.9-test" and the test will fail.
+	const binaryVersion = "v9.9.9-test"
+	out := runVersion(t, binaryVersion)
+
+	if !strings.Contains(out, binaryVersion) {
+		t.Errorf("version output %q does not contain binary version %q", out, binaryVersion)
+	}
+	// Mirror version label must also be present (contents come from assets/mirrors/VERSION).
+	if !strings.Contains(out, "mirror:") {
+		t.Errorf("version output %q does not contain 'mirror:' label", out)
 	}
 }
 

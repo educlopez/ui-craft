@@ -22,10 +22,3 @@ func newVersionCmd(version string) *cobra.Command {
 		},
 	}
 }
-
-// RegisterVersionCmdForTest is a test helper that adds the version subcommand
-// to an externally constructed root command without running os.Exit.
-// It is exported only for use in version_test.go.
-func RegisterVersionCmdForTest(root *cobra.Command, version string) {
-	root.AddCommand(newVersionCmd(version))
-}
