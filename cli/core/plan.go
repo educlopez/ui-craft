@@ -214,6 +214,10 @@ func Plan(detected []DetectedHarness, selected []component.Component, filesystem
 				// SnapPaths is set to the agents directory so the backup store
 				// can snapshot it; rollback removes only agent files created by
 				// this run (ExistedBefore=false), never the user's other agents.
+				// On a fresh install where the agents dir did not previously exist,
+				// the aggregate Change reflects ExistedBefore=false so callers know
+				// the directory itself was created by this run (and rollback will
+				// remove it via the tombstone entry in the backup store).
 				var agentsFS fs.FS
 				if agentProvider != nil {
 					agentsFS = agentProvider(dh.Harness.Name())
@@ -228,10 +232,17 @@ func Plan(detected []DetectedHarness, selected []component.Component, filesystem
 				agentsDir := dh.Harness.ConfigPaths().AgentsDir
 				h := dh.Harness
 				w := filesystem
+				// Check whether the agents directory already exists before wiring the
+				// write op. This result is captured in the aggregate Change so callers
+				// receive an accurate ExistedBefore value. The backup store's per-file
+				// snapshot metadata independently governs rollback behaviour.
+				_, statErr := filesystem.Stat(agentsDir)
+				agentsDirExisted := statErr == nil
 				// Snapshot the agents directory so rollback can remove only the
 				// agent files we created, leaving the user's other agents intact.
+				// SnapPaths supersedes SnapPath; the deprecated SnapPath field is
+				// intentionally omitted here (see SnapPath deprecation notice).
 				target.SnapPaths = []string{agentsDir}
-				target.SnapPath = agentsDir
 				aFS := agentsFS
 				target.Op = func() (harness.Change, error) {
 					changes, err := h.WriteAgents(w, aFS)
@@ -248,7 +259,7 @@ func Plan(detected []DetectedHarness, selected []component.Component, filesystem
 					}
 					return harness.Change{
 						FilePath:      agentsDir,
-						ExistedBefore: true, // directory may already exist; rollback is per-file
+						ExistedBefore: agentsDirExisted,
 						Changed:       anyChanged,
 						Component:     component.ReviewAgents.String(),
 						HarnessName:   h.Name(),

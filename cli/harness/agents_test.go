@@ -7,6 +7,7 @@ import (
 	"testing"
 	"testing/fstest"
 
+	"github.com/educlopez/ui-craft/cli/assets"
 	"github.com/educlopez/ui-craft/cli/component"
 	"github.com/educlopez/ui-craft/cli/fsutil"
 	"github.com/educlopez/ui-craft/cli/harness"
@@ -235,6 +236,98 @@ func TestWriteAgents_nilFSReturnsUnsupported(t *testing.T) {
 				t.Errorf("WriteAgents(nil fs): got %v; want ErrUnsupported", err)
 			}
 		})
+	}
+}
+
+// claudeOnlyFrontmatterKeys is the set of frontmatter keys that are valid in
+// Claude Code sub-agent format but must NOT appear in OpenCode agent files.
+var claudeOnlyFrontmatterKeys = []string{"tools:", "model:", "color:"}
+
+// TestRealEmbeddedAgents_opencodeLacksClaudeKeys verifies the REAL committed
+// OpenCode agent files (assets.Agents("opencode")) do NOT contain Claude-only
+// frontmatter keys. This guards against accidental promotion of Claude-format
+// files into the opencode/ directory.
+func TestRealEmbeddedAgents_opencodeLacksClaudeKeys(t *testing.T) {
+	agentsFS := assets.Agents("opencode")
+	if agentsFS == nil {
+		t.Fatal("assets.Agents(\"opencode\") returned nil — opencode agent definitions not embedded")
+	}
+
+	const minBodyLength = 50 // non-trivial instruction body
+
+	err := fs.WalkDir(agentsFS, ".", func(path string, d fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if d.IsDir() || filepath.Ext(d.Name()) != ".md" {
+			return nil
+		}
+
+		data, readErr := fs.ReadFile(agentsFS, path)
+		if readErr != nil {
+			return readErr
+		}
+		content := string(data)
+
+		// Assert no Claude-only frontmatter keys appear in the file.
+		for _, key := range claudeOnlyFrontmatterKeys {
+			if strings.Contains(content, key) {
+				t.Errorf("opencode agent %s contains Claude-only key %q (must not appear in OpenCode format)", path, key)
+			}
+		}
+
+		// Assert non-trivial body length (agent must have meaningful instructions).
+		if len(content) < minBodyLength {
+			t.Errorf("opencode agent %s body too short (%d bytes < %d) — likely empty or stub", path, len(content), minBodyLength)
+		}
+
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("WalkDir opencode agents: %v", err)
+	}
+}
+
+// TestRealEmbeddedAgents_claudeHasRequiredKeys verifies the REAL committed
+// Claude agent files (assets.Agents("claude")) DO contain the required Claude
+// sub-agent frontmatter keys (tools, model, color) and have a non-trivial body.
+func TestRealEmbeddedAgents_claudeHasRequiredKeys(t *testing.T) {
+	agentsFS := assets.Agents("claude")
+	if agentsFS == nil {
+		t.Fatal("assets.Agents(\"claude\") returned nil — claude agent definitions not embedded")
+	}
+
+	requiredKeys := []string{"tools:", "model:", "color:"}
+	const minBodyLength = 50
+
+	err := fs.WalkDir(agentsFS, ".", func(path string, d fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if d.IsDir() || filepath.Ext(d.Name()) != ".md" {
+			return nil
+		}
+
+		data, readErr := fs.ReadFile(agentsFS, path)
+		if readErr != nil {
+			return readErr
+		}
+		content := string(data)
+
+		for _, key := range requiredKeys {
+			if !strings.Contains(content, key) {
+				t.Errorf("claude agent %s missing required frontmatter key %q", path, key)
+			}
+		}
+
+		if len(content) < minBodyLength {
+			t.Errorf("claude agent %s body too short (%d bytes < %d) — likely empty or stub", path, len(content), minBodyLength)
+		}
+
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("WalkDir claude agents: %v", err)
 	}
 }
 
