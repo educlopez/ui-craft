@@ -1,5 +1,24 @@
 # Versions
 
+## v1.0.0 (2026-06-25) — the ui-craft system: a cross-harness installer CLI
+
+ui-craft graduates from "a skill you install" to **a system you install**. New: a single static Go binary (`ui-craft`) that detects your AI coding harness and wires the whole system into its native config — the experience that was Claude-Code-only is now cross-harness in one command.
+
+**The CLI (`cli/`, Go, distributed via Homebrew + Scoop):**
+
+- **`install`** — detects Claude Code / Cursor / Codex / Gemini / OpenCode, à-la-carte component selection (interactive Bubble Tea TUI or `--yes`), wires each into that harness's native config.
+- **Components**: skill+commands (every harness, embedded mirrors) · MCP gates (`npx ui-craft-mcp`, merge-not-clobber into each harness's MCP config) · review agents (Claude Code + OpenCode native sub-agents) · design memory (the typed `.ui-craft/` directory).
+- **`update`** — replays your saved choices (`~/.ui-craft/state.json`) at the new embedded version, preserving your edits.
+- **`backup` / `rollback`** — transactional: every install snapshots first; any mid-plan failure rolls back the whole plan (tar.gz snapshots, SHA-256 dedup, retention, symlink-safe restore).
+- **Aren splash** + single-accent TUI (we dogfood our own anti-slop).
+- Hardened across a per-slice adversarial review: zip-slip + path-traversal closed, directory-rollback never deletes the user's other skills/agents, config merges never clobber the user's other MCP servers or TOML tables, no parity false-positives.
+
+**Distribution layers:** the native Claude plugin (v0.34) + `npx skills add` + `ui-craft-detect` / `ui-craft-mcp` on npm all remain — discoverability/SEO surfaces. The CLI is the lifecycle + cross-harness wiring core. `goreleaser` (validated) ships macOS/Linux/Windows × amd64/arm64.
+
+**Design memory:** the single `.ui-craft/brief.md` evolves into a typed directory — `brief.md` + `tokens.md` (always-loaded), `decisions.md` / `patterns.md` / `surfaces/*.md` (lazy). Plain markdown, project-local, committable; the skill's load contract is documented in SKILL.md.
+
+Built as the `v1-cli-system` spec-driven change (10 slices). Implementation lives in `cli/`; the binary publishes to `educlopez/homebrew-ui-craft` + `educlopez/scoop-ui-craft`.
+
 ## v0.34.0 (2026-06-25) — one install = the whole system (plugin bundles the MCP)
 
 Closes the gap where the headline `/plugin install` only delivered the skill + commands + agents, so the "system" framing didn't match the one-command install. Now one command installs everything on Claude Code.
