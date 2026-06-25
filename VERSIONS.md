@@ -1,5 +1,26 @@
 # Versions
 
+## v0.32.0 (2026-06-25) — UsabilityScore (eval v2, judged dimension)
+
+Adds the usability axis the deterministic UICraftScore can't see — experience friction (confusing flows, missing undo, no feedback) that static analysis misses by definition.
+
+**New — UsabilityScore (0-100 + grade):**
+
+- Rolls the `/heuristic` scorecard (Nielsen's 10 + 6 design laws) into one number: `heuristic_base = round(((mean(nielsen_scores) − 1) / 4) × 100)`, minus `5 × failed_laws`, clamped [0,100]. Same A/B/C/D/F bands as UICraftScore.
+- **Judged, not deterministic** — computed by the host agent from the rubric (zero deps, no API key, works in every harness), so it may vary run to run. By design it lives OUTSIDE the deterministic `evals/quality/score.mjs`.
+- Surfaced by `/heuristic` (new Step 6 + a `## UsabilityScore` output block + optional `--json`). The deterministic score core is untouched.
+
+**Extended quality report (optional combine):**
+
+- UsabilityScore (judged) renders side by side with UICraftScore (deterministic), each labeled for reproducibility. The two are **never averaged** — collapsing reproducible + judged would hide the distinction the deterministic score exists to protect. Gate CI on UICraftScore; use UsabilityScore for review depth.
+
+**Files:**
+
+- `skills/ui-craft/references/heuristics.md` — new "UsabilityScore (0-100)" section: formula, bands, worked example, output schema, extended-report contract.
+- `commands/heuristic.md` — Step 6 compute + Step 7 output adds the UsabilityScore block; description updated.
+- `evals/quality/score.mjs` — docblock notes the deterministic/judged boundary (no code change).
+- README — "UsabilityScore — the judged companion" subsection under the score.
+
 ## v0.31.0 (2026-06-25) — /start front door + system repositioning
 
 Closes the front-door gap surfaced by the holistic product analysis: ui-craft grew from a skill into a system (skill + 22 commands + 2 agents + 4 MCP tools + CLI + eval), but newcomers had no single "start here" and the copy everywhere still said "skill".
