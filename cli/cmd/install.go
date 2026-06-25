@@ -104,7 +104,7 @@ var installCmd = &cobra.Command{
 		// Build plan for all components, wiring MCP, SkillCommands, and DesignMemory ops.
 		selected := component.All()
 		osfs := fsutil.OsFS{}
-		plan := core.Plan(detected, selected, osfs, assets.Mirror, assets.TemplateFS, projectDir)
+		plan := core.Plan(detected, selected, osfs, assets.Mirror, assets.Agents, assets.TemplateFS, projectDir)
 
 		// Backup store root: ~/.ui-craft-backups
 		home, _ := os.UserHomeDir()

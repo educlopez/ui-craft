@@ -60,6 +60,15 @@ var mcpServer = harness.MCPServer{
 // FS can be injected.
 type MirrorProvider func(harnessName string) fs.FS
 
+// AgentProvider is a function that returns the embedded fs.FS containing the
+// review agent definitions for the named harness. The returned FS is rooted at
+// the agent definitions directory for that harness (e.g. mirrors/claude/agents/).
+// Returns nil when no agent definitions exist for the harness (e.g. Cursor, Codex,
+// Gemini — which have Supports(ReviewAgents)=false and are already skipped before
+// AgentProvider is called). In production callers pass assets.Agents; in tests a
+// fixture FS can be injected.
+type AgentProvider func(harnessName string) fs.FS
+
 // Plan builds an InstallPlan from the set of detected harnesses and the
 // components the user selected. Targets whose harness does not support the
 // component are marked Skip instead of being removed, so the confirm screen
@@ -75,13 +84,18 @@ type MirrorProvider func(harnessName string) fs.FS
 // template FS returned by templateProvider() and sets SnapPath to the
 // .ui-craft/ subdir inside projectDir. When templateProvider is nil or
 // returns nil, the target is marked Skip.
+// For the ReviewAgents component, Plan wires WriteAgents with the agent FS
+// returned by agentProvider(harness.Name()) and sets SnapPaths to the agents
+// directory so rollback removes only the created agent files, never the user's
+// other agents. When agentProvider is nil or returns nil for a harness, the
+// target is marked Skip.
 // The filesystem parameter is the FileSystem implementation to use for writes.
 // projectDir is the target project directory (--dir flag value or cwd).
 // NOTE: templateProvider must return the templates/-rooted sub-FS (i.e.
 // assets.TemplateFS(), not the raw embed.FS). If the raw embed.FS were used,
 // ScaffoldDesignMemory would write files under a "templates/" prefix inside
 // .ui-craft/, producing wrong destination paths.
-func Plan(detected []DetectedHarness, selected []component.Component, filesystem fsutil.FileSystem, mirrorProvider MirrorProvider, templateProvider TemplateProvider, projectDir string) InstallPlan {
+func Plan(detected []DetectedHarness, selected []component.Component, filesystem fsutil.FileSystem, mirrorProvider MirrorProvider, agentProvider AgentProvider, templateProvider TemplateProvider, projectDir string) InstallPlan {
 	var targets []ComponentTarget
 	for _, dh := range detected {
 		for _, c := range selected {
@@ -194,8 +208,53 @@ func Plan(detected []DetectedHarness, selected []component.Component, filesystem
 						Changed:       anyChanged,
 					}, nil
 				}
+
+			case component.ReviewAgents:
+				// Wire the concrete write op for ReviewAgents (Slice 8).
+				// SnapPaths is set to the agents directory so the backup store
+				// can snapshot it; rollback removes only agent files created by
+				// this run (ExistedBefore=false), never the user's other agents.
+				var agentsFS fs.FS
+				if agentProvider != nil {
+					agentsFS = agentProvider(dh.Harness.Name())
+				}
+				// Nil agentsFS: mark as skip (no agent definitions embedded for this harness).
+				if agentsFS == nil {
+					target.Skip = true
+					target.SkipReason = "review-agents: agent definitions not embedded for " + dh.Harness.Name()
+					targets = append(targets, target)
+					continue
+				}
+				agentsDir := dh.Harness.ConfigPaths().AgentsDir
+				h := dh.Harness
+				w := filesystem
+				// Snapshot the agents directory so rollback can remove only the
+				// agent files we created, leaving the user's other agents intact.
+				target.SnapPaths = []string{agentsDir}
+				target.SnapPath = agentsDir
+				aFS := agentsFS
+				target.Op = func() (harness.Change, error) {
+					changes, err := h.WriteAgents(w, aFS)
+					if err != nil {
+						return harness.Change{}, err
+					}
+					// Aggregate: Changed if any agent file changed or was created.
+					anyChanged := false
+					for _, ch := range changes {
+						if ch.Changed {
+							anyChanged = true
+							break
+						}
+					}
+					return harness.Change{
+						FilePath:      agentsDir,
+						ExistedBefore: true, // directory may already exist; rollback is per-file
+						Changed:       anyChanged,
+						Component:     component.ReviewAgents.String(),
+						HarnessName:   h.Name(),
+					}, nil
+				}
 			}
-			// WriteAgents ops are wired in Slice 8.
 
 			targets = append(targets, target)
 		}

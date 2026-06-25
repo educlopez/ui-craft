@@ -43,7 +43,7 @@ func (s stubHarness) WriteMCP(w fsutil.FileSystem, server harness.MCPServer) (ha
 func (s stubHarness) WriteSkill(w fsutil.FileSystem, mirror fs.FS) (harness.Change, error) {
 	return harness.Change{}, harness.ErrNotImplemented
 }
-func (s stubHarness) WriteAgents(w fsutil.FileSystem) ([]harness.Change, error) {
+func (s stubHarness) WriteAgents(w fsutil.FileSystem, agentsFS fs.FS) ([]harness.Change, error) {
 	return nil, harness.ErrNotImplemented
 }
 
@@ -399,7 +399,7 @@ func TestPlan_skipsUnsupportedComponents(t *testing.T) {
 	}
 	selected := component.All()
 
-	plan := core.Plan(detected, selected, fsutil.NewMemFS(), nil, nil, "")
+	plan := core.Plan(detected, selected, fsutil.NewMemFS(), nil, nil, nil, "")
 
 	for _, t2 := range plan.Targets {
 		if t2.Component == component.ReviewAgents {
@@ -505,7 +505,7 @@ func TestDesignMemory_partialScaffoldRollbackSafety(t *testing.T) {
 	selected := []component.Component{component.DesignMemory}
 
 	tmplFS := fixtureTemplateFS()
-	plan := core.Plan(detected, selected, mem, nil, func() fs.FS { return tmplFS }, projectDir)
+	plan := core.Plan(detected, selected, mem, nil, nil, func() fs.FS { return tmplFS }, projectDir)
 
 	// Append a failing sentinel op to trigger rollback.
 	failPath := filepath.Join("/home/user", "fail-sentinel.json")

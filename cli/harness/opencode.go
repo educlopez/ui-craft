@@ -177,7 +177,21 @@ func (h OpenCodeHarness) WriteSkill(w fsutil.FileSystem, mirror fs.FS) (Change, 
 	return ch, nil
 }
 
-// WriteAgents is not implemented in Slice 2; returns ErrNotImplemented.
-func (h OpenCodeHarness) WriteAgents(w fsutil.FileSystem) ([]Change, error) {
-	return nil, ErrNotImplemented
+// WriteAgents writes the review agent definitions into OpenCode's native agent
+// directory (~/.config/opencode/agent/). Each .md file in agentsFS is written
+// as a separate agent file using WriteFileAtomic (idempotent byte-compare).
+//
+// OpenCode uses a simpler frontmatter schema (name + description only, no tools
+// or color fields). The agent files in mirrors/opencode/agent/ are pre-formatted
+// for OpenCode — the body/instructions are identical to the Claude versions but
+// only the harness-relevant frontmatter keys are present.
+//
+// agentsFS is the sub-FS rooted at mirrors/opencode/agent/. If agentsFS is nil,
+// ErrUnsupported is returned.
+func (h OpenCodeHarness) WriteAgents(w fsutil.FileSystem, agentsFS fs.FS) ([]Change, error) {
+	if agentsFS == nil {
+		return nil, ErrUnsupported
+	}
+	agentsDir := h.ConfigPaths().AgentsDir // ~/.config/opencode/agent/
+	return writeAgentsToDir(w, agentsFS, agentsDir, "opencode")
 }

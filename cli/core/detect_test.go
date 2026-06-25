@@ -46,7 +46,7 @@ func (s stubHarness) WriteSkill(w fsutil.FileSystem, mirror fs.FS) (harness.Chan
 	return harness.Change{}, harness.ErrNotImplemented
 }
 
-func (s stubHarness) WriteAgents(w fsutil.FileSystem) ([]harness.Change, error) {
+func (s stubHarness) WriteAgents(w fsutil.FileSystem, agentsFS fs.FS) ([]harness.Change, error) {
 	return nil, harness.ErrNotImplemented
 }
 

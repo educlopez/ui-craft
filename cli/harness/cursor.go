@@ -144,7 +144,10 @@ func (h CursorHarness) WriteSkill(w fsutil.FileSystem, mirror fs.FS) (Change, er
 	return ch, nil
 }
 
-// WriteAgents is not implemented in Slice 2; returns ErrNotImplemented.
-func (h CursorHarness) WriteAgents(w fsutil.FileSystem) ([]Change, error) {
-	return nil, ErrNotImplemented
+// WriteAgents returns ErrUnsupported. Cursor has no native sub-agent format;
+// core.Plan maps this to a graceful skip notice (exit code 0). Supports(ReviewAgents)
+// returns false, so this method is not called in normal install flows — it is
+// present only to satisfy the Harness interface.
+func (h CursorHarness) WriteAgents(_ fsutil.FileSystem, _ fs.FS) ([]Change, error) {
+	return nil, ErrUnsupported
 }

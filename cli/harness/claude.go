@@ -154,7 +154,18 @@ func (h ClaudeHarness) WriteSkill(w fsutil.FileSystem, mirror fs.FS) (Change, er
 	return ch, nil
 }
 
-// WriteAgents is not implemented in Slice 2; returns ErrNotImplemented.
-func (h ClaudeHarness) WriteAgents(w fsutil.FileSystem) ([]Change, error) {
-	return nil, ErrNotImplemented
+// WriteAgents writes the review agent definitions into Claude Code's native
+// sub-agent directory (~/.claude/agents/). Each .md file in agentsFS is written
+// as a separate agent file using WriteFileAtomic (idempotent byte-compare).
+// The CLI has full-file ownership of each agent file it installs; a pre-existing
+// user agent with a different name is never touched.
+//
+// agentsFS is the sub-FS rooted at mirrors/claude/agents/ (the Claude-format
+// agent definitions). If agentsFS is nil, ErrUnsupported is returned.
+func (h ClaudeHarness) WriteAgents(w fsutil.FileSystem, agentsFS fs.FS) ([]Change, error) {
+	if agentsFS == nil {
+		return nil, ErrUnsupported
+	}
+	agentsDir := h.ConfigPaths().AgentsDir // ~/.claude/agents/
+	return writeAgentsToDir(w, agentsFS, agentsDir, "claude")
 }
