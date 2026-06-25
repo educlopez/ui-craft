@@ -1,11 +1,13 @@
 package cmd
 
 import (
+	"bufio"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/educlopez/ui-craft/cli/assets"
 	"github.com/educlopez/ui-craft/cli/backup"
@@ -25,8 +27,15 @@ var lookPathFn = func(file string) (string, error) {
 	return exec.LookPath(file)
 }
 
+// nativePluginDetectFn is injectable for testing. It checks whether a Claude
+// Code native plugin install is present (Slice 10: plugin-coexistence warning).
+var nativePluginDetectFn = detectNativeClaudePlugin
+
+// stdinScanner is used for reading --force confirmation in non-interactive mode.
+// Tests may replace this with a strings.NewReader-backed scanner.
+var stdinReader = os.Stdin
+
 // installCmd implements the detect → plan → apply pipeline.
-// Slice 2: detect harnesses and print results; plan/apply wired in later slices.
 var installCmd = &cobra.Command{
 	Use:          "install",
 	Short:        "Install ui-craft components into detected AI coding harnesses",
@@ -64,9 +73,9 @@ var installCmd = &cobra.Command{
 			return tui.RunTUI(cmdVersion, projectDir)
 		}
 
-		// Non-interactive path (--yes flag set).
+		// --- Non-interactive path (--yes flag set) ---
+
 		// DetectAll is best-effort: one harness erroring does not abort the rest.
-		// This is a conscious policy: install must be resilient to partial failures.
 		detected := core.DetectAll(harness.All())
 
 		if len(detected) == 0 {
@@ -74,6 +83,24 @@ var installCmd = &cobra.Command{
 			fmt.Fprintf(out, "Supported harnesses: %s\n", strings.Join(supportedHarnessNames, ", "))
 			fmt.Fprintln(out, "Install one of the above tools and re-run `ui-craft install`.")
 			return fmt.Errorf("no harness detected")
+		}
+
+		// --- Plugin coexistence warning (Slice 10) ---
+		// If the Claude Code native plugin is detected, warn the user and require
+		// --force to proceed (or interactive confirmation).
+		forceFlag, _ := cmd.Flags().GetBool("force")
+		claudeDetected := false
+		for _, dh := range detected {
+			if dh.Harness.Name() == "claude" {
+				claudeDetected = true
+				break
+			}
+		}
+		if claudeDetected && nativePluginDetectFn() && !forceFlag {
+			fmt.Fprintln(out, "WARNING: Native Claude Code plugin detected — CLI install may overlap.")
+			fmt.Fprintln(out, "Both installs write to the same skills and agents directories.")
+			fmt.Fprintln(out, "To proceed anyway, re-run with --force.")
+			return fmt.Errorf("native plugin detected: use --force to override")
 		}
 
 		fmt.Fprintln(out, "Detected harnesses:")
@@ -101,7 +128,7 @@ var installCmd = &cobra.Command{
 			}
 		}
 
-		// Build plan for all components, wiring MCP, SkillCommands, and DesignMemory ops.
+		// Build plan for all components.
 		selected := component.All()
 		osfs := fsutil.OsFS{}
 		plan := core.Plan(detected, selected, osfs, assets.Mirror, assets.Agents, assets.TemplateFS, projectDir)
@@ -127,7 +154,6 @@ var installCmd = &cobra.Command{
 				fmt.Fprintf(out, "  %s/skill+commands: skipped (%s)\n", t.Harness.Name(), t.SkipReason)
 				continue
 			}
-			// Match by HarnessName + Component annotation set by core.Apply.
 			status := "installed"
 			for _, ch := range result.Changes {
 				if ch.HarnessName == t.Harness.Name() && ch.Component == component.SkillCommands.String() {
@@ -156,18 +182,12 @@ var installCmd = &cobra.Command{
 				fmt.Fprintf(out, "  %s/mcp-gates: skipped (%s)\n", t.Harness.Name(), t.SkipReason)
 				continue
 			}
-			// Determine if the file was already configured (no change) or newly written.
-			// Use Change.Changed (set by WriteFileAtomic's byte-compare) rather than
-			// re-reading and comparing bytes — the latter is unreliable for JSON because
-			// key ordering may differ between MarshalIndent calls.
 			status := "configured"
 			for _, ch := range result.Changes {
 				if ch.FilePath == t.SnapPath {
 					if !ch.Changed {
 						status = "already configured (no change)"
 					}
-					// Malformed-base warning: the user's existing config was corrupt.
-					// The transactional snapshot already backed it up before rewrite.
 					if ch.MalformedBase {
 						fmt.Fprintf(out, "  WARNING: %s was malformed JSON; original backed up before rewrite.\n", ch.FilePath)
 					}
@@ -178,8 +198,6 @@ var installCmd = &cobra.Command{
 		}
 
 		// Report design-memory results.
-		// DesignMemory is project-scoped (one .ui-craft/ per project dir, not per
-		// harness), so we deduplicate: report on the first target that ran the op.
 		designMemoryReported := false
 		for _, t := range plan.Targets {
 			if t.Component != component.DesignMemory {
@@ -206,8 +224,52 @@ var installCmd = &cobra.Command{
 				designMemoryReported = true
 			}
 		}
+
+		// --- Save state (Slice 10) ---
+		// Persist the harness+component choices so `ui-craft update` can replay them.
+		stateRoot := filepath.Join(home, ".ui-craft")
+		state, _ := core.LoadState(osfs, stateRoot)
+		state.Version = cmdVersion
+		state.MirrorVersion = cmdMirrorVersion
+		now := time.Now().UTC().Format(time.RFC3339)
+		for _, dh := range detected {
+			// Collect components that were successfully applied for this harness.
+			var installedComps []string
+			for _, c := range selected {
+				if !dh.Harness.Supports(c) {
+					continue
+				}
+				installedComps = append(installedComps, c.String())
+			}
+			core.UpsertHarnessState(state, core.HarnessState{
+				Name:                dh.Harness.Name(),
+				InstalledComponents: installedComps,
+				InstalledAt:         now,
+			})
+		}
+		if err := core.SaveState(osfs, stateRoot, state); err != nil {
+			// Non-fatal: log but do not fail the command.
+			fmt.Fprintf(out, "\nwarning: could not save state.json: %v\n", err)
+		}
+
 		return nil
 	},
+}
+
+// detectNativeClaudePlugin returns true when a Claude Code native plugin install
+// for ui-craft is detected. It checks for the presence of the plugin manifest
+// directory that the npm-based plugin install creates (~/.claude/plugins/ui-craft/).
+// This is a best-effort heuristic: false negatives are safe (no unnecessary blocking).
+func detectNativeClaudePlugin() bool {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return false
+	}
+	pluginDir := filepath.Join(home, ".claude", "plugins", "ui-craft")
+	if _, err := os.Stat(pluginDir); err == nil {
+		return true
+	}
+	return false
 }
 
 // detectNVMOrVolta returns true when nvm, fnm, or volta is detectable on PATH
@@ -225,6 +287,20 @@ func detectNVMOrVolta() bool {
 	return false
 }
 
+// confirmFromStdin reads a single line from stdinReader and returns true if the
+// user typed "y" or "yes" (case-insensitive). Used for non-interactive --force
+// bypass prompts. Exported as a var so tests can inject a fake reader.
+func confirmFromStdin(prompt string) bool {
+	fmt.Fprint(os.Stderr, prompt)
+	scanner := bufio.NewScanner(stdinReader)
+	if scanner.Scan() {
+		answer := strings.TrimSpace(strings.ToLower(scanner.Text()))
+		return answer == "y" || answer == "yes"
+	}
+	return false
+}
+
 func init() {
+	installCmd.Flags().Bool("force", false, "Bypass native plugin coexistence warning")
 	rootCmd.AddCommand(installCmd)
 }

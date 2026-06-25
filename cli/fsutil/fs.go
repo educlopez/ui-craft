@@ -35,6 +35,17 @@ type FileSystem interface {
 
 	// Open opens the named file for reading.
 	Open(name string) (io.ReadCloser, error)
+
+	// ReadDir reads the directory named by dirname and returns a list of
+	// directory entries sorted by filename.
+	ReadDir(name string) ([]os.DirEntry, error)
+}
+
+// ReadDir is a convenience wrapper that calls filesystem.ReadDir.
+// It is exported so that core and other packages can call it without
+// type-asserting on the FileSystem interface.
+func ReadDir(filesystem FileSystem, name string) ([]os.DirEntry, error) {
+	return filesystem.ReadDir(name)
 }
 
 // realDiskFS is a seam interface that any real-disk FileSystem satisfies.
