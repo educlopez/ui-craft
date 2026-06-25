@@ -2,6 +2,7 @@ package core
 
 import (
 	"errors"
+	"io/fs"
 	"testing"
 
 	"github.com/educlopez/ui-craft/cli/component"
@@ -41,7 +42,7 @@ func (s stubHarness) WriteMCP(w fsutil.FileSystem, srv harness.MCPServer) (harne
 	return harness.Change{}, harness.ErrNotImplemented
 }
 
-func (s stubHarness) WriteSkill(w fsutil.FileSystem) (harness.Change, error) {
+func (s stubHarness) WriteSkill(w fsutil.FileSystem, mirror fs.FS) (harness.Change, error) {
 	return harness.Change{}, harness.ErrNotImplemented
 }
 

@@ -64,6 +64,11 @@ type FileMeta struct {
 	// ExistedBefore is true when the file existed before the plan started.
 	// Rollback DELETES files where ExistedBefore is false (created by the plan).
 	ExistedBefore bool `json:"existedBefore"`
+	// IsDirSentinel marks this entry as a directory boundary record. When true,
+	// OrigPath is the directory path (not a file path). During Restore, any file
+	// currently under that directory that was NOT present in the snapshot is
+	// deleted — this cleans up files created by the install under owned subdirs.
+	IsDirSentinel bool `json:"isDirSentinel,omitempty"`
 }
 
 // Manifest is the JSON structure written as manifest.json in each snapshot dir.
@@ -147,6 +152,12 @@ type archiveEntry struct {
 }
 
 // Snapshot archives targets into a new snapshot and returns its ID.
+// Each target may be a file OR a directory path:
+//   - File path: archived as a single entry (ExistedBefore reflects existence).
+//   - Directory path: all files under it are walked and archived individually.
+//     If the directory does not exist, a single tombstone entry is recorded so
+//     Restore knows to delete the entire subtree on rollback.
+//
 // Files that do not exist on disk are recorded with ExistedBefore=false and
 // are NOT written into the tar.gz (they are tombstones only).
 // If the resulting snapshot is identical to the most-recent unpinned snapshot
@@ -159,28 +170,15 @@ func (s *Store) Snapshot(targets []SnapshotTarget, binaryVersion string, source 
 	// Build a stable snapshot ID: ISO-8601 compact + nanoseconds for uniqueness.
 	id := SnapshotID(now.UTC().Format("20060102T150405") + fmt.Sprintf("-%09d", now.Nanosecond()))
 
-	// Read each target file to build the manifest and tar content.
+	// Read each target file (or directory subtree) to build the manifest and tar content.
 	var entries []archiveEntry
 
 	for _, t := range targets {
-		savedPath := sanitizeSavedPath(t.Harness, t.OrigPath)
-		meta := FileMeta{
-			Harness:   t.Harness,
-			OrigPath:  t.OrigPath,
-			SavedPath: savedPath,
-		}
-		data, err := s.fs.ReadFile(t.OrigPath)
+		dirEntries, err := s.snapshotTarget(t)
 		if err != nil {
-			if errors.Is(err, fs.ErrNotExist) || isNotExist(err) {
-				// File does not exist yet — tombstone; do not add to archive.
-				meta.ExistedBefore = false
-				entries = append(entries, archiveEntry{meta: meta, content: nil})
-				continue
-			}
-			return "", fmt.Errorf("backup: read %s: %w", t.OrigPath, err)
+			return "", err
 		}
-		meta.ExistedBefore = true
-		entries = append(entries, archiveEntry{meta: meta, content: data})
+		entries = append(entries, dirEntries...)
 	}
 
 	// Compute dedup checksum before writing anything.
@@ -268,16 +266,48 @@ func (s *Store) Restore(id SnapshotID) error {
 		}
 	}
 
+	// Collect the set of file paths that existed at snapshot time, grouped by
+	// dir-sentinel directories. This is used below to delete install-added files.
+	type dirSentinel struct {
+		dirPath     string
+		snapshotted map[string]struct{} // file paths under this dir that existed before
+	}
+	var sentinels []dirSentinel
+	sentinelIdx := map[string]int{} // dirPath → index in sentinels slice
+
+	// Pass 1: process dir sentinels and build the snapshotted-file sets.
 	for _, fm := range manifest.Files {
+		if fm.IsDirSentinel {
+			if err := validateUnderHome(fm.OrigPath, homeDir); err != nil {
+				return fmt.Errorf("backup: restore security: %w", err)
+			}
+			idx := len(sentinels)
+			sentinels = append(sentinels, dirSentinel{
+				dirPath:     fm.OrigPath,
+				snapshotted: make(map[string]struct{}),
+			})
+			sentinelIdx[fm.OrigPath] = idx
+		}
+	}
+
+	// Pass 2: populate sentinel file sets from non-sentinel entries and restore files.
+	for _, fm := range manifest.Files {
+		if fm.IsDirSentinel {
+			continue // handled in pass 1; cleanup happens after restore
+		}
+
 		// Security: validate origPath is under $HOME (symlink-resolved).
 		if err := validateUnderHome(fm.OrigPath, homeDir); err != nil {
 			return fmt.Errorf("backup: restore security: %w", err)
 		}
 
 		if !fm.ExistedBefore {
-			// File was created by the plan — delete it on rollback.
-			if err := s.fs.Remove(fm.OrigPath); err != nil && !errors.Is(err, fs.ErrNotExist) {
-				return fmt.Errorf("backup: remove created file %s: %w", fm.OrigPath, err)
+			// File (or directory subtree) was created by the plan — delete on rollback.
+			// Use RemoveAll so that a newly-created directory subtree (tombstone entry)
+			// is fully removed, not just the directory node. For plain files this is
+			// equivalent to Remove.
+			if err := s.fs.RemoveAll(fm.OrigPath); err != nil && !errors.Is(err, fs.ErrNotExist) {
+				return fmt.Errorf("backup: remove created path %s: %w", fm.OrigPath, err)
 			}
 			continue
 		}
@@ -299,7 +329,25 @@ func (s *Store) Restore(id SnapshotID) error {
 		if wErr := s.fs.WriteFile(fm.OrigPath, content, 0o640); wErr != nil {
 			return fmt.Errorf("backup: write restored file %s: %w", fm.OrigPath, wErr)
 		}
+
+		// Track this file as part of its sentinel directory (if any).
+		for dirPath, idx := range sentinelIdx {
+			dirPrefix := dirPath + string(filepath.Separator)
+			if strings.HasPrefix(fm.OrigPath, dirPrefix) {
+				sentinels[idx].snapshotted[fm.OrigPath] = struct{}{}
+				break
+			}
+		}
 	}
+
+	// Pass 3: for each dir sentinel, remove any files under it that were NOT
+	// present at snapshot time (i.e., created by the install).
+	for _, ds := range sentinels {
+		if err := s.deleteInstallAddedFiles(ds.dirPath, ds.snapshotted); err != nil {
+			return fmt.Errorf("backup: cleanup install-added files under %s: %w", ds.dirPath, err)
+		}
+	}
+
 	return nil
 }
 
@@ -393,6 +441,157 @@ func (s *Store) Latest() (SnapshotID, error) {
 }
 
 // --- internal helpers ---
+
+// snapshotTarget converts a single SnapshotTarget into one or more archiveEntry
+// values. If the target path is a directory (or does not exist as a file), it
+// walks the directory tree and archives every file found under it. If the
+// directory does not exist at all, a single tombstone entry is recorded so that
+// Restore can clean up files the install later creates under that path.
+// Must only be called while s.mu is held (called from Snapshot).
+func (s *Store) snapshotTarget(t SnapshotTarget) ([]archiveEntry, error) {
+	// First check: is it a directory?
+	info, statErr := s.fs.Stat(t.OrigPath)
+	dirExists := statErr == nil && info.IsDir()
+
+	if dirExists {
+		// Walk the directory and snapshot every file inside it.
+		return s.snapshotDir(t.Harness, t.OrigPath)
+	}
+
+	// Not a directory — try reading as a single file (original behavior).
+	savedPath := sanitizeSavedPath(t.Harness, t.OrigPath)
+	meta := FileMeta{
+		Harness:   t.Harness,
+		OrigPath:  t.OrigPath,
+		SavedPath: savedPath,
+	}
+	data, readErr := s.fs.ReadFile(t.OrigPath)
+	if readErr != nil {
+		if errors.Is(readErr, fs.ErrNotExist) || isNotExist(readErr) {
+			// Path does not exist yet — tombstone; do not add to archive.
+			// This covers both: a file that will be created, and a directory
+			// subtree that will be created by the install.
+			meta.ExistedBefore = false
+			return []archiveEntry{{meta: meta, content: nil}}, nil
+		}
+		return nil, fmt.Errorf("backup: read %s: %w", t.OrigPath, readErr)
+	}
+	meta.ExistedBefore = true
+	return []archiveEntry{{meta: meta, content: data}}, nil
+}
+
+// snapshotDir walks the directory at dirPath and returns one archiveEntry per
+// file, preserving the full path in each FileMeta so Restore can reconstruct
+// the subtree. A dir-sentinel entry is always prepended so Restore knows to
+// clean up install-added files that were not present at snapshot time.
+// Must only be called while s.mu is held.
+func (s *Store) snapshotDir(harness, dirPath string) ([]archiveEntry, error) {
+	// Always prepend a dir-sentinel so Restore can enumerate and clean install-added files.
+	sentinel := archiveEntry{
+		meta: FileMeta{
+			Harness:       harness,
+			OrigPath:      dirPath,
+			SavedPath:     sanitizeSavedPath(harness, dirPath),
+			ExistedBefore: true, // directory existed (we got here via Stat check)
+			IsDirSentinel: true,
+		},
+		content: nil, // sentinel — no archive content
+	}
+
+	type readDirFS interface {
+		ReadDir(name string) ([]os.DirEntry, error)
+	}
+	rdf, ok := s.fs.(readDirFS)
+	if !ok {
+		// FileSystem doesn't support ReadDir — only the sentinel, no file entries.
+		return []archiveEntry{sentinel}, nil
+	}
+
+	var fileEntries []archiveEntry
+	// walkDir recursively visits dir and appends a file entry for every file found.
+	var walkDir func(dir string) error
+	walkDir = func(dir string) error {
+		children, err := rdf.ReadDir(dir)
+		if err != nil {
+			return fmt.Errorf("backup: readdir %s: %w", dir, err)
+		}
+		for _, child := range children {
+			childPath := filepath.Join(dir, child.Name())
+			if child.IsDir() {
+				if err := walkDir(childPath); err != nil {
+					return err
+				}
+				continue
+			}
+			data, err := s.fs.ReadFile(childPath)
+			if err != nil {
+				return fmt.Errorf("backup: read %s: %w", childPath, err)
+			}
+			savedPath := sanitizeSavedPath(harness, childPath)
+			fileEntries = append(fileEntries, archiveEntry{
+				meta: FileMeta{
+					Harness:       harness,
+					OrigPath:      childPath,
+					SavedPath:     savedPath,
+					ExistedBefore: true,
+				},
+				content: data,
+			})
+		}
+		return nil
+	}
+	if err := walkDir(dirPath); err != nil {
+		return nil, err
+	}
+
+	// Combine: sentinel first, then all file entries.
+	result := make([]archiveEntry, 0, 1+len(fileEntries))
+	result = append(result, sentinel)
+	result = append(result, fileEntries...)
+	return result, nil
+}
+
+// deleteInstallAddedFiles walks dirPath and removes any file NOT in snapshotted.
+// This is the post-restore cleanup for directory-type snapshot targets: it ensures
+// that files created by the install (absent from the pre-install snapshot) are
+// removed during rollback, restoring the directory to its prior state.
+// The function is intentionally scoped to files only — it does not remove
+// subdirectories so as not to break the directory structure.
+func (s *Store) deleteInstallAddedFiles(dirPath string, snapshotted map[string]struct{}) error {
+	type readDirFS interface {
+		ReadDir(name string) ([]os.DirEntry, error)
+	}
+	rdf, ok := s.fs.(readDirFS)
+	if !ok {
+		return nil // can't enumerate; skip cleanup
+	}
+
+	var walk func(dir string) error
+	walk = func(dir string) error {
+		children, err := rdf.ReadDir(dir)
+		if err != nil {
+			// Directory may not exist (install created then rollback deleted it).
+			return nil
+		}
+		for _, child := range children {
+			childPath := filepath.Join(dir, child.Name())
+			if child.IsDir() {
+				if err := walk(childPath); err != nil {
+					return err
+				}
+				continue
+			}
+			if _, keep := snapshotted[childPath]; !keep {
+				// File was not in the snapshot — it was created by the install. Remove it.
+				if err := s.fs.Remove(childPath); err != nil && !errors.Is(err, fs.ErrNotExist) {
+					return fmt.Errorf("backup: remove install-added file %s: %w", childPath, err)
+				}
+			}
+		}
+		return nil
+	}
+	return walk(dirPath)
+}
 
 // isDuplicate returns true if checksum matches the most-recent unpinned snapshot.
 // Must only be called while s.mu is held (called from Snapshot).

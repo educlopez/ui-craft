@@ -15,6 +15,7 @@ package assets
 
 import (
 	"embed"
+	"fmt"
 	"io/fs"
 	"strings"
 )
@@ -65,6 +66,25 @@ func MirrorVersion() string {
 	return strings.TrimSpace(string(data))
 }
 
+// Mirror returns the embedded sub-filesystem for the named harness
+// (e.g. "claude", "cursor", "codex", "gemini", "opencode"). The returned
+// fs.FS is rooted at mirrors/<harness>/ so callers can walk it directly.
+// Returns nil when the harness subtree does not exist in the embedded mirrors
+// (e.g. CI sync step did not run — see gotcha #5).
+func Mirror(harnessName string) fs.FS {
+	path := "mirrors/" + harnessName
+	// Validate that the subtree directory actually exists in the embed before
+	// returning a sub-FS. fs.Sub itself succeeds even for absent dirs on embed.FS.
+	if _, err := fs.Stat(mirrorsFS, path); err != nil {
+		return nil
+	}
+	sub, err := fs.Sub(mirrorsFS, path)
+	if err != nil {
+		return nil
+	}
+	return sub
+}
+
 // mirrorsFSNonEmpty returns true when at least one non-.gitkeep file exists
 // under the mirrors/ subtree. Used by the init() guard below.
 func mirrorsFSNonEmpty() bool {
@@ -87,29 +107,51 @@ func mirrorsFSNonEmpty() bool {
 	return found
 }
 
-// assertMirrorsFreshSeam is the build-time / init assertion seam for gotcha #5.
-// In development builds (placeholder only) this is a no-op.
-// When CI populates mirrors/ with real content and then runs `go build`,
-// if the subtree is somehow empty the panic will surface the ordering bug
-// before the binary ships.
+// expectedHarnesses lists the harness subtrees that must be present in the
+// mirrors/ embed once CI has run sync-harnesses.mjs (gotcha #5).
+var expectedHarnesses = []string{"claude", "cursor", "codex", "gemini", "opencode"}
+
+// mirrorHarnessPresent returns true when at least one non-.gitkeep file exists
+// under mirrors/<harness>/.
+func mirrorHarnessPresent(harnessName string) bool {
+	found := false
+	root := "mirrors/" + harnessName
+	_ = fs.WalkDir(mirrorsFS, root, func(path string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return nil
+		}
+		if d.Name() != ".gitkeep" {
+			found = true
+			return fs.SkipAll
+		}
+		return nil
+	})
+	return found
+}
+
+// AssertMirrorsFresh returns an error if any expected harness subtree is missing
+// real content. This is called at install/update time (not in init()) so
+// development builds and tests using fixture mirrors are unaffected. CI ensures
+// sync-harnesses.mjs runs before go build, making real mirrors available
+// (gotcha #5).
 //
-// TODO(slice5): Remove the placeholder guard once CI sync step is wired.
-// At that point, replace the mirrorsFSNonEmpty check with a stricter assertion
-// that each expected harness subdirectory is present and non-empty.
-//
-//nolint:unused
-func assertMirrorsFreshSeam() {
-	// During development (Slices 1–4) mirrors/ contains only placeholders,
-	// so we skip the assertion. The CI gate is enforced separately.
-	// Uncomment and harden the body below when CI wiring lands (Slice 5):
-	//
-	//   if !mirrorsFSNonEmpty() {
-	//       panic("assets: mirrors/ subtree is empty — run sync-harnesses.mjs before go build (gotcha #5)")
-	//   }
-	if mirrorsFSNonEmpty() {
-		// Real content detected — CI sync step ran successfully.
-		// No action needed during Slices 1–4; this branch is a no-op placeholder.
+// Call this as the FIRST statement in any cmd RunE that performs WriteSkill ops.
+func AssertMirrorsFresh() error {
+	for _, h := range expectedHarnesses {
+		if !mirrorHarnessPresent(h) {
+			return fmt.Errorf("assets: mirrors/%s/ is empty or placeholder — run `make gen-mirrors` before building (gotcha #5)", h)
+		}
 	}
+	return nil
+}
+
+// assertMirrorsFreshSeam is the init()-time seam. During development (Slices
+// 1–5) mirrors/ may contain only placeholders, so we skip the panic to allow
+// `go build ./...` and `go test ./...` to pass without a CI sync step.
+// The real freshness check is performed at install time via AssertMirrorsFresh.
+func assertMirrorsFreshSeam() {
+	// No-op at init time: AssertMirrorsFresh() is called at install time instead.
+	// This preserves go build / go test ergonomics on developer machines.
 }
 
 func init() {

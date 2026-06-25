@@ -3,6 +3,7 @@ package harness
 import (
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -165,9 +166,15 @@ func (h OpenCodeHarness) WriteMCP(w fsutil.FileSystem, server MCPServer) (Change
 	}, nil
 }
 
-// WriteSkill is not implemented in Slice 2; returns ErrNotImplemented.
-func (h OpenCodeHarness) WriteSkill(w fsutil.FileSystem) (Change, error) {
-	return Change{}, ErrNotImplemented
+// WriteSkill copies the embedded OpenCode mirror into ~/.config/opencode/skills/ui-craft/.
+// Full-file ownership; idempotent via byte-compare in WriteFileAtomic.
+func (h OpenCodeHarness) WriteSkill(w fsutil.FileSystem, mirror fs.FS) (Change, error) {
+	destDir := filepath.Join(h.ConfigPaths().SkillsDir, "ui-craft")
+	ch, err := writeMirrorToDir(w, mirror, destDir)
+	if err != nil {
+		return Change{}, fmt.Errorf("opencode: write skill mirror: %w", err)
+	}
+	return ch, nil
 }
 
 // WriteAgents is not implemented in Slice 2; returns ErrNotImplemented.

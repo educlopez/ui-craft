@@ -33,29 +33,41 @@ type ApplyResult struct {
 // The fs parameter is threaded through for future use by write ops.
 func Apply(plan InstallPlan, fs fsutil.FileSystem, store *backup.Store, binaryVersion string) (ApplyResult, error) {
 	// --- Phase 0: pre-flight validation ---
-	// Every write op must declare a SnapPath so the pre-snapshot covers it.
+	// Every write op must declare at least one snap path so the pre-snapshot
+	// covers it. SnapPaths supersedes SnapPath when non-empty.
 	for _, t := range plan.Targets {
 		if t.Skip || t.Op == nil {
 			continue
 		}
-		if t.SnapPath == "" {
+		if len(t.SnapPaths) == 0 && t.SnapPath == "" {
 			return ApplyResult{}, fmt.Errorf(
-				"apply: target %s/%s has Op but empty SnapPath — every write op must declare a SnapPath for pre-snapshot coverage",
+				"apply: target %s/%s has Op but empty SnapPath/SnapPaths — every write op must declare a snap path for pre-snapshot coverage",
 				t.Harness.Name(), t.Component.String(),
 			)
 		}
 	}
 
 	// --- Phase 1: collect snapshot targets ---
+	// resolveSnapPaths returns the effective snap path list for a target:
+	// SnapPaths when non-empty, otherwise [SnapPath].
+	resolveSnapPaths := func(t ComponentTarget) []string {
+		if len(t.SnapPaths) > 0 {
+			return t.SnapPaths
+		}
+		return []string{t.SnapPath}
+	}
+
 	var snapTargets []backup.SnapshotTarget
 	for _, t := range plan.Targets {
 		if t.Skip || t.Op == nil {
 			continue
 		}
-		snapTargets = append(snapTargets, backup.SnapshotTarget{
-			Harness:  t.Harness.Name(),
-			OrigPath: t.SnapPath,
-		})
+		for _, p := range resolveSnapPaths(t) {
+			snapTargets = append(snapTargets, backup.SnapshotTarget{
+				Harness:  t.Harness.Name(),
+				OrigPath: p,
+			})
+		}
 	}
 
 	// Take the backup snapshot (even if snapTargets is empty — zero-file snapshot
@@ -88,6 +100,10 @@ func Apply(plan InstallPlan, fs fsutil.FileSystem, store *backup.Store, binaryVe
 				t.Harness.Name(), t.Component.String(), err,
 			)
 		}
+		// Annotate change with harness/component metadata so callers can filter
+		// without fragile path matching.
+		change.HarnessName = t.Harness.Name()
+		change.Component = t.Component.String()
 		applied = append(applied, change)
 	}
 

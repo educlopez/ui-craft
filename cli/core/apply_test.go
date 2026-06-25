@@ -3,6 +3,7 @@ package core_test
 import (
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"testing"
@@ -38,7 +39,7 @@ func (s stubHarness) Supports(c component.Component) bool {
 func (s stubHarness) WriteMCP(w fsutil.FileSystem, server harness.MCPServer) (harness.Change, error) {
 	return harness.Change{}, harness.ErrNotImplemented
 }
-func (s stubHarness) WriteSkill(w fsutil.FileSystem) (harness.Change, error) {
+func (s stubHarness) WriteSkill(w fsutil.FileSystem, mirror fs.FS) (harness.Change, error) {
 	return harness.Change{}, harness.ErrNotImplemented
 }
 func (s stubHarness) WriteAgents(w fsutil.FileSystem) ([]harness.Change, error) {
@@ -397,7 +398,7 @@ func TestPlan_skipsUnsupportedComponents(t *testing.T) {
 	}
 	selected := component.All()
 
-	plan := core.Plan(detected, selected, fsutil.NewMemFS())
+	plan := core.Plan(detected, selected, fsutil.NewMemFS(), nil)
 
 	for _, t2 := range plan.Targets {
 		if t2.Component == component.ReviewAgents {

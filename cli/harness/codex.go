@@ -2,6 +2,7 @@ package harness
 
 import (
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 
@@ -63,12 +64,15 @@ func (h CodexHarness) Detect() (DetectResult, error) {
 }
 
 // ConfigPaths returns the canonical paths for Codex.
+// AgentsMDPath honors --dir (ProjectRoot): when set, the project-local AGENTS.md
+// is used; otherwise the global ~/.codex/AGENTS.md is the target.
 func (h CodexHarness) ConfigPaths() ConfigPaths {
 	root := h.configRoot()
 	return ConfigPaths{
-		MCPConfig: filepath.Join(root, "config.toml"),
-		SkillsDir: filepath.Join(root, "skills"),
-		AgentsDir: "", // Codex has no sub-agent directory.
+		MCPConfig:    filepath.Join(root, "config.toml"),
+		SkillsDir:    filepath.Join(root, "skills"),
+		AgentsDir:    "", // Codex has no sub-agent directory.
+		AgentsMDPath: h.agentsMDPath(""),
 	}
 }
 
@@ -130,9 +134,70 @@ func (h CodexHarness) WriteMCP(w fsutil.FileSystem, server MCPServer) (Change, e
 	}, nil
 }
 
-// WriteSkill is not implemented in Slice 2; returns ErrNotImplemented.
-func (h CodexHarness) WriteSkill(w fsutil.FileSystem) (Change, error) {
-	return Change{}, ErrNotImplemented
+// agentsMDPath returns the path to the AGENTS.md file that receives the managed
+// block. When projectRoot is set we use the project-local AGENTS.md; otherwise
+// we fall back to ~/.codex/AGENTS.md (global).
+func (h CodexHarness) agentsMDPath(projectRoot string) string {
+	if projectRoot != "" {
+		return filepath.Join(projectRoot, "AGENTS.md")
+	}
+	root := h.configRoot()
+	return filepath.Join(root, "AGENTS.md")
+}
+
+// WriteSkill writes two targets for Codex:
+//
+//  1. Full-file mirror copy into ~/.codex/skills/ui-craft/ (same as other harnesses).
+//  2. A managed block injected into the project AGENTS.md (or global ~/.codex/AGENTS.md)
+//     referencing the installed skill, so Codex picks it up without a marketplace.
+//
+// Note: project-local AGENTS.md (--dir / ProjectRoot) is honored when
+// ConfigPaths().ProjectRoot is set; otherwise the global ~/.codex/AGENTS.md is used.
+//
+// The managed block uses section.go's UpsertManagedBlock, which repairs orphan
+// markers before injecting (gotcha #3). The Change.FilePath reflects the
+// skills directory (target 1) since it is the primary write target; the AGENTS.md
+// write is performed as a side-effect, and its prior state is snapshotted by
+// core.Apply via the SnapPaths list set in core/plan.go.
+func (h CodexHarness) WriteSkill(w fsutil.FileSystem, mirror fs.FS) (Change, error) {
+	paths := h.ConfigPaths()
+
+	// --- Target 1: full-file mirror copy into skills dir ---
+	destDir := filepath.Join(paths.SkillsDir, "ui-craft")
+	ch, err := writeMirrorToDir(w, mirror, destDir)
+	if err != nil {
+		return Change{}, fmt.Errorf("codex: write skill mirror: %w", err)
+	}
+
+	// --- Target 2: AGENTS.md managed-block inject ---
+	// ProjectRoot is honored: project-local AGENTS.md when set, global otherwise.
+	agentsMD := h.agentsMDPath(paths.ProjectRoot)
+	existing, readErr := w.ReadFile(agentsMD)
+	existedBefore := readErr == nil
+	if !existedBefore {
+		existing = []byte("")
+	}
+
+	blockContent := "# ui-craft skill\n\n" +
+		"The ui-craft skill is installed at: " + destDir + "\n\n" +
+		"Load it at the start of any UI design or implementation task."
+	updated := filemerge.UpsertManagedBlock(string(existing), blockContent)
+
+	agentsWR, err := fsutil.WriteFileAtomic(w, agentsMD, []byte(updated), 0o644)
+	if err != nil {
+		return Change{}, fmt.Errorf("codex: write AGENTS.md managed block: %w", err)
+	}
+
+	// Report Changed if either target changed.
+	if agentsWR.Changed {
+		ch.Changed = true
+	}
+
+	// Thread existedBefore into the primary Change so callers can distinguish
+	// "first install" from "update" without re-reading the skills dir.
+	ch.ExistedBefore = existedBefore
+
+	return ch, nil
 }
 
 // WriteAgents is not implemented in Slice 2; returns ErrNotImplemented.
