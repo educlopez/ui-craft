@@ -269,7 +269,7 @@ func archiveNameForPlatform(tag string) string {
 	}
 	// Capitalise OS for display consistency with goreleaser naming:
 	// ui-craft_Darwin_arm64.tar.gz  etc.
-	osName := strings.Title(os_) //nolint:staticcheck // simple title-case for platform name
+	osName := titleCase(os_)
 	if os_ == "windows" {
 		return fmt.Sprintf("ui-craft_%s_%s.zip", osName, arch)
 	}
@@ -346,7 +346,11 @@ func runSelfUpdate(cmd *cobra.Command, _ []string) error {
 	normLatest := strings.TrimPrefix(latestTag, "v")
 	normCurrent := strings.TrimPrefix(currentTag, "v")
 
-	if normLatest == normCurrent || normLatest == "" {
+	// Fix 3: empty tag means malformed release JSON — error instead of silent no-op.
+	if normLatest == "" {
+		return fmt.Errorf("self-update: release has empty tag_name — aborting (malformed release JSON)")
+	}
+	if normLatest == normCurrent {
 		if flags.JSON {
 			return emitJSON(out, selfUpdateJSONResult{Updated: false, From: currentTag, To: latestTag, Method: "direct"})
 		}
@@ -370,6 +374,19 @@ func runSelfUpdate(cmd *cobra.Command, _ []string) error {
 			archiveName, assetNames(rel.Assets))
 	}
 
+	// Fix 1: checksums.txt is MANDATORY — abort if missing from the release.
+	if checksumsURL == "" {
+		return fmt.Errorf("self-update: release has no checksums.txt — aborting for safety")
+	}
+
+	// Fix 2: validate that all download URLs are GitHub-origin before fetching.
+	if err := requireGitHubURL(archiveURL); err != nil {
+		return err
+	}
+	if err := requireGitHubURL(checksumsURL); err != nil {
+		return err
+	}
+
 	if !flags.Quiet && !flags.JSON {
 		fmt.Fprintf(out, "Downloading %s → %s...\n", currentTag, latestTag)
 	}
@@ -380,18 +397,16 @@ func runSelfUpdate(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 
-	// 5. Verify checksum (if checksums.txt is available).
-	if checksumsURL != "" {
-		checksumData, err := selfUpdateDownloadAsset(checksumsURL)
-		if err != nil {
-			return fmt.Errorf("self-update: could not download checksums.txt: %w", err)
-		}
-		if err := verifyChecksum(archiveData, checksumData, archiveName); err != nil {
-			return err // aborts cleanly — no binary written yet
-		}
-		if !flags.Quiet && !flags.JSON {
-			fmt.Fprintln(out, "Checksum verified.")
-		}
+	// 5. Verify checksum (mandatory — already guaranteed checksumsURL != "" above).
+	checksumData, err := selfUpdateDownloadAsset(checksumsURL)
+	if err != nil {
+		return fmt.Errorf("self-update: could not download checksums.txt: %w", err)
+	}
+	if err := verifyChecksum(archiveData, checksumData, archiveName); err != nil {
+		return err // aborts cleanly — no binary written yet
+	}
+	if !flags.Quiet && !flags.JSON {
+		fmt.Fprintln(out, "Checksum verified.")
 	}
 
 	// 6. Extract the binary from the archive.
@@ -475,4 +490,23 @@ func assetNames(assets []selfUpdateAsset) string {
 		names = append(names, a.Name)
 	}
 	return strings.Join(names, ", ")
+}
+
+// requireGitHubURL returns an error if url is not hosted on GitHub's release
+// CDN origins. This blocks SSRF via a tampered GitHub API response.
+func requireGitHubURL(url string) error {
+	if strings.HasPrefix(url, "https://github.com/") ||
+		strings.HasPrefix(url, "https://objects.githubusercontent.com/") {
+		return nil
+	}
+	return fmt.Errorf("self-update: refusing non-GitHub download URL: %s", url)
+}
+
+// titleCase returns s with the first byte upper-cased.
+// It is a safe replacement for the deprecated strings.Title.
+func titleCase(s string) string {
+	if s == "" {
+		return s
+	}
+	return strings.ToUpper(s[:1]) + s[1:]
 }

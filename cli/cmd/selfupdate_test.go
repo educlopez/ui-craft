@@ -300,8 +300,8 @@ func TestSelfUpdate_checksumMismatch_abortsNoSwap(t *testing.T) {
 		return &cmd.SelfUpdateRelease{
 			TagName: "v99.0.0",
 			Assets: []cmd.SelfUpdateAsset{
-				{Name: archiveName, BrowserDownloadURL: "http://fake/archive"},
-				{Name: "checksums.txt", BrowserDownloadURL: "http://fake/checksums"},
+				{Name: archiveName, BrowserDownloadURL: "https://objects.githubusercontent.com/fake/archive"},
+				{Name: "checksums.txt", BrowserDownloadURL: "https://objects.githubusercontent.com/fake/checksums"},
 			},
 		}, nil
 	})
@@ -361,8 +361,8 @@ func TestSelfUpdate_newerVersion_swapsBinary(t *testing.T) {
 		return &cmd.SelfUpdateRelease{
 			TagName: "v99.0.0",
 			Assets: []cmd.SelfUpdateAsset{
-				{Name: archiveName, BrowserDownloadURL: "http://fake/archive"},
-				{Name: "checksums.txt", BrowserDownloadURL: "http://fake/checksums"},
+				{Name: archiveName, BrowserDownloadURL: "https://objects.githubusercontent.com/fake/archive"},
+				{Name: "checksums.txt", BrowserDownloadURL: "https://objects.githubusercontent.com/fake/checksums"},
 			},
 		}, nil
 	})
@@ -394,5 +394,195 @@ func TestSelfUpdate_newerVersion_swapsBinary(t *testing.T) {
 	}
 	if !strings.Contains(out, "Updated") && !strings.Contains(out, "v99.0.0") {
 		t.Errorf("self-update newer: expected 'Updated' or version in output, got: %s", out)
+	}
+
+	// Assert the replaced binary is executable (0o755).
+	info, statErr := os.Stat(fakeBin)
+	if statErr != nil {
+		t.Fatalf("self-update newer: could not stat binary: %v", statErr)
+	}
+	if mode := info.Mode(); mode&0o111 == 0 {
+		t.Errorf("self-update newer: binary is not executable after swap; mode=%v", mode)
+	}
+}
+
+// ─── Security: missing checksums.txt ─────────────────────────────────────────
+
+// TestSelfUpdate_missingChecksumsURL_abortsNoSwap verifies that when the
+// release has no checksums.txt asset, self-update aborts and does NOT
+// modify the binary (Fix 1: mandatory checksum verification).
+func TestSelfUpdate_missingChecksumsURL_abortsNoSwap(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("not applicable on Windows self-replace path")
+	}
+
+	tmpDir := t.TempDir()
+	fakeBin := filepath.Join(tmpDir, "ui-craft")
+	original := []byte("original binary — must not change")
+	if err := os.WriteFile(fakeBin, original, 0o755); err != nil {
+		t.Fatalf("write fake binary: %v", err)
+	}
+
+	restoreExec := cmd.SetSelfUpdateExecPath(func() (string, error) {
+		return fakeBin, nil
+	})
+	defer restoreExec()
+
+	archiveName := cmd.ArchiveNameForPlatform("v99.0.0")
+	newContent := []byte("new binary v99")
+	archive := buildFakeTarGz(t, newContent)
+
+	// Release has the archive asset but NO checksums.txt asset.
+	restoreFetch := cmd.SetSelfUpdateFetchRelease(func(url string) (*cmd.SelfUpdateRelease, error) {
+		return &cmd.SelfUpdateRelease{
+			TagName: "v99.0.0",
+			Assets: []cmd.SelfUpdateAsset{
+				{Name: archiveName, BrowserDownloadURL: "https://objects.githubusercontent.com/fake/archive"},
+				// checksums.txt deliberately omitted
+			},
+		}, nil
+	})
+	defer restoreFetch()
+
+	downloadCalled := false
+	restoreDownload := cmd.SetSelfUpdateDownloadAsset(func(url string) ([]byte, error) {
+		downloadCalled = true
+		return archive, nil
+	})
+	defer restoreDownload()
+
+	oldJSON := cmd.Flags.JSON
+	defer func() { cmd.Flags.JSON = oldJSON }()
+
+	_, err := runSelfUpdateCmd(t, []string{"self-update"})
+	if err == nil {
+		t.Fatal("self-update missing checksums: expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), "no checksums.txt") {
+		t.Errorf("self-update missing checksums: error should mention 'no checksums.txt', got: %v", err)
+	}
+	// No download should have been attempted.
+	if downloadCalled {
+		t.Error("self-update missing checksums: download was called despite missing checksums.txt")
+	}
+	// Binary must not have been modified.
+	got, readErr := os.ReadFile(fakeBin)
+	if readErr != nil {
+		t.Fatalf("could not read binary after abort: %v", readErr)
+	}
+	if !bytes.Equal(got, original) {
+		t.Error("self-update missing checksums: binary was modified despite abort")
+	}
+}
+
+// ─── Security: non-GitHub download URL ───────────────────────────────────────
+
+// TestSelfUpdate_nonGitHubURL_rejected verifies that a tampered API response
+// pointing at a non-GitHub host is rejected before any download (Fix 2: SSRF guard).
+func TestSelfUpdate_nonGitHubURL_rejected(t *testing.T) {
+	restoreExec := cmd.SetSelfUpdateExecPath(func() (string, error) {
+		return "/usr/local/bin/ui-craft", nil
+	})
+	defer restoreExec()
+
+	archiveName := cmd.ArchiveNameForPlatform("v99.0.0")
+
+	restoreFetch := cmd.SetSelfUpdateFetchRelease(func(url string) (*cmd.SelfUpdateRelease, error) {
+		return &cmd.SelfUpdateRelease{
+			TagName: "v99.0.0",
+			Assets: []cmd.SelfUpdateAsset{
+				// Tampered: archive points at attacker-controlled host.
+				{Name: archiveName, BrowserDownloadURL: "https://evil.example.com/malware.tar.gz"},
+				{Name: "checksums.txt", BrowserDownloadURL: "https://objects.githubusercontent.com/fake/checksums"},
+			},
+		}, nil
+	})
+	defer restoreFetch()
+
+	downloadCalled := false
+	restoreDownload := cmd.SetSelfUpdateDownloadAsset(func(url string) ([]byte, error) {
+		downloadCalled = true
+		return nil, fmt.Errorf("should not be called")
+	})
+	defer restoreDownload()
+
+	oldJSON := cmd.Flags.JSON
+	defer func() { cmd.Flags.JSON = oldJSON }()
+
+	_, err := runSelfUpdateCmd(t, []string{"self-update"})
+	if err == nil {
+		t.Fatal("self-update non-GitHub URL: expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), "refusing non-GitHub download URL") {
+		t.Errorf("self-update non-GitHub URL: error should mention 'refusing non-GitHub download URL', got: %v", err)
+	}
+	if downloadCalled {
+		t.Error("self-update non-GitHub URL: download was called despite invalid URL")
+	}
+}
+
+// ─── Correctness: empty tag → error ──────────────────────────────────────────
+
+// TestSelfUpdate_emptyTag_returnsError verifies that a malformed release JSON
+// with an empty tag_name returns an error rather than silently treating the
+// binary as already-latest (Fix 3).
+func TestSelfUpdate_emptyTag_returnsError(t *testing.T) {
+	restoreExec := cmd.SetSelfUpdateExecPath(func() (string, error) {
+		return "/usr/local/bin/ui-craft", nil
+	})
+	defer restoreExec()
+
+	restoreFetch := cmd.SetSelfUpdateFetchRelease(func(url string) (*cmd.SelfUpdateRelease, error) {
+		return &cmd.SelfUpdateRelease{TagName: "", Assets: nil}, nil
+	})
+	defer restoreFetch()
+
+	downloadCalled := false
+	restoreDownload := cmd.SetSelfUpdateDownloadAsset(func(url string) ([]byte, error) {
+		downloadCalled = true
+		return nil, fmt.Errorf("should not be called")
+	})
+	defer restoreDownload()
+
+	oldJSON := cmd.Flags.JSON
+	defer func() { cmd.Flags.JSON = oldJSON }()
+
+	_, err := runSelfUpdateCmd(t, []string{"self-update"})
+	if err == nil {
+		t.Fatal("self-update empty tag: expected error for empty tag_name, got nil")
+	}
+	if !strings.Contains(err.Error(), "empty tag_name") {
+		t.Errorf("self-update empty tag: error should mention 'empty tag_name', got: %v", err)
+	}
+	if downloadCalled {
+		t.Error("self-update empty tag: download was called despite empty tag")
+	}
+}
+
+// ─── Package-manager detection: Cellar-resolved paths ────────────────────────
+
+// TestDetectPackageManager_cellarResolvedPath verifies that brew is detected
+// for EvalSymlinks-resolved Cellar paths (Fix 5: resolved paths, not bin symlinks).
+func TestDetectPackageManager_cellarResolvedPath(t *testing.T) {
+	cases := []struct {
+		path string
+		desc string
+	}{
+		{
+			path: "/opt/homebrew/Cellar/ui-craft/1.0.0/bin/ui-craft",
+			desc: "macOS Cellar resolved path",
+		},
+		{
+			path: "/home/linuxbrew/.linuxbrew/Cellar/ui-craft/1.0.0/bin/ui-craft",
+			desc: "linuxbrew Cellar resolved path",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.desc, func(t *testing.T) {
+			got := cmd.DetectPackageManager(tc.path)
+			if got != "brew" {
+				t.Errorf("DetectPackageManager(%q) = %q, want brew", tc.path, got)
+			}
+		})
 	}
 }
