@@ -1,11 +1,14 @@
 package harness
 
 import (
+	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 
 	"github.com/educlopez/ui-craft/cli/component"
 	"github.com/educlopez/ui-craft/cli/fsutil"
+	"github.com/educlopez/ui-craft/cli/internal/filemerge"
 )
 
 // GeminiHarness is the adapter for Google Gemini CLI.
@@ -82,9 +85,56 @@ func (h GeminiHarness) Supports(c component.Component) bool {
 	}
 }
 
-// WriteMCP is not implemented in Slice 2; returns ErrNotImplemented.
+// WriteMCP implements the MergeIntoSettings strategy for Gemini CLI.
+//
+// It deep-merges the ui-craft server entry into ~/.gemini/settings.json under
+// mcpServers.<server.Name>. All other keys in the file are preserved.
+// If the file does not exist it is created. Atomic + idempotent.
 func (h GeminiHarness) WriteMCP(w fsutil.FileSystem, server MCPServer) (Change, error) {
-	return Change{}, ErrNotImplemented
+	paths := h.ConfigPaths()
+	target := paths.MCPConfig // ~/.gemini/settings.json
+
+	existing, readErr := w.ReadFile(target)
+	existed := readErr == nil
+	if !existed {
+		existing = []byte("{}")
+	}
+
+	overlay := map[string]any{
+		"mcpServers": map[string]any{
+			server.Name: map[string]any{
+				"__replace__": map[string]any{
+					"command": server.Command,
+					"args":    server.Args,
+				},
+			},
+		},
+	}
+	overlayJSON, err := json.Marshal(overlay)
+	if err != nil {
+		return Change{}, fmt.Errorf("gemini: marshal MCP overlay: %w", err)
+	}
+
+	merged, err := filemerge.MergeJSONObjects(existing, overlayJSON)
+	if err != nil {
+		return Change{}, fmt.Errorf("gemini: merge settings.json: %w", err)
+	}
+
+	prior := existing
+	if !existed {
+		prior = nil
+	}
+
+	if _, err := fsutil.WriteFileAtomic(w, target, merged, 0o644); err != nil {
+		return Change{}, fmt.Errorf("gemini: write settings.json %s: %w", target, err)
+	}
+
+	return Change{
+		FilePath:      target,
+		PriorBytes:    prior,
+		ExistedBefore: existed,
+		Strategy:      MergeIntoSettings,
+	}, nil
 }
 
 // WriteSkill is not implemented in Slice 2; returns ErrNotImplemented.

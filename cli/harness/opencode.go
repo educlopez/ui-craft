@@ -1,12 +1,15 @@
 package harness
 
 import (
+	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
 
 	"github.com/educlopez/ui-craft/cli/component"
 	"github.com/educlopez/ui-craft/cli/fsutil"
+	"github.com/educlopez/ui-craft/cli/internal/filemerge"
 )
 
 // OpenCodeHarness is the adapter for OpenCode.
@@ -97,9 +100,65 @@ func (h OpenCodeHarness) Supports(c component.Component) bool {
 	}
 }
 
-// WriteMCP is not implemented in Slice 2; returns ErrNotImplemented.
+// WriteMCP implements the MergeIntoSettings strategy for OpenCode.
+//
+// OpenCode uses JSONC for its config (~/.config/opencode/opencode.json).
+// The ui-craft server entry is merged under the top-level "mcp" key:
+//
+//	"mcp": { "<name>": { "type": "local", "command": ["npx","-y","ui-craft-mcp"] } }
+//
+// Comments and trailing commas in the existing config are stripped before
+// parse (JSONC support) and the file is rewritten as clean JSON.
+// Atomic + idempotent (byte-compare skips write when unchanged).
 func (h OpenCodeHarness) WriteMCP(w fsutil.FileSystem, server MCPServer) (Change, error) {
-	return Change{}, ErrNotImplemented
+	paths := h.ConfigPaths()
+	target := paths.MCPConfig // ~/.config/opencode/opencode.json
+
+	existing, readErr := w.ReadFile(target)
+	existed := readErr == nil
+	if !existed {
+		existing = []byte("{}")
+	}
+
+	// Build the command slice: combine Command + Args.
+	cmd := append([]string{server.Command}, server.Args...)
+
+	overlay := map[string]any{
+		"mcp": map[string]any{
+			server.Name: map[string]any{
+				"__replace__": map[string]any{
+					"type":    "local",
+					"command": cmd,
+				},
+			},
+		},
+	}
+	overlayJSON, err := json.Marshal(overlay)
+	if err != nil {
+		return Change{}, fmt.Errorf("opencode: marshal MCP overlay: %w", err)
+	}
+
+	// MergeJSONObjects handles JSONC (strips comments + trailing commas before parse).
+	merged, err := filemerge.MergeJSONObjects(existing, overlayJSON)
+	if err != nil {
+		return Change{}, fmt.Errorf("opencode: merge opencode.json: %w", err)
+	}
+
+	prior := existing
+	if !existed {
+		prior = nil
+	}
+
+	if _, err := fsutil.WriteFileAtomic(w, target, merged, 0o644); err != nil {
+		return Change{}, fmt.Errorf("opencode: write opencode.json %s: %w", target, err)
+	}
+
+	return Change{
+		FilePath:      target,
+		PriorBytes:    prior,
+		ExistedBefore: existed,
+		Strategy:      MergeIntoSettings,
+	}, nil
 }
 
 // WriteSkill is not implemented in Slice 2; returns ErrNotImplemented.
