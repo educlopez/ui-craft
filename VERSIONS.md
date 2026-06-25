@@ -1,6 +1,6 @@
 # Versions
 
-## v0.31.0 (2026-06-25) — `/start` front door + system repositioning
+## v0.31.0 (2026-06-25) — /start front door + system repositioning
 
 Closes the front-door gap surfaced by the holistic product analysis: ui-craft grew from a skill into a system (skill + 22 commands + 2 agents + 4 MCP tools + CLI + eval), but newcomers had no single "start here" and the copy everywhere still said "skill".
 
