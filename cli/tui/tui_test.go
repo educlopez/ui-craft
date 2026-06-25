@@ -27,6 +27,7 @@ func (a *fakeHarnessAdapter) Detect() (harness.DetectResult, error) {
 	return harness.DetectResult{Installed: true}, nil
 }
 func (a *fakeHarnessAdapter) ConfigPaths() harness.ConfigPaths { return harness.ConfigPaths{} }
+func (a *fakeHarnessAdapter) ConfigRoot() string               { return "/fake/" + a.name }
 func (a *fakeHarnessAdapter) Supports(c component.Component) bool {
 	return a.supported[c]
 }

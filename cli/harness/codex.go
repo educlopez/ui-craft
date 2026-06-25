@@ -25,6 +25,9 @@ var _ Harness = CodexHarness{}
 
 func (h CodexHarness) Name() string { return "codex" }
 
+// ConfigRoot returns the Codex config root (~/.codex). Satisfies the Harness interface.
+func (h CodexHarness) ConfigRoot() string { return h.configRoot() }
+
 func (h CodexHarness) configRoot() string {
 	home, _ := os.UserHomeDir()
 	if home == "" {

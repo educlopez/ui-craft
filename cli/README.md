@@ -28,14 +28,58 @@ Download the binary for your platform from the [GitHub Releases page](https://gi
 ## Usage
 
 ```
-ui-craft install                  # detect harnesses, interactive TUI
-ui-craft install --yes            # non-interactive (CI / scripted)
-ui-craft install --harness cursor # target a specific harness
-ui-craft backup                   # snapshot harness configs without installing
-ui-craft rollback cursor          # restore latest backup for a harness
-ui-craft update cursor            # re-apply latest embedded mirrors
-ui-craft version                  # print binary + mirror version
+ui-craft install                          # detect harnesses, interactive TUI
+ui-craft install --yes                    # non-interactive (CI / scripted)
+ui-craft install --yes --force            # bypass native plugin coexistence warning
+ui-craft install --harness cursor         # target a specific harness
+ui-craft backup                           # snapshot harness configs without installing
+ui-craft rollback cursor                  # restore latest backup for a harness
+ui-craft update cursor                    # re-apply all installed components for cursor
+ui-craft update cursor --component mcp-gates  # update one component
+ui-craft version                          # print binary + mirror version
+ui-craft version --check-parity          # verify Claude Code install matches expected surface
 ```
+
+## Update lifecycle (state.json)
+
+After a successful `install`, the CLI saves the selected harness+component choices to `~/.ui-craft/state.json`. This file is the single source of truth for `update`:
+
+```
+update cursor                   → re-applies all components recorded in state for cursor
+update cursor --component mcp-gates  → re-applies only mcp-gates for cursor
+```
+
+If `state.json` is missing or malformed, `update` reports "nothing installed yet — run install first" and exits 0. It never crashes on a missing or corrupt state file.
+
+User edits outside managed blocks are always preserved across updates. The managed-block and JSON-merge writers guarantee that only the ui-craft block is replaced; user content before and after the block is never touched.
+
+The update is idempotent: if the embedded mirror already matches what is on disk (byte-for-byte), no file is written and the command reports "already up-to-date".
+
+## Claude Code parity check
+
+```bash
+ui-craft version --check-parity
+```
+
+Verifies that the CLI install into Claude Code produced the expected surface:
+
+- `skill` — at least one file under `~/.claude/skills/ui-craft/`
+- `mcp` — `~/.claude/mcp/ui-craft.json` exists and is non-empty
+- `agents` — at least one `.md` file under `~/.claude/agents/` (only when review-agents is installed)
+
+Exits 0 when all checks pass; exits 1 when any check fails.
+
+## Native plugin coexistence
+
+If the Claude Code native plugin (`~/.claude/plugins/ui-craft/`) is detected during install, the CLI warns and requires `--force` to proceed:
+
+```
+WARNING: Native plugin detected — CLI install may overlap.
+Both installs write to the same skills and agents directories.
+To proceed anyway, re-run with --force.
+```
+
+The native plugin install and the CLI install are both valid alternative install paths. They can coexist but may write to the same directories.
 
 ## Versioning
 

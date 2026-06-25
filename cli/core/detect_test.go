@@ -38,6 +38,8 @@ func (s stubHarness) ConfigPaths() harness.ConfigPaths {
 
 func (s stubHarness) Supports(c component.Component) bool { return true }
 
+func (s stubHarness) ConfigRoot() string { return "/fake/" + s.name }
+
 func (s stubHarness) WriteMCP(w fsutil.FileSystem, srv harness.MCPServer) (harness.Change, error) {
 	return harness.Change{}, harness.ErrNotImplemented
 }

@@ -17,68 +17,146 @@ import (
 var updateCmd = &cobra.Command{
 	Use:   "update [harness]",
 	Short: "Update installed ui-craft components to the current embedded version",
-	Long: `Re-runs WriteSkill (and optionally WriteMCP) for the specified harness,
+	Long: `Re-applies WriteSkill (and optionally WriteMCP) for the specified harness,
 updating installed components to the version embedded in this binary.
 
-A backup is taken before any write. Use --component to limit the update
-to a specific component; omit it to update all installed components.`,
+The saved install choices in ~/.ui-craft/state.json are used to determine which
+harness+component combinations were previously installed. If no state.json exists,
+update reports "nothing installed yet — run install first".
+
+A backup is taken before any write. User edits outside managed blocks are always
+preserved (managed-block and structured-merge writers guarantee this). The update
+is idempotent: if the embedded mirror matches what is on disk, no file is touched.
+
+Use --component to limit the update to a single component; omit it to update all
+installed components for the harness.`,
 	Args:         cobra.MaximumNArgs(1),
 	SilenceUsage: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		out := cmd.OutOrStdout()
 
 		// Freshness guard: prevent running with placeholder/empty embedded mirrors.
-		// Must be first so users get a clear error before any detection or I/O.
 		if err := assets.AssertMirrorsFresh(); err != nil {
 			return err
 		}
 
 		compFlag, _ := cmd.Flags().GetString("component")
 
-		// Detect harnesses.
+		// Resolve state root: ~/.ui-craft/
+		home, _ := os.UserHomeDir()
+		stateRoot := filepath.Join(home, ".ui-craft")
+		osfs := fsutil.OsFS{}
+
+		// Load install state. A missing/malformed state.json is not an error;
+		// we report "nothing installed yet" gracefully (gotcha #2).
+		state, _ := core.LoadState(osfs, stateRoot)
+		if len(state.Harnesses) == 0 {
+			fmt.Fprintln(out, "nothing installed yet — run install first")
+			return nil
+		}
+
+		// Detect currently installed harnesses.
 		detected := core.DetectAll(harness.All())
 		if len(detected) == 0 {
+			if len(state.Harnesses) > 0 {
+				// State records harnesses that were installed, but none are currently
+				// detected. This typically means the tool was uninstalled.
+				return fmt.Errorf("harness(es) recorded in state.json are not currently detected on this machine")
+			}
 			return fmt.Errorf("no supported AI coding harness detected")
 		}
 
 		// Filter by harness name argument if provided.
+		harnessFilter := ""
 		if len(args) == 1 {
-			name := args[0]
-			filtered := detected[:0]
-			for _, dh := range detected {
-				if dh.Harness.Name() == name {
-					filtered = append(filtered, dh)
-				}
-			}
-			if len(filtered) == 0 {
-				return fmt.Errorf("harness %q not detected on this machine", name)
-			}
-			detected = filtered
+			harnessFilter = args[0]
 		}
 
-		// Determine which components to update.
-		selected := component.All()
-		if compFlag != "" {
-			// Map the flag string to a Component.
-			var matched component.Component
-			found := false
-			for _, c := range component.All() {
-				if c.String() == compFlag {
-					matched = c
-					found = true
+		// Build the set of (harness, components) to update from saved state.
+		// If a harness is in state but not currently detected, skip it with a
+		// notice (the user may have uninstalled the tool since last install).
+		type updateTarget struct {
+			dh         core.DetectedHarness
+			components []component.Component
+		}
+		var updateTargets []updateTarget
+
+		for _, hs := range state.Harnesses {
+			if harnessFilter != "" && hs.Name != harnessFilter {
+				continue
+			}
+			if len(hs.InstalledComponents) == 0 {
+				continue
+			}
+
+			// Match to a detected harness.
+			var matched *core.DetectedHarness
+			for i := range detected {
+				if detected[i].Harness.Name() == hs.Name {
+					matched = &detected[i]
 					break
 				}
 			}
-			if !found {
-				return fmt.Errorf("unknown component %q; valid values: skill+commands, mcp-gates, review-agents, design-memory", compFlag)
+			if matched == nil {
+				fmt.Fprintf(out, "  %s: not currently detected — skipping\n", hs.Name)
+				continue
 			}
-			selected = []component.Component{matched}
+
+			// Determine which components to update.
+			var comps []component.Component
+			if compFlag != "" {
+				// --component flag limits to a single component.
+				var matched component.Component
+				found := false
+				for _, c := range component.All() {
+					if c.String() == compFlag {
+						matched = c
+						found = true
+						break
+					}
+				}
+				if !found {
+					return fmt.Errorf("unknown component %q; valid values: skill+commands, mcp-gates, review-agents, design-memory", compFlag)
+				}
+				// Only include this component if it was previously installed.
+				installed := false
+				for _, ic := range hs.InstalledComponents {
+					if ic == matched.String() {
+						installed = true
+						break
+					}
+				}
+				if !installed {
+					fmt.Fprintf(out, "  %s/%s: not in saved state — skipping\n", hs.Name, matched.String())
+					continue
+				}
+				comps = []component.Component{matched}
+			} else {
+				// No component filter: update all installed components.
+				for _, icName := range hs.InstalledComponents {
+					for _, c := range component.All() {
+						if c.String() == icName {
+							comps = append(comps, c)
+							break
+						}
+					}
+				}
+			}
+
+			updateTargets = append(updateTargets, updateTarget{dh: *matched, components: comps})
+		}
+
+		if len(updateTargets) == 0 {
+			if harnessFilter != "" {
+				// The requested harness had no state entry — it was never installed.
+				fmt.Fprintf(out, "nothing installed yet for %q — run install first\n", harnessFilter)
+			} else {
+				fmt.Fprintln(out, "nothing installed yet — run install first")
+			}
+			return nil
 		}
 
 		// Resolve project directory for design-memory scaffolding.
-		// --dir flag (flags.Dir) defaults to "." which may be relative;
-		// resolve to an absolute path so scaffold writes land in the right place
-		// regardless of how the flag was passed (e.g. --dir=myproject).
 		projectDir := flags.Dir
 		if projectDir == "" || projectDir == "." {
 			if cwd, err := os.Getwd(); err == nil {
@@ -89,36 +167,59 @@ to a specific component; omit it to update all installed components.`,
 			projectDir = absDir
 		}
 
-		osfs := fsutil.OsFS{}
-		plan := core.Plan(detected, selected, osfs, assets.Mirror, assets.Agents, assets.TemplateFS, projectDir)
-
 		// Backup store root: ~/.ui-craft-backups
-		home, _ := os.UserHomeDir()
 		backupRoot := filepath.Join(home, ".ui-craft-backups")
-		backupStore := backup.NewStore(backupRoot, osfs, nil)
+		backupStore := backup.NewStore(backupRoot, osfs, nil) // nil clock = time.Now
 
-		result, applyErr := core.Apply(plan, osfs, backupStore, cmdVersion)
-		if applyErr != nil {
-			return fmt.Errorf("update: apply failed (all changes rolled back): %w", applyErr)
+		// Execute per-target update (each target is a harness+components slice).
+		for _, ut := range updateTargets {
+			plan := core.Plan([]core.DetectedHarness{ut.dh}, ut.components, osfs, assets.Mirror, assets.Agents, assets.TemplateFS, projectDir)
+
+			result, applyErr := core.Apply(plan, osfs, backupStore, cmdVersion)
+			if applyErr != nil {
+				return fmt.Errorf("update %s: apply failed (all changes rolled back): %w", ut.dh.Harness.Name(), applyErr)
+			}
+
+			// Report per-component results.
+			for _, t := range plan.Targets {
+				if t.Skip {
+					fmt.Fprintf(out, "  %s/%s: skipped (%s)\n", t.Harness.Name(), t.Component.String(), t.SkipReason)
+					continue
+				}
+				status := "updated"
+				for _, ch := range result.Changes {
+					if ch.HarnessName == t.Harness.Name() && ch.Component == t.Component.String() {
+						if !ch.Changed {
+							status = "already up-to-date"
+						}
+						break
+					}
+				}
+				fmt.Fprintf(out, "  %s/%s: %s\n", t.Harness.Name(), t.Component.String(), status)
+			}
+
+			// Update state: refresh InstalledAt to now for this harness.
+			// Preserve the full installed component list from state (the source of truth)
+			// even when --component narrows this particular update run. A partial
+			// update does not un-install the components it didn't touch.
+			existing := core.FindHarness(state, ut.dh.Harness.Name())
+			var installedComps []string
+			if existing != nil {
+				installedComps = existing.InstalledComponents
+			}
+			core.UpsertHarnessState(state, core.HarnessState{
+				Name:                ut.dh.Harness.Name(),
+				InstalledComponents: installedComps,
+				InstalledAt:         core.Now().UTC().Format("2006-01-02T15:04:05Z07:00"),
+			})
 		}
 
-		// Report results per target.
-		for _, t := range plan.Targets {
-			if t.Skip {
-				fmt.Fprintf(out, "  %s/%s: skipped (%s)\n", t.Harness.Name(), t.Component.String(), t.SkipReason)
-				continue
-			}
-			// Find the matching change by annotation.
-			status := "updated"
-			for _, ch := range result.Changes {
-				if ch.HarnessName == t.Harness.Name() && ch.Component == t.Component.String() {
-					if !ch.Changed {
-						status = "already up-to-date"
-					}
-					break
-				}
-			}
-			fmt.Fprintf(out, "  %s/%s: %s\n", t.Harness.Name(), t.Component.String(), status)
+		// Persist updated state.
+		state.Version = cmdVersion
+		state.MirrorVersion = cmdMirrorVersion
+		if err := core.SaveState(osfs, stateRoot, state); err != nil {
+			// Non-fatal: log but do not fail the command.
+			fmt.Fprintf(out, "  warning: could not save state.json: %v\n", err)
 		}
 
 		return nil

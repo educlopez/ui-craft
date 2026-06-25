@@ -26,6 +26,9 @@ var _ Harness = GeminiHarness{}
 
 func (h GeminiHarness) Name() string { return "gemini" }
 
+// ConfigRoot returns the Gemini config root (~/.gemini). Satisfies the Harness interface.
+func (h GeminiHarness) ConfigRoot() string { return h.configRoot() }
+
 func (h GeminiHarness) configRoot() string {
 	home, _ := os.UserHomeDir()
 	if home == "" {

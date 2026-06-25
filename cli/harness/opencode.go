@@ -31,6 +31,9 @@ var _ Harness = OpenCodeHarness{}
 
 func (h OpenCodeHarness) Name() string { return "opencode" }
 
+// ConfigRoot returns the OpenCode config root. Satisfies the Harness interface.
+func (h OpenCodeHarness) ConfigRoot() string { return h.configRoot() }
+
 // configRoot returns the OS-appropriate OpenCode config root.
 // On Windows, it uses %APPDATA%\opencode; if APPDATA is empty the harness is
 // not detectable and an empty string is returned. On non-Windows systems the

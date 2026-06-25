@@ -28,6 +28,9 @@ var _ Harness = CursorHarness{}
 
 func (h CursorHarness) Name() string { return "cursor" }
 
+// ConfigRoot returns the Cursor config root (~/.cursor). Satisfies the Harness interface.
+func (h CursorHarness) ConfigRoot() string { return h.configRoot() }
+
 func (h CursorHarness) configRoot() string {
 	home, _ := os.UserHomeDir()
 	if home == "" {
