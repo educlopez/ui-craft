@@ -55,16 +55,16 @@ More before/after comparisons on the [landing page](https://skills.smoothui.dev)
 
 ## Install
 
-### Claude Code — recommended
+### Claude Code — recommended (installs the whole system)
 
-Install as a native plugin (the skill + all 22 slash commands):
+One command installs the skill, all 22 slash commands, the 2 review agents, **and** the MCP quality-gate server — auto-wired, no `.mcp.json` editing:
 
 ```
 /plugin marketplace add educlopez/ui-craft
 /plugin install ui-craft
 ```
 
-This uses Claude Code's own plugin system, so it's not affected by the global-path issue noted below.
+The plugin bundles a `.mcp.json` (`npx -y ui-craft-mcp`), so the deterministic gates (`check_anti_slop`, `tokens_lint`, `acceptance_bar`, `score_ui`) register automatically on install — first launch fetches the package via `npx`. This uses Claude Code's own plugin system, so it's not affected by the global-path issue noted below.
 
 ### Codex, Cursor, Gemini, OpenCode, Windsurf — and any Agent Skills agent
 
@@ -73,6 +73,8 @@ npx skills add educlopez/ui-craft
 ```
 
 Works with any agent that supports the [Agent Skills](https://skills.sh) spec. Each agent gets a pre-built mirror under a dedicated folder (`.codex/`, `.cursor/`, `.gemini/`, `.opencode/`, `.agents/`). The main `ui-craft` skill lands as a peer skill; each slash command is materialized as its own sub-skill in non-Claude harnesses (other agents trigger them by intent: "audit my UI", "polish this page").
+
+> **What rides which install?** The skill + commands work in every harness. The **review agents** are Claude Code plugin agents (plugin install only). The **MCP gates** auto-install with the plugin, or wire `npx ui-craft-mcp` into any MCP client's `.mcp.json` by hand. The **CLI** (`npx ui-craft-detect`) is standalone and needs no install.
 
 > [!note]
 > **Using `npx skills add -g` with Claude Code?** The skills CLI installs global skills to `~/.agents/skills`, but Claude Code reads `~/.claude/skills` ([vercel-labs/skills#693](https://github.com/vercel-labs/skills/issues/693)). If the skill isn't picked up, use the plugin install above, install per-project (drop `-g`), or symlink it:

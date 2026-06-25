@@ -96,6 +96,18 @@ if (plugin) {
   check("plugin.json has name", Boolean(plugin.name))
 }
 
+// Bundled MCP server config — auto-registered on `/plugin install`.
+const mcpJsonPath = resolve(ROOT, ".mcp.json")
+if (existsSync(mcpJsonPath)) {
+  const mcp = readJson(mcpJsonPath)
+  check(".mcp.json parses", mcp !== null)
+  check(".mcp.json has mcpServers", Boolean(mcp?.mcpServers))
+  const servers = mcp?.mcpServers ?? {}
+  for (const [name, cfg] of Object.entries(servers)) {
+    check(`.mcp.json server "${name}" has command or url`, Boolean(cfg?.command || cfg?.url))
+  }
+}
+
 // --- 2. Declared skills and commands exist --------------------------------
 
 if (plugin) {

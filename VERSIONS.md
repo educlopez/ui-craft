@@ -1,5 +1,16 @@
 # Versions
 
+## v0.34.0 (2026-06-25) — one install = the whole system (plugin bundles the MCP)
+
+Closes the gap where the headline `/plugin install` only delivered the skill + commands + agents, so the "system" framing didn't match the one-command install. Now one command installs everything on Claude Code.
+
+**New:**
+
+- **Bundled MCP** — added `.mcp.json` at the repo/plugin root (`{ "mcpServers": { "ui-craft": { "command": "npx", "args": ["-y", "ui-craft-mcp"] } } }`). Claude Code auto-registers it on `/plugin install`, so the four deterministic gates (`check_anti_slop`, `tokens_lint`, `acceptance_bar`, `score_ui`) come online with no manual `.mcp.json` editing. First launch fetches `ui-craft-mcp` via `npx`. Depends on `ui-craft-mcp` being published (it is, as of v0.33).
+- **`validate.mjs`** now checks `.mcp.json` parses, has `mcpServers`, and each server declares a `command` or `url`.
+
+**Honest install matrix (README):** the skill + commands work in every harness; the **review agents** ride the Claude Code plugin only; the **MCP gates** auto-install with the plugin (or wire `npx ui-craft-mcp` by hand into any MCP client); the **CLI** (`npx ui-craft-detect`) is standalone. `npx skills add` harnesses get skill + commands (no agents/MCP — channel limitation, documented).
+
 ## v0.33.0 (2026-06-25) — ui-craft-mcp is publishable (bundled)
 
 Makes the MCP server installable via `npx ui-craft-mcp` — the command the README and `.mcp.json` snippet already assumed. The blocker was packaging: the server's tools import first-party source from OUTSIDE the package (`../scripts/detect.mjs`, `../evals/quality/score.mjs`), which doesn't exist in an npm tarball.
