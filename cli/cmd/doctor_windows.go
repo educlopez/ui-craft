@@ -26,8 +26,8 @@ func diskAvail(path string) (uint64, error) {
 	r1, _, callErr := proc.Call(
 		uintptr(unsafe.Pointer(lpPath)),
 		uintptr(unsafe.Pointer(&freeBytesAvail)),
-		0,
-		0,
+		uintptr(0),
+		uintptr(0),
 	)
 	if r1 == 0 {
 		return 0, callErr

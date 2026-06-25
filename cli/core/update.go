@@ -9,6 +9,7 @@ package core
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -51,18 +52,30 @@ var FetchReleaseFn func(url string) (string, error) = defaultFetchRelease
 
 // ─── Public API ───────────────────────────────────────────────────────────
 
+// isDevVersion returns true for build-time placeholders that should never
+// trigger an update advisory (dev builds don't have a stable release tag).
+func isDevVersion(v string) bool {
+	return v == "" || v == "dev" || v == "unknown"
+}
+
 // CheckForUpdate checks whether a newer version of ui-craft is available.
 //
 // It is gated by a 24h TTL: if state.LastUpdateCheck is within the last 24h,
 // it returns UpdateResult{Available: false} immediately without hitting the network.
 //
-// After a successful network check, it writes the new LastUpdateCheck timestamp
-// to state.json at stateRoot. This write is best-effort — a write failure is
-// silently ignored and does not affect the result.
+// After a successful network check (or a non-200 HTTP response), it writes the
+// new LastUpdateCheck timestamp to state.json at stateRoot so that the 24h TTL
+// is honoured even when the API responds with 403 / 500. This prevents hammering
+// the API on repeated launches during rate-limit windows.
 //
 // Fail-open: any network or parse error returns UpdateResult{Available: false}.
 // This function is designed to run in a goroutine and NEVER blocks the caller.
 func CheckForUpdate(filesystem fsutil.FileSystem, stateRoot, currentVersion string) UpdateResult {
+	// Dev/unknown builds never show an update advisory.
+	if isDevVersion(currentVersion) {
+		return UpdateResult{}
+	}
+
 	us, _ := loadUpdateState(filesystem, stateRoot)
 
 	// TTL gate: skip check if we already checked within the last 24h.
@@ -74,13 +87,21 @@ func CheckForUpdate(filesystem fsutil.FileSystem, stateRoot, currentVersion stri
 	}
 
 	// Fetch the latest release tag.
-	latestTag, err := FetchReleaseFn(githubReleasesURL)
-	if err != nil {
-		// Fail-open: network/parse error → no advisory.
+	latestTag, fetchErr := FetchReleaseFn(githubReleasesURL)
+	if fetchErr != nil {
+		// HTTP error from the API (403, 500, …) — the server was reachable. Write
+		// the TTL timestamp so we don't hammer the API on every launch during a
+		// rate-limit or outage window.
+		if errors.Is(fetchErr, errHTTPNotOK) {
+			us.lastChecked = ClockFn()
+			_ = saveUpdateState(filesystem, stateRoot, us)
+		}
+		// For real network/timeout errors we skip the TTL write so the next
+		// launch retries immediately (transient connectivity issue).
 		return UpdateResult{}
 	}
 
-	// Record that we checked, regardless of whether there is an update.
+	// Record that we checked. Done AFTER a successful fetch.
 	us.lastChecked = ClockFn()
 	_ = saveUpdateState(filesystem, stateRoot, us)
 
@@ -117,6 +138,9 @@ type updateCheckState struct {
 // loadUpdateState reads LastUpdateCheck from state.json. Returns a zero-value
 // state (not an error) when the file is missing or the field is absent.
 func loadUpdateState(filesystem fsutil.FileSystem, stateRoot string) (updateCheckState, error) {
+	stateMu.Lock()
+	defer stateMu.Unlock()
+
 	p := statePath(stateRoot)
 	data, err := filesystem.ReadFile(p)
 	if err != nil {
@@ -144,6 +168,9 @@ func loadUpdateState(filesystem fsutil.FileSystem, stateRoot string) (updateChec
 // saveUpdateState merges LastUpdateCheck into the existing state.json, preserving
 // all other fields. Best-effort — errors are silently ignored by the caller.
 func saveUpdateState(filesystem fsutil.FileSystem, stateRoot string, us updateCheckState) error {
+	stateMu.Lock()
+	defer stateMu.Unlock()
+
 	p := statePath(stateRoot)
 
 	// Read the existing raw JSON (if any) so we can merge.
@@ -166,11 +193,23 @@ func saveUpdateState(filesystem fsutil.FileSystem, stateRoot string, us updateCh
 	if err := filesystem.MkdirAll(stateRoot, 0o755); err != nil {
 		return err
 	}
-	return filesystem.WriteFile(p, data, 0o644)
+	// Use WriteFileAtomic for crash-safe writes (consistent with SaveState).
+	_, err = fsutil.WriteFileAtomic(filesystem, p, data, 0o644)
+	return err
 }
+
+// errHTTPNotOK is returned by defaultFetchRelease when the GitHub API responds
+// with a non-200 status (e.g. 403 rate-limit, 500 server error). The caller
+// treats this as a "no update available" result and still writes the TTL
+// timestamp to prevent hammering the API on repeated launches.
+var errHTTPNotOK = fmt.Errorf("update-check: non-200 response from GitHub API")
 
 // defaultFetchRelease performs the real HTTP GET against the GitHub releases API.
 // Returns the tag_name string or an error. 2s timeout — fail-open on any error.
+//
+// A non-200 HTTP response returns errHTTPNotOK (not a raw network error) so that
+// the caller can distinguish "API reachable but unhappy" (advance TTL) from
+// "no network" (skip TTL write).
 func defaultFetchRelease(url string) (string, error) {
 	client := &http.Client{Timeout: updateCheckTimeout}
 	resp, err := client.Get(url) //nolint:noctx
@@ -178,6 +217,12 @@ func defaultFetchRelease(url string) (string, error) {
 		return "", err
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		// Drain body to allow connection reuse then signal HTTP error.
+		_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 1<<16))
+		return "", errHTTPNotOK
+	}
 
 	body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<16)) // cap at 64 KiB
 	if err != nil {

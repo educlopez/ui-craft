@@ -200,8 +200,15 @@ func runUninstall(cmd *cobra.Command, _ []string) error {
 
 			case component.SkillCommands:
 				skillDir := filepath.Join(paths.SkillsDir, "ui-craft")
-				if err := removeDir(fs, skillDir); err != nil {
+				if !filepath.IsAbs(skillDir) {
+					fmt.Fprintf(out, "  %s/skill+commands: skipped — could not resolve an absolute config path (HOME unset?)\n", hName)
+					break
+				}
+				res, acted, err := removeDirSafe(fs, skillDir)
+				if err != nil {
 					fmt.Fprintf(out, "  %s/skill+commands: error: %v\n", hName, err)
+				} else if res == removeDirNotExist || !acted {
+					fmt.Fprintf(out, "  %s/skill+commands: not present — skipped\n", hName)
 				} else {
 					fmt.Fprintf(out, "  %s/skill+commands: removed %s\n", hName, skillDir)
 				}
@@ -242,8 +249,15 @@ func runUninstall(cmd *cobra.Command, _ []string) error {
 					dmDir = absDir
 				}
 				uiCraftDir := filepath.Join(dmDir, ".ui-craft")
-				if err := removeDir(fs, uiCraftDir); err != nil {
+				if !filepath.IsAbs(uiCraftDir) {
+					fmt.Fprintln(out, "  design-memory: skipped — could not resolve an absolute config path (HOME unset?)")
+					break
+				}
+				res, acted, err := removeDirSafe(fs, uiCraftDir)
+				if err != nil {
 					fmt.Fprintf(out, "  design-memory: error: %v\n", err)
+				} else if res == removeDirNotExist || !acted {
+					fmt.Fprintln(out, "  design-memory: not present — skipped")
 				} else {
 					fmt.Fprintf(out, "  design-memory: removed %s\n", uiCraftDir)
 				}
@@ -373,10 +387,38 @@ func removeAgentsMDBlock(fs fsutil.FileSystem, agentsMDPath string) error {
 	return nil
 }
 
-// removeDir removes a directory tree. Returns nil if the directory doesn't exist.
+// errRelativePath is returned by removeDir when dir is not absolute.
+var errRelativePath = fmt.Errorf("removeDir: refusing to remove a relative path (HOME may be unset)")
+
+// removeDirResult indicates what removeDir actually did.
+type removeDirResult int
+
+const (
+	removeDirRemoved  removeDirResult = iota // directory existed and was removed
+	removeDirNotExist                        // directory did not exist — nothing to do
+)
+
+// removeDir removes a directory tree.
+//
+// Safety contract:
+//   - dir MUST be an absolute path. If it is not, removeDir returns errRelativePath
+//     and NEVER calls os.RemoveAll. This guards against the case where HOME is unset
+//     and filepath.Join("", "ui-craft") == "ui-craft" (relative), which would
+//     resolve against CWD and could delete the user's repository.
+//   - If dir does not exist, removeDir returns (removeDirNotExist, nil).
 func removeDir(fs fsutil.FileSystem, dir string) error {
-	if _, err := fs.Stat(dir); err != nil {
-		return nil // doesn't exist — nothing to remove
+	_, _, err := removeDirSafe(fs, dir)
+	return err
+}
+
+// removeDirSafe is the real implementation, returning both the result and error.
+// Callers that need to distinguish "removed" vs "not present" use this directly.
+func removeDirSafe(fs fsutil.FileSystem, dir string) (removeDirResult, bool, error) {
+	if !filepath.IsAbs(dir) {
+		return 0, false, errRelativePath
 	}
-	return os.RemoveAll(dir)
+	if _, err := fs.Stat(dir); err != nil {
+		return removeDirNotExist, false, nil // doesn't exist — nothing to remove
+	}
+	return removeDirRemoved, true, os.RemoveAll(dir)
 }

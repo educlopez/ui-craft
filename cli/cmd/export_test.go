@@ -92,6 +92,15 @@ func NewBackupStoreForTest(fs fsutil.FileSystem, root string) *backup.Store {
 // RemoveDir is re-exported for tests that verify the uninstall dir-removal logic.
 func RemoveDir(fs fsutil.FileSystem, dir string) error { return removeDir(fs, dir) }
 
+// RemoveDirSafe re-exports removeDirSafe so tests can inspect the result kind.
+func RemoveDirSafe(fs fsutil.FileSystem, dir string) (bool, error) {
+	_, acted, err := removeDirSafe(fs, dir)
+	return acted, err
+}
+
+// ErrRelativePath re-exports the sentinel so tests can assert on it.
+var ErrRelativePath = errRelativePath
+
 // RemoveManagedBlockForTest is re-exported for tests that verify managed-block
 // removal in AGENTS.md files.
 func RemoveManagedBlockForTest(content string) string {

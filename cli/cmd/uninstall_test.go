@@ -11,6 +11,8 @@ package cmd_test
 
 import (
 	"encoding/json"
+	"errors"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -176,6 +178,88 @@ More user content below.
 	}
 	if !strings.Contains(result, "More user content below.") {
 		t.Errorf("user content after block should be preserved, got:\n%s", result)
+	}
+}
+
+// TestUninstall_relativePath_neverRemoved is the regression test for the
+// CRITICAL absolute-path guard.
+//
+// Scenario: a harness whose SkillsDir resolves to "" (e.g. HOME is unset at
+// install time) produces a path like filepath.Join("", "ui-craft") == "ui-craft"
+// (a RELATIVE path). removeDir MUST refuse to act on it and MUST NOT call
+// os.RemoveAll, so a sentinel directory at that relative path in the CWD survives.
+func TestUninstall_relativePath_neverRemoved(t *testing.T) {
+	// Change into a fresh temp dir so any accidental relative removal is scoped
+	// and the sentinel is predictable.
+	tmpDir := t.TempDir()
+	origDir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("getwd: %v", err)
+	}
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("chdir: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chdir(origDir) })
+
+	osfs := fsutil.OsFS{}
+
+	// Create a sentinel directory at the relative path that an empty SkillsDir
+	// would produce: filepath.Join("", "ui-craft") == "ui-craft".
+	sentinel := filepath.Join(tmpDir, "ui-craft")
+	if err := osfs.MkdirAll(sentinel, 0o755); err != nil {
+		t.Fatalf("mkdir sentinel: %v", err)
+	}
+	// Also write a file inside so we can prove the tree was untouched.
+	sentinelFile := filepath.Join(sentinel, "important.txt")
+	if err := osfs.WriteFile(sentinelFile, []byte("do not delete\n"), 0o644); err != nil {
+		t.Fatalf("write sentinel file: %v", err)
+	}
+
+	// Simulate the buggy path: filepath.Join("", "ui-craft") == "ui-craft" (relative).
+	relPath := filepath.Join("", "ui-craft")
+	if filepath.IsAbs(relPath) {
+		t.Skipf("platform produced an absolute path from empty SkillsDir; guard trivially safe")
+	}
+
+	// removeDir must refuse and return errRelativePath.
+	if err := cmd.RemoveDir(osfs, relPath); err == nil {
+		t.Fatalf("removeDir returned nil on a relative path — absolute-path guard missing!")
+	}
+
+	// The sentinel directory and its contents MUST survive.
+	if _, err := osfs.Stat(sentinel); err != nil {
+		t.Errorf("sentinel dir was removed by removeDir on a relative path: %v", err)
+	}
+	if _, err := osfs.Stat(sentinelFile); err != nil {
+		t.Errorf("sentinel file was removed by removeDir on a relative path: %v", err)
+	}
+}
+
+// TestUninstall_relativePathError verifies that ErrRelativePath is returned
+// (not nil) when removeDir receives a non-absolute path.
+func TestUninstall_relativePathError(t *testing.T) {
+	osfs := fsutil.OsFS{}
+	err := cmd.RemoveDir(osfs, "relative/path")
+	if err == nil {
+		t.Fatal("expected an error for relative path, got nil")
+	}
+	if !errors.Is(err, cmd.ErrRelativePath) {
+		t.Errorf("expected ErrRelativePath, got: %v", err)
+	}
+}
+
+// TestUninstall_notExistReportsNotActed verifies that removeDirSafe reports
+// "not acted" (false) when the target dir does not exist.
+func TestUninstall_notExistReportsNotActed(t *testing.T) {
+	tmpDir := t.TempDir()
+	osfs := fsutil.OsFS{}
+	nonExistent := filepath.Join(tmpDir, "does-not-exist")
+	acted, err := cmd.RemoveDirSafe(osfs, nonExistent)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if acted {
+		t.Error("removeDirSafe should report acted=false for non-existent dir")
 	}
 }
 

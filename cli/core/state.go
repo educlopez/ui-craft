@@ -15,10 +15,17 @@ import (
 	"errors"
 	"io/fs"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"github.com/educlopez/ui-craft/cli/fsutil"
 )
+
+// stateMu guards all read-modify-write operations on state.json, including
+// SaveState and saveUpdateState (the update-check goroutine). Without this lock,
+// a concurrent update-check write and an install/update SaveState write can
+// produce a lost-update race that go test -race flags.
+var stateMu sync.Mutex
 
 // StateSchemaVersion is bumped when the state.json schema changes in a
 // backward-incompatible way. Older files are still loaded (fields are additive);
@@ -76,6 +83,14 @@ var Now = time.Now
 // If the file is missing or malformed (gotcha #2), it returns a zero-value
 // InstallState and a nil error — "nothing installed yet" is a valid initial state.
 func LoadState(filesystem fsutil.FileSystem, root string) (*InstallState, error) {
+	stateMu.Lock()
+	defer stateMu.Unlock()
+	return loadStateLocked(filesystem, root)
+}
+
+// loadStateLocked is the lock-free inner read, callable by callers that already
+// hold stateMu (e.g. SaveState, which reads-then-writes atomically).
+func loadStateLocked(filesystem fsutil.FileSystem, root string) (*InstallState, error) {
 	p := statePath(root)
 	data, err := filesystem.ReadFile(p)
 	if err != nil {
@@ -100,6 +115,9 @@ func LoadState(filesystem fsutil.FileSystem, root string) (*InstallState, error)
 // It creates the directory if needed. A non-nil error means the write failed;
 // the caller should log it but not abort (state.json is advisory, not critical).
 func SaveState(filesystem fsutil.FileSystem, root string, state *InstallState) error {
+	stateMu.Lock()
+	defer stateMu.Unlock()
+
 	// Ensure the directory exists.
 	if err := filesystem.MkdirAll(root, 0o755); err != nil {
 		return err
