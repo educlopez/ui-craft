@@ -1,23 +1,29 @@
 {
   "name": "ui-craft-mcp",
   "version": "0.1.0",
-  "description": "ui-craft MCP server — deterministic design-quality gate (anti-slop, tokens, acceptance-bar)",
+  "description": "ui-craft MCP server — deterministic design-quality gate (anti-slop, tokens, acceptance-bar, score)",
   "type": "module",
   "bin": {
-    "ui-craft-mcp": "src/server.mjs"
+    "ui-craft-mcp": "dist/server.mjs"
   },
   "engines": {
     "node": ">=18"
   },
   "scripts": {
     "test": "node --test",
-    "start": "node src/server.mjs"
+    "start": "node src/server.mjs",
+    "build": "node esbuild.config.mjs",
+    "smoke:dist": "npm run build && UI_CRAFT_MCP_SERVER=dist/server.mjs node --test src/server.smoke.test.mjs",
+    "prepublishOnly": "npm run build"
   },
   "files": [
-    "src"
+    "dist"
   ],
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.29.0",
     "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0"
   }
 }

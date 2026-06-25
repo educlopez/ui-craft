@@ -1,5 +1,18 @@
 # Versions
 
+## v0.33.0 (2026-06-25) — ui-craft-mcp is publishable (bundled)
+
+Makes the MCP server installable via `npx ui-craft-mcp` — the command the README and `.mcp.json` snippet already assumed. The blocker was packaging: the server's tools import first-party source from OUTSIDE the package (`../scripts/detect.mjs`, `../evals/quality/score.mjs`), which doesn't exist in an npm tarball.
+
+**How:**
+
+- **esbuild bundle** (`mcp/esbuild.config.mjs`) — `build` compiles `src/server.mjs` + everything it reaches into one self-contained `dist/server.mjs` (~92 kB). Only the real runtime deps (`@modelcontextprotocol/sdk`, `zod`) stay external. `bin` → `dist/`, `files: ["dist"]`, `prepublishOnly` runs the build. No monorepo/workspace ceremony, no vendoring.
+- **Bundle-safe CLI guard** — `scripts/detect.mjs`'s `import.meta.url === argv[1]` CLI entry guard would fire once inlined into the server (its url then equals the server entry), running detect's `main()` + `process.exit` and killing the server mid-request. Gated behind `process.env.UI_CRAFT_BUNDLE`, which esbuild `define`s to `"1"` so the block is dead-code-eliminated in the bundle only. The repo CLI and the published `ui-craft-detect` are unaffected (the var is undefined there).
+- **acceptance-data → ESM** — `src/acceptance-data.json` became `src/acceptance-data.mjs` (`export default`), so it inlines into the bundle and loads from source on every Node version without import attributes or a runtime file read.
+- **Artifact-level smoke test** — `smoke:dist` builds, then runs the stdio smoke test against `dist/server.mjs` (via `UI_CRAFT_MCP_SERVER`). Wired into `mcp-test` CI, so the published artifact — not just the source — is verified to boot and answer all four tools.
+
+Publish is a manual `npm publish` (own credentials); CI proves the bundle works.
+
 ## v0.32.0 (2026-06-25) — UsabilityScore (eval v2, judged dimension)
 
 Adds the usability axis the deterministic UICraftScore can't see — experience friction (confusing flows, missing undo, no feedback) that static analysis misses by definition.

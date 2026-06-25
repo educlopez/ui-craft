@@ -31,6 +31,8 @@ jobs:
         run: cd mcp && npm install
       - name: Run MCP tests
         run: cd mcp && npm test
+      - name: Build + smoke the published bundle
+        run: cd mcp && npm run smoke:dist
 
   quality-eval:
     name: Quality Eval Harness
