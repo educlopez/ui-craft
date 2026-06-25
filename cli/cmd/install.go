@@ -3,9 +3,11 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
+	"github.com/educlopez/ui-craft/cli/assets"
 	"github.com/educlopez/ui-craft/cli/backup"
 	"github.com/educlopez/ui-craft/cli/component"
 	"github.com/educlopez/ui-craft/cli/core"
@@ -16,6 +18,11 @@ import (
 
 // supportedHarnessNames lists every harness by name for user-facing messages.
 var supportedHarnessNames = []string{"claude", "cursor", "codex", "gemini", "opencode"}
+
+// lookPathFn wraps exec.LookPath so tests can inject a fake implementation.
+var lookPathFn = func(file string) (string, error) {
+	return exec.LookPath(file)
+}
 
 // installCmd implements the detect → plan → apply pipeline.
 // Slice 2: detect harnesses and print results; plan/apply wired in later slices.
@@ -62,10 +69,10 @@ var installCmd = &cobra.Command{
 			}
 		}
 
-		// Build plan for all components, wiring MCP ops (Slice 4).
+		// Build plan for all components, wiring MCP and SkillCommands ops.
 		selected := component.All()
 		osfs := fsutil.OsFS{}
-		plan := core.Plan(detected, selected, osfs)
+		plan := core.Plan(detected, selected, osfs, assets.Mirror)
 
 		// Backup store root: ~/.ui-craft-backups
 		home, _ := os.UserHomeDir()
@@ -76,6 +83,35 @@ var installCmd = &cobra.Command{
 		result, applyErr := core.Apply(plan, osfs, backupStore, cmdVersion)
 		if applyErr != nil {
 			return fmt.Errorf("install: apply failed (all changes rolled back): %w", applyErr)
+		}
+
+		// Report skill-commands results.
+		fmt.Fprintln(out, "\nSkill+commands results:")
+		for _, t := range plan.Targets {
+			if t.Component != component.SkillCommands {
+				continue
+			}
+			if t.Skip {
+				fmt.Fprintf(out, "  %s/skill+commands: skipped (%s)\n", t.Harness.Name(), t.SkipReason)
+				continue
+			}
+			// Match by HarnessName + Component annotation set by core.Apply.
+			status := "installed"
+			for _, ch := range result.Changes {
+				if ch.HarnessName == t.Harness.Name() && ch.Component == component.SkillCommands.String() {
+					if !ch.Changed {
+						status = "already up-to-date"
+					}
+					break
+				}
+			}
+			// Gotcha #7: advisory for Gemini/Codex if global npm detected.
+			if (t.Harness.Name() == "gemini" || t.Harness.Name() == "codex") && status == "installed" {
+				if !detectNVMOrVolta() {
+					fmt.Fprintf(out, "  ADVISORY: %s uses global npm; consider nvm/fnm/volta to avoid permission issues.\n", t.Harness.Name())
+				}
+			}
+			fmt.Fprintf(out, "  %s/skill+commands: %s\n", t.Harness.Name(), status)
 		}
 
 		// Report MCP results.
@@ -110,6 +146,21 @@ var installCmd = &cobra.Command{
 		}
 		return nil
 	},
+}
+
+// detectNVMOrVolta returns true when nvm, fnm, or volta is detectable on PATH
+// or via well-known environment variables. Used for gotcha #7 advisory.
+func detectNVMOrVolta() bool {
+	for _, tool := range []string{"nvm", "fnm", "volta"} {
+		if _, err := lookPathFn(tool); err == nil {
+			return true
+		}
+	}
+	// Also check NVM_DIR / VOLTA_HOME environment variables as secondary signals.
+	if os.Getenv("NVM_DIR") != "" || os.Getenv("VOLTA_HOME") != "" || os.Getenv("FNM_DIR") != "" {
+		return true
+	}
+	return false
 }
 
 func init() {

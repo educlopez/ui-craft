@@ -88,6 +88,10 @@ func Apply(plan InstallPlan, fs fsutil.FileSystem, store *backup.Store, binaryVe
 				t.Harness.Name(), t.Component.String(), err,
 			)
 		}
+		// Annotate change with harness/component metadata so callers can filter
+		// without fragile path matching.
+		change.HarnessName = t.Harness.Name()
+		change.Component = t.Component.String()
 		applied = append(applied, change)
 	}
 

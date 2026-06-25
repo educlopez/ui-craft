@@ -3,6 +3,7 @@ package harness
 import (
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -141,9 +142,16 @@ func (h ClaudeHarness) WriteMCP(w fsutil.FileSystem, server MCPServer) (Change, 
 	}, nil
 }
 
-// WriteSkill is not implemented in Slice 2; returns ErrNotImplemented.
-func (h ClaudeHarness) WriteSkill(w fsutil.FileSystem) (Change, error) {
-	return Change{}, ErrNotImplemented
+// WriteSkill copies the embedded Claude mirror into ~/.claude/skills/ui-craft/.
+// The CLI has full ownership of this directory; every file is written atomically
+// via WriteFileAtomic (byte-compare early exit = idempotent re-runs).
+func (h ClaudeHarness) WriteSkill(w fsutil.FileSystem, mirror fs.FS) (Change, error) {
+	destDir := filepath.Join(h.ConfigPaths().SkillsDir, "ui-craft")
+	ch, err := writeMirrorToDir(w, mirror, destDir)
+	if err != nil {
+		return Change{}, fmt.Errorf("claude: write skill mirror: %w", err)
+	}
+	return ch, nil
 }
 
 // WriteAgents is not implemented in Slice 2; returns ErrNotImplemented.

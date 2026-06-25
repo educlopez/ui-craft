@@ -5,6 +5,7 @@ package harness
 
 import (
 	"errors"
+	"io/fs"
 
 	"github.com/educlopez/ui-craft/cli/component"
 	"github.com/educlopez/ui-craft/cli/fsutil"
@@ -77,6 +78,12 @@ type Change struct {
 	MalformedBase bool
 	// Strategy is the idempotency strategy that was applied.
 	Strategy WriteStrategy
+	// Component identifies which component produced this Change. Set by
+	// core.Apply so callers can filter changes by component without path matching.
+	Component string
+	// HarnessName identifies which harness adapter produced this Change.
+	// Set by core.Apply so callers can filter by harness name.
+	HarnessName string
 }
 
 // MCPServer is the server definition injected into each harness's MCP config.
@@ -111,18 +118,16 @@ type Harness interface {
 	Supports(c component.Component) bool
 
 	// WriteMCP writes the ui-craft MCP server entry into the harness's MCP config.
-	// Slice 2 adapters return ErrNotImplemented.
 	WriteMCP(w fsutil.FileSystem, server MCPServer) (Change, error)
 
 	// WriteSkill copies the embedded harness mirror into the harness's skills dir.
-	// Slice 2 adapters return ErrNotImplemented.
-	//
-	// TODO(slice-5): this signature will gain a `mirror` parameter (the embedded
-	// harness-specific asset bundle) once the assets package lands in Slice 5.
-	// Update all adapter implementations and callers at that time.
-	WriteSkill(w fsutil.FileSystem) (Change, error)
+	// mirror is the harness-specific subtree from assets.MirrorFS() (rooted at the
+	// harness name, e.g. the "claude" subtree). The CLI owns the entire skills dir;
+	// every file is written via WriteFileAtomic (idempotent byte-compare).
+	// For Codex, a second write target is the project AGENTS.md managed-block.
+	WriteSkill(w fsutil.FileSystem, mirror fs.FS) (Change, error)
 
 	// WriteAgents writes review agent definitions into the harness's agent dir.
-	// Slice 2 adapters return ErrNotImplemented for all harnesses.
+	// Slice 8 will implement this; returns ErrNotImplemented until then.
 	WriteAgents(w fsutil.FileSystem) ([]Change, error)
 }

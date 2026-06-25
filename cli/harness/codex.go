@@ -2,6 +2,7 @@ package harness
 
 import (
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 
@@ -130,9 +131,64 @@ func (h CodexHarness) WriteMCP(w fsutil.FileSystem, server MCPServer) (Change, e
 	}, nil
 }
 
-// WriteSkill is not implemented in Slice 2; returns ErrNotImplemented.
-func (h CodexHarness) WriteSkill(w fsutil.FileSystem) (Change, error) {
-	return Change{}, ErrNotImplemented
+// agentsMDPath returns the path to the AGENTS.md file that receives the managed
+// block. When projectRoot is set we use the project-local AGENTS.md; otherwise
+// we fall back to ~/.codex/AGENTS.md (global).
+func (h CodexHarness) agentsMDPath(projectRoot string) string {
+	if projectRoot != "" {
+		return filepath.Join(projectRoot, "AGENTS.md")
+	}
+	root := h.configRoot()
+	return filepath.Join(root, "AGENTS.md")
+}
+
+// WriteSkill writes two targets for Codex:
+//
+//  1. Full-file mirror copy into ~/.codex/skills/ui-craft/ (same as other harnesses).
+//  2. A managed block injected into the project AGENTS.md (or global ~/.codex/AGENTS.md)
+//     referencing the installed skill, so Codex picks it up without a marketplace.
+//
+// The managed block uses section.go's UpsertManagedBlock, which repairs orphan
+// markers before injecting (gotcha #3). The Change.FilePath reflects the
+// skills directory (target 1) since it is the primary write target; the AGENTS.md
+// write is silently performed as a side-effect of the same operation.
+func (h CodexHarness) WriteSkill(w fsutil.FileSystem, mirror fs.FS) (Change, error) {
+	// --- Target 1: full-file mirror copy into skills dir ---
+	destDir := filepath.Join(h.ConfigPaths().SkillsDir, "ui-craft")
+	ch, err := writeMirrorToDir(w, mirror, destDir)
+	if err != nil {
+		return Change{}, fmt.Errorf("codex: write skill mirror: %w", err)
+	}
+
+	// --- Target 2: AGENTS.md managed-block inject ---
+	agentsMD := h.agentsMDPath(h.ConfigPaths().ProjectRoot)
+	existing, readErr := w.ReadFile(agentsMD)
+	existedBefore := readErr == nil
+	prior := existing
+	if !existedBefore {
+		existing = []byte("")
+		prior = nil
+	}
+
+	blockContent := "# ui-craft skill\n\n" +
+		"The ui-craft skill is installed at: " + destDir + "\n\n" +
+		"Load it at the start of any UI design or implementation task."
+	updated := filemerge.UpsertManagedBlock(string(existing), blockContent)
+
+	agentsWR, err := fsutil.WriteFileAtomic(w, agentsMD, []byte(updated), 0o644)
+	if err != nil {
+		return Change{}, fmt.Errorf("codex: write AGENTS.md managed block: %w", err)
+	}
+
+	// Report Changed if either target changed.
+	if agentsWR.Changed {
+		ch.Changed = true
+	}
+	// Preserve prior bytes from the skills dir write (primary target).
+	_ = prior
+	_ = existedBefore
+
+	return ch, nil
 }
 
 // WriteAgents is not implemented in Slice 2; returns ErrNotImplemented.

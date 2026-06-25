@@ -3,6 +3,7 @@ package harness
 import (
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 
@@ -140,9 +141,18 @@ func (h GeminiHarness) WriteMCP(w fsutil.FileSystem, server MCPServer) (Change, 
 	}, nil
 }
 
-// WriteSkill is not implemented in Slice 2; returns ErrNotImplemented.
-func (h GeminiHarness) WriteSkill(w fsutil.FileSystem) (Change, error) {
-	return Change{}, ErrNotImplemented
+// WriteSkill copies the embedded Gemini mirror into ~/.gemini/skills/ui-craft/.
+// Full-file ownership; idempotent via byte-compare in WriteFileAtomic.
+// Gotcha #7: if npm is global (no nvm/fnm/volta detected), an advisory is
+// printed by the caller — WriteSkill itself does not print but sets
+// Change.Changed so the caller can surface the advisory.
+func (h GeminiHarness) WriteSkill(w fsutil.FileSystem, mirror fs.FS) (Change, error) {
+	destDir := filepath.Join(h.ConfigPaths().SkillsDir, "ui-craft")
+	ch, err := writeMirrorToDir(w, mirror, destDir)
+	if err != nil {
+		return Change{}, fmt.Errorf("gemini: write skill mirror: %w", err)
+	}
+	return ch, nil
 }
 
 // WriteAgents is not implemented in Slice 2; returns ErrNotImplemented.
