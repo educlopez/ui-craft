@@ -1,60 +1,120 @@
-# Description optimization evals
+# ui-craft evals
 
-The `description` field in every skill's YAML frontmatter is the primary mechanism agents use to decide whether to invoke the skill. Bad description → the skill under-triggers (agent ignores it) or over-triggers (agent uses it for unrelated work).
+This directory contains automated evaluation systems for ui-craft skills and tooling.
 
-`skill-creator` ships an automated description optimizer (`run_loop.py`) that:
+---
 
-1. Evaluates the current description against a set of realistic queries (some should trigger, some shouldn't).
-2. Calls Claude with extended thinking to propose improvements based on failures.
-3. Iterates, picking the best description by **held-out test score** (to avoid overfitting).
+## Description optimization (`presets/`, `ui-craft.json`, etc.)
 
-This folder holds the eval query sets for each skill.
+The `description` field in every skill's YAML frontmatter is the primary mechanism agents use to decide whether to invoke the skill. Bad description causes under-triggering or over-triggering.
 
-## Files
+`skill-creator` ships an automated description optimizer (`run_loop.py`) that evaluates the current description against a set of realistic queries, calls Claude with extended thinking to propose improvements, and iterates. See the per-file comments in the eval JSON files for query sets and status.
 
-| File | Skill | Status |
-|------|-------|--------|
-| `ui-craft.json` | `skills/ui-craft/` (the main skill) | 20 queries — ready to run |
-| `ui-craft-minimal.json` | `skills/ui-craft-minimal/` | TODO — clone the pattern |
-| `ui-craft-editorial.json` | `skills/ui-craft-editorial/` | TODO |
-| `ui-craft-dense-dashboard.json` | `skills/ui-craft-dense-dashboard/` | TODO |
+---
 
-Each JSON is an array of `{query, should_trigger}`. The file format matches what `run_loop.py` expects.
+## `quality/` — UICraftScore design-quality harness
 
-## Running the optimizer
+Added in v0.30.0. A deterministic 0-100 score for UI source files that composites three signals:
 
-Requires `claude-code` CLI in PATH (script uses `claude -p` under the hood).
+| Dimension | Source | Penalty |
+|---|---|---|
+| `anti_slop` | `scripts/detect.mjs` `scan()` | critical −8, major −4, warn −1 |
+| `token_discipline` | `mcp/src/tokens-rules.mjs` `scanTokens()` | flat −2 per finding |
+| `a11y` | `evals/quality/a11y-static.mjs` `scanA11y()` | critical −8, major −4 |
 
-```bash
-# Point these at your local skill-creator install.
-SKILL_CREATOR=~/.claude/plugins/cache/claude-plugins-official/skill-creator/unknown/skills/skill-creator
-MODEL=claude-opus-4-7
+### Score formula
 
-python -m scripts.run_loop \
-  --eval-set evals/ui-craft.json \
-  --skill-path skills/ui-craft \
-  --model "$MODEL" \
-  --max-iterations 5 \
-  --verbose \
-  --cwd "$SKILL_CREATOR"
+```
+score = 100
+       − (anti_slop_critical × 8) − (anti_slop_major × 4) − (anti_slop_warn × 1)
+       − (token_findings × 2)
+       − (a11y_critical × 8) − (a11y_major × 4)
+score = clamp(score, 0, 100)
 ```
 
-The script splits the eval into 60% train / 40% held-out test, runs each query 3× for statistical stability, and outputs `best_description` as JSON. Apply it by updating the skill's `SKILL.md` frontmatter.
+Grade thresholds: **A** ≥ 90 | **B** ≥ 80 | **C** ≥ 70 | **D** ≥ 60 | **F** < 60
 
-**Expected runtime:** 10-30 minutes per skill (proportional to query count × iterations × 3 runs each).
+Per-dimension subscore = 100 minus that dimension's own penalties, clamped [0, 100].
 
-## Writing new eval sets
+### Static a11y checks (distinct from detect.mjs)
 
-Per `skill-creator`:
+| Rule | Severity | Pattern |
+|---|---|---|
+| `a11y/img-no-alt` | critical | `<img>` without `alt=` attribute |
+| `a11y/non-semantic-interactive` | critical | `div/span` with `onClick` and no `role=` + no `tabIndex` |
+| `a11y/positive-tabindex` | major | `tabIndex > 0` |
+| `a11y/aria-invalid-no-describedby` | major | `aria-invalid="true"` without `aria-describedby` |
+| `a11y/no-reduced-motion` | major | file-scoped: animation/transition without `prefers-reduced-motion` |
 
-- **20 queries total**, mixing 10 should-trigger and 10 should-not-trigger.
-- **Should-not are the near-misses.** "Write a fibonacci function" is useless as a negative test for a design skill — too easy. Good negatives share vocabulary with the skill's domain but need something else: e.g., for `ui-craft`, "write unit tests for the auth service" is better because it contains "service" and "tests" but is clearly backend.
-- **Realistic prompts.** Include file paths, company context, minor typos, casual punctuation. Queries that start with "ok so" or "i need to" are fine.
-- **Different phrasings of the same intent** — formal vs casual, keyword-heavy vs indirect. Covers phrasing drift.
+These are DISTINCT from `detect.mjs` rules — zero overlap, no double-counting.
 
-For **variant** skills (`ui-craft-minimal`, `ui-craft-editorial`, `ui-craft-dense-dashboard`), the key discriminator queries are:
+### Running the harness
 
-- **Should-trigger**: mentions a style anchor specific to this variant ("Linear-like", "Medium-like", "Retool-like", "editorial", "dashboard") or an example product in the variant's reference set.
-- **Should-NOT-trigger**: generic UI work (should route to main `ui-craft`) OR mentions a different variant's anchor ("make this dashboard minimalist" → should trigger `ui-craft-dense-dashboard`, not `ui-craft-minimal`, because "dashboard" is the dominant signal).
+```bash
+# Score a single file
+node scripts/eval.mjs path/to/Component.tsx
 
-Cross-variant discriminators are the highest-signal negatives.
+# Score a directory
+node scripts/eval.mjs src/components/
+
+# JSON output (for tooling)
+node scripts/eval.mjs path/to/file.tsx --json
+
+# Regression gate — score all fixtures, assert within baselines.json bands
+node scripts/eval.mjs --baseline
+
+# Exit code: 0 = clean, 1 = below threshold / drift, 2 = arg error
+
+# Run unit tests directly
+node --test evals/quality/*.test.mjs
+```
+
+### Benchmark fixtures
+
+Located in `evals/quality/fixtures/`:
+
+| Category | Files | Expected score |
+|---|---|---|
+| `slop/` | ~4 files with intentional violations | ≤ 70 |
+| `designer/` | ~4 clean, well-structured files | ≥ 80 |
+
+Separation invariant: `min(designer scores) > max(slop scores)` — asserted in the regression test.
+
+### `baselines.json`
+
+Defines per-fixture expected score bands:
+
+```json
+{
+  "version": "0.30.0",
+  "fixtures": {
+    "evals/quality/fixtures/slop/purple-gradient.tsx": { "scoreMin": 38, "scoreMax": 58 }
+  }
+}
+```
+
+Bands (not exact values) absorb minor rule weight adjustments.
+
+### Regenerating baselines
+
+When a rule change intentionally shifts scores:
+
+```bash
+node --input-type=module << 'EOF'
+import { scoreUI } from './evals/quality/score.mjs';
+// run scoreUI on each fixture, update baselines.json bands
+EOF
+```
+
+Then update `baselines.json` with ±10 margin around the new observed scores and commit.
+
+### Key files
+
+| File | Role |
+|---|---|
+| `evals/quality/a11y-static.mjs` | Five static a11y checks (regex-based, zero deps) |
+| `evals/quality/score.mjs` | Shared scoring core — `scoreUI(input)` |
+| `evals/quality/score.test.mjs` | node:test suite (formula, a11y, regression, separation) |
+| `evals/quality/baselines.json` | Per-fixture expected score bands |
+| `evals/quality/fixtures/` | Benchmark corpus |
+| `scripts/eval.mjs` | CLI + baseline regression gate |
