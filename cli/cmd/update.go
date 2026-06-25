@@ -75,8 +75,22 @@ to a specific component; omit it to update all installed components.`,
 			selected = []component.Component{matched}
 		}
 
+		// Resolve project directory for design-memory scaffolding.
+		// --dir flag (flags.Dir) defaults to "." which may be relative;
+		// resolve to an absolute path so scaffold writes land in the right place
+		// regardless of how the flag was passed (e.g. --dir=myproject).
+		projectDir := flags.Dir
+		if projectDir == "" || projectDir == "." {
+			if cwd, err := os.Getwd(); err == nil {
+				projectDir = cwd
+			}
+		}
+		if absDir, err := filepath.Abs(projectDir); err == nil {
+			projectDir = absDir
+		}
+
 		osfs := fsutil.OsFS{}
-		plan := core.Plan(detected, selected, osfs, assets.Mirror)
+		plan := core.Plan(detected, selected, osfs, assets.Mirror, assets.TemplateFS, projectDir)
 
 		// Backup store root: ~/.ui-craft-backups
 		home, _ := os.UserHomeDir()

@@ -2,11 +2,17 @@ package core
 
 import (
 	"io/fs"
+	"path/filepath"
 
 	"github.com/educlopez/ui-craft/cli/component"
 	"github.com/educlopez/ui-craft/cli/fsutil"
 	"github.com/educlopez/ui-craft/cli/harness"
 )
+
+// TemplateProvider is a function that returns the embedded fs.FS containing
+// the design-memory scaffold templates. In production callers pass
+// assets.TemplateFS; in tests a fixture FS can be injected.
+type TemplateProvider func() fs.FS
 
 // WriterOp is a function type that performs one file-write operation for a
 // ComponentTarget. It returns the Change that was applied and any error.
@@ -65,8 +71,17 @@ type MirrorProvider func(harnessName string) fs.FS
 // returned by mirrorProvider(harness.Name()) and sets SnapPath to the
 // …/skills/ui-craft subdir (the subtree the CLI owns, bounding rollback to it).
 // When the mirror provider returns nil for a harness, the target is marked Skip.
+// For the DesignMemory component, Plan wires ScaffoldDesignMemory with the
+// template FS returned by templateProvider() and sets SnapPath to the
+// .ui-craft/ subdir inside projectDir. When templateProvider is nil or
+// returns nil, the target is marked Skip.
 // The filesystem parameter is the FileSystem implementation to use for writes.
-func Plan(detected []DetectedHarness, selected []component.Component, filesystem fsutil.FileSystem, mirrorProvider MirrorProvider) InstallPlan {
+// projectDir is the target project directory (--dir flag value or cwd).
+// NOTE: templateProvider must return the templates/-rooted sub-FS (i.e.
+// assets.TemplateFS(), not the raw embed.FS). If the raw embed.FS were used,
+// ScaffoldDesignMemory would write files under a "templates/" prefix inside
+// .ui-craft/, producing wrong destination paths.
+func Plan(detected []DetectedHarness, selected []component.Component, filesystem fsutil.FileSystem, mirrorProvider MirrorProvider, templateProvider TemplateProvider, projectDir string) InstallPlan {
 	var targets []ComponentTarget
 	for _, dh := range detected {
 		for _, c := range selected {
@@ -129,6 +144,55 @@ func Plan(detected []DetectedHarness, selected []component.Component, filesystem
 				target.SnapPath = uicraftSubDir // keep for legacy callers that read SnapPath
 				target.Op = func() (harness.Change, error) {
 					return h.WriteSkill(w, mirror)
+				}
+
+			case component.DesignMemory:
+				// Wire the concrete write op for DesignMemory (Slice 6).
+				// SnapPath is the .ui-craft/ subdir inside projectDir — rollback
+				// only deletes files created by this run (ExistedBefore=false).
+				var tmplFS fs.FS
+				if templateProvider != nil {
+					tmplFS = templateProvider()
+				}
+				if tmplFS == nil {
+					target.Skip = true
+					target.SkipReason = "design-memory templates not embedded"
+					targets = append(targets, target)
+					continue
+				}
+				dir := projectDir
+				if dir == "" {
+					dir = "."
+				}
+				w := filesystem
+				// filepath.Join avoids platform-specific string concatenation.
+				snapPath := filepath.Join(dir, ".ui-craft")
+				target.SnapPath = snapPath
+				target.Op = func() (harness.Change, error) {
+					result, err := harness.ScaffoldDesignMemory(w, tmplFS, dir)
+					if err != nil {
+						return harness.Change{}, err
+					}
+					// Summarise: Changed if any file was newly created.
+					anyChanged := false
+					for _, ch := range result.Changes {
+						if ch.Changed {
+							anyChanged = true
+							break
+						}
+					}
+					// ExistedBefore is always true for the aggregate Change so that
+					// rollback does NOT wholesale-RemoveAll the .ui-craft/ directory.
+					// The backup store's per-file snapshot metadata governs which
+					// individual files get deleted on restore (only those with
+					// ExistedBefore=false in the snapshot, i.e. files created this run).
+					// Pre-existing user files (ExistedBefore=true in snapshot) are
+					// restored to their original content and never deleted.
+					return harness.Change{
+						FilePath:      snapPath,
+						ExistedBefore: true,
+						Changed:       anyChanged,
+					}, nil
 				}
 			}
 			// WriteAgents ops are wired in Slice 8.

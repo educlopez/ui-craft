@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"testing/fstest"
 	"time"
 
 	"github.com/educlopez/ui-craft/cli/backup"
@@ -398,7 +399,7 @@ func TestPlan_skipsUnsupportedComponents(t *testing.T) {
 	}
 	selected := component.All()
 
-	plan := core.Plan(detected, selected, fsutil.NewMemFS(), nil)
+	plan := core.Plan(detected, selected, fsutil.NewMemFS(), nil, nil, "")
 
 	for _, t2 := range plan.Targets {
 		if t2.Component == component.ReviewAgents {
@@ -420,4 +421,125 @@ func homeRelPath(sub string) string {
 		return filepath.Join("/home/user", sub)
 	}
 	return filepath.Join(home, ".ui-craft-test", sub)
+}
+
+// fixtureTemplateFS builds an in-memory fs.FS that mimics the embedded
+// templates directory used for design-memory scaffolding.
+// Duplicated from harness_test to keep core_test self-contained.
+func fixtureTemplateFS() fs.FS {
+	return fstest.MapFS{
+		"brief.md": &fstest.MapFile{
+			Data: []byte("# Project Brief\n\n## Design Intent\n\n## Audience\n"),
+		},
+		"tokens.md": &fstest.MapFile{
+			Data: []byte("# Design Tokens\n\n## Colors\n\n## Typography\n\n## Spacing\n"),
+		},
+		"decisions.md": &fstest.MapFile{
+			Data: []byte("# Design Decisions\n"),
+		},
+		"patterns.md": &fstest.MapFile{
+			Data: []byte("# Patterns\n"),
+		},
+		"surfaces/_example.md": &fstest.MapFile{
+			Data: []byte("# {Surface Name}\n\n## Layout\n\n## Components\n\n## Notes\n"),
+		},
+	}
+}
+
+// TestDesignMemory_partialScaffoldRollbackSafety is the integration test for
+// the partial-scaffold rollback safety fix (Slice 6 review, Fix 1).
+//
+// Scenario: the user already has .ui-craft/brief.md with custom content.
+// The DesignMemory scaffold creates the remaining files. A subsequent op fails,
+// triggering a full rollback via the real backup.Store.
+//
+// Expected invariants after rollback:
+//   - Scaffold-created files (tokens.md, decisions.md, patterns.md,
+//     surfaces/_example.md) are DELETED.
+//   - The user's pre-existing brief.md SURVIVES with its original content.
+//
+// This test uses the real backup.Store (MemFS-backed) — not a hand-simulated
+// rollback — to validate the full snapshot→apply→rollback pipeline.
+func TestDesignMemory_partialScaffoldRollbackSafety(t *testing.T) {
+	t.Parallel()
+
+	mem := fsutil.NewMemFS()
+
+	// Use /home/user as root so fakeHomeResolver covers all paths.
+	backupRoot := "/home/user/.backups"
+	projectDir := "/home/user/myproject"
+	uicraftDir := filepath.Join(projectDir, ".ui-craft")
+	_ = mem.MkdirAll(backupRoot, 0o750)
+	_ = mem.MkdirAll(uicraftDir, 0o755)
+
+	// Seed the user's pre-existing brief.md.
+	briefPath := filepath.Join(uicraftDir, "brief.md")
+	userContent := []byte("# My custom brief — do not overwrite\n\nUser content that must survive rollback.\n")
+	if _, err := fsutil.WriteFileAtomic(mem, briefPath, userContent, 0o644); err != nil {
+		t.Fatalf("setup: write pre-existing brief.md: %v", err)
+	}
+
+	// Clock advances so duplicate-dedup does not coalesce the two snapshots.
+	clocks := []time.Time{
+		time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC),
+		time.Date(2026, 1, 1, 12, 0, 1, 0, time.UTC),
+	}
+	callIdx := 0
+	multiClock := func() time.Time {
+		t := clocks[callIdx%len(clocks)]
+		callIdx++
+		return t
+	}
+	store := newTestStore(backupRoot, mem, multiClock)
+
+	// Build an InstallPlan:
+	//   Target 1: DesignMemory scaffold (partial — brief.md already exists)
+	//   Target 2: always fails → triggers rollback
+	//
+	// Plan uses the real core.Plan builder so the Op and SnapPath logic is
+	// exercised end-to-end.
+	h := stubHarness{name: "stub"}
+	detected := []core.DetectedHarness{
+		{Harness: h, Result: harness.DetectResult{Installed: true}},
+	}
+	selected := []component.Component{component.DesignMemory}
+
+	tmplFS := fixtureTemplateFS()
+	plan := core.Plan(detected, selected, mem, nil, func() fs.FS { return tmplFS }, projectDir)
+
+	// Append a failing sentinel op to trigger rollback.
+	failPath := filepath.Join("/home/user", "fail-sentinel.json")
+	plan.Targets = append(plan.Targets, core.ComponentTarget{
+		Harness:   h,
+		Component: component.MCPGates,
+		Op:        makeFailingOp(),
+		SnapPath:  failPath,
+	})
+
+	_, applyErr := core.Apply(plan, mem, store, "v0-test")
+	if applyErr == nil {
+		t.Fatal("Apply should have returned an error (failing sentinel op)")
+	}
+
+	// Invariant 1: the user's pre-existing brief.md must survive with original content.
+	got, err := mem.ReadFile(briefPath)
+	if err != nil {
+		t.Fatalf("brief.md not readable after rollback: %v", err)
+	}
+	if string(got) != string(userContent) {
+		t.Errorf("brief.md content changed after rollback:\n  got:  %q\n  want: %q", got, userContent)
+	}
+
+	// Invariant 2: files created by the scaffold (absent before the plan) must be deleted.
+	createdFiles := []string{
+		filepath.Join(uicraftDir, "tokens.md"),
+		filepath.Join(uicraftDir, "decisions.md"),
+		filepath.Join(uicraftDir, "patterns.md"),
+		filepath.Join(uicraftDir, "surfaces", "_example.md"),
+	}
+	for _, f := range createdFiles {
+		if _, statErr := mem.Stat(f); statErr == nil {
+			t.Errorf("scaffold-created file %s should be deleted after rollback, but still exists", f)
+		}
+	}
 }
