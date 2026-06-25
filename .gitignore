@@ -6,3 +6,6 @@ node-compile-cache/
 .atl/
 node_modules/
 mcp/node_modules/
+
+# MCP build output (rebuilt on prepublish)
+mcp/dist/

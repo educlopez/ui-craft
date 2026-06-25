@@ -2,26 +2,14 @@
  * acceptance-bar.mjs
  * MCP tool: acceptance_bar
  * Returns deterministic acceptance checklist items for a given UI surface.
- * Data source: bundled acceptance-data.json (hand-derived from recipe-*.md + finish-bar.md).
+ * Data source: acceptance-data.mjs (hand-derived from recipe-*.md + finish-bar.md).
+ * Imported as an ESM module (not a runtime file read) so it inlines into the
+ * published bundle and resolves from source on every Node version.
  */
 
-// Fix 8: removed unused `import { createRequire }` from 'node:module'
-import { fileURLToPath } from 'node:url';
-import { join, dirname } from 'node:path';
-import { readFileSync } from 'node:fs';
+import acceptanceData from '../acceptance-data.mjs';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const DATA_PATH = join(__dirname, '..', 'acceptance-data.json');
-
-// Load once at module init
-let acceptanceData;
-try {
-  acceptanceData = JSON.parse(readFileSync(DATA_PATH, 'utf8'));
-} catch (e) {
-  acceptanceData = null;
-}
-
-// Fix 7: derive KNOWN_SURFACES from acceptanceData so it can't drift from the JSON
+// Derive KNOWN_SURFACES from the data so it can't drift from the source.
 const KNOWN_SURFACES = acceptanceData ? Object.keys(acceptanceData) : ['dashboard', 'landing', 'auth', 'generic'];
 
 /**

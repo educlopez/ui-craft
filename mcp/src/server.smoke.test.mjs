@@ -11,7 +11,11 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const SERVER = join(__dirname, 'server.mjs');
+// Defaults to the source server; set UI_CRAFT_MCP_SERVER (e.g. dist/server.mjs)
+// to smoke the published bundle — same regression guard, real artifact.
+const SERVER = process.env.UI_CRAFT_MCP_SERVER
+  ? join(process.cwd(), process.env.UI_CRAFT_MCP_SERVER)
+  : join(__dirname, 'server.mjs');
 
 test('server boots over stdio and lists the 4 tools', async () => {
   const transport = new StdioClientTransport({ command: 'node', args: [SERVER] });

@@ -2026,7 +2026,13 @@ async function main() {
   process.exit(errorCount > 0 ? 1 : 0);
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+// CLI entry guard. `UI_CRAFT_BUNDLE` is replaced with "1" at esbuild build time
+// (see mcp/esbuild.config.mjs `define`) so this whole block is dead-code-eliminated
+// in the bundled MCP server — otherwise, once detect.mjs is inlined into
+// dist/server.mjs, its import.meta.url would equal the server entry and this CLI
+// main() would run (and process.exit) the server. Undefined everywhere else
+// (repo CLI, published ui-craft-detect), so the real CLI is unaffected.
+if (process.env.UI_CRAFT_BUNDLE !== "1" && process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   main().catch((err) => {
     process.stderr.write(`error: ${err.stack || err.message}\n`);
     process.exit(2);

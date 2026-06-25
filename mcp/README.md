@@ -82,16 +82,16 @@ Returns the deterministic acceptance checklist for a UI surface. Data only — n
 
 This server contains ZERO taste, judgment, or aesthetic preference rules. All such rules live exclusively in `skills/ui-craft/SKILL.md`. The server produces identical output for identical input — it is a deterministic gate, not an AI evaluator.
 
-## acceptance-data.json — Regen on Recipe Edit
+## acceptance-data — Regen on Recipe Edit
 
-`src/acceptance-data.json` is hand-derived from the recipe and finish-bar reference files. It must be updated manually when any of these files change:
+`src/acceptance-data.mjs` is hand-derived from the recipe and finish-bar reference files. It must be updated manually when any of these files change:
 
 - `references/recipe-dashboard.md` — `## Acceptance bar` section
 - `references/recipe-landing.md` — `## Acceptance bar` section
 - `references/recipe-auth.md` — `## Acceptance bar` section
 - `references/finish-bar.md` — 10 pass descriptions
 
-**v1 is manual** — no generator script. A generator is deferred. When updating: edit `src/acceptance-data.json` directly, following the existing `{ id, description, category }` schema.
+**v1 is manual** — no generator script. A generator is deferred. When updating: edit `src/acceptance-data.mjs` directly (an ESM module, `export default { … }`), following the existing `{ id, description, category }` schema. It's a module rather than JSON so it inlines into the published bundle and loads from source on every Node version.
 
 ## Development
 
