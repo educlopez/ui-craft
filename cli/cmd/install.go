@@ -13,6 +13,7 @@ import (
 	"github.com/educlopez/ui-craft/cli/core"
 	"github.com/educlopez/ui-craft/cli/fsutil"
 	"github.com/educlopez/ui-craft/cli/harness"
+	"github.com/educlopez/ui-craft/cli/tui"
 	"github.com/spf13/cobra"
 )
 
@@ -39,6 +40,31 @@ var installCmd = &cobra.Command{
 			return err
 		}
 
+		// Resolve project directory early so both TUI and non-interactive paths
+		// use the same value.
+		projectDir := flags.Dir
+		if projectDir == "" || projectDir == "." {
+			if cwd, err := os.Getwd(); err == nil {
+				projectDir = cwd
+			}
+		}
+		if absDir, err := filepath.Abs(projectDir); err == nil {
+			projectDir = absDir
+		}
+
+		// TUI routing (Slice 7 — ADR-2):
+		// When stdout is a TTY AND --yes is not set → launch Bubble Tea TUI.
+		// The TUI drives the same core.Plan + core.Apply path as non-interactive mode.
+		// When not a TTY and --yes is not set → exit with a clear error (spec: non-TTY scenario).
+		if !flags.Yes {
+			if !tui.IsTerminal() {
+				return fmt.Errorf("interactive mode requires a TTY; use --yes to skip prompts")
+			}
+			// Launch the TUI. It blocks until the user exits or completes.
+			return tui.RunTUI(cmdVersion, projectDir)
+		}
+
+		// Non-interactive path (--yes flag set).
 		// DetectAll is best-effort: one harness erroring does not abort the rest.
 		// This is a conscious policy: install must be resilient to partial failures.
 		detected := core.DetectAll(harness.All())
@@ -73,20 +99,6 @@ var installCmd = &cobra.Command{
 			if len(skipped) > 0 {
 				fmt.Fprintf(out, "    skipped:     %s (not supported by this harness)\n", strings.Join(skipped, ", "))
 			}
-		}
-
-		// Resolve project directory for design-memory scaffolding.
-		// --dir flag (flags.Dir) defaults to "." which may be relative;
-		// resolve to an absolute path so scaffold writes land in the right place
-		// regardless of how the flag was passed (e.g. --dir=myproject).
-		projectDir := flags.Dir
-		if projectDir == "" || projectDir == "." {
-			if cwd, err := os.Getwd(); err == nil {
-				projectDir = cwd
-			}
-		}
-		if absDir, err := filepath.Abs(projectDir); err == nil {
-			projectDir = absDir
 		}
 
 		// Build plan for all components, wiring MCP, SkillCommands, and DesignMemory ops.
