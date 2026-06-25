@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "ui-craft": {
+      "command": "npx",
+      "args": ["-y", "ui-craft-mcp"]
+    }
+  }
+}
