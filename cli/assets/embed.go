@@ -15,6 +15,7 @@ package assets
 
 import (
 	"embed"
+	"fmt"
 	"io/fs"
 	"strings"
 )
@@ -128,18 +129,20 @@ func mirrorHarnessPresent(harnessName string) bool {
 	return found
 }
 
-// AssertMirrorsFresh panics if any expected harness subtree is missing real
-// content. This is called at install time (not in init()) so development builds
-// and tests using fixture mirrors are unaffected. CI ensures sync-harnesses.mjs
-// runs before go build, making real mirrors available (gotcha #5).
+// AssertMirrorsFresh returns an error if any expected harness subtree is missing
+// real content. This is called at install/update time (not in init()) so
+// development builds and tests using fixture mirrors are unaffected. CI ensures
+// sync-harnesses.mjs runs before go build, making real mirrors available
+// (gotcha #5).
 //
-// Call this from cmd paths that actually perform a WriteSkill operation.
-func AssertMirrorsFresh() {
+// Call this as the FIRST statement in any cmd RunE that performs WriteSkill ops.
+func AssertMirrorsFresh() error {
 	for _, h := range expectedHarnesses {
 		if !mirrorHarnessPresent(h) {
-			panic("assets: mirrors/" + h + "/ is empty or placeholder — run `make gen-mirrors` before building (gotcha #5)")
+			return fmt.Errorf("assets: mirrors/%s/ is empty or placeholder — run `make gen-mirrors` before building (gotcha #5)", h)
 		}
 	}
+	return nil
 }
 
 // assertMirrorsFreshSeam is the init()-time seam. During development (Slices

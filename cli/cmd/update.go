@@ -27,6 +27,12 @@ to a specific component; omit it to update all installed components.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		out := cmd.OutOrStdout()
 
+		// Freshness guard: prevent running with placeholder/empty embedded mirrors.
+		// Must be first so users get a clear error before any detection or I/O.
+		if err := assets.AssertMirrorsFresh(); err != nil {
+			return err
+		}
+
 		compFlag, _ := cmd.Flags().GetString("component")
 
 		// Detect harnesses.

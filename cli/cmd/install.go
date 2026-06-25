@@ -33,6 +33,12 @@ var installCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		out := cmd.OutOrStdout()
 
+		// Freshness guard: prevent running with placeholder/empty embedded mirrors.
+		// Must be first so users get a clear error before any detection or I/O.
+		if err := assets.AssertMirrorsFresh(); err != nil {
+			return err
+		}
+
 		// DetectAll is best-effort: one harness erroring does not abort the rest.
 		// This is a conscious policy: install must be resilient to partial failures.
 		detected := core.DetectAll(harness.All())

@@ -173,21 +173,42 @@ func TestWriteSkill_codexManagedBlock(t *testing.T) {
 }
 
 // TestWriteSkill_codexOrphanMarkerRepair verifies that orphan BEGIN markers in
-// AGENTS.md are repaired before injection (gotcha #3).
+// AGENTS.md are repaired before injection (gotcha #3). This test exercises the
+// CodexHarness.WriteSkill adapter directly rather than filemerge internals, so
+// that the full adapter path (including writeMirrorToDir + UpsertManagedBlock)
+// is covered.
 func TestWriteSkill_codexOrphanMarkerRepair(t *testing.T) {
-	// Seed content with an orphan BEGIN marker (no matching END).
-	// Since CodexHarness.agentsMDPath uses configRoot() based on home dir,
-	// we test the filemerge.UpsertManagedBlock function directly for the repair.
-	orphaned := "# Project\n" + filemerge.BeginMarker + "\nOrphan content without end marker.\n"
-	result := filemerge.UpsertManagedBlock(orphaned, "new block content")
+	h := harness.CodexHarness{}
+	mem := fsutil.NewMemFS()
 
-	if strings.Contains(result, filemerge.BeginMarker+"\n"+filemerge.BeginMarker) {
+	skillsDir := h.ConfigPaths().SkillsDir
+	codexRoot := filepath.Dir(skillsDir)
+	agentsMD := filepath.Join(codexRoot, "AGENTS.md")
+
+	// Seed AGENTS.md with an orphan BEGIN marker (no matching END).
+	orphaned := "# Project\n" + filemerge.BeginMarker + "\nOrphan content without end marker.\n"
+	_ = mem.MkdirAll(codexRoot, 0o755)
+	_ = mem.WriteFile(agentsMD, []byte(orphaned), 0o644)
+
+	mirror := fixtureMirror()
+	_, err := h.WriteSkill(mem, mirror)
+	if err != nil {
+		t.Fatalf("WriteSkill on orphaned AGENTS.md: %v", err)
+	}
+
+	content, readErr := mem.ReadFile(agentsMD)
+	if readErr != nil {
+		t.Fatalf("read AGENTS.md after WriteSkill: %v", readErr)
+	}
+	got := string(content)
+
+	if strings.Contains(got, filemerge.BeginMarker+"\n"+filemerge.BeginMarker) {
 		t.Error("double BEGIN marker after orphan repair — repair failed")
 	}
-	if !strings.Contains(result, filemerge.BeginMarker) {
+	if !strings.Contains(got, filemerge.BeginMarker) {
 		t.Error("managed block missing after insert into orphaned content")
 	}
-	if !strings.Contains(result, filemerge.EndMarker) {
+	if !strings.Contains(got, filemerge.EndMarker) {
 		t.Error("END marker missing after insert into orphaned content")
 	}
 }
@@ -263,5 +284,100 @@ func TestWriteSkill_supportsMatrix(t *testing.T) {
 		if !h.Supports(component.SkillCommands) {
 			t.Errorf("harness %s: Supports(SkillCommands) = false; all harnesses must support skill+commands", h.Name())
 		}
+	}
+}
+
+// TestWriteSkill_siblingSkillSurvives verifies that running WriteSkill for any
+// full-file harness does NOT delete or modify a pre-existing sibling skill
+// (e.g. …/skills/other-skill/) that lives next to the …/skills/ui-craft/ subdir.
+// This is the critical isolation guarantee: the CLI only ever owns its own subdir.
+func TestWriteSkill_siblingSkillSurvives(t *testing.T) {
+	fullFileHarnesses := []harness.Harness{
+		harness.ClaudeHarness{},
+		harness.CursorHarness{},
+		harness.GeminiHarness{},
+		harness.OpenCodeHarness{},
+	}
+
+	mirror := fixtureMirror()
+
+	for _, h := range fullFileHarnesses {
+		t.Run(h.Name(), func(t *testing.T) {
+			mem := fsutil.NewMemFS()
+
+			// Plant a sibling skill that must survive.
+			skillsDir := h.ConfigPaths().SkillsDir
+			siblingFile := filepath.Join(skillsDir, "other-skill", "SKILL.md")
+			siblingContent := []byte("# other-skill — must not be touched\n")
+			_ = mem.MkdirAll(filepath.Dir(siblingFile), 0o755)
+			_ = mem.WriteFile(siblingFile, siblingContent, 0o644)
+
+			// Run WriteSkill.
+			if _, err := h.WriteSkill(mem, mirror); err != nil {
+				t.Fatalf("WriteSkill: %v", err)
+			}
+
+			// Sibling skill must still exist and be unchanged.
+			got, err := mem.ReadFile(siblingFile)
+			if err != nil {
+				t.Fatalf("sibling skill file missing after WriteSkill: %v", err)
+			}
+			if string(got) != string(siblingContent) {
+				t.Errorf("sibling skill file content changed:\nwant: %q\ngot:  %q", siblingContent, got)
+			}
+		})
+	}
+}
+
+// TestWriteSkill_staleFilesRemovedOnUpdate verifies that a file present in a
+// previous install but absent from the new mirror is removed during an update.
+// This guards against stale files persisting across mirror version upgrades.
+func TestWriteSkill_staleFilesRemovedOnUpdate(t *testing.T) {
+	mem := fsutil.NewMemFS()
+	h := harness.ClaudeHarness{}
+
+	mirror1 := fstest.MapFS{
+		"SKILL.md": &fstest.MapFile{Data: []byte("v1\n")},
+		"old.md":   &fstest.MapFile{Data: []byte("old file\n")},
+	}
+	mirror2 := fstest.MapFS{
+		"SKILL.md": &fstest.MapFile{Data: []byte("v2\n")},
+		// old.md deliberately removed from v2 mirror
+	}
+
+	if _, err := h.WriteSkill(mem, mirror1); err != nil {
+		t.Fatalf("first WriteSkill: %v", err)
+	}
+
+	skillsDir := filepath.Join(h.ConfigPaths().SkillsDir, "ui-craft")
+	oldFile := filepath.Join(skillsDir, "old.md")
+
+	// Verify old.md exists after first install.
+	if _, err := mem.Stat(oldFile); err != nil {
+		t.Fatalf("old.md should exist after first install: %v", err)
+	}
+
+	// Update with new mirror that no longer contains old.md.
+	ch, err := h.WriteSkill(mem, mirror2)
+	if err != nil {
+		t.Fatalf("second WriteSkill (update): %v", err)
+	}
+	if !ch.Changed {
+		t.Error("expected Changed:true because mirror content changed")
+	}
+
+	// old.md must have been removed.
+	if _, err := mem.Stat(oldFile); err == nil {
+		t.Error("old.md should have been removed after update with new mirror that lacks it")
+	}
+
+	// SKILL.md must be present with new content.
+	skillMD := filepath.Join(skillsDir, "SKILL.md")
+	data, err := mem.ReadFile(skillMD)
+	if err != nil {
+		t.Fatalf("SKILL.md missing after update: %v", err)
+	}
+	if string(data) != "v2\n" {
+		t.Errorf("SKILL.md content = %q; want %q", data, "v2\n")
 	}
 }

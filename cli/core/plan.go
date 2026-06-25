@@ -24,10 +24,16 @@ type ComponentTarget struct {
 	SkipReason string
 	// Op is nil when Skip is true.
 	Op WriterOp
-	// SnapPath is the filesystem path that Op will write (used to pre-snapshot
-	// the file before execution). Empty for ops that write multiple files or
-	// don't know their target path at plan time.
+	// SnapPath is the primary filesystem path that Op will write (used to
+	// pre-snapshot the file/directory before execution). Empty for ops that
+	// write multiple files or don't know their target path at plan time.
+	// Deprecated in favour of SnapPaths — if both are set, SnapPaths is used.
 	SnapPath string
+	// SnapPaths is the ordered list of filesystem paths (files or directories)
+	// to include in the pre-snapshot. It supersedes SnapPath when non-empty,
+	// allowing a single Op to snapshot multiple locations (e.g. the skills
+	// ui-craft subdir AND ~/.codex/AGENTS.md for CodexHarness).
+	SnapPaths []string
 }
 
 // InstallPlan is the ordered set of writes that core.Apply will execute.
@@ -56,7 +62,9 @@ type MirrorProvider func(harnessName string) fs.FS
 // For the MCPGates component, Plan wires the concrete WriteMCP op and sets
 // SnapPath so that core.Apply can snapshot the config file before writing.
 // For the SkillCommands component, Plan wires WriteSkill with the mirror
-// returned by mirrorProvider(harness.Name()) and sets SnapPath to the skills dir.
+// returned by mirrorProvider(harness.Name()) and sets SnapPath to the
+// …/skills/ui-craft subdir (the subtree the CLI owns, bounding rollback to it).
+// When the mirror provider returns nil for a harness, the target is marked Skip.
 // The filesystem parameter is the FileSystem implementation to use for writes.
 func Plan(detected []DetectedHarness, selected []component.Component, filesystem fsutil.FileSystem, mirrorProvider MirrorProvider) InstallPlan {
 	var targets []ComponentTarget
@@ -92,15 +100,33 @@ func Plan(detected []DetectedHarness, selected []component.Component, filesystem
 
 			case component.SkillCommands:
 				// Wire the concrete write op for SkillCommands (Slice 5).
-				// SnapPath is the skills dir for pre-snapshot coverage.
-				snapPath := dh.Harness.ConfigPaths().SkillsDir
+				// SnapPath is the ui-craft subdir within skills — we own only
+				// that subtree, so rollback blast radius is bounded to it.
+				paths := dh.Harness.ConfigPaths()
+				uicraftSubDir := paths.SkillsDir + "/ui-craft"
 				h := dh.Harness
 				w := filesystem
 				var mirror fs.FS
 				if mirrorProvider != nil {
 					mirror = mirrorProvider(h.Name())
 				}
-				target.SnapPath = snapPath
+				// Nil-mirror safety: if the harness has no embedded mirror, mark
+				// the target as skipped rather than wiring a WriteSkill op with a
+				// nil fs.FS (which would panic inside writeMirrorToDir).
+				if mirror == nil {
+					target.Skip = true
+					target.SkipReason = "mirror not embedded for " + h.Name()
+					targets = append(targets, target)
+					continue
+				}
+				// Build the snap path list. For Codex, AGENTS.md is also written
+				// by WriteSkill, so it must be snapshotted to allow full rollback.
+				snapPaths := []string{uicraftSubDir}
+				if paths.AgentsMDPath != "" {
+					snapPaths = append(snapPaths, paths.AgentsMDPath)
+				}
+				target.SnapPaths = snapPaths
+				target.SnapPath = uicraftSubDir // keep for legacy callers that read SnapPath
 				target.Op = func() (harness.Change, error) {
 					return h.WriteSkill(w, mirror)
 				}

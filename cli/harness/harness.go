@@ -40,6 +40,11 @@ type ConfigPaths struct {
 	// ProjectRoot is the working project directory (may be empty for global
 	// installs). Adapters that support project-scoped configs use this.
 	ProjectRoot string
+	// AgentsMDPath is the absolute path to the AGENTS.md file that receives
+	// the managed block for Codex. Empty for all other harnesses.
+	// When ProjectRoot is set, this is the project-local AGENTS.md; otherwise
+	// it is the global ~/.codex/AGENTS.md.
+	AgentsMDPath string
 }
 
 // WriteStrategy describes which merge algorithm a WriteMCP implementation uses.

@@ -698,3 +698,87 @@ func buildTamperedManifest(mem *fsutil.MemFS, manifestPath, newSavedPath string)
 	out, _ := json.MarshalIndent(m, "", "  ")
 	_ = mem.WriteFile(manifestPath, out, 0o640)
 }
+
+// TestSnapshot_directoryRollback verifies the full directory-snapshot and rollback
+// cycle described in the DATA-LOSS fix:
+//
+//   - Pre-condition: …/skills/ui-craft/old.md exists; …/skills/other-skill/keep.md exists.
+//   - Snapshot the ui-craft SUBDIR only (bounded blast radius).
+//   - Simulate an install that writes a different set of files under ui-craft/.
+//   - Force a rollback (store.Restore).
+//   - Assert: ui-craft/ is restored to its prior state (old.md back, install-added
+//     files gone), AND other-skill/keep.md is UNTOUCHED.
+func TestSnapshot_directoryRollback(t *testing.T) {
+	mem := fsutil.NewMemFS()
+	root := "/backups"
+	home := "/home/user"
+	_ = mem.MkdirAll(root, 0o750)
+
+	skillsBase := filepath.Join(home, ".testharness", "skills")
+	uicraftDir := filepath.Join(skillsBase, "ui-craft")
+	otherSkillDir := filepath.Join(skillsBase, "other-skill")
+
+	// Pre-populate the ui-craft subdir with a file that existed before the install.
+	oldFile := filepath.Join(uicraftDir, "old.md")
+	seed(mem, oldFile, "# old skill file\n")
+
+	// Plant a sibling skill that must survive rollback.
+	keepFile := filepath.Join(otherSkillDir, "keep.md")
+	seed(mem, keepFile, "# other skill — must not be touched\n")
+
+	baseTime := time.Date(2026, 1, 2, 0, 0, 0, 0, time.UTC)
+	store := newStore(root, mem, fixedClock(baseTime))
+
+	// Snapshot the ui-craft SUBDIR (not the parent skills dir).
+	targets := []backup.SnapshotTarget{
+		{Harness: "testharness", OrigPath: uicraftDir},
+	}
+	id, err := store.Snapshot(targets, "v1", backup.SourceInstall)
+	if err != nil {
+		t.Fatalf("Snapshot directory: %v", err)
+	}
+
+	// Simulate install: add a new file, remove old.md (mirror no longer has it).
+	newFile := filepath.Join(uicraftDir, "new.md")
+	seed(mem, newFile, "# new skill file\n")
+	_ = mem.Remove(oldFile)
+
+	// Verify pre-rollback state.
+	if _, err := mem.Stat(oldFile); err == nil {
+		t.Error("pre-rollback: old.md should be gone (removed by simulated install)")
+	}
+	if _, err := mem.Stat(newFile); err != nil {
+		t.Error("pre-rollback: new.md should exist (created by simulated install)")
+	}
+
+	// Force rollback.
+	if err := store.Restore(id); err != nil {
+		t.Fatalf("Restore: %v", err)
+	}
+
+	// Post-rollback assertions.
+
+	// old.md must be restored to its prior content.
+	gotOld, err := mem.ReadFile(oldFile)
+	if err != nil {
+		t.Fatalf("old.md missing after rollback: %v", err)
+	}
+	if string(gotOld) != "# old skill file\n" {
+		t.Errorf("old.md content after rollback = %q; want %q", gotOld, "# old skill file\n")
+	}
+
+	// new.md must be deleted (it was created by the install, not pre-existing).
+	if _, err := mem.Stat(newFile); err == nil {
+		t.Error("new.md (created by install) should be deleted after rollback")
+	}
+
+	// other-skill/keep.md must be completely untouched.
+	gotKeep, err := mem.ReadFile(keepFile)
+	if err != nil {
+		t.Fatalf("other-skill/keep.md missing after rollback — sibling skill was clobbered: %v", err)
+	}
+	if string(gotKeep) != "# other skill — must not be touched\n" {
+		t.Errorf("other-skill/keep.md content changed after rollback:\nwant: %q\ngot:  %q",
+			"# other skill — must not be touched\n", gotKeep)
+	}
+}

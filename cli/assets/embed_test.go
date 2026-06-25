@@ -48,27 +48,35 @@ func TestMirrorVersion_returnsString(t *testing.T) {
 	}
 }
 
-// TestAssertMirrorsFresh_panicsOnPlaceholderInCI verifies that AssertMirrorsFresh
-// panics when harness subtrees are absent (placeholder-only mirrors).
-// This test only runs in CI where mirrors must be populated (gotcha #5).
-// On dev machines the env var UI_CRAFT_CI_MIRRORS is not set, so the test is skipped.
-func TestAssertMirrorsFresh_panicsOnPlaceholderInCI(t *testing.T) {
+// TestAssertMirrorsFresh_errorOnPlaceholder verifies AssertMirrorsFresh behavior:
+//   - In short mode (dev build): skip the assertion entirely.
+//   - When all harness mirrors are present: AssertMirrorsFresh must return nil.
+//   - When mirrors are absent (dev build without CI sync): verify Mirror() returns
+//     nil, which is the expected behavior per gotcha #5 (placeholder-only builds).
+func TestAssertMirrorsFresh_errorOnPlaceholder(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping mirror freshness assertion in short mode (dev build)")
 	}
-	// In CI, mirrors must be present. Check via Mirror() rather than the panic path.
 	harnesses := []string{"claude", "cursor", "codex", "gemini", "opencode"}
+	allPresent := true
 	for _, h := range harnesses {
 		if assets.Mirror(h) == nil {
 			t.Logf("mirror %q absent — dev build, skipping CI assertion", h)
-			return
+			allPresent = false
+			break
 		}
 	}
-	// All harnesses present — AssertMirrorsFresh must not panic.
-	defer func() {
-		if r := recover(); r != nil {
-			t.Errorf("AssertMirrorsFresh panicked even though all harness mirrors are present: %v", r)
+	if !allPresent {
+		// Dev build: at least one mirror is absent. AssertMirrorsFresh should
+		// return a non-nil error (not panic) — this is the regression guard.
+		err := assets.AssertMirrorsFresh()
+		if err == nil {
+			t.Error("AssertMirrorsFresh() should return an error when a mirror subtree is absent")
 		}
-	}()
-	assets.AssertMirrorsFresh()
+		return
+	}
+	// All harnesses present — AssertMirrorsFresh must return nil.
+	if err := assets.AssertMirrorsFresh(); err != nil {
+		t.Errorf("AssertMirrorsFresh() returned unexpected error when all mirrors present: %v", err)
+	}
 }
