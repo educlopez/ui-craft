@@ -32,18 +32,23 @@ MCP gates, review agents, and design-memory — into the harness's native config
 // all subcommands (e.g. backup) for embedding in snapshot manifests.
 var cmdVersion = "dev"
 
+// cmdMirrorVersion holds the mirror version set via -X main.mirrorVersion ldflags.
+// It records the repo version whose sync-harnesses.mjs output is embedded (ADR-6).
+var cmdMirrorVersion = "dev"
+
 // versionOnce guards AddCommand so that calling Execute more than once
 // (e.g. in tests that reuse the package-level rootCmd) does not register a
 // duplicate "version" subcommand and trigger cobra's duplicate-command panic.
 var versionOnce sync.Once
 
-// Execute wires the binary version into the root command and runs it.
-func Execute(version string) {
+// Execute wires the binary version and mirror version into the root command and runs it.
+func Execute(version, mirrorVersion string) {
 	cmdVersion = version
+	cmdMirrorVersion = mirrorVersion
 	// Attach the version subcommand with the build-time version string.
 	// sync.Once ensures idempotency if Execute is called more than once.
 	versionOnce.Do(func() {
-		rootCmd.AddCommand(newVersionCmd(version))
+		rootCmd.AddCommand(newVersionCmd(version, mirrorVersion))
 	})
 
 	if err := rootCmd.Execute(); err != nil {

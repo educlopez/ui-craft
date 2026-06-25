@@ -10,5 +10,7 @@ import "github.com/spf13/cobra"
 // to an externally constructed root command without running os.Exit.
 // Used by version_test.go.
 func RegisterVersionCmdForTest(root *cobra.Command, version string) {
-	root.AddCommand(newVersionCmd(version))
+	// Pass "dev" as mirrorVersion in tests; the actual mirror content is read
+	// from assets/mirrors/VERSION (which contains "dev" in the placeholder).
+	root.AddCommand(newVersionCmd(version, "dev"))
 }
