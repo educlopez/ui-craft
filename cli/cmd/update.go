@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"time"
 
 	"github.com/educlopez/ui-craft/cli/assets"
 	"github.com/educlopez/ui-craft/cli/backup"
@@ -59,6 +58,11 @@ installed components for the harness.`,
 		// Detect currently installed harnesses.
 		detected := core.DetectAll(harness.All())
 		if len(detected) == 0 {
+			if len(state.Harnesses) > 0 {
+				// State records harnesses that were installed, but none are currently
+				// detected. This typically means the tool was uninstalled.
+				return fmt.Errorf("harness(es) recorded in state.json are not currently detected on this machine")
+			}
 			return fmt.Errorf("no supported AI coding harness detected")
 		}
 
@@ -195,16 +199,18 @@ installed components for the harness.`,
 			}
 
 			// Update state: refresh InstalledAt to now for this harness.
+			// Preserve the full installed component list from state (the source of truth)
+			// even when --component narrows this particular update run. A partial
+			// update does not un-install the components it didn't touch.
+			existing := core.FindHarness(state, ut.dh.Harness.Name())
+			var installedComps []string
+			if existing != nil {
+				installedComps = existing.InstalledComponents
+			}
 			core.UpsertHarnessState(state, core.HarnessState{
-				Name: ut.dh.Harness.Name(),
-				InstalledComponents: func() []string {
-					hs := core.FindHarness(state, ut.dh.Harness.Name())
-					if hs != nil {
-						return hs.InstalledComponents
-					}
-					return nil
-				}(),
-				InstalledAt: time.Now().UTC().Format(time.RFC3339),
+				Name:                ut.dh.Harness.Name(),
+				InstalledComponents: installedComps,
+				InstalledAt:         core.Now().UTC().Format("2006-01-02T15:04:05Z07:00"),
 			})
 		}
 

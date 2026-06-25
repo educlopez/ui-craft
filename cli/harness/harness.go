@@ -127,6 +127,12 @@ type Harness interface {
 	// It is the single source of truth for the capability matrix.
 	Supports(c component.Component) bool
 
+	// ConfigRoot returns the absolute path to the harness's primary config
+	// directory (e.g. ~/.claude, ~/.cursor). Returns an empty string when the
+	// root cannot be determined (e.g. missing APPDATA on Windows, empty HOME).
+	// Callers should treat an empty string as "not available".
+	ConfigRoot() string
+
 	// WriteMCP writes the ui-craft MCP server entry into the harness's MCP config.
 	WriteMCP(w fsutil.FileSystem, server MCPServer) (Change, error)
 

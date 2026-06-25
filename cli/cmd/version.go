@@ -52,24 +52,33 @@ func newVersionCmd(version, mirrorVersion string) *cobra.Command {
 			stateRoot := filepath.Join(home, ".ui-craft")
 			state, _ := core.LoadState(osfs, stateRoot)
 
-			issues := core.VerifyClaudeCodeParity(osfs, state, "")
-			if len(issues) == 0 {
-				// Determine which checks were run (those in the claude state).
-				claudeState := core.FindHarness(state, "claude")
-				if claudeState == nil {
-					fmt.Fprintln(out, "parity: no Claude Code install recorded in state.json")
-					return nil
-				}
-				for _, ic := range claudeState.InstalledComponents {
-					fmt.Fprintf(out, "PASS [%s]\n", ic)
-				}
+			issues, results := core.VerifyClaudeCodeParity(osfs, state, "")
+			if results == nil {
+				// results == nil means no Claude install was recorded.
+				fmt.Fprintln(out, "parity: no Claude Code install recorded in state.json")
 				return nil
 			}
 
-			for _, issue := range issues {
-				fmt.Fprintln(out, issue.String())
+			// Print PASS/FAIL only for the checks that were actually run.
+			// Never print PASS for a component that had no parity check (e.g. design-memory).
+			for _, r := range results {
+				if r.Passed {
+					fmt.Fprintf(out, "PASS [%s]\n", r.CheckName)
+				} else {
+					// Find the matching issue for the description.
+					for _, iss := range issues {
+						if iss.Check == r.CheckName {
+							fmt.Fprintln(out, iss.String())
+							break
+						}
+					}
+				}
 			}
-			return fmt.Errorf("parity: %d check(s) failed", len(issues))
+
+			if len(issues) > 0 {
+				return fmt.Errorf("parity: %d check(s) failed", len(issues))
+			}
+			return nil
 		},
 	}
 	cmd.Flags().Bool("check-parity", false, "Verify Claude Code install matches expected parity (PASS/FAIL per check)")

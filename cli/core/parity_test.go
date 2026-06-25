@@ -50,11 +50,14 @@ func TestParity_allChecksPass(t *testing.T) {
 		},
 	}
 
-	issues := core.VerifyClaudeCodeParity(m, state, root)
+	issues, results := core.VerifyClaudeCodeParity(m, state, root)
 	if len(issues) != 0 {
 		for _, iss := range issues {
 			t.Errorf("unexpected issue: %s", iss)
 		}
+	}
+	if len(results) == 0 {
+		t.Error("expected at least one parity result, got none")
 	}
 }
 
@@ -73,7 +76,7 @@ func TestParity_missingMCP(t *testing.T) {
 		},
 	}
 
-	issues := core.VerifyClaudeCodeParity(m, state, root)
+	issues, _ := core.VerifyClaudeCodeParity(m, state, root)
 	if len(issues) == 0 {
 		t.Fatal("expected at least one parity issue for missing MCP, got none")
 	}
@@ -104,7 +107,7 @@ func TestParity_missingSkill(t *testing.T) {
 		},
 	}
 
-	issues := core.VerifyClaudeCodeParity(m, state, root)
+	issues, _ := core.VerifyClaudeCodeParity(m, state, root)
 	if len(issues) == 0 {
 		t.Fatal("expected at least one parity issue for missing skill, got none")
 	}
@@ -134,7 +137,7 @@ func TestParity_missingAgents(t *testing.T) {
 		},
 	}
 
-	issues := core.VerifyClaudeCodeParity(m, state, root)
+	issues, _ := core.VerifyClaudeCodeParity(m, state, root)
 	found := false
 	for _, iss := range issues {
 		if iss.Check == "agents" {
@@ -156,9 +159,12 @@ func TestParity_noClaudeState(t *testing.T) {
 			{Name: "cursor", InstalledComponents: []string{"skill+commands"}},
 		},
 	}
-	issues := core.VerifyClaudeCodeParity(m, state, "/home/user/.claude")
+	issues, results := core.VerifyClaudeCodeParity(m, state, "/home/user/.claude")
 	if issues != nil {
 		t.Errorf("expected nil issues for non-claude state, got %v", issues)
+	}
+	if results != nil {
+		t.Errorf("expected nil results for non-claude state, got %v", results)
 	}
 }
 
@@ -202,12 +208,58 @@ func TestParity_claudeFullInstall_integration(t *testing.T) {
 	}
 
 	// Verify parity — no issues expected.
-	issues := core.VerifyClaudeCodeParity(m, state, claudeRoot)
+	issues, results := core.VerifyClaudeCodeParity(m, state, claudeRoot)
 	if len(issues) != 0 {
 		for _, iss := range issues {
 			t.Errorf("parity issue: %s", iss)
 		}
 		t.Fatal("Claude full install parity test FAILED")
+	}
+	// design-memory must NOT appear in results (no parity check for it).
+	for _, r := range results {
+		if r.CheckName == "design-memory" {
+			t.Errorf("design-memory must not appear in parity results (no check defined for it)")
+		}
+	}
+}
+
+// TestParity_designMemoryNeverInResults asserts that design-memory is never
+// emitted as a ParityResult (no parity check is defined for it), even when
+// design-memory appears in the installed-components list. This guards against
+// the phantom-PASS bug where --check-parity would print "PASS [design-memory]"
+// without ever running a disk check.
+func TestParity_designMemoryNeverInResults(t *testing.T) {
+	m, root := setupClaudeInstall(t, false)
+
+	// Include design-memory in the installed list to verify it does NOT produce
+	// a ParityResult.
+	state := &core.InstallState{
+		Harnesses: []core.HarnessState{
+			{
+				Name:                "claude",
+				InstalledComponents: []string{"skill+commands", "mcp-gates", "design-memory"},
+			},
+		},
+	}
+
+	_, results := core.VerifyClaudeCodeParity(m, state, root)
+
+	for _, r := range results {
+		if r.CheckName == "design-memory" {
+			t.Errorf("design-memory must not appear in parity results — no check is defined for it (got Passed=%v)", r.Passed)
+		}
+	}
+
+	// Verify the checks that DID run are the expected ones.
+	checkNames := make(map[string]bool, len(results))
+	for _, r := range results {
+		checkNames[r.CheckName] = true
+	}
+	if !checkNames["skill"] {
+		t.Error("expected 'skill' check to be in results")
+	}
+	if !checkNames["mcp"] {
+		t.Error("expected 'mcp' check to be in results")
 	}
 }
 
@@ -229,7 +281,7 @@ func TestParity_agentsExistButNoMDFiles(t *testing.T) {
 		},
 	}
 
-	issues := core.VerifyClaudeCodeParity(m, state, root)
+	issues, _ := core.VerifyClaudeCodeParity(m, state, root)
 	found := false
 	for _, iss := range issues {
 		if iss.Check == "agents" {

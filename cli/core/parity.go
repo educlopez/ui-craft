@@ -27,6 +27,14 @@ func (p ParityIssue) String() string {
 	return fmt.Sprintf("FAIL [%s]: %s", p.Check, p.Description)
 }
 
+// ParityResult records the outcome of one parity check that was actually run.
+type ParityResult struct {
+	// CheckName is a short label identifying the check (e.g. "skill", "mcp", "agents").
+	CheckName string
+	// Passed is true when the check found the expected artifact on disk.
+	Passed bool
+}
+
 // VerifyClaudeCodeParity verifies that all Claude-Code components recorded in
 // state are actually present on disk.  It checks:
 //   - skill+commands: at least one file under ~/.claude/skills/ui-craft/
@@ -36,35 +44,43 @@ func (p ParityIssue) String() string {
 //
 // The filesystem parameter allows tests to inject a MemFS.
 // claudeConfigRoot is the absolute path to the Claude config directory
-// (e.g. ~/.claude).  Pass an empty string to auto-detect via ClaudeHarness.
-func VerifyClaudeCodeParity(filesystem fsutil.FileSystem, state *InstallState, claudeConfigRoot string) []ParityIssue {
+// (e.g. ~/.claude).  Pass an empty string to auto-detect via ClaudeHarness.ConfigRoot().
+//
+// Returns (issues, results) where results lists every check that was actually run
+// (only for installed components), and issues lists the checks that failed.
+// Callers should use results to emit PASS/FAIL output — never emit PASS for a
+// component that does not appear in results.
+func VerifyClaudeCodeParity(filesystem fsutil.FileSystem, state *InstallState, claudeConfigRoot string) ([]ParityIssue, []ParityResult) {
 	h := harness.ClaudeHarness{}
 
-	// Resolve config root.
+	// Resolve config root via the harness's own ConfigRoot() method — robust,
+	// no path reversal required.
 	if claudeConfigRoot == "" {
-		paths := h.ConfigPaths()
-		claudeConfigRoot = filepath.Dir(filepath.Dir(paths.MCPConfig)) // ~/.claude
+		claudeConfigRoot = h.ConfigRoot()
 	}
 
 	// Find the claude harness state.
 	claudeState := FindHarness(state, "claude")
 	if claudeState == nil {
 		// Nothing recorded for claude — nothing to verify.
-		return nil
+		return nil, nil
 	}
 
 	var issues []ParityIssue
+	var results []ParityResult
 
 	installed := map[string]bool{}
 	for _, c := range claudeState.InstalledComponents {
 		installed[c] = true
 	}
 
-	// Check skill+commands.
+	// Check skill+commands — only if it was recorded as installed.
 	if installed[component.SkillCommands.String()] {
 		skillDir := filepath.Join(claudeConfigRoot, "skills", "ui-craft")
 		entries, err := fsutil.ReadDir(filesystem, skillDir)
-		if err != nil || len(entries) == 0 {
+		passed := err == nil && len(entries) > 0
+		results = append(results, ParityResult{CheckName: "skill", Passed: passed})
+		if !passed {
 			issues = append(issues, ParityIssue{
 				Check:       "skill",
 				Description: fmt.Sprintf("expected at least one file in %s, got none (err: %v)", skillDir, err),
@@ -72,11 +88,13 @@ func VerifyClaudeCodeParity(filesystem fsutil.FileSystem, state *InstallState, c
 		}
 	}
 
-	// Check mcp-gates.
+	// Check mcp-gates — only if it was recorded as installed.
 	if installed[component.MCPGates.String()] {
 		mcpFile := filepath.Join(claudeConfigRoot, "mcp", "ui-craft.json")
 		data, err := filesystem.ReadFile(mcpFile)
-		if err != nil || len(data) == 0 {
+		passed := err == nil && len(data) > 0
+		results = append(results, ParityResult{CheckName: "mcp", Passed: passed})
+		if !passed {
 			issues = append(issues, ParityIssue{
 				Check:       "mcp",
 				Description: fmt.Sprintf("expected non-empty %s (err: %v)", mcpFile, err),
@@ -84,32 +102,35 @@ func VerifyClaudeCodeParity(filesystem fsutil.FileSystem, state *InstallState, c
 		}
 	}
 
-	// Check review-agents.
+	// Check review-agents — only if it was recorded as installed.
 	if installed[component.ReviewAgents.String()] {
 		agentsDir := filepath.Join(claudeConfigRoot, "agents")
 		entries, err := fsutil.ReadDir(filesystem, agentsDir)
+		passed := false
+		if err == nil {
+			for _, e := range entries {
+				if !e.IsDir() && filepath.Ext(e.Name()) == ".md" {
+					passed = true
+					break
+				}
+			}
+		}
+		results = append(results, ParityResult{CheckName: "agents", Passed: passed})
 		if err != nil {
 			issues = append(issues, ParityIssue{
 				Check:       "agents",
 				Description: fmt.Sprintf("expected agents dir %s to exist (err: %v)", agentsDir, err),
 			})
-		} else {
-			// Check for at least one .md agent file.
-			found := false
-			for _, e := range entries {
-				if !e.IsDir() && filepath.Ext(e.Name()) == ".md" {
-					found = true
-					break
-				}
-			}
-			if !found {
-				issues = append(issues, ParityIssue{
-					Check:       "agents",
-					Description: fmt.Sprintf("expected at least one .md agent file in %s", agentsDir),
-				})
-			}
+		} else if !passed {
+			issues = append(issues, ParityIssue{
+				Check:       "agents",
+				Description: fmt.Sprintf("expected at least one .md agent file in %s", agentsDir),
+			})
 		}
 	}
 
-	return issues
+	// design-memory has NO disk-presence check — do NOT append to results.
+	// Never emit a PASS for design-memory here.
+
+	return issues, results
 }

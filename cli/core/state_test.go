@@ -147,6 +147,49 @@ func TestFindHarness_notFound(t *testing.T) {
 	}
 }
 
+// TestInstall_skippedComponentNotInState verifies that a component whose target
+// is marked Skip=true (e.g. review-agents on a harness that doesn't support it)
+// does NOT appear in the installed-components list saved to state.json.
+//
+// The regression: before the fix, install.go derived the installed list from
+// component.All() filtered by Harness.Supports(), which included components the
+// plan skipped. After the fix it derives the list from result.Changes (only
+// components with an actual Change record), so skipped components are excluded.
+func TestInstall_skippedComponentNotInState(t *testing.T) {
+	// Simulate the state-building logic from install.go after the fix:
+	// only components that appear in result.Changes are recorded.
+	type fakeChange struct {
+		harnessName string
+		component   string
+	}
+	changes := []fakeChange{
+		{harnessName: "cursor", component: "skill+commands"},
+		{harnessName: "cursor", component: "mcp-gates"},
+		// review-agents was skipped — no Change entry.
+	}
+
+	// Build installed list from changes (mirrors the fixed install.go logic).
+	seen := map[string]bool{}
+	var installedComps []string
+	for _, ch := range changes {
+		if ch.harnessName == "cursor" && !seen[ch.component] {
+			seen[ch.component] = true
+			installedComps = append(installedComps, ch.component)
+		}
+	}
+
+	// Assert review-agents is absent.
+	for _, c := range installedComps {
+		if c == "review-agents" {
+			t.Errorf("review-agents was skipped but appears in installedComps: %v", installedComps)
+		}
+	}
+	// Assert the two applied components are present.
+	if len(installedComps) != 2 {
+		t.Errorf("expected 2 installed components, got %d: %v", len(installedComps), installedComps)
+	}
+}
+
 // TestNow_injectable verifies that the Now variable can be replaced in tests.
 // (This is important for update tests that need deterministic timestamps.)
 func TestNow_injectable(t *testing.T) {

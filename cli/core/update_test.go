@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/educlopez/ui-craft/cli/component"
+	"github.com/educlopez/ui-craft/cli/core"
 	"github.com/educlopez/ui-craft/cli/fsutil"
 	"github.com/educlopez/ui-craft/cli/internal/filemerge"
 )
@@ -102,6 +104,65 @@ func TestUpdate_stateReplay(t *testing.T) {
 	}
 	if len(h.InstalledComponents) != 1 || h.InstalledComponents[0] != "mcp-gates" {
 		t.Errorf("installed components: got %v, want [mcp-gates]", h.InstalledComponents)
+	}
+}
+
+// TestUpdate_replayExclusionByState verifies that when state records only
+// mcp-gates for a harness, the update plan built from that state contains
+// only the mcp-gates component — skill+commands is not re-applied.
+func TestUpdate_replayExclusionByState(t *testing.T) {
+	m := fsutil.NewMemFS()
+	root := "/home/user/.ui-craft"
+	_ = m.MkdirAll(root, 0o755)
+
+	// State records only mcp-gates as installed for cursor.
+	stateData := `{
+  "schemaVersion": 1,
+  "version": "v0.35.0",
+  "mirrorVersion": "v0.35.0",
+  "harnesses": [
+    {
+      "name": "cursor",
+      "installedComponents": ["mcp-gates"],
+      "installedAt": "2026-06-25T00:00:00Z"
+    }
+  ]
+}`
+	_ = m.WriteFile(filepath.Join(root, "state.json"), []byte(stateData), 0o644)
+
+	state, err := core.LoadState(m, root)
+	if err != nil {
+		t.Fatalf("load state: %v", err)
+	}
+
+	// Build the component list from state (as update does): only mcp-gates.
+	hs := state.Harnesses[0]
+	if len(hs.InstalledComponents) != 1 || hs.InstalledComponents[0] != "mcp-gates" {
+		t.Fatalf("expected only mcp-gates in state, got %v", hs.InstalledComponents)
+	}
+
+	// Resolve to component.Component values — this is what updateCmd does.
+	var comps []component.Component
+	for _, icName := range hs.InstalledComponents {
+		for _, c := range component.All() {
+			if c.String() == icName {
+				comps = append(comps, c)
+			}
+		}
+	}
+
+	// Assert that only mcp-gates is in the component slice — skill+commands is excluded.
+	if len(comps) != 1 {
+		t.Fatalf("expected 1 component, got %d: %v", len(comps), comps)
+	}
+	if comps[0].String() != "mcp-gates" {
+		t.Errorf("expected mcp-gates, got %s", comps[0].String())
+	}
+	// skill+commands must NOT appear.
+	for _, c := range comps {
+		if c.String() == "skill+commands" {
+			t.Error("skill+commands must not be planned when it was not recorded in state")
+		}
 	}
 }
 

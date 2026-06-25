@@ -1,13 +1,11 @@
 package cmd
 
 import (
-	"bufio"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/educlopez/ui-craft/cli/assets"
 	"github.com/educlopez/ui-craft/cli/backup"
@@ -30,10 +28,6 @@ var lookPathFn = func(file string) (string, error) {
 // nativePluginDetectFn is injectable for testing. It checks whether a Claude
 // Code native plugin install is present (Slice 10: plugin-coexistence warning).
 var nativePluginDetectFn = detectNativeClaudePlugin
-
-// stdinScanner is used for reading --force confirmation in non-interactive mode.
-// Tests may replace this with a strings.NewReader-backed scanner.
-var stdinReader = os.Stdin
 
 // installCmd implements the detect → plan → apply pipeline.
 var installCmd = &cobra.Command{
@@ -227,19 +221,24 @@ var installCmd = &cobra.Command{
 
 		// --- Save state (Slice 10) ---
 		// Persist the harness+component choices so `ui-craft update` can replay them.
+		// We derive the installed list from result.Changes (components that actually
+		// produced a Change for this harness), so skipped components are never recorded
+		// as installed. A skipped target never produces a Change, so it is absent here.
 		stateRoot := filepath.Join(home, ".ui-craft")
 		state, _ := core.LoadState(osfs, stateRoot)
 		state.Version = cmdVersion
 		state.MirrorVersion = cmdMirrorVersion
-		now := time.Now().UTC().Format(time.RFC3339)
+		now := core.Now().UTC().Format("2006-01-02T15:04:05Z07:00")
 		for _, dh := range detected {
-			// Collect components that were successfully applied for this harness.
+			// Collect components that were actually applied (appear in result.Changes)
+			// for this harness. Using Changes avoids recording skipped components.
+			seen := map[string]bool{}
 			var installedComps []string
-			for _, c := range selected {
-				if !dh.Harness.Supports(c) {
-					continue
+			for _, ch := range result.Changes {
+				if ch.HarnessName == dh.Harness.Name() && !seen[ch.Component] {
+					seen[ch.Component] = true
+					installedComps = append(installedComps, ch.Component)
 				}
-				installedComps = append(installedComps, c.String())
 			}
 			core.UpsertHarnessState(state, core.HarnessState{
 				Name:                dh.Harness.Name(),
@@ -283,19 +282,6 @@ func detectNVMOrVolta() bool {
 	// Also check NVM_DIR / VOLTA_HOME environment variables as secondary signals.
 	if os.Getenv("NVM_DIR") != "" || os.Getenv("VOLTA_HOME") != "" || os.Getenv("FNM_DIR") != "" {
 		return true
-	}
-	return false
-}
-
-// confirmFromStdin reads a single line from stdinReader and returns true if the
-// user typed "y" or "yes" (case-insensitive). Used for non-interactive --force
-// bypass prompts. Exported as a var so tests can inject a fake reader.
-func confirmFromStdin(prompt string) bool {
-	fmt.Fprint(os.Stderr, prompt)
-	scanner := bufio.NewScanner(stdinReader)
-	if scanner.Scan() {
-		answer := strings.TrimSpace(strings.ToLower(scanner.Text()))
-		return answer == "y" || answer == "yes"
 	}
 	return false
 }

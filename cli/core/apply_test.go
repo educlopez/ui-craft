@@ -37,6 +37,7 @@ func (s stubHarness) ConfigPaths() harness.ConfigPaths {
 func (s stubHarness) Supports(c component.Component) bool {
 	return c != component.ReviewAgents // stub doesn't support ReviewAgents
 }
+func (s stubHarness) ConfigRoot() string { return "/home/user/." + s.name }
 func (s stubHarness) WriteMCP(w fsutil.FileSystem, server harness.MCPServer) (harness.Change, error) {
 	return harness.Change{}, harness.ErrNotImplemented
 }
@@ -465,6 +466,7 @@ func (a agentHarness) ConfigPaths() harness.ConfigPaths {
 	}
 }
 func (a agentHarness) Supports(c component.Component) bool { return true }
+func (a agentHarness) ConfigRoot() string                  { return fakeHome + "/.claude" }
 func (a agentHarness) WriteMCP(w fsutil.FileSystem, server harness.MCPServer) (harness.Change, error) {
 	return harness.Change{}, harness.ErrNotImplemented
 }

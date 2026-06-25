@@ -28,6 +28,10 @@ var _ Harness = ClaudeHarness{}
 
 func (h ClaudeHarness) Name() string { return "claude" }
 
+// ConfigRoot returns the OS-appropriate Claude config root (~/.claude or
+// %APPDATA%\Claude on Windows). Satisfies the Harness interface.
+func (h ClaudeHarness) ConfigRoot() string { return h.configRoot() }
+
 // configRoot returns the OS-appropriate Claude config root.
 // On Windows, it uses %APPDATA%\Claude; if APPDATA is empty the harness is
 // not detectable and an empty string is returned. On non-Windows systems the
