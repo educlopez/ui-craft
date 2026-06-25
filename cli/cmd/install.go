@@ -29,6 +29,17 @@ var lookPathFn = func(file string) (string, error) {
 // Code native plugin install is present (Slice 10: plugin-coexistence warning).
 var nativePluginDetectFn = detectNativeClaudePlugin
 
+// detectAllFn is injectable for testing. It wraps core.DetectAll so tests can
+// supply a controlled set of detected harnesses without filesystem side effects.
+var detectAllFn = func(reg []harness.Harness) []core.DetectedHarness {
+	return core.DetectAll(reg)
+}
+
+// assertMirrorsFreshFn is injectable for testing to bypass the freshness guard.
+var assertMirrorsFreshFn = func() error {
+	return assets.AssertMirrorsFresh()
+}
+
 // installCmd implements the detect → plan → apply pipeline.
 var installCmd = &cobra.Command{
 	Use:          "install",
@@ -39,7 +50,7 @@ var installCmd = &cobra.Command{
 
 		// Freshness guard: prevent running with placeholder/empty embedded mirrors.
 		// Must be first so users get a clear error before any detection or I/O.
-		if err := assets.AssertMirrorsFresh(); err != nil {
+		if err := assertMirrorsFreshFn(); err != nil {
 			return err
 		}
 
@@ -69,8 +80,61 @@ var installCmd = &cobra.Command{
 
 		// --- Non-interactive path (--yes flag set) ---
 
+		// Validate --harness flag before detection so unknown names fail fast.
+		if flags.Harness != "" {
+			valid := false
+			for _, name := range supportedHarnessNames {
+				if flags.Harness == name {
+					valid = true
+					break
+				}
+			}
+			if !valid {
+				return fmt.Errorf("unknown harness %q; valid values: %s", flags.Harness, strings.Join(supportedHarnessNames, ", "))
+			}
+		}
+
+		// Validate --components flag before any work.
+		if len(flags.Components) > 0 {
+			for _, name := range flags.Components {
+				found := false
+				for _, c := range component.All() {
+					if c.String() == name {
+						found = true
+						break
+					}
+				}
+				if !found {
+					return fmt.Errorf("unknown component %q; valid values: skill+commands, mcp-gates, review-agents, design-memory", name)
+				}
+			}
+		}
+
 		// DetectAll is best-effort: one harness erroring does not abort the rest.
-		detected := core.DetectAll(harness.All())
+		detected := detectAllFn(harness.All())
+
+		// Honor --harness: filter detected list to only the requested harness.
+		if flags.Harness != "" {
+			var filtered []core.DetectedHarness
+			for _, dh := range detected {
+				if dh.Harness.Name() == flags.Harness {
+					filtered = append(filtered, dh)
+					break
+				}
+			}
+			if len(filtered) == 0 {
+				// Build a helpful error listing what was actually detected.
+				var detectedNames []string
+				for _, dh := range detected {
+					detectedNames = append(detectedNames, dh.Harness.Name())
+				}
+				if len(detectedNames) == 0 {
+					return fmt.Errorf("harness %q not detected; no harnesses detected on this machine", flags.Harness)
+				}
+				return fmt.Errorf("harness %q not detected; detected: %s", flags.Harness, strings.Join(detectedNames, ", "))
+			}
+			detected = filtered
+		}
 
 		if len(detected) == 0 {
 			fmt.Fprintln(out, "No supported AI coding harness detected.")
@@ -122,8 +186,20 @@ var installCmd = &cobra.Command{
 			}
 		}
 
-		// Build plan for all components.
+		// Honor --components: restrict to the requested subset.
 		selected := component.All()
+		if len(flags.Components) > 0 {
+			var filtered []component.Component
+			for _, name := range flags.Components {
+				for _, c := range component.All() {
+					if c.String() == name {
+						filtered = append(filtered, c)
+						break
+					}
+				}
+			}
+			selected = filtered
+		}
 		osfs := fsutil.OsFS{}
 		plan := core.Plan(detected, selected, osfs, assets.Mirror, assets.Agents, assets.TemplateFS, projectDir)
 

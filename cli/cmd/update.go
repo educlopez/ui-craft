@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/educlopez/ui-craft/cli/assets"
 	"github.com/educlopez/ui-craft/cli/backup"
@@ -13,6 +14,12 @@ import (
 	"github.com/educlopez/ui-craft/cli/harness"
 	"github.com/spf13/cobra"
 )
+
+// updateDetectAllFn is injectable for testing. It wraps core.DetectAll so tests
+// can supply a controlled set of detected harnesses without filesystem side effects.
+var updateDetectAllFn = func(reg []harness.Harness) []core.DetectedHarness {
+	return core.DetectAll(reg)
+}
 
 var updateCmd = &cobra.Command{
 	Use:   "update [harness]",
@@ -42,6 +49,37 @@ installed components for the harness.`,
 
 		compFlag, _ := cmd.Flags().GetString("component")
 
+		// Validate --harness flag before any work.
+		if flags.Harness != "" {
+			validHarnesses := []string{"claude", "cursor", "codex", "gemini", "opencode"}
+			valid := false
+			for _, name := range validHarnesses {
+				if flags.Harness == name {
+					valid = true
+					break
+				}
+			}
+			if !valid {
+				return fmt.Errorf("unknown harness %q; valid values: %s", flags.Harness, strings.Join(validHarnesses, ", "))
+			}
+		}
+
+		// Validate --components flag (plural, persistent) before any work.
+		if len(flags.Components) > 0 {
+			for _, name := range flags.Components {
+				found := false
+				for _, c := range component.All() {
+					if c.String() == name {
+						found = true
+						break
+					}
+				}
+				if !found {
+					return fmt.Errorf("unknown component %q; valid values: skill+commands, mcp-gates, review-agents, design-memory", name)
+				}
+			}
+		}
+
 		// Resolve state root: ~/.ui-craft/
 		home, _ := os.UserHomeDir()
 		stateRoot := filepath.Join(home, ".ui-craft")
@@ -56,7 +94,7 @@ installed components for the harness.`,
 		}
 
 		// Detect currently installed harnesses.
-		detected := core.DetectAll(harness.All())
+		detected := updateDetectAllFn(harness.All())
 		if len(detected) == 0 {
 			if len(state.Harnesses) > 0 {
 				// State records harnesses that were installed, but none are currently
@@ -66,10 +104,12 @@ installed components for the harness.`,
 			return fmt.Errorf("no supported AI coding harness detected")
 		}
 
-		// Filter by harness name argument if provided.
+		// Filter by harness name: positional arg takes precedence, then --harness flag.
 		harnessFilter := ""
 		if len(args) == 1 {
 			harnessFilter = args[0]
+		} else if flags.Harness != "" {
+			harnessFilter = flags.Harness
 		}
 
 		// Build the set of (harness, components) to update from saved state.
@@ -103,14 +143,35 @@ installed components for the harness.`,
 			}
 
 			// Determine which components to update.
+			// Priority: --components (plural, persistent) > --component (singular, local) > all installed.
 			var comps []component.Component
-			if compFlag != "" {
-				// --component flag limits to a single component.
-				var matched component.Component
+			if len(flags.Components) > 0 {
+				// --components flag (persistent) limits to a named set.
+				for _, name := range flags.Components {
+					for _, c := range component.All() {
+						if c.String() == name {
+							// Only include if it was previously installed.
+							for _, ic := range hs.InstalledComponents {
+								if ic == c.String() {
+									comps = append(comps, c)
+									break
+								}
+							}
+							break
+						}
+					}
+				}
+				if len(comps) == 0 {
+					fmt.Fprintf(out, "  %s: none of the requested components are in saved state — skipping\n", hs.Name)
+					continue
+				}
+			} else if compFlag != "" {
+				// --component flag (singular, local) limits to a single component.
+				var matchedComp component.Component
 				found := false
 				for _, c := range component.All() {
 					if c.String() == compFlag {
-						matched = c
+						matchedComp = c
 						found = true
 						break
 					}
@@ -121,16 +182,16 @@ installed components for the harness.`,
 				// Only include this component if it was previously installed.
 				installed := false
 				for _, ic := range hs.InstalledComponents {
-					if ic == matched.String() {
+					if ic == matchedComp.String() {
 						installed = true
 						break
 					}
 				}
 				if !installed {
-					fmt.Fprintf(out, "  %s/%s: not in saved state — skipping\n", hs.Name, matched.String())
+					fmt.Fprintf(out, "  %s/%s: not in saved state — skipping\n", hs.Name, matchedComp.String())
 					continue
 				}
-				comps = []component.Component{matched}
+				comps = []component.Component{matchedComp}
 			} else {
 				// No component filter: update all installed components.
 				for _, icName := range hs.InstalledComponents {
