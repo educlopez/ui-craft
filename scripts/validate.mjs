@@ -76,9 +76,24 @@ const marketplace = readJson(marketplacePath)
 check(".claude-plugin/marketplace.json parses", marketplace !== null)
 
 if (marketplace) {
-  for (const field of ["name", "version", "description", "license", "repository"]) {
+  // Claude Code marketplace schema: name + owner(object) + plugins(array). Per-plugin
+  // metadata (version/license/etc.) lives inside plugins[]; top-level extras are ignored.
+  for (const field of ["name", "owner", "plugins"]) {
     check(`marketplace.json has ${field}`, Boolean(marketplace[field]))
   }
+  check("marketplace.json owner is an object", marketplace.owner != null && typeof marketplace.owner === "object")
+  check(
+    "marketplace.json plugins is a non-empty array",
+    Array.isArray(marketplace.plugins) && marketplace.plugins.length > 0
+  )
+  for (const p of marketplace.plugins ?? []) {
+    check(`marketplace plugin "${p?.name ?? "?"}" has name`, Boolean(p?.name))
+    check(`marketplace plugin "${p?.name ?? "?"}" has source`, Boolean(p?.source))
+  }
+}
+
+if (plugin) {
+  check("plugin.json has name", Boolean(plugin.name))
 }
 
 // --- 2. Declared skills and commands exist --------------------------------

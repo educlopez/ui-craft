@@ -21,6 +21,7 @@
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { z } from 'zod';
 import { checkAntiSlop } from './tools/check-anti-slop.mjs';
 import { tokensLint } from './tools/tokens-lint.mjs';
 import { acceptanceBar } from './tools/acceptance-bar.mjs';
@@ -50,17 +51,8 @@ server.registerTool(
       'Returns findings with severity, rule ID, file, line, and message. ' +
       'These are the 33 deterministic rules only — no taste or aesthetic judgment.',
     inputSchema: {
-      type: 'object',
-      properties: {
-        code: {
-          type: 'string',
-          description: 'Inline source code to scan (alternative to path)',
-        },
-        path: {
-          type: 'string',
-          description: 'File or directory path to scan (alternative to code)',
-        },
-      },
+      code: z.string().optional().describe('Inline source code to scan (alternative to path)'),
+      path: z.string().optional().describe('File or directory path to scan (alternative to code)'),
     },
   },
   async (args) => {
@@ -94,17 +86,8 @@ server.registerTool(
       'Token scale source of truth: references/tokens.md. ' +
       'Accepts `code` string or `path`. Returns structured findings + summary.',
     inputSchema: {
-      type: 'object',
-      properties: {
-        code: {
-          type: 'string',
-          description: 'Inline source code to lint (alternative to path)',
-        },
-        path: {
-          type: 'string',
-          description: 'File or directory path to lint (alternative to code)',
-        },
-      },
+      code: z.string().optional().describe('Inline source code to lint (alternative to path)'),
+      path: z.string().optional().describe('File or directory path to lint (alternative to code)'),
     },
   },
   async (args) => {
@@ -138,15 +121,9 @@ server.registerTool(
       'Surfaces: dashboard, landing, auth, generic. ' +
       'Returns DATA only — no scoring or judgment. Scoring uses check_anti_slop + tokens_lint results.',
     inputSchema: {
-      type: 'object',
-      properties: {
-        surface: {
-          type: 'string',
-          enum: ['dashboard', 'landing', 'auth', 'generic'],
-          description: 'The UI surface to retrieve the acceptance bar for',
-        },
-      },
-      required: ['surface'],
+      surface: z
+        .enum(['dashboard', 'landing', 'auth', 'generic'])
+        .describe('The UI surface to retrieve the acceptance bar for'),
     },
   },
   (args) => {
@@ -185,17 +162,8 @@ server.registerTool(
       '− (token_findings×2) − (a11y_crit×8) − (a11y_major×4), clamped [0,100]. ' +
       'Returns { overall: {score, grade}, dimensions: {anti_slop, token_discipline, a11y}, version }.',
     inputSchema: {
-      type: 'object',
-      properties: {
-        code: {
-          type: 'string',
-          description: 'Inline source code to score (alternative to path)',
-        },
-        path: {
-          type: 'string',
-          description: 'File path to score (alternative to code)',
-        },
-      },
+      code: z.string().optional().describe('Inline source code to score (alternative to path)'),
+      path: z.string().optional().describe('File path to score (alternative to code)'),
     },
   },
   async (args) => {
