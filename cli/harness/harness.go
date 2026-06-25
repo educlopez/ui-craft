@@ -15,6 +15,11 @@ import (
 // slice and will be completed in later slices (4, 5, 8).
 var ErrNotImplemented = errors.New("not implemented in this slice")
 
+// ErrUnsupported is returned by WriteAgents for harnesses that have no native
+// sub-agent format (Cursor, Codex, Gemini). core.Plan maps this to a skip notice
+// so the exit code remains 0 (graceful-skip spec scenario).
+var ErrUnsupported = errors.New("component not supported by this harness")
+
 // DetectResult describes whether a harness is installed and where.
 type DetectResult struct {
 	// Installed is true when the harness was detected on this machine.
@@ -133,6 +138,10 @@ type Harness interface {
 	WriteSkill(w fsutil.FileSystem, mirror fs.FS) (Change, error)
 
 	// WriteAgents writes review agent definitions into the harness's agent dir.
-	// Slice 8 will implement this; returns ErrNotImplemented until then.
-	WriteAgents(w fsutil.FileSystem) ([]Change, error)
+	// agentsFS is the harness-specific sub-FS rooted at the agent definitions
+	// directory (e.g. mirrors/claude/agents/ or mirrors/opencode/agent/). Each
+	// .md file in the FS is written as a separate agent file.
+	// Harnesses without a native sub-agent format (Cursor, Codex, Gemini) return
+	// ErrUnsupported; core.Plan converts this to a graceful skip (exit code 0).
+	WriteAgents(w fsutil.FileSystem, agentsFS fs.FS) ([]Change, error)
 }

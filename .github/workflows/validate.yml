@@ -26,3 +26,14 @@ jobs:
 
       - name: Dry-run sync script (must not error)
         run: node scripts/sync-harnesses.mjs
+
+  # Drift guard: ensure cli/assets/agents/claude/ stays in sync with agents/.
+  # Runs on every push and PR to main — cheap shell diff, no build required.
+  check-agent-copies:
+    name: Agent copy drift guard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check agent copies (agents/ vs cli/assets/agents/claude/)
+        run: make -C cli check-agent-copies

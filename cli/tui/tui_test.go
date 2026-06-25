@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/educlopez/ui-craft/cli/assets"
 	"github.com/educlopez/ui-craft/cli/component"
 	"github.com/educlopez/ui-craft/cli/core"
 	"github.com/educlopez/ui-craft/cli/fsutil"
@@ -35,7 +36,7 @@ func (a *fakeHarnessAdapter) WriteMCP(_ fsutil.FileSystem, _ harness.MCPServer) 
 func (a *fakeHarnessAdapter) WriteSkill(_ fsutil.FileSystem, _ fs.FS) (harness.Change, error) {
 	return harness.Change{}, harness.ErrNotImplemented
 }
-func (a *fakeHarnessAdapter) WriteAgents(_ fsutil.FileSystem) ([]harness.Change, error) {
+func (a *fakeHarnessAdapter) WriteAgents(_ fsutil.FileSystem, _ fs.FS) ([]harness.Change, error) {
 	return nil, harness.ErrNotImplemented
 }
 
@@ -289,8 +290,9 @@ func TestAppModel_planBuildingParity(t *testing.T) {
 		m.selected,
 		m.components,
 		nil, // no FS needed — Plan only uses FS for write ops, not target building
-		func(_ string) fs.FS { return nil },
-		func() fs.FS { return nil },
+		assets.Mirror,
+		assets.Agents,
+		assets.TemplateFS,
 		"/tmp/parity-test",
 	)
 

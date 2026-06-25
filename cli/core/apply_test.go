@@ -43,7 +43,7 @@ func (s stubHarness) WriteMCP(w fsutil.FileSystem, server harness.MCPServer) (ha
 func (s stubHarness) WriteSkill(w fsutil.FileSystem, mirror fs.FS) (harness.Change, error) {
 	return harness.Change{}, harness.ErrNotImplemented
 }
-func (s stubHarness) WriteAgents(w fsutil.FileSystem) ([]harness.Change, error) {
+func (s stubHarness) WriteAgents(w fsutil.FileSystem, agentsFS fs.FS) ([]harness.Change, error) {
 	return nil, harness.ErrNotImplemented
 }
 
@@ -399,7 +399,7 @@ func TestPlan_skipsUnsupportedComponents(t *testing.T) {
 	}
 	selected := component.All()
 
-	plan := core.Plan(detected, selected, fsutil.NewMemFS(), nil, nil, "")
+	plan := core.Plan(detected, selected, fsutil.NewMemFS(), nil, nil, nil, "")
 
 	for _, t2 := range plan.Targets {
 		if t2.Component == component.ReviewAgents {
@@ -443,6 +443,175 @@ func fixtureTemplateFS() fs.FS {
 		"surfaces/_example.md": &fstest.MapFile{
 			Data: []byte("# {Surface Name}\n\n## Layout\n\n## Components\n\n## Notes\n"),
 		},
+	}
+}
+
+// agentHarness is a minimal harness for ReviewAgents integration tests.
+// It uses the same agentsDir path as ClaudeHarness but rooted under fakeHome,
+// so fakeHomeResolver accepts all paths and the backup store rolls them back.
+type agentHarness struct {
+	agentsDir string
+}
+
+func (a agentHarness) Name() string { return "claude" }
+func (a agentHarness) Detect() (harness.DetectResult, error) {
+	return harness.DetectResult{Installed: true, ConfigRoot: fakeHome + "/.claude"}, nil
+}
+func (a agentHarness) ConfigPaths() harness.ConfigPaths {
+	return harness.ConfigPaths{
+		MCPConfig: fakeHome + "/.claude/mcp/ui-craft.json",
+		SkillsDir: fakeHome + "/.claude/skills",
+		AgentsDir: a.agentsDir,
+	}
+}
+func (a agentHarness) Supports(c component.Component) bool { return true }
+func (a agentHarness) WriteMCP(w fsutil.FileSystem, server harness.MCPServer) (harness.Change, error) {
+	return harness.Change{}, harness.ErrNotImplemented
+}
+func (a agentHarness) WriteSkill(w fsutil.FileSystem, mirror fs.FS) (harness.Change, error) {
+	return harness.Change{}, harness.ErrNotImplemented
+}
+func (a agentHarness) WriteAgents(w fsutil.FileSystem, agentsFS fs.FS) ([]harness.Change, error) {
+	if agentsFS == nil {
+		return nil, harness.ErrUnsupported
+	}
+	if err := w.MkdirAll(a.agentsDir, 0o755); err != nil {
+		return nil, err
+	}
+	var changes []harness.Change
+	err := fs.WalkDir(agentsFS, ".", func(path string, d fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if d.IsDir() || filepath.Ext(d.Name()) != ".md" {
+			return nil
+		}
+		data, readErr := fs.ReadFile(agentsFS, path)
+		if readErr != nil {
+			return readErr
+		}
+		destPath := filepath.Join(a.agentsDir, filepath.Base(path))
+		prior, priorErr := w.ReadFile(destPath)
+		existed := priorErr == nil
+		wr, writeErr := fsutil.WriteFileAtomic(w, destPath, data, 0o644)
+		if writeErr != nil {
+			return writeErr
+		}
+		var priorBytes []byte
+		if existed {
+			priorBytes = prior
+		}
+		changes = append(changes, harness.Change{
+			FilePath:      destPath,
+			PriorBytes:    priorBytes,
+			ExistedBefore: existed,
+			Changed:       wr.Changed,
+		})
+		return nil
+	})
+	return changes, err
+}
+
+// fixtureAgentsFS builds an in-memory fs.FS with two agent .md files,
+// mirroring the embedded agents/claude/ subtree for core-level tests.
+// Duplicated from harness_test to keep core_test self-contained.
+func fixtureAgentsFS() fs.FS {
+	return fstest.MapFS{
+		"design-reviewer.md": &fstest.MapFile{
+			Data: []byte("---\nname: design-reviewer\ndescription: \"UI design reviewer\"\ntools: Read\nmodel: sonnet\ncolor: purple\n---\n\nYou are a design reviewer.\n"),
+		},
+		"a11y-auditor.md": &fstest.MapFile{
+			Data: []byte("---\nname: a11y-auditor\ndescription: \"Accessibility auditor\"\ntools: Read\nmodel: sonnet\ncolor: cyan\n---\n\nYou are an a11y auditor.\n"),
+		},
+	}
+}
+
+// TestReviewAgents_rollbackPreservesUserAgent is the integration test for the
+// ReviewAgents rollback safety (Slice 8 review, Fix 3).
+//
+// Scenario:
+//   - A pre-existing user agent file lives in the agents dir.
+//   - Apply runs a plan with ReviewAgents (which writes ui-craft agents) followed
+//     by a failing op that triggers full rollback.
+//
+// Expected invariants after rollback:
+//   - The user's pre-existing agent file SURVIVES with original bytes.
+//   - The ui-craft agent files created by WriteAgents are REMOVED.
+//
+// This tests against the slice-5 wholesale-dir-removal bug class where rollback
+// previously deleted the entire agents directory including user files.
+func TestReviewAgents_rollbackPreservesUserAgent(t *testing.T) {
+	t.Parallel()
+
+	mem := fsutil.NewMemFS()
+
+	backupRoot := fakeHome + "/.backups"
+	agentsDir := fakeHome + "/.claude/agents"
+	_ = mem.MkdirAll(backupRoot, 0o750)
+	// Pre-create the agents dir with a user-owned agent.
+	_ = mem.MkdirAll(agentsDir, 0o755)
+
+	userAgentPath := filepath.Join(agentsDir, "user-custom-agent.md")
+	userContent := []byte("---\nname: user-custom-agent\ndescription: \"My custom agent\"\n---\n\nUser-owned, must survive rollback.\n")
+	if err := mem.WriteFile(userAgentPath, userContent, 0o644); err != nil {
+		t.Fatalf("setup: write user agent: %v", err)
+	}
+
+	clocks := []time.Time{
+		time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC),
+		time.Date(2026, 1, 1, 12, 0, 1, 0, time.UTC),
+	}
+	callIdx := 0
+	multiClock := func() time.Time {
+		clk := clocks[callIdx%len(clocks)]
+		callIdx++
+		return clk
+	}
+	store := newTestStore(backupRoot, mem, multiClock)
+
+	h := agentHarness{agentsDir: agentsDir}
+	detected := []core.DetectedHarness{
+		{Harness: h, Result: harness.DetectResult{Installed: true}},
+	}
+	selected := []component.Component{component.ReviewAgents}
+
+	aFS := fixtureAgentsFS()
+	plan := core.Plan(detected, selected, mem, nil, func(name string) fs.FS {
+		if name == "claude" {
+			return aFS
+		}
+		return nil
+	}, nil, "")
+
+	// Append a failing sentinel op to force rollback after WriteAgents succeeds.
+	failPath := filepath.Join(fakeHome, "fail-sentinel.json")
+	plan.Targets = append(plan.Targets, core.ComponentTarget{
+		Harness:   h,
+		Component: component.MCPGates,
+		Op:        makeFailingOp(),
+		SnapPath:  failPath,
+	})
+
+	_, applyErr := core.Apply(plan, mem, store, "v0-test")
+	if applyErr == nil {
+		t.Fatal("Apply should have returned an error (failing sentinel op)")
+	}
+
+	// Invariant 1: user's pre-existing agent must survive with original content.
+	got, err := mem.ReadFile(userAgentPath)
+	if err != nil {
+		t.Fatalf("user agent not readable after rollback: %v", err)
+	}
+	if string(got) != string(userContent) {
+		t.Errorf("user agent content changed after rollback:\n  got:  %q\n  want: %q", got, userContent)
+	}
+
+	// Invariant 2: ui-craft agent files created by WriteAgents must be removed.
+	for _, name := range []string{"design-reviewer.md", "a11y-auditor.md"} {
+		p := filepath.Join(agentsDir, name)
+		if _, statErr := mem.Stat(p); statErr == nil {
+			t.Errorf("ui-craft agent %s should be deleted after rollback, but still exists", name)
+		}
 	}
 }
 
@@ -505,7 +674,7 @@ func TestDesignMemory_partialScaffoldRollbackSafety(t *testing.T) {
 	selected := []component.Component{component.DesignMemory}
 
 	tmplFS := fixtureTemplateFS()
-	plan := core.Plan(detected, selected, mem, nil, func() fs.FS { return tmplFS }, projectDir)
+	plan := core.Plan(detected, selected, mem, nil, nil, func() fs.FS { return tmplFS }, projectDir)
 
 	// Append a failing sentinel op to trigger rollback.
 	failPath := filepath.Join("/home/user", "fail-sentinel.json")

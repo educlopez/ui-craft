@@ -90,7 +90,7 @@ to a specific component; omit it to update all installed components.`,
 		}
 
 		osfs := fsutil.OsFS{}
-		plan := core.Plan(detected, selected, osfs, assets.Mirror, assets.TemplateFS, projectDir)
+		plan := core.Plan(detected, selected, osfs, assets.Mirror, assets.Agents, assets.TemplateFS, projectDir)
 
 		// Backup store root: ~/.ui-craft-backups
 		home, _ := os.UserHomeDir()

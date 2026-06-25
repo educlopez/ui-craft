@@ -2,7 +2,7 @@ BINARY   := ui-craft
 VERSION  ?= dev
 LDFLAGS  := -X main.version=$(VERSION)
 
-.PHONY: build test lint clean gen-mirrors ci-build
+.PHONY: build test lint clean gen-mirrors ci-build check-agent-copies
 
 ## build: compile the binary for the current OS/arch (development build).
 build:
@@ -45,6 +45,35 @@ gen-mirrors:
 		fi; \
 	done
 	@echo "==> gen-mirrors complete."
+
+## check-agent-copies: diff repo-root agents/ against cli/assets/agents/claude/.
+## Fails (non-zero) if the committed copies diverge from the canonical sources.
+## Run this before committing changes to agents/ or cli/assets/agents/claude/.
+check-agent-copies:
+	@echo "==> Checking agent copies: agents/ vs cli/assets/agents/claude/..."
+	@fail=0; \
+	for name in design-reviewer a11y-auditor; do \
+		src="../agents/$${name}.md"; \
+		dst="assets/agents/claude/$${name}.md"; \
+		if [ ! -f "$$src" ]; then \
+			echo "  ERROR: source $$src not found"; fail=1; continue; \
+		fi; \
+		if [ ! -f "$$dst" ]; then \
+			echo "  ERROR: copy $$dst not found"; fail=1; continue; \
+		fi; \
+		if ! diff -q "$$src" "$$dst" > /dev/null 2>&1; then \
+			echo "  DRIFT: $$src differs from $$dst"; \
+			diff "$$src" "$$dst" || true; \
+			fail=1; \
+		else \
+			echo "  OK: $$name.md matches"; \
+		fi; \
+	done; \
+	if [ $$fail -ne 0 ]; then \
+		echo "==> check-agent-copies FAILED: update cli/assets/agents/claude/ to match agents/"; \
+		exit 1; \
+	fi; \
+	echo "==> check-agent-copies passed."
 
 ## ci-build: full CI build: gen-mirrors then build binary.
 ## Step order is enforced to satisfy gotcha #5 (mirror freshness).

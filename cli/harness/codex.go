@@ -200,7 +200,10 @@ func (h CodexHarness) WriteSkill(w fsutil.FileSystem, mirror fs.FS) (Change, err
 	return ch, nil
 }
 
-// WriteAgents is not implemented in Slice 2; returns ErrNotImplemented.
-func (h CodexHarness) WriteAgents(w fsutil.FileSystem) ([]Change, error) {
-	return nil, ErrNotImplemented
+// WriteAgents returns ErrUnsupported. Codex has no native sub-agent format;
+// core.Plan maps this to a graceful skip notice (exit code 0). Supports(ReviewAgents)
+// returns false, so this method is not called in normal install flows — it is
+// present only to satisfy the Harness interface.
+func (h CodexHarness) WriteAgents(_ fsutil.FileSystem, _ fs.FS) ([]Change, error) {
+	return nil, ErrUnsupported
 }

@@ -220,6 +220,7 @@ func (m AppModel) runApplyCmd() tea.Cmd {
 			components,
 			osfs,
 			assets.Mirror,
+			assets.Agents,
 			assets.TemplateFS,
 			projectDir,
 		)
