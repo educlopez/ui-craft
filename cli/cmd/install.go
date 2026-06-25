@@ -2,10 +2,14 @@ package cmd
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 
+	"github.com/educlopez/ui-craft/cli/backup"
 	"github.com/educlopez/ui-craft/cli/component"
 	"github.com/educlopez/ui-craft/cli/core"
+	"github.com/educlopez/ui-craft/cli/fsutil"
 	"github.com/educlopez/ui-craft/cli/harness"
 	"github.com/spf13/cobra"
 )
@@ -58,7 +62,52 @@ var installCmd = &cobra.Command{
 			}
 		}
 
-		fmt.Fprintln(out, "\nPlan and apply: coming in Slice 3+.")
+		// Build plan for all components, wiring MCP ops (Slice 4).
+		selected := component.All()
+		osfs := fsutil.OsFS{}
+		plan := core.Plan(detected, selected, osfs)
+
+		// Backup store root: ~/.ui-craft-backups
+		home, _ := os.UserHomeDir()
+		backupRoot := filepath.Join(home, ".ui-craft-backups")
+		backupStore := backup.NewStore(backupRoot, osfs, nil) // nil clock = time.Now
+
+		// Execute transactional apply.
+		result, applyErr := core.Apply(plan, osfs, backupStore, cmdVersion)
+		if applyErr != nil {
+			return fmt.Errorf("install: apply failed (all changes rolled back): %w", applyErr)
+		}
+
+		// Report MCP results.
+		fmt.Fprintln(out, "\nMCP wiring results:")
+		for _, t := range plan.Targets {
+			if t.Component != component.MCPGates {
+				continue
+			}
+			if t.Skip {
+				fmt.Fprintf(out, "  %s/mcp-gates: skipped (%s)\n", t.Harness.Name(), t.SkipReason)
+				continue
+			}
+			// Determine if the file was already configured (no change) or newly written.
+			// Use Change.Changed (set by WriteFileAtomic's byte-compare) rather than
+			// re-reading and comparing bytes — the latter is unreliable for JSON because
+			// key ordering may differ between MarshalIndent calls.
+			status := "configured"
+			for _, ch := range result.Changes {
+				if ch.FilePath == t.SnapPath {
+					if !ch.Changed {
+						status = "already configured (no change)"
+					}
+					// Malformed-base warning: the user's existing config was corrupt.
+					// The transactional snapshot already backed it up before rewrite.
+					if ch.MalformedBase {
+						fmt.Fprintf(out, "  WARNING: %s was malformed JSON; original backed up before rewrite.\n", ch.FilePath)
+					}
+					break
+				}
+			}
+			fmt.Fprintf(out, "  %s/mcp-gates: %s\n", t.Harness.Name(), status)
+		}
 		return nil
 	},
 }

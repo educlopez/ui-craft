@@ -397,7 +397,7 @@ func TestPlan_skipsUnsupportedComponents(t *testing.T) {
 	}
 	selected := component.All()
 
-	plan := core.Plan(detected, selected)
+	plan := core.Plan(detected, selected, fsutil.NewMemFS())
 
 	for _, t2 := range plan.Targets {
 		if t2.Component == component.ReviewAgents {

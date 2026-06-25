@@ -1,11 +1,13 @@
 package harness
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 
 	"github.com/educlopez/ui-craft/cli/component"
 	"github.com/educlopez/ui-craft/cli/fsutil"
+	"github.com/educlopez/ui-craft/cli/internal/filemerge"
 )
 
 // CodexHarness is the adapter for OpenAI Codex CLI.
@@ -82,9 +84,50 @@ func (h CodexHarness) Supports(c component.Component) bool {
 	}
 }
 
-// WriteMCP is not implemented in Slice 2; returns ErrNotImplemented.
+// WriteMCP implements the TOMLFile strategy for Codex.
+//
+// It upserts a [mcp_servers.<server.Name>] block into ~/.codex/config.toml
+// using pure line operations (no go-toml dependency). All other TOML keys and
+// sections are preserved unchanged. Gotcha #4: Windows path strings are
+// automatically backslash-escaped by UpsertTOMLTableKey.
 func (h CodexHarness) WriteMCP(w fsutil.FileSystem, server MCPServer) (Change, error) {
-	return Change{}, ErrNotImplemented
+	paths := h.ConfigPaths()
+	target := paths.MCPConfig // ~/.codex/config.toml
+
+	// Read existing content (may not exist yet).
+	existing, readErr := w.ReadFile(target)
+	existed := readErr == nil
+	content := ""
+	if existed {
+		content = string(existing)
+	}
+
+	entry := map[string]any{
+		"command": server.Command,
+		"args":    server.Args,
+	}
+	updated, err := filemerge.UpsertTOMLTableKey(content, "mcp_servers", server.Name, entry)
+	if err != nil {
+		return Change{}, fmt.Errorf("codex: upsert TOML MCP block: %w", err)
+	}
+
+	prior := existing
+	if !existed {
+		prior = nil
+	}
+
+	wr, err := fsutil.WriteFileAtomic(w, target, []byte(updated), 0o644)
+	if err != nil {
+		return Change{}, fmt.Errorf("codex: write TOML config %s: %w", target, err)
+	}
+
+	return Change{
+		FilePath:      target,
+		PriorBytes:    prior,
+		ExistedBefore: existed,
+		Changed:       wr.Changed,
+		Strategy:      TOMLFile,
+	}, nil
 }
 
 // WriteSkill is not implemented in Slice 2; returns ErrNotImplemented.

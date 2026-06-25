@@ -1,6 +1,8 @@
 package harness
 
 import (
+	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -95,9 +97,48 @@ func (h ClaudeHarness) Supports(c component.Component) bool {
 	}
 }
 
-// WriteMCP is not implemented in Slice 2; returns ErrNotImplemented.
+// WriteMCP implements the SeparateFiles strategy for Claude Code.
+//
+// It writes a standalone JSON file at ~/.claude/mcp/<server.Name>.json
+// containing exactly one server entry:
+//
+//	{ "<name>": { "command": "...", "args": [...] } }
+//
+// The file is created (including parent directories) if absent, or updated
+// atomically. If the file already contains identical bytes the write is
+// skipped and Change.Strategy is still set so callers can log "already configured".
 func (h ClaudeHarness) WriteMCP(w fsutil.FileSystem, server MCPServer) (Change, error) {
-	return Change{}, ErrNotImplemented
+	paths := h.ConfigPaths()
+	target := paths.MCPConfig // ~/.claude/mcp/ui-craft.json
+
+	// Build the JSON content: { "<name>": { "command": ..., "args": [...] } }
+	entry := map[string]any{
+		"command": server.Command,
+		"args":    server.Args,
+	}
+	payload := map[string]any{server.Name: entry}
+	data, err := json.MarshalIndent(payload, "", "  ")
+	if err != nil {
+		return Change{}, fmt.Errorf("claude: marshal MCP config: %w", err)
+	}
+	data = append(data, '\n')
+
+	// Read prior bytes for the Change record (backup/rollback).
+	prior, readErr := w.ReadFile(target)
+	existed := readErr == nil
+
+	wr, err := fsutil.WriteFileAtomic(w, target, data, 0o644)
+	if err != nil {
+		return Change{}, fmt.Errorf("claude: write MCP config %s: %w", target, err)
+	}
+
+	return Change{
+		FilePath:      target,
+		PriorBytes:    prior,
+		ExistedBefore: existed,
+		Changed:       wr.Changed,
+		Strategy:      SeparateFiles,
+	}, nil
 }
 
 // WriteSkill is not implemented in Slice 2; returns ErrNotImplemented.
