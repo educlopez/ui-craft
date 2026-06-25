@@ -1,7 +1,7 @@
 {
   "name": "ui-craft",
   "description": "Design engineering skill + system for AI coding agents: anti-slop UI, outcome recipes, spec-driven design, design-review + a11y agents, MCP quality gates.",
-  "version": "0.30.0",
+  "version": "0.31.0",
   "author": {
     "name": "Eduardo Calvo",
     "url": "https://github.com/educlopez"

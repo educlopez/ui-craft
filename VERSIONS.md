@@ -1,5 +1,20 @@
 # Versions
 
+## v0.31.0 (2026-06-25) — `/start` front door + system repositioning
+
+Closes the front-door gap surfaced by the holistic product analysis: ui-craft grew from a skill into a system (skill + 22 commands + 2 agents + 4 MCP tools + CLI + eval), but newcomers had no single "start here" and the copy everywhere still said "skill".
+
+**New:**
+
+- **`/start` command** (`commands/start.md`) — the front door. Read-only: detects the project (framework, token spine, brief, spec, harness, existing UI) and reports what ui-craft can do **right now** across the three usage layers (just-ask / drive / verify), then recommends one next step and routes to the real command. Orchestrate-only — never builds or edits. Materialized as a sub-skill in all 5 harness mirrors.
+- **SKILL.md routing** gains a top "new here / unsure where to begin → `/start`" row.
+
+**Repositioned (docs):**
+
+- README leads with **"a design engineering system you install as a skill"** (skill = install format, not the ceiling) + a new **"Three ways to use it"** layered table. Counts corrected to 22 commands / 31 references.
+- `ui-craft-docs` landing repositioned to match + `PARITY-BACKLOG.md` logged (the site documents ~v0.24; agents/MCP/score/sddesign pages tracked for a follow-up).
+- Both GitHub repo descriptions updated "skill" → "system, install as a skill".
+
 ## v0.30.1 (2026-06-25) — fix: MCP server + plugin manifest actually work
 
 Two shipped-but-broken bugs caught by a functional smoke test (the unit tests bypassed the real server + the manifest validator).
