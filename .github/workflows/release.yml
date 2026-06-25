@@ -65,9 +65,10 @@ jobs:
       - name: Check if tag already exists
         id: tag
         if: steps.extract.outputs.tag != ''
+        env:
+          TAG: ${{ steps.extract.outputs.tag }}
         run: |
           set -euo pipefail
-          TAG="${{ steps.extract.outputs.tag }}"
           if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null 2>&1; then
             echo "Tag $TAG exists on origin — skipping."
             echo "exists=true" >> $GITHUB_OUTPUT
@@ -80,10 +81,10 @@ jobs:
         if: steps.extract.outputs.tag != '' && steps.tag.outputs.exists == 'false'
         env:
           GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.extract.outputs.tag }}
+          TITLE: ${{ steps.extract.outputs.title }}
         run: |
           set -euo pipefail
-          TAG="${{ steps.extract.outputs.tag }}"
-          TITLE="${{ steps.extract.outputs.title }}"
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
