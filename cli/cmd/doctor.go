@@ -12,6 +12,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -208,9 +209,45 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 	}
 
 	// -----------------------------------------------------------------------
-	// Print results.
+	// Print results (human or JSON).
 	// -----------------------------------------------------------------------
+	if flags.JSON {
+		// doctorJSONCheck is the per-check JSON representation.
+		type doctorJSONCheck struct {
+			Label  string `json:"label"`
+			Level  string `json:"level"`
+			Detail string `json:"detail"`
+			Remedy string `json:"remedy,omitempty"`
+		}
+		type doctorJSONResult struct {
+			OK     bool              `json:"ok"`
+			Checks []doctorJSONCheck `json:"checks"`
+		}
+		checks := make([]doctorJSONCheck, 0, len(results))
+		for _, r := range results {
+			checks = append(checks, doctorJSONCheck{
+				Label:  r.label,
+				Level:  r.level,
+				Detail: r.detail,
+				Remedy: r.remedy,
+			})
+		}
+		res := doctorJSONResult{OK: !anyFail, Checks: checks}
+		enc := json.NewEncoder(out)
+		enc.SetIndent("", "  ")
+		if err := enc.Encode(res); err != nil {
+			return err
+		}
+		if anyFail {
+			return fmt.Errorf("doctor: one or more checks failed")
+		}
+		return nil
+	}
+
 	for _, r := range results {
+		if flags.Quiet && r.level == "ok" {
+			continue
+		}
 		fmt.Fprintln(out, r.String())
 	}
 

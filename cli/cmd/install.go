@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -16,6 +17,22 @@ import (
 	"github.com/educlopez/ui-craft/cli/tui"
 	"github.com/spf13/cobra"
 )
+
+// installJSONTarget is the per-target outcome in --json output.
+type installJSONTarget struct {
+	Harness    string `json:"harness"`
+	Component  string `json:"component"`
+	Status     string `json:"status"` // "installed", "already-up-to-date", "skipped", "dry-run"
+	Skip       bool   `json:"skip,omitempty"`
+	SkipReason string `json:"skip_reason,omitempty"`
+}
+
+// installJSONResult is the top-level --json result for install/update/uninstall.
+type installJSONResult struct {
+	DryRun    bool                `json:"dry_run"`
+	Harnesses []string            `json:"harnesses"`
+	Targets   []installJSONTarget `json:"targets"`
+}
 
 // supportedHarnessNames lists every harness by name for user-facing messages.
 var supportedHarnessNames = []string{"claude", "cursor", "codex", "gemini", "opencode"}
@@ -56,10 +73,11 @@ var installCmd = &cobra.Command{
 		}
 
 		// TUI routing (Slice 7 — ADR-2):
-		// When stdout is a TTY AND --yes is not set → launch Bubble Tea TUI.
-		// The TUI drives the same core.Plan + core.Apply path as non-interactive mode.
-		// When not a TTY and --yes is not set → exit with a clear error (spec: non-TTY scenario).
-		if !flags.Yes {
+		// When stdout is a TTY AND --yes/--json is not set → launch Bubble Tea TUI.
+		// --json implies non-interactive (machine-readable output, no TUI).
+		// When not a TTY and --yes/--json is not set → exit with a clear error.
+		nonInteractive := flags.Yes || flags.JSON
+		if !nonInteractive {
 			if !tui.IsTerminal() {
 				return fmt.Errorf("interactive mode requires a TTY; use --yes to skip prompts")
 			}
@@ -150,28 +168,30 @@ var installCmd = &cobra.Command{
 			return fmt.Errorf("native plugin detected: use --force to override")
 		}
 
-		fmt.Fprintln(out, "Detected harnesses:")
-		for _, dh := range detected {
-			paths := dh.Harness.ConfigPaths()
-			fmt.Fprintf(out, "  %s\n", dh.Harness.Name())
-			fmt.Fprintf(out, "    config root: %s\n", dh.Result.ConfigRoot)
-			fmt.Fprintf(out, "    mcp config:  %s\n", paths.MCPConfig)
-			fmt.Fprintf(out, "    skills dir:  %s\n", paths.SkillsDir)
+		if !flags.JSON && !flags.Quiet {
+			fmt.Fprintln(out, "Detected harnesses:")
+			for _, dh := range detected {
+				paths := dh.Harness.ConfigPaths()
+				fmt.Fprintf(out, "  %s\n", dh.Harness.Name())
+				fmt.Fprintf(out, "    config root: %s\n", dh.Result.ConfigRoot)
+				fmt.Fprintf(out, "    mcp config:  %s\n", paths.MCPConfig)
+				fmt.Fprintf(out, "    skills dir:  %s\n", paths.SkillsDir)
 
-			// Print per-component support.
-			var supported, skipped []string
-			for _, c := range component.All() {
-				if dh.Harness.Supports(c) {
-					supported = append(supported, c.String())
-				} else {
-					skipped = append(skipped, c.String())
+				// Print per-component support.
+				var supported, skipped []string
+				for _, c := range component.All() {
+					if dh.Harness.Supports(c) {
+						supported = append(supported, c.String())
+					} else {
+						skipped = append(skipped, c.String())
+					}
 				}
-			}
-			if len(supported) > 0 {
-				fmt.Fprintf(out, "    supports:    %s\n", strings.Join(supported, ", "))
-			}
-			if len(skipped) > 0 {
-				fmt.Fprintf(out, "    skipped:     %s (not supported by this harness)\n", strings.Join(skipped, ", "))
+				if len(supported) > 0 {
+					fmt.Fprintf(out, "    supports:    %s\n", strings.Join(supported, ", "))
+				}
+				if len(skipped) > 0 {
+					fmt.Fprintf(out, "    skipped:     %s (not supported by this harness)\n", strings.Join(skipped, ", "))
+				}
 			}
 		}
 
@@ -194,18 +214,50 @@ var installCmd = &cobra.Command{
 
 		// --- Dry-run: print what would happen and exit without writing ---
 		if flags.DryRun {
-			fmt.Fprint(out, "\n[dry-run] No files will be written. Showing what would change:\n\n")
+			if flags.JSON {
+				var harnessNames []string
+				for _, dh := range detected {
+					harnessNames = append(harnessNames, dh.Harness.Name())
+				}
+				var targets []installJSONTarget
+				for _, t := range plan.Targets {
+					jt := installJSONTarget{
+						Harness:   t.Harness.Name(),
+						Component: t.Component.String(),
+						Status:    "dry-run",
+					}
+					if t.Skip {
+						jt.Skip = true
+						jt.SkipReason = t.SkipReason
+						jt.Status = "skipped"
+					}
+					targets = append(targets, jt)
+				}
+				res := installJSONResult{DryRun: true, Harnesses: harnessNames, Targets: targets}
+				enc := json.NewEncoder(out)
+				enc.SetIndent("", "  ")
+				return enc.Encode(res)
+			}
+			if !flags.Quiet {
+				fmt.Fprint(out, "\n[dry-run] No files will be written. Showing what would change:\n\n")
+			}
 			for _, t := range plan.Targets {
 				if t.Skip {
-					fmt.Fprintf(out, "  would skip   %s/%s (%s)\n", t.Harness.Name(), t.Component.String(), t.SkipReason)
+					if !flags.Quiet {
+						fmt.Fprintf(out, "  would skip   %s/%s (%s)\n", t.Harness.Name(), t.Component.String(), t.SkipReason)
+					}
 					continue
 				}
 				if t.Op == nil {
 					continue
 				}
-				fmt.Fprintf(out, "  would install %s/%s\n", t.Harness.Name(), t.Component.String())
+				if !flags.Quiet {
+					fmt.Fprintf(out, "  would install %s/%s\n", t.Harness.Name(), t.Component.String())
+				}
 			}
-			fmt.Fprintln(out, "\n[dry-run] Re-run without --dry-run to apply changes.")
+			if !flags.Quiet {
+				fmt.Fprintln(out, "\n[dry-run] Re-run without --dry-run to apply changes.")
+			}
 			return nil
 		}
 
@@ -220,57 +272,108 @@ var installCmd = &cobra.Command{
 			return fmt.Errorf("install: apply failed (all changes rolled back): %w", applyErr)
 		}
 
+		// Build status for each target from plan + result.Changes.
+		targetStatus := func(t core.ComponentTarget) string {
+			if t.Skip {
+				return "skipped"
+			}
+			for _, ch := range result.Changes {
+				if ch.HarnessName == t.Harness.Name() && ch.Component == t.Component.String() {
+					if !ch.Changed {
+						return "already-up-to-date"
+					}
+					return "installed"
+				}
+				// MCP uses file path as key
+				if ch.FilePath == t.SnapPath {
+					if !ch.Changed {
+						return "already-up-to-date"
+					}
+					return "installed"
+				}
+			}
+			return "installed"
+		}
+
+		// --json: emit machine-readable result and return.
+		if flags.JSON {
+			var harnessNames []string
+			seen := map[string]bool{}
+			for _, dh := range detected {
+				if !seen[dh.Harness.Name()] {
+					harnessNames = append(harnessNames, dh.Harness.Name())
+					seen[dh.Harness.Name()] = true
+				}
+			}
+			var targets []installJSONTarget
+			for _, t := range plan.Targets {
+				status := targetStatus(t)
+				jt := installJSONTarget{
+					Harness:   t.Harness.Name(),
+					Component: t.Component.String(),
+					Status:    status,
+				}
+				if t.Skip {
+					jt.Skip = true
+					jt.SkipReason = t.SkipReason
+				}
+				targets = append(targets, jt)
+			}
+			res := installJSONResult{DryRun: false, Harnesses: harnessNames, Targets: targets}
+			enc := json.NewEncoder(out)
+			enc.SetIndent("", "  ")
+			return enc.Encode(res)
+		}
+
 		// Report skill-commands results.
-		fmt.Fprintln(out, "\nSkill+commands results:")
+		if !flags.Quiet {
+			fmt.Fprintln(out, "\nSkill+commands results:")
+		}
 		for _, t := range plan.Targets {
 			if t.Component != component.SkillCommands {
 				continue
 			}
 			if t.Skip {
-				fmt.Fprintf(out, "  %s/skill+commands: skipped (%s)\n", t.Harness.Name(), t.SkipReason)
+				if !flags.Quiet {
+					fmt.Fprintf(out, "  %s/skill+commands: skipped (%s)\n", t.Harness.Name(), t.SkipReason)
+				}
 				continue
 			}
-			status := "installed"
-			for _, ch := range result.Changes {
-				if ch.HarnessName == t.Harness.Name() && ch.Component == component.SkillCommands.String() {
-					if !ch.Changed {
-						status = "already up-to-date"
-					}
-					break
-				}
-			}
+			status := targetStatus(t)
 			// Gotcha #7: advisory for Gemini/Codex if global npm detected.
 			if (t.Harness.Name() == "gemini" || t.Harness.Name() == "codex") && status == "installed" {
-				if !detectNVMOrVolta() {
+				if !detectNVMOrVolta() && !flags.Quiet {
 					fmt.Fprintf(out, "  ADVISORY: %s uses global npm; consider nvm/fnm/volta to avoid permission issues.\n", t.Harness.Name())
 				}
 			}
-			fmt.Fprintf(out, "  %s/skill+commands: %s\n", t.Harness.Name(), status)
+			if !flags.Quiet {
+				fmt.Fprintf(out, "  %s/skill+commands: %s\n", t.Harness.Name(), status)
+			}
 		}
 
 		// Report MCP results.
-		fmt.Fprintln(out, "\nMCP wiring results:")
+		if !flags.Quiet {
+			fmt.Fprintln(out, "\nMCP wiring results:")
+		}
 		for _, t := range plan.Targets {
 			if t.Component != component.MCPGates {
 				continue
 			}
 			if t.Skip {
-				fmt.Fprintf(out, "  %s/mcp-gates: skipped (%s)\n", t.Harness.Name(), t.SkipReason)
+				if !flags.Quiet {
+					fmt.Fprintf(out, "  %s/mcp-gates: skipped (%s)\n", t.Harness.Name(), t.SkipReason)
+				}
 				continue
 			}
-			status := "configured"
+			status := targetStatus(t)
 			for _, ch := range result.Changes {
-				if ch.FilePath == t.SnapPath {
-					if !ch.Changed {
-						status = "already configured (no change)"
-					}
-					if ch.MalformedBase {
-						fmt.Fprintf(out, "  WARNING: %s was malformed JSON; original backed up before rewrite.\n", ch.FilePath)
-					}
-					break
+				if ch.FilePath == t.SnapPath && ch.MalformedBase && !flags.Quiet {
+					fmt.Fprintf(out, "  WARNING: %s was malformed JSON; original backed up before rewrite.\n", ch.FilePath)
 				}
 			}
-			fmt.Fprintf(out, "  %s/mcp-gates: %s\n", t.Harness.Name(), status)
+			if !flags.Quiet {
+				fmt.Fprintf(out, "  %s/mcp-gates: %s\n", t.Harness.Name(), status)
+			}
 		}
 
 		// Report design-memory results.
@@ -280,23 +383,17 @@ var installCmd = &cobra.Command{
 				continue
 			}
 			if t.Skip {
-				if !designMemoryReported {
+				if !designMemoryReported && !flags.Quiet {
 					fmt.Fprintf(out, "\ndesign-memory: skipped (%s)\n", t.SkipReason)
 					designMemoryReported = true
 				}
 				continue
 			}
 			if !designMemoryReported {
-				status := "scaffolded"
-				for _, ch := range result.Changes {
-					if ch.Component == component.DesignMemory.String() && ch.HarnessName == t.Harness.Name() {
-						if !ch.Changed {
-							status = "already scaffolded"
-						}
-						break
-					}
+				status := targetStatus(t)
+				if !flags.Quiet {
+					fmt.Fprintf(out, "\ndesign-memory: %s → %s/.ui-craft/\n", status, projectDir)
 				}
-				fmt.Fprintf(out, "\ndesign-memory: %s → %s/.ui-craft/\n", status, projectDir)
 				designMemoryReported = true
 			}
 		}
@@ -331,6 +428,11 @@ var installCmd = &cobra.Command{
 		if err := core.SaveState(osfs, stateRoot, state); err != nil {
 			// Non-fatal: log but do not fail the command.
 			fmt.Fprintf(out, "\nwarning: could not save state.json: %v\n", err)
+		}
+
+		// --quiet: emit the single final outcome line now that state is saved.
+		if flags.Quiet {
+			fmt.Fprintln(out, "install: ok")
 		}
 
 		return nil

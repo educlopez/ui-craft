@@ -32,12 +32,20 @@ ui-craft install                          # detect harnesses, interactive TUI
 ui-craft install --yes                    # non-interactive (CI / scripted)
 ui-craft install --yes --force            # bypass native plugin coexistence warning
 ui-craft install --harness cursor         # target a specific harness
+ui-craft install --yes --json             # machine-readable JSON output
+ui-craft install --yes --quiet            # suppress non-essential output
 ui-craft backup                           # snapshot harness configs without installing
+ui-craft backup list --json               # list snapshots as JSON
 ui-craft rollback cursor                  # restore latest backup for a harness
 ui-craft update cursor                    # re-apply all installed components for cursor
 ui-craft update cursor --component mcp-gates  # update one component
+ui-craft self-update                      # upgrade binary to latest GitHub release
 ui-craft version                          # print binary + mirror version
+ui-craft version --json                   # emit version+mirror as JSON
 ui-craft version --check-parity          # verify Claude Code install matches expected surface
+ui-craft doctor                           # health check
+ui-craft doctor --json                    # health check as JSON (ok bool + checks array)
+ui-craft completion zsh                   # generate zsh completion script
 ```
 
 ## Update lifecycle (state.json)
@@ -91,6 +99,75 @@ ui-craft version
 ```
 
 Both `version` and `mirror` should match on an official release. If they differ, the binary was built with stale mirrors — run `make gen-mirrors` before rebuilding.
+
+## Shell completions
+
+`ui-craft` ships with shell completion support via Cobra. To enable completions:
+
+### Zsh
+
+```bash
+ui-craft completion zsh > "${fpath[1]}/_ui-craft"
+```
+
+Or with Oh My Zsh:
+
+```bash
+ui-craft completion zsh > ~/.oh-my-zsh/completions/_ui-craft
+```
+
+### Bash
+
+```bash
+ui-craft completion bash > /etc/bash_completion.d/ui-craft
+# or for a per-user install:
+ui-craft completion bash >> ~/.bashrc
+```
+
+### Fish
+
+```bash
+ui-craft completion fish > ~/.config/fish/completions/ui-craft.fish
+```
+
+### PowerShell
+
+```powershell
+ui-craft completion powershell | Out-String | Invoke-Expression
+```
+
+## Scripting / CI integration
+
+Global flags for script-friendly output:
+
+| Flag | Effect |
+|---|---|
+| `--json` | Emit machine-readable JSON instead of human text. Implies non-interactive (no TUI). |
+| `--quiet` | Suppress non-essential output; print only errors (stderr) and a final one-line outcome. |
+| `--yes` | Skip interactive prompts; apply defaults. |
+
+Example — CI install check:
+
+```bash
+result=$(ui-craft install --yes --json)
+echo "$result" | jq '.targets[] | select(.status != "already-up-to-date")'
+```
+
+## Self-update
+
+```bash
+ui-craft self-update
+```
+
+Upgrades the binary to the latest GitHub release:
+- If installed via **Homebrew** or **Scoop**, prints the correct package-manager command instead (`brew upgrade ui-craft` / `scoop update ui-craft`) and exits 0 — self-replacing a package-managed binary corrupts the manager's state.
+- For **direct-download** installs: fetches the latest release, verifies the sha256 against `checksums.txt`, and atomically replaces the binary. On Windows, writes `ui-craft.new` and prints manual instructions (Windows cannot replace a running executable).
+- If already at the latest version, reports that and exits 0.
+
+```bash
+ui-craft self-update --json
+# {"updated":true,"from":"v0.35.0","to":"v0.36.0","method":"direct"}
+```
 
 ## Build from source
 

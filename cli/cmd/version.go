@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -38,7 +39,21 @@ func newVersionCmd(version, mirrorVersion string) *cobra.Command {
 			if effectiveMirror == "" || effectiveMirror == "dev" {
 				effectiveMirror = assets.MirrorVersion()
 			}
-			fmt.Fprintf(cmd.OutOrStdout(), "ui-craft %s (mirror: %s)\n", version, effectiveMirror)
+
+			// --json: emit a machine-readable object instead of human text.
+			if flags.JSON {
+				out := struct {
+					Version string `json:"version"`
+					Mirror  string `json:"mirror"`
+				}{Version: version, Mirror: effectiveMirror}
+				enc := json.NewEncoder(cmd.OutOrStdout())
+				enc.SetIndent("", "  ")
+				return enc.Encode(out)
+			}
+
+			if !flags.Quiet {
+				fmt.Fprintf(cmd.OutOrStdout(), "ui-craft %s (mirror: %s)\n", version, effectiveMirror)
+			}
 
 			checkParity, _ := cmd.Flags().GetBool("check-parity")
 			if !checkParity {

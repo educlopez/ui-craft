@@ -14,6 +14,8 @@ type rootFlags struct {
 	Yes        bool
 	DryRun     bool
 	Dir        string
+	JSON       bool // emit machine-readable JSON; implies non-interactive
+	Quiet      bool // suppress non-essential output; only errors to stderr + final outcome
 }
 
 var flags rootFlags
@@ -63,4 +65,6 @@ func init() {
 	rootCmd.PersistentFlags().BoolVar(&flags.Yes, "yes", false, "Skip interactive prompts and apply defaults")
 	rootCmd.PersistentFlags().BoolVar(&flags.DryRun, "dry-run", false, "Show what would be changed without writing any files")
 	rootCmd.PersistentFlags().StringVar(&flags.Dir, "dir", ".", "Project directory (default: current directory)")
+	rootCmd.PersistentFlags().BoolVar(&flags.JSON, "json", false, "Emit machine-readable JSON output (implies non-interactive)")
+	rootCmd.PersistentFlags().BoolVar(&flags.Quiet, "quiet", false, "Suppress non-essential output; print only errors (stderr) + final outcome")
 }

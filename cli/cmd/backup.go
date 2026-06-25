@@ -1,10 +1,12 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"text/tabwriter"
+	"time"
 
 	"github.com/educlopez/ui-craft/cli/backup"
 	"github.com/educlopez/ui-craft/cli/core"
@@ -45,8 +47,35 @@ var backupListCmd = &cobra.Command{
 		if err != nil {
 			return fmt.Errorf("backup list: %w", err)
 		}
+
+		if flags.JSON {
+			// backupJSONEntry is the per-snapshot JSON representation.
+			type backupJSONEntry struct {
+				ID        string    `json:"id"`
+				CreatedAt time.Time `json:"created_at"`
+				Source    string    `json:"source"`
+				Pinned    bool      `json:"pinned"`
+				FileCount int       `json:"file_count"`
+			}
+			entries := make([]backupJSONEntry, 0, len(metas))
+			for _, m := range metas {
+				entries = append(entries, backupJSONEntry{
+					ID:        string(m.ID),
+					CreatedAt: m.CreatedAt,
+					Source:    string(m.Source),
+					Pinned:    m.Pinned,
+					FileCount: m.FileCount,
+				})
+			}
+			enc := json.NewEncoder(out)
+			enc.SetIndent("", "  ")
+			return enc.Encode(entries)
+		}
+
 		if len(metas) == 0 {
-			fmt.Fprintln(out, "No backups found.")
+			if !flags.Quiet {
+				fmt.Fprintln(out, "No backups found.")
+			}
 			return nil
 		}
 

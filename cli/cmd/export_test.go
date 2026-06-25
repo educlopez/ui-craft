@@ -109,3 +109,60 @@ func RemoveManagedBlockForTest(content string) string {
 
 // Expose package-level flags for tests that manipulate them directly.
 var Flags = &flags
+
+// SetSelfUpdateFetchRelease replaces the release-fetch function for testing.
+// Returns a restore function. NOT safe for parallel tests.
+func SetSelfUpdateFetchRelease(fn func(string) (*selfUpdateRelease, error)) func() {
+	prev := selfUpdateFetchRelease
+	selfUpdateFetchRelease = fn
+	return func() { selfUpdateFetchRelease = prev }
+}
+
+// SetSelfUpdateDownloadAsset replaces the asset-download function for testing.
+// Returns a restore function. NOT safe for parallel tests.
+func SetSelfUpdateDownloadAsset(fn func(string) ([]byte, error)) func() {
+	prev := selfUpdateDownloadAsset
+	selfUpdateDownloadAsset = fn
+	return func() { selfUpdateDownloadAsset = prev }
+}
+
+// SetSelfUpdateExecPath replaces the executable-path resolver for testing.
+// Returns a restore function. NOT safe for parallel tests.
+func SetSelfUpdateExecPath(fn func() (string, error)) func() {
+	prev := selfUpdateExecPath
+	selfUpdateExecPath = fn
+	return func() { selfUpdateExecPath = prev }
+}
+
+// SelfUpdateRelease is the exported type alias for selfUpdateRelease (test use).
+type SelfUpdateRelease = selfUpdateRelease
+
+// SelfUpdateAsset is the exported type alias for selfUpdateAsset (test use).
+type SelfUpdateAsset = selfUpdateAsset
+
+// DetectPackageManager re-exports detectPackageManager for test use.
+var DetectPackageManager = detectPackageManager
+
+// VerifyChecksum re-exports verifyChecksum for test use.
+var VerifyChecksum = verifyChecksum
+
+// ExtractBinaryFromArchive re-exports extractBinaryFromArchive for test use.
+var ExtractBinaryFromArchive = extractBinaryFromArchive
+
+// ArchiveNameForPlatform re-exports archiveNameForPlatform for test use.
+var ArchiveNameForPlatform = archiveNameForPlatform
+
+// MakeSelfUpdateCmd re-exports the self-update command constructor for test use.
+func MakeSelfUpdateCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:          selfUpdateCmd.Use,
+		Short:        selfUpdateCmd.Short,
+		SilenceUsage: true,
+		RunE:         runSelfUpdate,
+	}
+}
+
+// RegisterSelfUpdateCmdForTest adds the self-update subcommand to the given root.
+func RegisterSelfUpdateCmdForTest(root *cobra.Command) {
+	root.AddCommand(MakeSelfUpdateCmd())
+}
