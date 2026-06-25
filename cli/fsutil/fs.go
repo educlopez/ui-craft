@@ -66,3 +66,6 @@ func (OsFS) Rename(oldpath, newpath string) error { return os.Rename(oldpath, ne
 func (OsFS) Remove(name string) error { return os.Remove(name) }
 
 func (OsFS) Open(name string) (io.ReadCloser, error) { return os.Open(name) }
+
+// ReadDir reads the directory named by dirname and returns a list of directory entries.
+func (OsFS) ReadDir(name string) ([]os.DirEntry, error) { return os.ReadDir(name) }

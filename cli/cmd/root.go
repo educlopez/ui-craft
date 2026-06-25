@@ -28,6 +28,10 @@ MCP gates, review agents, and design-memory — into the harness's native config
 	SilenceUsage: true,
 }
 
+// cmdVersion holds the binary version passed to Execute. It is available to
+// all subcommands (e.g. backup) for embedding in snapshot manifests.
+var cmdVersion = "dev"
+
 // versionOnce guards AddCommand so that calling Execute more than once
 // (e.g. in tests that reuse the package-level rootCmd) does not register a
 // duplicate "version" subcommand and trigger cobra's duplicate-command panic.
@@ -35,6 +39,7 @@ var versionOnce sync.Once
 
 // Execute wires the binary version into the root command and runs it.
 func Execute(version string) {
+	cmdVersion = version
 	// Attach the version subcommand with the build-time version string.
 	// sync.Once ensures idempotency if Execute is called more than once.
 	versionOnce.Do(func() {
