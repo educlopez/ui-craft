@@ -1,8 +1,9 @@
-BINARY   := ui-craft
-VERSION  ?= dev
-LDFLAGS  := -X main.version=$(VERSION)
+BINARY        := ui-craft
+VERSION       ?= dev
+MIRROR_VERSION ?= dev
+LDFLAGS       := -X main.version=$(VERSION) -X main.mirrorVersion=$(MIRROR_VERSION)
 
-.PHONY: build test lint clean gen-mirrors ci-build check-agent-copies
+.PHONY: build test lint clean gen-mirrors ci-build check-agent-copies release-local check
 
 ## build: compile the binary for the current OS/arch (development build).
 build:
@@ -78,3 +79,31 @@ check-agent-copies:
 ## ci-build: full CI build: gen-mirrors then build binary.
 ## Step order is enforced to satisfy gotcha #5 (mirror freshness).
 ci-build: gen-mirrors build
+
+## release-local: build a snapshot release with goreleaser (no publish, no tag required).
+## Requires goreleaser installed: go install github.com/goreleaser/goreleaser/v2@latest
+## Must run gen-mirrors first (gotcha #5 — mirrors must be populated before go:embed).
+release-local: gen-mirrors
+	@echo "==> Building snapshot release with goreleaser..."
+	cd .. && MIRROR_VERSION=$(MIRROR_VERSION) goreleaser release --snapshot --clean --config .goreleaser.yaml
+
+## check: run build + vet + test + gofmt + check-agent-copies — full local gate.
+## This mirrors the CI quality bar. Run before opening a PR.
+check:
+	@echo "==> go build ./..."
+	go build ./...
+	@echo "==> go vet ./..."
+	go vet ./...
+	@echo "==> go test -race ./..."
+	go test -race ./...
+	@echo "==> gofmt check..."
+	@unformatted=$$(gofmt -l .); \
+	if [ -n "$$unformatted" ]; then \
+		echo "gofmt: the following files need formatting:"; \
+		echo "$$unformatted"; \
+		exit 1; \
+	fi; \
+	echo "  gofmt OK"
+	@echo "==> check-agent-copies..."
+	$(MAKE) check-agent-copies
+	@echo "==> All checks passed."

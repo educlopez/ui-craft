@@ -11,7 +11,7 @@
       "name": "ui-craft",
       "source": "./",
       "description": "Design engineering skill + system for AI coding agents: anti-slop UI rules, outcome recipes, spec-driven design (/sddesign), design-review + a11y agents, and MCP quality gates.",
-      "version": "2026.6.25.1814",
+      "version": "2026.6.25.1829",
       "license": "MIT",
       "homepage": "https://skills.smoothui.dev",
       "keywords": ["ui", "design", "accessibility", "css", "frontend", "design-system", "anti-slop"]

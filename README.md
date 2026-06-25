@@ -84,6 +84,28 @@ Works with any agent that supports the [Agent Skills](https://skills.sh) spec. E
 
 **Full reference docs:** [skills.smoothui.dev/docs](https://skills.smoothui.dev/docs).
 
+### CLI binary — all harnesses in one command
+
+The `ui-craft` CLI binary detects your installed harnesses and wires skill+commands, MCP gates, review agents, and design-memory in a single interactive pass. No Node required at install time.
+
+**macOS:**
+```bash
+brew install educlopez/ui-craft/ui-craft
+```
+
+**Windows (Scoop):**
+```powershell
+scoop bucket add ui-craft https://github.com/educlopez/scoop-ui-craft
+scoop install ui-craft
+```
+
+**Then run:**
+```bash
+ui-craft install
+```
+
+The CLI is an alternative to the Claude Code plugin and `npx skills add` — all three install the same components. The native Claude plugin and `npx skills add` remain documented and fully supported; the CLI adds a cross-harness option for users who want a single command for multiple agents.
+
 ### Other ways
 
 ```bash
