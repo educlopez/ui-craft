@@ -62,15 +62,6 @@ type InstallState struct {
 	LastUpdateCheck string `json:"lastUpdateCheck,omitempty"`
 }
 
-// stateDir returns the directory that holds state.json.
-// By default this is ~/.ui-craft/ (user home).
-func stateDir(fs fsutil.FileSystem) (string, error) {
-	// We use the real os.UserHomeDir here because fsutil.FileSystem does not
-	// expose a HomeDir method. Tests inject a MemFS rooted at an explicit
-	// directory and pass that directory as stateRoot instead.
-	return "", nil // caller uses its own root; see LoadState / SaveState
-}
-
 // statePath joins root + "state.json".
 func statePath(root string) string {
 	return filepath.Join(root, "state.json")

@@ -92,19 +92,6 @@ func titleStyle() lipgloss.Style {
 	return lipgloss.NewStyle().Foreground(AccentColor).Bold(true)
 }
 
-// frameStyle returns a lipgloss border box for panels.
-func frameStyle() lipgloss.Style {
-	if noColor() {
-		return lipgloss.NewStyle().
-			Border(lipgloss.NormalBorder()).
-			Padding(0, 1)
-	}
-	return lipgloss.NewStyle().
-		Border(lipgloss.DoubleBorder()).
-		BorderForeground(AccentColor).
-		Padding(0, 1)
-}
-
 // gradientBands returns the 5 accent-toned colors used for the splash art
 // gradient. When NO_COLOR is active, all bands are empty strings (no styling).
 func gradientBands() []string {

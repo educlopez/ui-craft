@@ -1,0 +1,92 @@
+name: CLI CI
+
+# Runs Go tests, vet, fmt, lint, and vuln-scan for the cli/ package.
+# Mirrors are committed — no generation step required.
+
+on:
+  push:
+    paths:
+      - 'cli/**'
+      - 'scripts/sync-harnesses.mjs'
+      - '.github/workflows/cli-ci.yml'
+  pull_request:
+    paths:
+      - 'cli/**'
+      - 'scripts/sync-harnesses.mjs'
+      - '.github/workflows/cli-ci.yml'
+
+jobs:
+  test:
+    name: Test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: cli/go.mod
+
+      - name: Run tests (race detector)
+        run: cd cli && go test -race ./...
+
+  vet-fmt:
+    name: Vet + Fmt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: cli/go.mod
+
+      - name: go vet
+        run: cd cli && go vet ./...
+
+      - name: gofmt (fail on any unformatted file)
+        run: |
+          FILES=$(cd cli && gofmt -l .)
+          if [ -n "$FILES" ]; then
+            echo "Unformatted files:"
+            echo "$FILES"
+            exit 1
+          fi
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: cli/go.mod
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+          working-directory: cli
+
+  govulncheck:
+    name: Vuln Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: cli/go.mod
+
+      - name: Install govulncheck
+        run: go install golang.org/x/vuln/cmd/govulncheck@latest
+
+      - name: Run govulncheck
+        run: cd cli && govulncheck ./...

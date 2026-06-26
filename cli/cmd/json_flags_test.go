@@ -156,7 +156,7 @@ func TestDoctorJSON_okTrueWhenAllPass(t *testing.T) {
 		func(string) (uint64, error) { return 500 << 20, nil }, // plenty of disk
 	)
 	// No harness detected is a [warn] but not a [fail], so ok should be true.
-	okRaw, _ := m["ok"]
+	okRaw := m["ok"]
 	if v, _ := okRaw.(bool); !v {
 		t.Errorf("doctor --json: expected ok=true when no disk fail, got %v", okRaw)
 	}

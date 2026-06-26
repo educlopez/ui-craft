@@ -112,7 +112,7 @@ type HomeResolver func() (string, error)
 
 // Store manages a directory of timestamped snapshots.
 //
-// mu serialises mutating operations (Snapshot, Prune, Restore, deleteSnapshot)
+// mu serialises mutating operations (Snapshot, Prune, Restore)
 // so that concurrent callers cannot produce duplicate IDs or corrupt the
 // snapshot directory.
 type Store struct {
@@ -645,14 +645,6 @@ func (s *Store) setPinned(id SnapshotID, pinned bool) error {
 		return fmt.Errorf("backup: marshal manifest: %w", err)
 	}
 	return s.fs.WriteFile(filepath.Join(snapDir, "manifest.json"), data, 0o640)
-}
-
-// deleteSnapshot removes the snapshot directory and all its contents.
-// It acquires s.mu; do NOT call from code that already holds s.mu.
-func (s *Store) deleteSnapshot(id SnapshotID) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return s.deleteSnapshotLocked(id)
 }
 
 // deleteSnapshotLocked removes the snapshot directory recursively.

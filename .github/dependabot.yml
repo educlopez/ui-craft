@@ -1,0 +1,29 @@
+version: 2
+
+updates:
+  # Go modules for the CLI
+  - package-ecosystem: gomod
+    directory: /cli
+    schedule:
+      interval: weekly
+    labels:
+      - dependencies
+      - go
+
+  # GitHub Actions versions
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    labels:
+      - dependencies
+      - github-actions
+
+  # npm for root package.json (ui-craft-detect, mcp, scripts)
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    labels:
+      - dependencies
+      - npm
