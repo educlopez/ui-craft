@@ -31,7 +31,7 @@ jobs:
     steps:
       # ── Step 1: Checkout ──────────────────────────────────────────────────
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
           # On workflow_dispatch, check out the requested tag (not the dispatch
