@@ -61,7 +61,7 @@ jobs:
 
       # ── Step 3: goreleaser release ────────────────────────────────────────
       - name: Run goreleaser
-        uses: goreleaser/goreleaser-action@v6
+        uses: goreleaser/goreleaser-action@v7
         with:
           distribution: goreleaser
           version: "~> v2"
