@@ -34,6 +34,10 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          # On workflow_dispatch, check out the requested tag (not the dispatch
+          # branch) so goreleaser sees HEAD == the tag commit. On tag push,
+          # github.ref is the tag already.
+          ref: ${{ github.event.inputs.tag || github.ref }}
 
       - name: Ensure cli/assets/agents/ is present
         run: |
