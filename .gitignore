@@ -16,3 +16,6 @@ mcp/dist/
 
 # CLI binary artifact
 cli/ui-craft
+
+# goreleaser local snapshot output
+dist/
