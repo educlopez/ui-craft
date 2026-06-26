@@ -13,6 +13,7 @@ on:
 
 permissions:
   contents: write
+  actions: write   # to dispatch cli-release.yml after tagging
 
 jobs:
   release:
@@ -97,4 +98,13 @@ jobs:
             --notes-file release-body.md \
             --verify-tag
 
-          echo "Released: https://github.com/${{ github.repository }}/releases/tag/$TAG"
+      # The tag above is pushed with GITHUB_TOKEN, which does NOT auto-trigger
+      # tag-event workflows (GitHub's recursion guard). So explicitly dispatch
+      # the goreleaser binary release. workflow_dispatch via the API IS allowed
+      # from GITHUB_TOKEN — this is the supported chaining mechanism.
+      - name: Trigger CLI binary release (goreleaser)
+        if: steps.extract.outputs.tag != '' && steps.tag.outputs.exists == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.extract.outputs.tag }}
+        run: gh workflow run cli-release.yml --ref main -f tag="$TAG"
