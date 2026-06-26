@@ -1,6 +1,6 @@
 # UI Craft
 
-**Ship designer-grade UI by default.** A design engineering system for AI coding agents — you install it as a skill, and your agent starts designing like it has taste. Ask for a dashboard, get one you'd put in production. Not gradient cards and bounce animations.
+**Ship designer-grade UI by default.** A design engineering system for AI coding agents — install it as a skill or as the `ui-craft` CLI, and your agent starts designing like it has taste. Ask for a dashboard, get one you'd put in production. Not gradient cards and bounce animations.
 
 **Website:** [skills.smoothui.dev](https://skills.smoothui.dev)
 
@@ -55,40 +55,11 @@ More before/after comparisons on the [landing page](https://skills.smoothui.dev)
 
 ## Install
 
-### Claude Code — recommended (installs the whole system)
+### CLI — recommended (cross-harness, installs the whole system)
 
-One command installs the skill, all 22 slash commands, the 2 review agents, **and** the MCP quality-gate server — auto-wired, no `.mcp.json` editing:
+A single static Go binary that detects your AI coding harness and wires skill+commands, MCP gates, review agents, and design-memory into its native config in one interactive pass. No Node required at install time.
 
-```
-/plugin marketplace add educlopez/ui-craft
-/plugin install ui-craft
-```
-
-The plugin bundles a `.mcp.json` (`npx -y ui-craft-mcp`), so the deterministic gates (`check_anti_slop`, `tokens_lint`, `acceptance_bar`, `score_ui`) register automatically on install — first launch fetches the package via `npx`. This uses Claude Code's own plugin system, so it's not affected by the global-path issue noted below.
-
-### Codex, Cursor, Gemini, OpenCode, Windsurf — and any Agent Skills agent
-
-```bash
-npx skills add educlopez/ui-craft
-```
-
-Works with any agent that supports the [Agent Skills](https://skills.sh) spec. Each agent gets a pre-built mirror under a dedicated folder (`.codex/`, `.cursor/`, `.gemini/`, `.opencode/`, `.agents/`). The main `ui-craft` skill lands as a peer skill; each slash command is materialized as its own sub-skill in non-Claude harnesses (other agents trigger them by intent: "audit my UI", "polish this page").
-
-> **What rides which install?** The skill + commands work in every harness. The **review agents** are Claude Code plugin agents (plugin install only). The **MCP gates** auto-install with the plugin, or wire `npx ui-craft-mcp` into any MCP client's `.mcp.json` by hand. The **CLI** (`npx ui-craft-detect`) is standalone and needs no install.
-
-> [!note]
-> **Using `npx skills add -g` with Claude Code?** The skills CLI installs global skills to `~/.agents/skills`, but Claude Code reads `~/.claude/skills` ([vercel-labs/skills#693](https://github.com/vercel-labs/skills/issues/693)). If the skill isn't picked up, use the plugin install above, install per-project (drop `-g`), or symlink it:
-> ```bash
-> ln -s ~/.agents/skills/ui-craft ~/.claude/skills/ui-craft
-> ```
-
-**Full reference docs:** [skills.smoothui.dev/docs](https://skills.smoothui.dev/docs).
-
-### CLI binary — all harnesses in one command
-
-The `ui-craft` CLI binary detects your installed harnesses and wires skill+commands, MCP gates, review agents, and design-memory in a single interactive pass. No Node required at install time.
-
-**macOS:**
+**macOS / Linux:**
 ```bash
 brew install --cask educlopez/tap/ui-craft
 ```
@@ -104,7 +75,43 @@ scoop install educlopez/ui-craft
 ui-craft install
 ```
 
-The CLI is an alternative to the Claude Code plugin and `npx skills add` — all three install the same components. The native Claude plugin and `npx skills add` remain documented and fully supported; the CLI adds a cross-harness option for users who want a single command for multiple agents.
+`ui-craft install` detects Claude Code / Cursor / Codex / Gemini / OpenCode, walks you through à-la-carte component selection (interactive TUI or `--yes` for CI), and writes each chosen component into that harness's native config. All writes are idempotent, backed up before they happen, and rolled back automatically on any failure.
+
+**What rides which install?**
+
+| Component | CLI | Claude Code plugin | `npx skills add` |
+|-----------|:---:|:------------------:|:----------------:|
+| Skill + commands | All harnesses | ✅ | All harnesses |
+| MCP gates (`check_anti_slop`, `tokens_lint`, `acceptance_bar`, `score_ui`) | All MCP-capable harnesses | ✅ auto-wired | Manual `.mcp.json` |
+| Review agents (`design-reviewer`, `a11y-auditor`) | Claude Code + OpenCode | ✅ | — |
+| Design memory (`.ui-craft/`) | ✅ (component opt-in) | — | — |
+
+**Full reference docs:** [skills.smoothui.dev/docs](https://skills.smoothui.dev/docs).
+
+### Claude Code plugin — alternative (skill + commands + agents + MCP, no CLI needed)
+
+One command installs the skill, all 22 slash commands, the 2 review agents, and the MCP quality-gate server — auto-wired, no `.mcp.json` editing:
+
+```
+/plugin marketplace add educlopez/ui-craft
+/plugin install ui-craft
+```
+
+The plugin bundles a `.mcp.json` (`npx -y ui-craft-mcp`), so the deterministic gates register automatically on install — first launch fetches the package via `npx`. This uses Claude Code's own plugin system, so it's not affected by the global-path issue noted below.
+
+### Agent Skills — alternative (skill + commands, any harness)
+
+```bash
+npx skills add educlopez/ui-craft
+```
+
+Works with any agent that supports the [Agent Skills](https://skills.sh) spec. Each agent gets a pre-built mirror under a dedicated folder (`.codex/`, `.cursor/`, `.gemini/`, `.opencode/`, `.agents/`). The main `ui-craft` skill lands as a peer skill; each slash command is materialized as its own sub-skill in non-Claude harnesses (other agents trigger them by intent: "audit my UI", "polish this page").
+
+> [!note]
+> **Using `npx skills add -g` with Claude Code?** The skills CLI installs global skills to `~/.agents/skills`, but Claude Code reads `~/.claude/skills` ([vercel-labs/skills#693](https://github.com/vercel-labs/skills/issues/693)). If the skill isn't picked up, use the CLI or plugin install above, install per-project (drop `-g`), or symlink it:
+> ```bash
+> ln -s ~/.agents/skills/ui-craft ~/.claude/skills/ui-craft
+> ```
 
 ### Other ways
 
@@ -114,6 +121,47 @@ git clone https://github.com/educlopez/ui-craft.git ~/.skills/ui-craft
 # Git submodule
 git submodule add https://github.com/educlopez/ui-craft.git .skills/ui-craft
 ```
+
+## CLI
+
+The `ui-craft` binary is a single static Go binary (distributed via Homebrew and Scoop). It is the lifecycle and cross-harness wiring core for the system.
+
+### Commands
+
+| Command | Does |
+|---------|------|
+| `ui-craft install` | Detect harnesses, à-la-carte component selection, write configs. |
+| `ui-craft update [harness]` | Re-apply all installed components at the new embedded version. |
+| `ui-craft update [harness] --component <name>` | Re-apply one component only. |
+| `ui-craft uninstall [harness]` | Remove managed blocks and wired components. |
+| `ui-craft doctor` | Health check — verifies each harness install is coherent. |
+| `ui-craft backup` | Snapshot all harness configs without installing. |
+| `ui-craft backup list` | List existing snapshots. |
+| `ui-craft backup pin <id>` / `unpin <id>` | Protect or unprotect a snapshot from retention cleanup. |
+| `ui-craft rollback [harness]` | Restore latest backup for a harness. |
+| `ui-craft self-update` | Upgrade binary to latest GitHub release (or prints the correct package-manager command when installed via Homebrew/Scoop). |
+| `ui-craft version` | Print binary + embedded mirror version. |
+| `ui-craft version --check-parity` | Verify the Claude Code install matches the expected surface. |
+
+### Key flags for `install`
+
+| Flag | Effect |
+|------|--------|
+| `--harness <name>` | Target a specific harness (`cursor`, `codex`, `gemini`, `opencode`) instead of auto-detecting. |
+| `--components <list>` | Comma-separated components to install (`skill-commands`, `mcp-gates`, `review-agents`, `design-memory`). |
+| `--dry-run` | Preview all planned writes without touching any file. |
+| `--yes` | Non-interactive — skip TUI prompts and apply defaults. |
+
+### Scripting flags (global)
+
+| Flag | Effect |
+|------|--------|
+| `--json` | Machine-readable JSON output. Implies non-interactive. |
+| `--quiet` | Suppress non-essential output; print only errors and a final one-line outcome. |
+
+### Safety
+
+Every install snapshots existing configs to `~/.ui-craft/backups/` (tar.gz, SHA-256 deduped) before writing. Any mid-plan failure rolls back the whole plan. `rollback [harness]` restores from the latest snapshot at any time. State is persisted to `~/.ui-craft/state.json` so `update` can replay your choices at the new version without re-prompting.
 
 ## Discovery phase
 
@@ -271,7 +319,7 @@ UI Craft surfaces the same craft knowledge five ways. They don't compete — eac
 | **Slash commands** | Focused single-lens passes (`/craft`, `/shape`, `/polish`, `/heuristic`, `/finalize`, …) | You want one specific pass, mid-work | Build/transform ✅ · review passes ❌ | Judgment | Inline, your session |
 | **Agents** (`design-reviewer`, `a11y-auditor`) | Read-only verify team, fresh context, parallel | Final review / PR audit — you want independent judgment uncontaminated by the build session | ❌ | Judgment | Claude Code |
 | **MCP tools** (`check_anti_slop`, `tokens_lint`, `acceptance_bar`, `score_ui`) | Deterministic checks an agent calls | A programmatic gate inside any MCP client, or a reproducible score | ❌ | Deterministic | MCP client / CI |
-| **CLI** (`ui-craft-detect`, `scripts/eval.mjs`) | Zero-dep scanners + the UICraftScore | Git hooks, CI, or any pipeline with no agent in the loop | ❌ | Deterministic | Terminal / CI |
+| **CLI** (`ui-craft` binary, `ui-craft-detect`, `scripts/eval.mjs`) | Installer + zero-dep scanners + UICraftScore | Install/update the system across harnesses; run quality gates in CI or git hooks | ❌ | Deterministic | Terminal / CI |
 
 **The short version:** *taste that writes code* → the skill + commands. *Independent review, no edits* → the agents. *A check that must be identical every run* → MCP or the CLI. New to it or unsure? Run `/start` and it picks for you.
 
