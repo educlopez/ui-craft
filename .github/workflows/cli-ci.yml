@@ -29,7 +29,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version-file: cli/go.mod
+          go-version: stable
 
       - name: Run tests (race detector)
         run: cd cli && go test -race ./...
@@ -43,7 +43,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version-file: cli/go.mod
+          go-version: stable
 
       - name: go vet
         run: cd cli && go vet ./...
@@ -66,12 +66,12 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version-file: cli/go.mod
+          go-version: stable
 
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v6
         with:
-          version: latest
+          version: v2.12.2
           working-directory: cli
 
   govulncheck:
@@ -83,7 +83,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version-file: cli/go.mod
+          go-version: stable
 
       - name: Install govulncheck
         run: go install golang.org/x/vuln/cmd/govulncheck@latest
