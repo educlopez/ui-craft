@@ -82,7 +82,7 @@ release:
 homebrew_casks:
   - name: ui-craft
     ids:
-      - ui-craft
+      - ui-craft-archive
     repository:
       owner: educlopez
       name: homebrew-tap
