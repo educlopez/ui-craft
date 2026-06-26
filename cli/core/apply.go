@@ -1,0 +1,135 @@
+package core
+
+import (
+	"fmt"
+
+	"github.com/educlopez/ui-craft/cli/backup"
+	"github.com/educlopez/ui-craft/cli/fsutil"
+	"github.com/educlopez/ui-craft/cli/harness"
+)
+
+// ApplyResult is the outcome of a successful Apply call.
+type ApplyResult struct {
+	// Changes holds every write that was applied, in order.
+	Changes []harness.Change
+	// SnapshotID is the ID of the backup snapshot taken before any writes.
+	SnapshotID backup.SnapshotID
+}
+
+// Apply implements the transactional apply algorithm described in ADR-5:
+//
+//  1. Snapshot: call store.Snapshot on the paths listed in each target's SnapPath.
+//  2. Apply: iterate ComponentTargets and execute each WriterOp.
+//     Collect Change records.
+//  3. On ANY failure: call store.Restore(snapshotID) to roll back all
+//     already-written files and delete files created during this plan.
+//     Return a wrapped error naming the failing target.
+//  4. On success: call store.Prune(DefaultRetentionCount).
+//
+// Skipped targets (ComponentTarget.Skip == true) are silently ignored.
+// Every non-skipped target with an Op MUST declare a non-empty SnapPath so
+// that its file is always captured in the pre-snapshot — this closes the
+// partial-write gap where a failing op leaves a newly created file orphaned.
+// The fs parameter is threaded through for future use by write ops.
+//
+// When dryRun is true, no snapshot is taken and no write ops are executed.
+// Apply returns an ApplyResult whose Changes slice describes what WOULD be
+// applied (HarnessName and Component set, but no actual filesystem change).
+func Apply(plan InstallPlan, fs fsutil.FileSystem, store *backup.Store, binaryVersion string, dryRun bool) (ApplyResult, error) {
+	if dryRun {
+		var dryChanges []harness.Change
+		for _, t := range plan.Targets {
+			if t.Skip || t.Op == nil {
+				continue
+			}
+			dryChanges = append(dryChanges, harness.Change{
+				HarnessName: t.Harness.Name(),
+				Component:   t.Component.String(),
+				Changed:     true, // assumed would-change in dry-run
+			})
+		}
+		return ApplyResult{Changes: dryChanges}, nil
+	}
+	// --- Phase 0: pre-flight validation ---
+	// Every write op must declare at least one snap path so the pre-snapshot
+	// covers it. SnapPaths supersedes SnapPath when non-empty.
+	for _, t := range plan.Targets {
+		if t.Skip || t.Op == nil {
+			continue
+		}
+		if len(t.SnapPaths) == 0 && t.SnapPath == "" {
+			return ApplyResult{}, fmt.Errorf(
+				"apply: target %s/%s has Op but empty SnapPath/SnapPaths — every write op must declare a snap path for pre-snapshot coverage",
+				t.Harness.Name(), t.Component.String(),
+			)
+		}
+	}
+
+	// --- Phase 1: collect snapshot targets ---
+	// resolveSnapPaths returns the effective snap path list for a target:
+	// SnapPaths when non-empty, otherwise [SnapPath].
+	resolveSnapPaths := func(t ComponentTarget) []string {
+		if len(t.SnapPaths) > 0 {
+			return t.SnapPaths
+		}
+		return []string{t.SnapPath}
+	}
+
+	var snapTargets []backup.SnapshotTarget
+	for _, t := range plan.Targets {
+		if t.Skip || t.Op == nil {
+			continue
+		}
+		for _, p := range resolveSnapPaths(t) {
+			snapTargets = append(snapTargets, backup.SnapshotTarget{
+				Harness:  t.Harness.Name(),
+				OrigPath: p,
+			})
+		}
+	}
+
+	// Take the backup snapshot (even if snapTargets is empty — zero-file snapshot
+	// still produces a valid dedup-able record per gotcha #5).
+	snapshotID, err := store.Snapshot(snapTargets, binaryVersion, backup.SourceInstall)
+	if err != nil {
+		return ApplyResult{}, fmt.Errorf("apply: snapshot: %w", err)
+	}
+
+	// --- Phase 2: execute writes ---
+	var applied []harness.Change
+	for _, t := range plan.Targets {
+		if t.Skip || t.Op == nil {
+			continue
+		}
+
+		change, err := t.Op()
+		if err != nil {
+			// --- Phase 3: rollback ---
+			rollbackErr := store.Restore(snapshotID)
+			if rollbackErr != nil {
+				// Both the write and the rollback failed. Return a combined error.
+				return ApplyResult{}, fmt.Errorf(
+					"apply: write %s/%s failed (%w); rollback also failed: %v",
+					t.Harness.Name(), t.Component.String(), err, rollbackErr,
+				)
+			}
+			return ApplyResult{}, fmt.Errorf(
+				"apply: write %s/%s: %w (rolled back)",
+				t.Harness.Name(), t.Component.String(), err,
+			)
+		}
+		// Annotate change with harness/component metadata so callers can filter
+		// without fragile path matching.
+		change.HarnessName = t.Harness.Name()
+		change.Component = t.Component.String()
+		applied = append(applied, change)
+	}
+
+	// --- Phase 4: prune old snapshots ---
+	_ = store.Prune(backup.DefaultRetentionCount) // best-effort; do not fail apply on prune error
+
+	return ApplyResult{
+		Changes:    applied,
+		SnapshotID: snapshotID,
+	}, nil
+}

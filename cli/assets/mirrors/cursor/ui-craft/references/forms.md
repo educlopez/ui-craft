@@ -1,0 +1,183 @@
+# Forms — System Design
+
+Holistic form design: timing, placement, progressive disclosure, multi-step flows, autosave, optimistic submit, keyboard contract, and field-specific patterns. Input labels and ARIA requirements live in `accessibility.md`; error message tone lives in `copy.md`. This file is the system that ties those tactical pieces together.
+
+---
+
+## When to Read This
+
+Read when building any form longer than 2 fields, any multi-step flow, any form with conditional logic, any surface with autosave, or any destructive confirmation. A single search input doesn't need this file; a checkout, onboarding, settings page, or record editor does.
+
+---
+
+## Validation Timing
+
+The most-botched decision in form UX. Wrong timing feels punitive; right timing feels invisible.
+
+| Trigger | When to use | When not to |
+|---------|-------------|-------------|
+| On blur | Format-checkable fields (email, URL, credit card, phone) | Required-only check — don't punish leaving a field |
+| On submit | Required fields, inter-field dependencies, server-side uniqueness | Format checks that could fire earlier |
+| Inline (as-you-type) | Password strength, character count, username availability | Email format (too noisy); most other fields |
+| On mount | Never | Ever |
+
+**Rules:**
+- Validate on blur only after the user has interacted with the field at least once. Never validate on mount — nothing is wrong yet, and red borders on a fresh form read as hostile.
+- Inline validation: debounce 300ms before showing error states. **Why:** without debounce, users see flickering error→success cycles as they type. Jittery feedback breaks the typing flow and reduces trust. 300ms is the threshold where users perceive feedback as "after I stopped" rather than "while I'm typing". (See Debounce Timings below.)
+- Server-side uniqueness checks (username, slug) show a tiny spinner in the field during the check, then a green check or red error on resolve.
+- On submit, surface ALL errors at once, not one at a time. Users want to fix everything in one pass.
+
+---
+
+## Error Placement
+
+Where error messages live on the page. Details on copy tone are in `copy.md`.
+
+- **Errors below the input; hints and help text ABOVE it.** Errors appear after typing, so below-field placement follows reading order. Hints are needed *while* typing — below the field they get covered by autofill menus and the mobile keyboard; above the field they stay visible.
+- **Red border on the input itself**, plus message, plus icon (`⚠` or field-specific). Color alone fails WCAG and color-blind users — pair color with shape/text.
+- **Scroll to first error on submit** if not in view. Focus it so screen readers announce it immediately.
+- **Summary at the top is additive, not a replacement.** For long forms, an aria-live summary box ("3 fields need attention") helps — but every field still has its own inline error.
+
+---
+
+## Field Layout
+
+- **Single column.** Multi-column forms break downward momentum, create fill-order ambiguity, and screen-magnifier users miss the second column entirely. Exception: short, intrinsically paired fields (MM/YY + CVC) sit side by side.
+- **Labels above inputs, within ~16px.** Top labels eliminate the zig-zag eye path of side labels; more distance than that and the label detaches from its field.
+- **Selection widgets by option count:** 2-5 → radios or segmented control, stacked vertically (horizontal invites mis-taps); 6-10 → radios if vertical space allows, dropdown if tight; >10 → autocomplete/type-ahead; huge taxonomies (1000+ occupations) → cascade two fields (category → item) to avoid choice paralysis. Numeric nudges → stepper with horizontal +/- and 48px targets, never a dropdown of numbers.
+- **Checkbox vs toggle:** checkbox = applies on submit; toggle = applies immediately. Label checkboxes positively ("Allow automatic updates", never "Don't allow…") — test by replacing the checked box with "yes": the sentence must still make sense.
+- **Submit button aligns with the fields' left edge** in stacked forms — the eye travels straight down the column and lands on it. Exception: single inline field (search, newsletter) → button attached to the field's right.
+- **Never remove an error until the user changes the field.** Clearing it on re-focus without re-validation hides the problem.
+
+---
+
+## Progressive Disclosure
+
+Show fields only when relevant. A form with 20 visible fields reads as homework; the same form with 6 visible and 14 revealed-on-relevance feels considerate.
+
+- **Conditional fields appear smoothly** — use a 200ms height/opacity transition (`interpolate-size: allow-keywords` enables height-to-auto), not a pop-in. See `modern-css.md`.
+- **Group related fields under a shared section header** — billing address separate from shipping address separate from payment.
+- **Optional fields behind a "More options" toggle** if there are more than 2. Most users don't need them; showing them upfront adds cognitive load for no gain.
+- **Never make users guess which fields are required.** Two valid schools: mark only the optional minority with "(optional)" (lighter), or mark both — asterisk on required plus "(optional)" (most explicit; favors scanners and screen-reader users). Pick per audience and form length — but never rely on intro text ("all fields required unless noted"): users scan forms, they don't read preambles. If you use asterisks, they're black/neutral, never red — red is reserved for error states. Skip marking entirely in single-field familiar forms (login, newsletter).
+- **Field width hints at expected content length** — postal code and CVC narrow, full name and address wide. Uniform full-width fields discard a free affordance.
+- **Inputs sit on solid surfaces** — never semi-translucent fills over imagery; legibility collapses for low-vision users and in bright ambient light.
+- **Mobile multi-step forms: max 5-7 fields per step.** **Why:** Hick's Law — decision time grows logarithmically with options on-screen, and mobile reading width amplifies the effect. Forms longer than 7 fields exceed the page-scanning time (~7 seconds) before the user begins typing. Desktop tolerates higher density when the form has a clear scan structure (left-aligned labels, grouped fieldsets).
+- **Conditional reveal is one-way** until submit — don't hide a field the user has filled, even if the condition changes. Instead, disable it with a note.
+
+---
+
+## Multi-Step / Wizard Patterns
+
+When a form is too long for one screen, or the steps represent logical phases (account → plan → payment → confirm).
+
+- **Progress indicator.** Numbered steps + current/total + short label per step. Not just "Step 3 of 5" — "Step 3 of 5: Payment."
+- **State the cost upfront.** "3 steps, about 2 minutes, you'll need your ID" before step 1 — unknown length is why users abandon at step 2.
+- **Order steps easy → hard.** Name and email before payment details: early wins build completion momentum; opening with the hardest ask maximizes abandonment.
+- **Back button always available.** Moving back preserves all state; never re-fetch or reset.
+- **Prefer an always-enabled "Next" that validates on press.** A disabled button can't say why it's disabled, gives no feedback when pressed, and is invisible to some assistive tech. If you do gate, the explanation must be visible inline — never tooltip-only, never silent.
+- **Save draft automatically** between steps. See Autosave below.
+- **Resume on return.** If the user leaves and comes back, restore to the last completed step, not step 1.
+- **Review step before final submit.** Summary of all entries grouped by section, with an "Edit" link per section that jumps back to that step and returns. Users catch their own errors cheaper than servers do.
+- **Never more than ~5 steps.** See Miller's Law in `heuristics.md` — beyond 5, the user loses the map.
+
+---
+
+## Save-Draft / Autosave
+
+For any form that takes longer than ~30 seconds to fill.
+
+- **Autosave debounce: 1-2s** after the last keystroke across the form, not per keystroke. (See Debounce Timings below.)
+- **Visible "Saved" indicator with timestamp** — "Saved 2s ago" near the fields, quiet typography. Match `copy.md` restraint: "Saved" beats "Your draft has been saved successfully!"
+- **Network loss.** Show "Reconnecting… Your draft is safe locally" and queue the save. When back online, sync and update the indicator.
+- **Conflict resolution.** If another tab or user edited the same resource, offer "Keep mine / Keep theirs / Merge." See `state-design.md` for the conflict-state pattern.
+- **Never show a spinner for autosave.** The whole point is invisibility. A check mark or timestamp is enough.
+
+---
+
+## Debounce Timings
+
+Two debounces, two purposes:
+
+- **Validation debounce: 300ms.** Triggers after the user pauses typing in a field. Prevents flicker; lets the user see the field's final state before judging it.
+- **Autosave debounce: 1-2s.** Triggers after the user pauses across the form. Reduces network cost; lets the user settle on a value before persisting.
+
+These never share the same timer. Validation runs per-field; autosave runs per-form.
+
+---
+
+## Optimistic Submit
+
+Forms that look instant. Use for low-risk writes (likes, toggles, comment posts, small field edits).
+
+- **Show success state immediately on submit** — don't wait for server ack.
+- **Roll back with a clear undo prompt if the server rejects.** "Couldn't save — undo or retry?" Never silently revert.
+- **Queue on offline; sync on reconnect** with a visible indicator.
+- **Never double-submit.** Disable the button OR swap its label to "Sending…" with a spinner inside. Both — belt and suspenders.
+- **Non-optimistic submits** (payments, destructive actions, high-stakes writes) — always wait for server confirmation before showing success.
+
+---
+
+## Keyboard Affordances
+
+Basics most forms miss. The keyboard contract is non-negotiable on any form a user will fill more than once.
+
+- **Enter submits from any single-line input.** Textareas get `Cmd/Ctrl + Enter` for submit; plain Enter inserts a newline.
+- **Tab order matches visual order.** No DOM-order surprises. Never `tabindex > 0` to hack the order — fix the DOM.
+- **Submit button is focus-reachable** without `tabindex` tricks.
+- **Escape closes form modals** and prompts a "Discard changes?" if the form is dirty.
+- **Autofocus the first field on form open** — but with caveats on mobile (may trigger the keyboard to pop up before the user sees the form). Test on real devices; consider autofocus only on desktop.
+- **Cmd/Ctrl + S saves** on long-form editors. Common expectation from native apps.
+
+---
+
+## Field-Specific Patterns
+
+The fields that AI-generated forms get wrong.
+
+| Field | Pattern |
+|-------|---------|
+| Phone | Country code picker + mask + formatted display. Store E.164 internally; display local format ("(415) 555-1234") |
+| Date | Prefer native `<input type="date">` where UX is tolerable. For ranges or complex pickers, a dedicated accessible component |
+| Time zone | Pre-fill from browser (`Intl.DateTimeFormat().resolvedOptions().timeZone`); let user override; display user-facing name ("9:00 AM PT") not IANA ID |
+| Credit card | Autoformat with a space every 4 digits; detect brand from first digits; move focus to expiry when card number is valid |
+| Currency | Format per locale via `Intl.NumberFormat`; never let users type the currency symbol — render it as a prefix affordance |
+| Password | Show/hide toggle (eye icon + `aria-label`). Strength indicator relative, not absolute. Skip the "1 uppercase, 1 number, 1 special" dance unless compliance requires it — long is better than complex |
+| Magic link | "Check your email" state with explicit "Didn't receive? Resend in 30s" countdown; cooldown visible |
+| File upload | Drag-and-drop with dashed border indicator on drag-over; per-file progress (bar + filename + size + cancel); per-file retry on failure; `accept` hints + descriptive copy ("PDF, PNG, JPG up to 10MB") |
+
+---
+
+## Destructive Actions Inside Forms
+
+Deleting accounts, subscriptions, workspaces, or data from within a settings form.
+
+- **Separate section** — a "Danger zone" block, visually distinct, at the bottom. Never primary-button-style for the delete action; Cancel is the primary.
+- **Type-to-confirm** for irreversible deletions: require the user to type the resource name.
+- Copy tone and confirmshaming rules: see `copy.md` — Banned Patterns (Dark UX).
+
+---
+
+## Anti-Patterns
+
+Form sins that invalidate the rest of the work:
+
+- **Placeholder as the only label.** Disappears on focus → user forgets what the field was. Accessibility and memory fail.
+- **Red required asterisks, or marking convention explained nowhere.** Red is the error color — a field can't be "in error" before the user touches it. Asterisks are black; the marking scheme is self-evident or legended. See Progressive Disclosure for the optional-vs-required marking decision.
+- **Red validation on mount.** Nothing is wrong yet — don't punish arrival.
+- **Disabled submit button with no explanation.** User can't fix what they can't see. Tooltip or inline hint explains what's missing.
+- **Clearing the whole form on one error.** Preserve every valid field; only reset the invalid one.
+- **Captcha before form submission.** Captcha runs after the user expressed intent, not before.
+- **"Are you sure?" after every step** in a wizard. Users desensitize and click through; save the confirm for the last, destructive moment.
+- **Reset button next to submit.** Users accidentally click it. Almost never worth shipping.
+- **Two password fields** ("confirm password") without a show/hide toggle. Everyone types the same typo twice.
+- **Blocking paste** on any field — especially password confirm, order IDs, credit cards. See `accessibility.md`.
+
+---
+
+## Cross-References
+
+- `accessibility.md` — ARIA, label requirements, keyboard non-negotiables, `aria-describedby` for errors.
+- `copy.md` — voice/tone across form states, reading level, locale-aware strings, inclusive language, error message tone, empty states, CTA discipline.
+- `state-design.md` — form states (idle / submitting / success / error / partial / offline); autosave conflict state.
+- `heuristics.md` — Error Prevention heuristic, Miller's Law for step counts, Tesler's Law for progressive disclosure.
+- `modern-css.md` — `interpolate-size: allow-keywords` for revealed fields, `<dialog>` for confirm modals, Anchor Positioning for inline help popovers.

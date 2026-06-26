@@ -1,0 +1,274 @@
+package core
+
+import (
+	"io/fs"
+	"path/filepath"
+
+	"github.com/educlopez/ui-craft/cli/component"
+	"github.com/educlopez/ui-craft/cli/fsutil"
+	"github.com/educlopez/ui-craft/cli/harness"
+)
+
+// TemplateProvider is a function that returns the embedded fs.FS containing
+// the design-memory scaffold templates. In production callers pass
+// assets.TemplateFS; in tests a fixture FS can be injected.
+type TemplateProvider func() fs.FS
+
+// WriterOp is a function type that performs one file-write operation for a
+// ComponentTarget. It returns the Change that was applied and any error.
+// Slice 3 uses a test-double WriteOp; real writers (WriteMCP, WriteSkill,
+// WriteAgents) will be wired in Slices 4, 5, and 8.
+type WriterOp func() (harness.Change, error)
+
+// ComponentTarget binds together one harness adapter, the component being
+// installed, and the concrete write operation that delivers it.
+type ComponentTarget struct {
+	Harness   harness.Harness
+	Component component.Component
+	// Skip is set by Plan when Harness.Supports(Component) returns false.
+	Skip       bool
+	SkipReason string
+	// Op is nil when Skip is true.
+	Op WriterOp
+	// SnapPath is the primary filesystem path that Op will write (used to
+	// pre-snapshot the file/directory before execution). Empty for ops that
+	// write multiple files or don't know their target path at plan time.
+	// Deprecated in favour of SnapPaths — if both are set, SnapPaths is used.
+	SnapPath string
+	// SnapPaths is the ordered list of filesystem paths (files or directories)
+	// to include in the pre-snapshot. It supersedes SnapPath when non-empty,
+	// allowing a single Op to snapshot multiple locations (e.g. the skills
+	// ui-craft subdir AND ~/.codex/AGENTS.md for CodexHarness).
+	SnapPaths []string
+}
+
+// InstallPlan is the ordered set of writes that core.Apply will execute.
+type InstallPlan struct {
+	Targets []ComponentTarget
+}
+
+// mcpServer is the canonical MCP server definition injected by every WriteMCP
+// implementation. Declared here so it is consistent across all callers.
+var mcpServer = harness.MCPServer{
+	Name:    "ui-craft",
+	Command: "npx",
+	Args:    []string{"-y", "ui-craft-mcp"},
+}
+
+// MirrorProvider is a function that returns the embedded fs.FS subtree for the
+// named harness. In production callers pass assets.Mirror; in tests a fixture
+// FS can be injected.
+type MirrorProvider func(harnessName string) fs.FS
+
+// AgentProvider is a function that returns the embedded fs.FS containing the
+// review agent definitions for the named harness. The returned FS is rooted at
+// the agent definitions directory for that harness (e.g. mirrors/claude/agents/).
+// Returns nil when no agent definitions exist for the harness (e.g. Cursor, Codex,
+// Gemini — which have Supports(ReviewAgents)=false and are already skipped before
+// AgentProvider is called). In production callers pass assets.Agents; in tests a
+// fixture FS can be injected.
+type AgentProvider func(harnessName string) fs.FS
+
+// Plan builds an InstallPlan from the set of detected harnesses and the
+// components the user selected. Targets whose harness does not support the
+// component are marked Skip instead of being removed, so the confirm screen
+// and final report can surface them explicitly.
+//
+// For the MCPGates component, Plan wires the concrete WriteMCP op and sets
+// SnapPath so that core.Apply can snapshot the config file before writing.
+// For the SkillCommands component, Plan wires WriteSkill with the mirror
+// returned by mirrorProvider(harness.Name()) and sets SnapPath to the
+// …/skills/ui-craft subdir (the subtree the CLI owns, bounding rollback to it).
+// When the mirror provider returns nil for a harness, the target is marked Skip.
+// For the DesignMemory component, Plan wires ScaffoldDesignMemory with the
+// template FS returned by templateProvider() and sets SnapPath to the
+// .ui-craft/ subdir inside projectDir. When templateProvider is nil or
+// returns nil, the target is marked Skip.
+// For the ReviewAgents component, Plan wires WriteAgents with the agent FS
+// returned by agentProvider(harness.Name()) and sets SnapPaths to the agents
+// directory so rollback removes only the created agent files, never the user's
+// other agents. When agentProvider is nil or returns nil for a harness, the
+// target is marked Skip.
+// The filesystem parameter is the FileSystem implementation to use for writes.
+// projectDir is the target project directory (--dir flag value or cwd).
+// NOTE: templateProvider must return the templates/-rooted sub-FS (i.e.
+// assets.TemplateFS(), not the raw embed.FS). If the raw embed.FS were used,
+// ScaffoldDesignMemory would write files under a "templates/" prefix inside
+// .ui-craft/, producing wrong destination paths.
+func Plan(detected []DetectedHarness, selected []component.Component, filesystem fsutil.FileSystem, mirrorProvider MirrorProvider, agentProvider AgentProvider, templateProvider TemplateProvider, projectDir string) InstallPlan {
+	var targets []ComponentTarget
+	for _, dh := range detected {
+		for _, c := range selected {
+			if !dh.Harness.Supports(c) {
+				targets = append(targets, ComponentTarget{
+					Harness:    dh.Harness,
+					Component:  c,
+					Skip:       true,
+					SkipReason: c.String() + " not supported by " + dh.Harness.Name(),
+				})
+				continue
+			}
+
+			target := ComponentTarget{
+				Harness:   dh.Harness,
+				Component: c,
+				Skip:      false,
+			}
+
+			switch c {
+			case component.MCPGates:
+				// Wire the concrete write op for MCPGates.
+				snapPath := dh.Harness.ConfigPaths().MCPConfig
+				h := dh.Harness
+				w := filesystem
+				srv := mcpServer
+				target.SnapPath = snapPath
+				target.Op = func() (harness.Change, error) {
+					return h.WriteMCP(w, srv)
+				}
+
+			case component.SkillCommands:
+				// Wire the concrete write op for SkillCommands (Slice 5).
+				// SnapPath is the ui-craft subdir within skills — we own only
+				// that subtree, so rollback blast radius is bounded to it.
+				paths := dh.Harness.ConfigPaths()
+				uicraftSubDir := paths.SkillsDir + "/ui-craft"
+				h := dh.Harness
+				w := filesystem
+				var mirror fs.FS
+				if mirrorProvider != nil {
+					mirror = mirrorProvider(h.Name())
+				}
+				// Nil-mirror safety: if the harness has no embedded mirror, mark
+				// the target as skipped rather than wiring a WriteSkill op with a
+				// nil fs.FS (which would panic inside writeMirrorToDir).
+				if mirror == nil {
+					target.Skip = true
+					target.SkipReason = "mirror not embedded for " + h.Name()
+					targets = append(targets, target)
+					continue
+				}
+				// Build the snap path list. For Codex, AGENTS.md is also written
+				// by WriteSkill, so it must be snapshotted to allow full rollback.
+				snapPaths := []string{uicraftSubDir}
+				if paths.AgentsMDPath != "" {
+					snapPaths = append(snapPaths, paths.AgentsMDPath)
+				}
+				target.SnapPaths = snapPaths
+				target.SnapPath = uicraftSubDir // keep for legacy callers that read SnapPath
+				target.Op = func() (harness.Change, error) {
+					return h.WriteSkill(w, mirror)
+				}
+
+			case component.DesignMemory:
+				// Wire the concrete write op for DesignMemory (Slice 6).
+				// SnapPath is the .ui-craft/ subdir inside projectDir — rollback
+				// only deletes files created by this run (ExistedBefore=false).
+				var tmplFS fs.FS
+				if templateProvider != nil {
+					tmplFS = templateProvider()
+				}
+				if tmplFS == nil {
+					target.Skip = true
+					target.SkipReason = "design-memory templates not embedded"
+					targets = append(targets, target)
+					continue
+				}
+				dir := projectDir
+				if dir == "" {
+					dir = "."
+				}
+				w := filesystem
+				// filepath.Join avoids platform-specific string concatenation.
+				snapPath := filepath.Join(dir, ".ui-craft")
+				target.SnapPath = snapPath
+				target.Op = func() (harness.Change, error) {
+					result, err := harness.ScaffoldDesignMemory(w, tmplFS, dir)
+					if err != nil {
+						return harness.Change{}, err
+					}
+					// Summarise: Changed if any file was newly created.
+					anyChanged := false
+					for _, ch := range result.Changes {
+						if ch.Changed {
+							anyChanged = true
+							break
+						}
+					}
+					// ExistedBefore is always true for the aggregate Change so that
+					// rollback does NOT wholesale-RemoveAll the .ui-craft/ directory.
+					// The backup store's per-file snapshot metadata governs which
+					// individual files get deleted on restore (only those with
+					// ExistedBefore=false in the snapshot, i.e. files created this run).
+					// Pre-existing user files (ExistedBefore=true in snapshot) are
+					// restored to their original content and never deleted.
+					return harness.Change{
+						FilePath:      snapPath,
+						ExistedBefore: true,
+						Changed:       anyChanged,
+					}, nil
+				}
+
+			case component.ReviewAgents:
+				// Wire the concrete write op for ReviewAgents (Slice 8).
+				// SnapPaths is set to the agents directory so the backup store
+				// can snapshot it; rollback removes only agent files created by
+				// this run (ExistedBefore=false), never the user's other agents.
+				// On a fresh install where the agents dir did not previously exist,
+				// the aggregate Change reflects ExistedBefore=false so callers know
+				// the directory itself was created by this run (and rollback will
+				// remove it via the tombstone entry in the backup store).
+				var agentsFS fs.FS
+				if agentProvider != nil {
+					agentsFS = agentProvider(dh.Harness.Name())
+				}
+				// Nil agentsFS: mark as skip (no agent definitions embedded for this harness).
+				if agentsFS == nil {
+					target.Skip = true
+					target.SkipReason = "review-agents: agent definitions not embedded for " + dh.Harness.Name()
+					targets = append(targets, target)
+					continue
+				}
+				agentsDir := dh.Harness.ConfigPaths().AgentsDir
+				h := dh.Harness
+				w := filesystem
+				// Check whether the agents directory already exists before wiring the
+				// write op. This result is captured in the aggregate Change so callers
+				// receive an accurate ExistedBefore value. The backup store's per-file
+				// snapshot metadata independently governs rollback behaviour.
+				_, statErr := filesystem.Stat(agentsDir)
+				agentsDirExisted := statErr == nil
+				// Snapshot the agents directory so rollback can remove only the
+				// agent files we created, leaving the user's other agents intact.
+				// SnapPaths supersedes SnapPath; the deprecated SnapPath field is
+				// intentionally omitted here (see SnapPath deprecation notice).
+				target.SnapPaths = []string{agentsDir}
+				aFS := agentsFS
+				target.Op = func() (harness.Change, error) {
+					changes, err := h.WriteAgents(w, aFS)
+					if err != nil {
+						return harness.Change{}, err
+					}
+					// Aggregate: Changed if any agent file changed or was created.
+					anyChanged := false
+					for _, ch := range changes {
+						if ch.Changed {
+							anyChanged = true
+							break
+						}
+					}
+					return harness.Change{
+						FilePath:      agentsDir,
+						ExistedBefore: agentsDirExisted,
+						Changed:       anyChanged,
+						Component:     component.ReviewAgents.String(),
+						HarnessName:   h.Name(),
+					}, nil
+				}
+			}
+
+			targets = append(targets, target)
+		}
+	}
+	return InstallPlan{Targets: targets}
+}

@@ -108,9 +108,20 @@ Before applying any design decisions, discover what the project has and what the
 
 ### Step 1: Project Analysis
 
-**First, check for `.ui-craft/brief.md`.** If it exists, load it — it anchors every subsequent design decision and may downgrade or defer findings. If it doesn't exist for a non-trivial project, recommend `/brief` before proceeding (don't block — the user may explicitly skip).
+**Design Memory (`.ui-craft/` directory).** This is the project's typed design context. It replaces the single `brief.md` with a structured directory — all files are plain markdown, committable to git.
 
-The brief includes **section 6 (Learned constraints)** — corrections the user made on this project, each a binding design fact. Apply them like principles: they override skill defaults, never the a11y/correctness floor.
+**Always-load on every UI task** (small, define project taste/tokens):
+- `.ui-craft/brief.md` — product identity, design intent, audience, voice, constraints. See [references/brief.md](references/brief.md) for the format guide.
+- `.ui-craft/tokens.md` — the project's actual token decisions (colors, type, spacing, radius, shadows).
+
+**Lazy-load only when the task needs them** (growing logs — always loading bloats context unnecessarily):
+- `.ui-craft/decisions.md` — append-only date-stamped design decision log. Load when the user asks to reference prior rationale or past decisions.
+- `.ui-craft/patterns.md` — validated component/layout compositions. Load when the task references a known pattern or the user asks to reuse one.
+- `.ui-craft/surfaces/<name>.md` — per-surface notes (layout, components, edge cases). Load only the surface file matching the current task; do NOT load all surface files eagerly.
+
+**If `.ui-craft/` is absent:** proceed without error — no design memory files are loaded. Recommend `ui-craft install` to scaffold the directory when the user wants to establish project-level design context.
+
+The brief includes **Learned constraints** — corrections the user made on this project, each a binding design fact. Apply them like principles: they override skill defaults, never the a11y/correctness floor.
 
 Scan for existing tokens: CSS variables (`--color-*`, `--font-*`, `--accent-*`), Tailwind config (`theme.extend.*`), globals.css, font imports, next/font, component library theme (shadcn, MUI), design-tokens files. Build an inventory (accent, fonts, radius, shadows). If the project has an intentional system, respect it. Don't override.
 

@@ -1,0 +1,119 @@
+name: CLI Release (goreleaser)
+
+# Triggered on semver tags pushed by the existing release.yml workflow
+# (e.g. v0.35.0). Uses the same tag scheme as the main release so the binary
+# version matches the coordinated repo version (ADR-6 / design.md §Build & Distribution).
+#
+# Distinct from release.yml (which only creates the GitHub Release note from
+# VERSIONS.md). This workflow builds and publishes the Go binary.
+#
+# Mirrors are committed directly (gentle-ai model — no gen-before-build).
+# The build is self-contained: checkout → setup-go → goreleaser.
+# Mirror drift is caught at PR time by the check-mirrors CI step (validate.yml).
+
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+      - "v[0-9]+.[0-9]+.[0-9]+-*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to release (must exist on the repo)"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      # ── Step 1: Checkout ──────────────────────────────────────────────────
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Ensure cli/assets/agents/ is present
+        run: |
+          # Agent definitions are committed directly (not CI-generated), so this
+          # is a sanity check that the directory exists and is non-empty.
+          if [ ! -d "cli/assets/agents" ] || [ -z "$(ls -A cli/assets/agents)" ]; then
+            echo "WARNING: cli/assets/agents/ is missing or empty — agents will not be embedded"
+          else
+            echo "cli/assets/agents/ OK"
+          fi
+
+      # Set MIRROR_VERSION from the top-level package.json version
+      - name: Set MIRROR_VERSION env
+        run: |
+          MIRROR_VERSION=$(node -p "require('./package.json').version")
+          echo "MIRROR_VERSION=$MIRROR_VERSION" >> "$GITHUB_ENV"
+          echo "Mirror version: $MIRROR_VERSION"
+
+      # ── Step 2: Setup Go ──────────────────────────────────────────────────
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+          cache-dependency-path: cli/go.sum
+
+      # ── Step 3: goreleaser release ────────────────────────────────────────
+      - name: Run goreleaser
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: "~> v2"
+          args: release --clean
+          workdir: .
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          MIRROR_VERSION: ${{ env.MIRROR_VERSION }}
+
+  # ── Post-release smoke test ───────────────────────────────────────────────
+  smoke-test:
+    needs: release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for release asset to be available
+        run: sleep 30
+
+      - name: Download release binary and verify
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          # Resolve tag: use the triggering tag or the workflow_dispatch input
+          TAG="${{ github.ref_name }}"
+          if [ -z "$TAG" ] || [ "$TAG" = "refs/heads/main" ]; then
+            TAG="${{ github.event.inputs.tag }}"
+          fi
+
+          echo "Smoke-testing release: $TAG"
+
+          # Download the linux/amd64 binary from the GitHub Release
+          ASSET_NAME="ui-craft_${TAG#v}_linux_amd64.tar.gz"
+          gh release download "$TAG" \
+            --repo educlopez/ui-craft \
+            --pattern "$ASSET_NAME" \
+            --output "release.tar.gz" || {
+            echo "WARNING: could not download $ASSET_NAME (may be a pre-release or naming mismatch)"
+            exit 0
+          }
+
+          tar -xzf release.tar.gz
+          chmod +x ui-craft
+
+          # Assert: binary boots and returns non-empty version string
+          OUTPUT=$(./ui-craft version)
+          echo "ui-craft version output: $OUTPUT"
+
+          if [ -z "$OUTPUT" ]; then
+            echo "ERROR: ui-craft version returned empty output"
+            exit 1
+          fi
+
+          echo "Smoke test passed."

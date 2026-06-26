@@ -1,0 +1,129 @@
+# goreleaser v2 configuration for ui-craft CLI binary.
+# Place this file at the repo root. goreleaser runs from the repo root with
+# --config .goreleaser.yaml; the `builds[].dir` field points into cli/ so the
+# correct Go module (github.com/educlopez/ui-craft/cli) is used.
+#
+# CI ordering (gotcha #5): the release CI workflow MUST run sync-harnesses.mjs
+# and copy mirrors into cli/assets/mirrors/ BEFORE goreleaser executes. This
+# file does not enforce that — the workflow does (see .github/workflows/cli-release.yml).
+#
+# Homebrew tap:  educlopez/homebrew-tap   (shared — also duck-ai + other tools)
+# Scoop bucket:  educlopez/scoop-bucket    (shared)
+# Both use HOMEBREW_TAP_TOKEN (same token for homebrew + scoop push).
+
+version: 2
+
+project_name: ui-craft
+
+before:
+  hooks:
+    # Verify that mirrors/ was populated before goreleaser runs.
+    # This guard catches any CI step-ordering bug (gotcha #5).
+    - "sh -c \"test -d cli/assets/mirrors && find cli/assets/mirrors -not -name .gitkeep -not -name VERSION -type f | grep -q . || (echo 'ERROR: cli/assets/mirrors/ is empty - run sync-harnesses step first' && exit 1)\""
+
+builds:
+  - id: ui-craft
+    # dir points goreleaser at the cli/ module directory so it picks up the
+    # correct go.mod (module github.com/educlopez/ui-craft/cli).
+    dir: cli
+    main: .
+    binary: ui-craft
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - darwin
+      - linux
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.mirrorVersion={{.Env.MIRROR_VERSION}}
+    mod_timestamp: "{{ .CommitTimestamp }}"
+    flags:
+      - -trimpath
+
+archives:
+  - id: ui-craft-archive
+    ids:
+      - ui-craft
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    format_overrides:
+      - goos: windows
+        formats:
+          - zip
+    # Default for non-windows is tar.gz
+    formats:
+      - tar.gz
+    files:
+      - LICENSE
+      - README.md
+
+checksum:
+  name_template: "checksums.txt"
+  algorithm: sha256
+
+release:
+  github:
+    owner: educlopez
+    name: ui-craft
+  # keep-existing: release.yml (VERSIONS.md auto-release) creates the GitHub
+  # release + notes first; cli-release.yml fires on the tag it created, so the
+  # release already exists. goreleaser must NOT recreate or overwrite it —
+  # only attach the binaries (+ push the Homebrew/Scoop formulae). This avoids
+  # the two workflows clobbering each other on the same vX.Y.Z tag.
+  mode: keep-existing
+  draft: false
+  prerelease: auto
+  name_template: "{{ .ProjectName }} {{ .Tag }}"
+
+homebrew_casks:
+  - name: ui-craft
+    ids:
+      - ui-craft
+    repository:
+      owner: educlopez
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
+    # Shared tap (also hosts duck-ai and other educlopez tools).
+    # Installs as: brew install --cask educlopez/tap/ui-craft
+    url:
+      template: "https://github.com/educlopez/ui-craft/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
+    commit_author:
+      name: github-actions[bot]
+      email: 41898282+github-actions[bot]@users.noreply.github.com
+    commit_msg_template: "chore: update ui-craft cask to {{ .Tag }}"
+    homepage: "https://skills.smoothui.dev"
+    description: "ui-craft CLI — install the UI Craft design system into any AI agent harness"
+    license: "MIT"
+    directory: Casks
+    binaries:
+      - ui-craft
+
+scoops:
+  - name: ui-craft
+    repository:
+      owner: educlopez
+      name: scoop-bucket
+      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
+    url_template: "https://github.com/educlopez/ui-craft/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
+    commit_author:
+      name: github-actions[bot]
+      email: 41898282+github-actions[bot]@users.noreply.github.com
+    commit_msg_template: "chore: update ui-craft manifest to {{ .Tag }}"
+    homepage: "https://skills.smoothui.dev"
+    description: "ui-craft CLI — install the UI Craft design system into any AI agent harness"
+    license: "MIT"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^chore:"
+      - "^ci:"
+      - "^test:"
+      - "Merge pull request"
+      - "Merge branch"

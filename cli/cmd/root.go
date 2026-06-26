@@ -1,0 +1,70 @@
+package cmd
+
+import (
+	"os"
+	"sync"
+
+	"github.com/spf13/cobra"
+)
+
+// rootFlags holds values for the persistent flags.
+type rootFlags struct {
+	Harness    string
+	Components []string
+	Yes        bool
+	DryRun     bool
+	Dir        string
+	JSON       bool // emit machine-readable JSON; implies non-interactive
+	Quiet      bool // suppress non-essential output; only errors to stderr + final outcome
+}
+
+var flags rootFlags
+
+// rootCmd is the base command for the ui-craft CLI.
+var rootCmd = &cobra.Command{
+	Use:   "ui-craft",
+	Short: "ui-craft installs and manages ui-craft components into your AI coding harness",
+	Long: `ui-craft is a static installer that detects your AI coding harness (Claude Code,
+Cursor, Codex, Gemini, OpenCode) and writes ui-craft components — skill+commands,
+MCP gates, review agents, and design-memory — into the harness's native config format.`,
+	SilenceUsage: true,
+}
+
+// cmdVersion holds the binary version passed to Execute. It is available to
+// all subcommands (e.g. backup) for embedding in snapshot manifests.
+var cmdVersion = "dev"
+
+// cmdMirrorVersion holds the mirror version set via -X main.mirrorVersion ldflags.
+// It records the repo version whose sync-harnesses.mjs output is embedded (ADR-6).
+var cmdMirrorVersion = "dev"
+
+// versionOnce guards AddCommand so that calling Execute more than once
+// (e.g. in tests that reuse the package-level rootCmd) does not register a
+// duplicate "version" subcommand and trigger cobra's duplicate-command panic.
+var versionOnce sync.Once
+
+// Execute wires the binary version and mirror version into the root command and runs it.
+func Execute(version, mirrorVersion string) {
+	cmdVersion = version
+	cmdMirrorVersion = mirrorVersion
+	// Attach the version subcommand with the build-time version string.
+	// sync.Once ensures idempotency if Execute is called more than once.
+	versionOnce.Do(func() {
+		rootCmd.AddCommand(newVersionCmd(version, mirrorVersion))
+	})
+
+	if err := rootCmd.Execute(); err != nil {
+		os.Exit(1)
+	}
+}
+
+func init() {
+	// Persistent flags are available to all subcommands.
+	rootCmd.PersistentFlags().StringVar(&flags.Harness, "harness", "", "Target harness (claude, cursor, codex, gemini, opencode)")
+	rootCmd.PersistentFlags().StringSliceVar(&flags.Components, "components", nil, "Comma-separated components to install (skill+commands,mcp-gates,review-agents,design-memory)")
+	rootCmd.PersistentFlags().BoolVar(&flags.Yes, "yes", false, "Skip interactive prompts and apply defaults")
+	rootCmd.PersistentFlags().BoolVar(&flags.DryRun, "dry-run", false, "Show what would be changed without writing any files")
+	rootCmd.PersistentFlags().StringVar(&flags.Dir, "dir", ".", "Project directory (default: current directory)")
+	rootCmd.PersistentFlags().BoolVar(&flags.JSON, "json", false, "Emit machine-readable JSON output (implies non-interactive)")
+	rootCmd.PersistentFlags().BoolVar(&flags.Quiet, "quiet", false, "Suppress non-essential output; print only errors (stderr) + final outcome")
+}
