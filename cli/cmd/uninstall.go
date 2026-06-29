@@ -430,7 +430,7 @@ func removeAgentsMDBlock(fs fsutil.FileSystem, agentsMDPath string) error {
 // removeDirIfEmpty is a no-op and a manual-action notice is returned.
 //
 // This function NEVER calls RemoveAll on skillsDir itself — it is scoped to
-// owned entries only (gentle-ai pattern).
+// owned entries only.
 //
 // It also handles stale depth-2 installs (skills/<id>/<id>/) implicitly: the
 // entire owned top-level dir is removed with os.RemoveAll, so any stale

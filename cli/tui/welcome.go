@@ -12,7 +12,7 @@ import (
 )
 
 // welcomeTagline is the product tagline shown next to the version on the
-// welcome screen. Mirrors the gentle-ai pattern of a brief descriptor.
+// welcome screen. A brief one-line descriptor.
 const welcomeTagline = "Install and manage AI coding components"
 
 // renderArtHeader renders the Aren dog-art with the same gradient bands used
@@ -110,6 +110,6 @@ func renderWelcome(m AppModel) string {
 	}
 	sb.WriteByte('\n')
 
-	// No surrounding frame — the art + menu render flush, gentle-ai style.
+	// No surrounding frame — the art + menu render flush.
 	return sb.String()
 }

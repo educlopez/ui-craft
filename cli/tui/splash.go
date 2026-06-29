@@ -27,7 +27,7 @@ var arenArt = []string{
 }
 
 // SplashModel is the Bubble Tea model for the Aren dog splash screen.
-// It renders the art through lipgloss gradient color bands (gentle-ai pattern)
+// It renders the art through lipgloss gradient color bands
 // and degrades to plain ASCII when NO_COLOR or TERM=dumb is active.
 type SplashModel struct {
 	version string

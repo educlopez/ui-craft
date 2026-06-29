@@ -38,7 +38,7 @@ type upgradeDoneMsg struct {
 }
 
 // TickMsg drives spinner animation. It carries the time of the tick so callers
-// can inspect timing if needed. 100ms tick interval mirrors the gentle-ai pattern.
+// can inspect timing if needed. 100ms tick interval is a standard spinner cadence.
 type TickMsg time.Time
 
 // ─── Spinner frames ───────────────────────────────────────────────────────────

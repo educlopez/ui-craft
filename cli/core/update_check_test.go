@@ -92,7 +92,7 @@ func TestCheckForUpdate_TTLChecksAfter24h(t *testing.T) {
 }
 
 // ─── 6h cooldown boundary tests ───────────────────────────────────────────────
-// These tests define the exact 6h TTL boundary (gentle-ai parity).
+// These tests define the exact 6h TTL boundary.
 // They will FAIL with updateCheckTTL = 24h and PASS with updateCheckTTL = 6h.
 
 // TestCheckForUpdate_TTLSkipsJustUnder6h verifies that a check timestamp that is

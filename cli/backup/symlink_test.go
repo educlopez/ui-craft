@@ -16,7 +16,7 @@ import (
 // pre-install snapshot fail with "read ...: is a directory" (EISDIR), because
 // os.DirEntry.IsDir() reports false for a symlink and the walk then ReadFile'd
 // it, following the link into a directory. The snapshot must skip directory
-// symlinks (gentle-ai parity) and still capture real files.
+// symlinks and still capture real files.
 func TestSnapshot_skipsDirectorySymlink(t *testing.T) {
 	home := t.TempDir()
 	skillsDir := filepath.Join(home, ".claude", "skills")

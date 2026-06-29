@@ -4,19 +4,19 @@
 
 v1.0.2's depth-1 layout snapshots the shared `~/.<harness>/skills/` dir before installing (for rollback). If that dir contained a **directory symlink** — e.g. a skill another tool installed as `~/.claude/skills/agent-browser -> /elsewhere` — the pre-install snapshot crashed with `apply: snapshot: backup: read …/agent-browser: is a directory`, and the whole install rolled back. Cause: `os.DirEntry.IsDir()` reports `false` for a symlink, so the backup walk tried to `ReadFile` it and followed the link into a directory (EISDIR).
 
-**Fix (gentle-ai parity):** the backup snapshot walk now skips directory symlinks (never traverses into external trees) and still includes file symlinks (supports dotfile managers like stow/chezmoi). Unrelated symlinked skills are left untouched; the install completes normally.
+**Fix:** the backup snapshot walk now skips directory symlinks (never traverses into external trees) and still includes file symlinks (supports dotfile managers like stow/chezmoi). Unrelated symlinked skills are left untouched; the install completes normally.
 
-## v1.0.2 (2026-06-29) — gentle-ai parity: correct install layout + interactive TUI hub
+## v1.0.2 (2026-06-29) — correct install layout + interactive TUI hub
 
-Two coordinated CLI changes bring `ui-craft` to full parity with the proven gentle-ai installer.
+Two coordinated CLI changes.
 
-**Fix: skills + commands now install where the harness can find them.** Every harness adapter wrote skills one directory too deep (`~/.<harness>/skills/ui-craft/<inner>/SKILL.md`), so Claude Code (and the others) discovered nothing — you'd see the MCP gates and review agents but no skill and no slash commands. Now skills land at depth-1 (`~/.claude/skills/ui-craft/SKILL.md`) and slash commands at `~/.claude/commands/*.md`, exactly like gentle-ai:
+**Fix: skills + commands now install where the harness can find them.** Every harness adapter wrote skills one directory too deep (`~/.<harness>/skills/ui-craft/<inner>/SKILL.md`), so Claude Code (and the others) discovered nothing — you'd see the MCP gates and review agents but no skill and no slash commands. Now skills land at depth-1 (`~/.claude/skills/ui-craft/SKILL.md`) and slash commands at `~/.claude/commands/*.md`:
 
 - **Claude / OpenCode** (command-capable): the `ui-craft` skill (+ variants) under `skills/`, the 22 command lenses as real `commands/*.md`.
 - **Cursor / Codex / Gemini** (skills-only): each command lens installs as a flat depth-1 peer skill.
 - Hand-authored per-harness asset tree replaces the old generator (`scripts/sync-harnesses.mjs` + the `mirrors/` mirror + the mirror-version freshness machinery are gone); the embedded FS is the uninstall manifest, so cleanup removes exactly what it installed and never touches unrelated user skills/commands.
 
-**New: interactive TUI hub.** Running `ui-craft` with no subcommand now opens a full-screen welcome menu (gentle-ai pattern): the Aren dog art as a persistent header, a tagline, an async "Updates available" line (GitHub releases, 6h cooldown, ★ on Upgrade), and a navigable menu — Start installation · Upgrade (binary self-update, Homebrew-aware) · Manage backups · Managed uninstall · Quit. Each action runs as a TUI screen with a spinner and a result screen. The dog splash now has a visible dwell. Existing subcommands and `--help` are unchanged.
+**New: interactive TUI hub.** Running `ui-craft` with no subcommand now opens a full-screen welcome menu: the Aren dog art as a persistent header, a tagline, an async "Updates available" line (GitHub releases, 6h cooldown, ★ on Upgrade), and a navigable menu — Start installation · Upgrade (binary self-update, Homebrew-aware) · Manage backups · Managed uninstall · Quit. Each action runs as a TUI screen with a spinner and a result screen. The dog splash now has a visible dwell. Existing subcommands and `--help` are unchanged.
 
 ## v1.0.1 (2026-06-29) — fix: Homebrew cask SIGKILL on Apple Silicon
 

@@ -517,7 +517,7 @@ func (s *Store) snapshotDir(harness, dirPath string) ([]archiveEntry, error) {
 		}
 		for _, child := range children {
 			childPath := filepath.Join(dir, child.Name())
-			// Symlink handling (gentle-ai parity): a directory symlink — e.g. a
+			// Symlink handling: a directory symlink — e.g. a
 			// skill another tool installed as ~/.claude/skills/foo -> /elsewhere —
 			// must be skipped so the walk never follows it into an external tree.
 			// Otherwise os.DirEntry.IsDir() reports false for the symlink and the

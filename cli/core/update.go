@@ -1,5 +1,5 @@
 // Package core — update.go
-// Launch-time update-check with a 6h TTL cooldown (gentle-ai parity).
+// Launch-time update-check with a 6h TTL cooldown.
 //
 // Design: fail-open — any network or parse error silently returns "no update".
 // The check runs in a goroutine from the TUI Init() so it never blocks the flow.
@@ -21,7 +21,7 @@ import (
 
 const (
 	// updateCheckTTL is how long to wait between GitHub release checks.
-	// Set to 6h for gentle-ai parity (was 24h).
+	// Set to 6h (was 24h).
 	updateCheckTTL = 6 * time.Hour
 
 	// githubReleasesURL is the GitHub API endpoint for the latest release.
