@@ -2,58 +2,21 @@
 //
 // ui-craft self-update upgrades the binary to the latest GitHub release.
 //
-// Safety design:
-//   - Detect install method first: if the binary is under a Homebrew or Scoop
-//     path, do NOT self-replace — print the correct package-manager command and
-//     exit 0. Self-replacing a package-managed binary corrupts the manager's state.
-//   - Direct-download path: query latest release, compare to current version;
-//     if newer, download the matching OS/arch archive, verify sha256 against the
-//     release checksums.txt, extract the binary to a temp file, atomically rename
-//     it over the running binary.
-//   - Windows self-replace-over-self fails (file in use), so on Windows we write
-//     ui-craft.new next to the binary and print clear instructions instead.
-//   - Fail with clear errors; never leave a half-written binary (temp + rename).
-//   - All network functions are injectable (func vars) for testability.
+// This file is a thin shim: all business logic lives in core.RunSelfUpdate.
+// See core/selfupdate.go for the full safety design description.
 //
 // --json output: {"updated": bool, "from": str, "to": str, "method": str}
 package cmd
 
 import (
-	"archive/tar"
-	"archive/zip"
-	"compress/gzip"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
-	"net/http"
-	"os"
-	"path/filepath"
-	"runtime"
 	"strings"
-	"time"
 
+	"github.com/educlopez/ui-craft/cli/core"
 	"github.com/spf13/cobra"
 )
-
-const (
-	selfUpdateGitHubOwner = "educlopez"
-	selfUpdateGitHubRepo  = "ui-craft"
-	selfUpdateAPIURL      = "https://api.github.com/repos/" + selfUpdateGitHubOwner + "/" + selfUpdateGitHubRepo + "/releases/latest"
-	selfUpdateTimeout     = 30 * time.Second
-)
-
-// selfUpdateRelease holds the data we extract from the GitHub releases API.
-type selfUpdateRelease struct {
-	TagName string            `json:"tag_name"`
-	Assets  []selfUpdateAsset `json:"assets"`
-}
-
-type selfUpdateAsset struct {
-	Name               string `json:"name"`
-	BrowserDownloadURL string `json:"browser_download_url"`
-}
 
 // selfUpdateJSONResult is the --json output envelope for self-update.
 type selfUpdateJSONResult struct {
@@ -64,219 +27,16 @@ type selfUpdateJSONResult struct {
 }
 
 // ─── Injectable dependencies (for testability) ────────────────────────────
+//
+// These vars are kept in the cmd layer so that existing cmd-level tests
+// continue to work unchanged.  They are forwarded into core.SelfUpdateOpts
+// when RunE is called.  The export_test.go setters mutate these vars in tests.
 
-// selfUpdateFetchRelease fetches the latest GitHub release. Defaults to the
-// real HTTP implementation; tests can replace with a fake.
-var selfUpdateFetchRelease = func(url string) (*selfUpdateRelease, error) {
-	client := &http.Client{Timeout: selfUpdateTimeout}
-	resp, err := client.Get(url) //nolint:noctx
-	if err != nil {
-		return nil, fmt.Errorf("self-update: fetch release: %w", err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("self-update: GitHub API returned %d", resp.StatusCode)
-	}
-	body, err := io.ReadAll(io.LimitReader(resp.Body, 512*1024))
-	if err != nil {
-		return nil, fmt.Errorf("self-update: read release body: %w", err)
-	}
-	var rel selfUpdateRelease
-	if err := json.Unmarshal(body, &rel); err != nil {
-		return nil, fmt.Errorf("self-update: parse release JSON: %w", err)
-	}
-	return &rel, nil
-}
+var selfUpdateFetchRelease func(url string) (*core.SelfUpdateRelease, error)
+var selfUpdateDownloadAsset func(url string) ([]byte, error)
+var selfUpdateExecPath func() (string, error)
 
-// selfUpdateDownloadAsset downloads an asset URL and returns its bytes.
-// Defaults to real HTTP; tests can inject a fake.
-var selfUpdateDownloadAsset = func(url string) ([]byte, error) {
-	client := &http.Client{Timeout: selfUpdateTimeout}
-	resp, err := client.Get(url) //nolint:noctx
-	if err != nil {
-		return nil, fmt.Errorf("self-update: download: %w", err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("self-update: download returned %d", resp.StatusCode)
-	}
-	data, err := io.ReadAll(io.LimitReader(resp.Body, 256*1024*1024)) // cap 256 MiB
-	if err != nil {
-		return nil, fmt.Errorf("self-update: read download body: %w", err)
-	}
-	return data, nil
-}
-
-// selfUpdateExecPath returns the resolved executable path. Injectable for tests.
-var selfUpdateExecPath = func() (string, error) {
-	exe, err := os.Executable()
-	if err != nil {
-		return "", err
-	}
-	return filepath.EvalSymlinks(exe)
-}
-
-// ─── Homebrew / Scoop detection ───────────────────────────────────────────
-
-// detectPackageManager inspects the binary path to decide whether it is managed
-// by Homebrew or Scoop. Returns ("brew", ...), ("scoop", ...), or ("", ...).
-func detectPackageManager(exePath string) string {
-	// Homebrew prefixes: macOS arm64, macOS x86, Linux
-	homebrewPrefixes := []string{
-		"/opt/homebrew/",
-		"/usr/local/Cellar/",
-		"/usr/local/opt/",
-		"/home/linuxbrew/",
-	}
-	for _, prefix := range homebrewPrefixes {
-		if strings.HasPrefix(exePath, prefix) {
-			return "brew"
-		}
-	}
-	// Scoop: typically C:\Users\<user>\scoop\apps\ or %SCOOP%\apps\
-	if strings.Contains(exePath, `scoop\apps`) || strings.Contains(exePath, "scoop/apps") {
-		return "scoop"
-	}
-	return ""
-}
-
-// ─── Archive extraction ───────────────────────────────────────────────────
-
-// extractBinaryFromArchive extracts the "ui-craft" binary from an archive
-// (tar.gz for Linux/macOS, zip for Windows). Returns the raw binary bytes.
-func extractBinaryFromArchive(archiveData []byte, archiveName string) ([]byte, error) {
-	if strings.HasSuffix(archiveName, ".tar.gz") || strings.HasSuffix(archiveName, ".tgz") {
-		return extractFromTarGz(archiveData)
-	}
-	if strings.HasSuffix(archiveName, ".zip") {
-		return extractFromZip(archiveData)
-	}
-	return nil, fmt.Errorf("self-update: unknown archive format: %s", archiveName)
-}
-
-func extractFromTarGz(data []byte) ([]byte, error) {
-	gzReader, err := gzip.NewReader(newBytesReader(data))
-	if err != nil {
-		return nil, fmt.Errorf("self-update: gzip: %w", err)
-	}
-	defer gzReader.Close()
-	tr := tar.NewReader(gzReader)
-	for {
-		hdr, err := tr.Next()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return nil, fmt.Errorf("self-update: tar: %w", err)
-		}
-		base := filepath.Base(hdr.Name)
-		if base == "ui-craft" || base == "ui-craft.exe" {
-			return io.ReadAll(io.LimitReader(tr, 128*1024*1024))
-		}
-	}
-	return nil, fmt.Errorf("self-update: binary 'ui-craft' not found in archive")
-}
-
-func extractFromZip(data []byte) ([]byte, error) {
-	r, err := zip.NewReader(newBytesReaderAt(data), int64(len(data)))
-	if err != nil {
-		return nil, fmt.Errorf("self-update: zip: %w", err)
-	}
-	for _, f := range r.File {
-		base := filepath.Base(f.Name)
-		if base == "ui-craft" || base == "ui-craft.exe" {
-			rc, err := f.Open()
-			if err != nil {
-				return nil, fmt.Errorf("self-update: zip open: %w", err)
-			}
-			defer rc.Close()
-			return io.ReadAll(io.LimitReader(rc, 128*1024*1024))
-		}
-	}
-	return nil, fmt.Errorf("self-update: binary 'ui-craft' not found in zip archive")
-}
-
-// bytesReader wraps a []byte to implement io.Reader.
-type bytesReader struct {
-	data []byte
-	pos  int
-}
-
-func newBytesReader(data []byte) *bytesReader { return &bytesReader{data: data} }
-func (r *bytesReader) Read(p []byte) (int, error) {
-	if r.pos >= len(r.data) {
-		return 0, io.EOF
-	}
-	n := copy(p, r.data[r.pos:])
-	r.pos += n
-	return n, nil
-}
-
-// bytesReaderAt wraps a []byte to implement io.ReaderAt (needed for zip).
-type bytesReaderAt struct{ data []byte }
-
-func newBytesReaderAt(data []byte) *bytesReaderAt { return &bytesReaderAt{data: data} }
-func (r *bytesReaderAt) ReadAt(p []byte, off int64) (int, error) {
-	if off >= int64(len(r.data)) {
-		return 0, io.EOF
-	}
-	n := copy(p, r.data[off:])
-	if n < len(p) {
-		return n, io.EOF
-	}
-	return n, nil
-}
-
-// ─── Checksum verification ────────────────────────────────────────────────
-
-// verifyChecksum checks the sha256 of archiveData against the checksums.txt
-// content. archiveName is the filename to look up in the checksums file.
-func verifyChecksum(archiveData []byte, checksumsTxt []byte, archiveName string) error {
-	// sha256sum format: "<hex>  <filename>" or "<hex> <filename>"
-	sum := sha256.Sum256(archiveData)
-	got := hex.EncodeToString(sum[:])
-	lines := strings.Split(string(checksumsTxt), "\n")
-	for _, line := range lines {
-		fields := strings.Fields(line)
-		if len(fields) < 2 {
-			continue
-		}
-		// The filename in checksums may be bare (no path) or prefixed.
-		if filepath.Base(fields[1]) == archiveName {
-			want := strings.ToLower(fields[0])
-			if got != want {
-				return fmt.Errorf("self-update: checksum mismatch for %s: got %s, want %s", archiveName, got, want)
-			}
-			return nil
-		}
-	}
-	return fmt.Errorf("self-update: checksum entry not found for %s in checksums.txt", archiveName)
-}
-
-// ─── Archive name resolution ──────────────────────────────────────────────
-
-// archiveNameForPlatform returns the expected archive filename for the current
-// GOOS/GOARCH. Matches goreleaser's default naming convention.
-func archiveNameForPlatform(tag string) string {
-	os_ := runtime.GOOS
-	arch := runtime.GOARCH
-	// Normalise arch: goreleaser uses "x86_64" for amd64, "arm64" for arm64.
-	switch arch {
-	case "amd64":
-		arch = "x86_64"
-	case "386":
-		arch = "i386"
-	}
-	// Capitalise OS for display consistency with goreleaser naming:
-	// ui-craft_Darwin_arm64.tar.gz  etc.
-	osName := titleCase(os_)
-	if os_ == "windows" {
-		return fmt.Sprintf("ui-craft_%s_%s.zip", osName, arch)
-	}
-	return fmt.Sprintf("ui-craft_%s_%s.tar.gz", osName, arch)
-}
-
-// ─── Cobra command ────────────────────────────────────────────────────────
+// ─── Cobra command ────────────────────────────────────────────────────────────
 
 var selfUpdateCmd = &cobra.Command{
 	Use:   "self-update",
@@ -303,177 +63,98 @@ func init() {
 func runSelfUpdate(cmd *cobra.Command, _ []string) error {
 	out := cmd.OutOrStdout()
 
-	// Resolve the running binary's real path (symlinks resolved).
-	exePath, err := selfUpdateExecPath()
-	if err != nil {
-		return fmt.Errorf("self-update: cannot determine executable path: %w", err)
+	// For brew/scoop paths the core function writes human-readable output but
+	// we need to intercept those cases for --json mode.  We detect the install
+	// method up-front so we can emit the JSON envelope here before delegating.
+	if flags.JSON {
+		return runSelfUpdateJSON(out)
 	}
 
-	// 1. Detect install method.
-	pm := detectPackageManager(exePath)
-	if pm == "brew" {
-		msg := "brew upgrade ui-craft"
-		if flags.JSON {
-			res := selfUpdateJSONResult{Updated: false, From: cmdVersion, To: "", Method: "brew"}
-			return emitJSON(out, res)
+	var coreOut io.Writer = out
+	if flags.Quiet {
+		coreOut = io.Discard
+	}
+
+	opts := core.SelfUpdateOpts{
+		CurrentVersion: cmdVersion,
+		Output:         coreOut,
+		FetchRelease:   selfUpdateFetchRelease,   // nil → core uses real HTTP
+		DownloadAsset:  selfUpdateDownloadAsset,  // nil → core uses real HTTP
+		ExecPath:       selfUpdateExecPath,       // nil → core uses os.Executable
+	}
+	_, err := core.RunSelfUpdate(opts)
+	return err
+}
+
+// runSelfUpdateJSON handles the --json flag path.  It needs to emit a
+// structured JSON envelope whose shape depends on the result, which requires
+// knowing the install method and outcome before writing to the output.
+func runSelfUpdateJSON(out io.Writer) error {
+	// Capture all output from core so we can decide what JSON to emit.
+	// We run core with io.Discard output and inspect the error / install-method.
+
+	var exePath string
+	execFn := selfUpdateExecPath
+	if execFn == nil {
+		execFn = func() (string, error) {
+			// resolve via core default — we call it just to get the path
+			return core.ResolveExecPath()
 		}
-		fmt.Fprintf(out, "ui-craft is managed by Homebrew. Run: %s\n", msg)
-		return nil
+	}
+	var execErr error
+	exePath, execErr = execFn()
+	if execErr != nil {
+		return fmt.Errorf("self-update: cannot determine executable path: %w", execErr)
+	}
+
+	pm := core.DetectInstallMethod(exePath)
+	if pm == "brew" {
+		return emitJSON(out, selfUpdateJSONResult{Updated: false, From: cmdVersion, To: "", Method: "brew"})
 	}
 	if pm == "scoop" {
-		msg := "scoop update ui-craft"
-		if flags.JSON {
-			res := selfUpdateJSONResult{Updated: false, From: cmdVersion, To: "", Method: "scoop"}
-			return emitJSON(out, res)
+		return emitJSON(out, selfUpdateJSONResult{Updated: false, From: cmdVersion, To: "", Method: "scoop"})
+	}
+
+	// Direct install — run core with a capturing fetch to learn the latest tag,
+	// then emit the JSON result.
+	var latestTag string
+	fetchFn := selfUpdateFetchRelease // nil → wrappedFetch falls back to core.FetchRelease
+
+	// We need the latest tag for the JSON result, so intercept FetchRelease.
+	wrappedFetch := func(url string) (*core.SelfUpdateRelease, error) {
+		var rel *core.SelfUpdateRelease
+		var err error
+		if fetchFn != nil {
+			rel, err = fetchFn(url)
+		} else {
+			// use core's real fetch
+			rel, err = core.FetchRelease(url)
 		}
-		fmt.Fprintf(out, "ui-craft is managed by Scoop. Run: %s\n", msg)
-		return nil
+		if err == nil && rel != nil {
+			latestTag = rel.TagName
+		}
+		return rel, err
 	}
 
-	// 2. Fetch latest release.
-	if !flags.Quiet && !flags.JSON {
-		fmt.Fprintln(out, "Checking for latest release...")
-	}
-	rel, err := selfUpdateFetchRelease(selfUpdateAPIURL)
-	if err != nil {
-		return err
+	opts := core.SelfUpdateOpts{
+		CurrentVersion: cmdVersion,
+		Output:         io.Discard, // suppress human output; we emit JSON
+		FetchRelease:   wrappedFetch,
+		DownloadAsset:  selfUpdateDownloadAsset,
+		ExecPath:       func() (string, error) { return exePath, nil },
 	}
 
-	latestTag := rel.TagName
-	currentTag := cmdVersion
+	_, runErr := core.RunSelfUpdate(opts)
+	if runErr != nil {
+		return runErr
+	}
 
-	// Normalise: strip leading "v" for comparison.
 	normLatest := strings.TrimPrefix(latestTag, "v")
-	normCurrent := strings.TrimPrefix(currentTag, "v")
-
-	// Fix 3: empty tag means malformed release JSON — error instead of silent no-op.
-	if normLatest == "" {
-		return fmt.Errorf("self-update: release has empty tag_name — aborting (malformed release JSON)")
+	normCurrent := strings.TrimPrefix(cmdVersion, "v")
+	if normLatest == normCurrent || latestTag == "" {
+		return emitJSON(out, selfUpdateJSONResult{Updated: false, From: cmdVersion, To: latestTag, Method: "direct"})
 	}
-	if normLatest == normCurrent {
-		if flags.JSON {
-			return emitJSON(out, selfUpdateJSONResult{Updated: false, From: currentTag, To: latestTag, Method: "direct"})
-		}
-		fmt.Fprintf(out, "ui-craft is already at the latest version (%s).\n", currentTag)
-		return nil
-	}
-
-	// 3. Identify the archive asset for this platform.
-	archiveName := archiveNameForPlatform(latestTag)
-	var archiveURL, checksumsURL string
-	for _, a := range rel.Assets {
-		switch {
-		case a.Name == archiveName:
-			archiveURL = a.BrowserDownloadURL
-		case a.Name == "checksums.txt":
-			checksumsURL = a.BrowserDownloadURL
-		}
-	}
-	if archiveURL == "" {
-		return fmt.Errorf("self-update: no asset found for platform (%s); available assets: %s",
-			archiveName, assetNames(rel.Assets))
-	}
-
-	// Fix 1: checksums.txt is MANDATORY — abort if missing from the release.
-	if checksumsURL == "" {
-		return fmt.Errorf("self-update: release has no checksums.txt — aborting for safety")
-	}
-
-	// Fix 2: validate that all download URLs are GitHub-origin before fetching.
-	if err := requireGitHubURL(archiveURL); err != nil {
-		return err
-	}
-	if err := requireGitHubURL(checksumsURL); err != nil {
-		return err
-	}
-
-	if !flags.Quiet && !flags.JSON {
-		fmt.Fprintf(out, "Downloading %s → %s...\n", currentTag, latestTag)
-	}
-
-	// 4. Download the archive.
-	archiveData, err := selfUpdateDownloadAsset(archiveURL)
-	if err != nil {
-		return err
-	}
-
-	// 5. Verify checksum (mandatory — already guaranteed checksumsURL != "" above).
-	checksumData, err := selfUpdateDownloadAsset(checksumsURL)
-	if err != nil {
-		return fmt.Errorf("self-update: could not download checksums.txt: %w", err)
-	}
-	if err := verifyChecksum(archiveData, checksumData, archiveName); err != nil {
-		return err // aborts cleanly — no binary written yet
-	}
-	if !flags.Quiet && !flags.JSON {
-		fmt.Fprintln(out, "Checksum verified.")
-	}
-
-	// 6. Extract the binary from the archive.
-	binData, err := extractBinaryFromArchive(archiveData, archiveName)
-	if err != nil {
-		return err
-	}
-
-	// 7. Atomic replace.
-	exeDir := filepath.Dir(exePath)
-	exeBase := filepath.Base(exePath)
-
-	if runtime.GOOS == "windows" {
-		// Windows cannot rename over a running executable.
-		// Write ui-craft.new and instruct the user.
-		newPath := filepath.Join(exeDir, "ui-craft.new")
-		if err := os.WriteFile(newPath, binData, 0o755); err != nil {
-			return fmt.Errorf("self-update: write ui-craft.new: %w", err)
-		}
-		if flags.JSON {
-			return emitJSON(out, selfUpdateJSONResult{Updated: false, From: currentTag, To: latestTag, Method: "direct-windows-manual"})
-		}
-		fmt.Fprintf(out, "New binary written to: %s\n", newPath)
-		fmt.Fprintf(out, "To complete the update, run:\n  move /Y %q %q\n", newPath, exePath)
-		return nil
-	}
-
-	// Unix: write to a temp file in the same directory, then rename atomically.
-	tmpFile, err := os.CreateTemp(exeDir, ".ui-craft-update-*")
-	if err != nil {
-		return fmt.Errorf("self-update: create temp file: %w", err)
-	}
-	tmpPath := tmpFile.Name()
-	defer func() {
-		// Clean up temp file on any failure path (rename removes it on success).
-		if _, err := os.Stat(tmpPath); err == nil {
-			_ = os.Remove(tmpPath)
-		}
-	}()
-
-	if _, err := tmpFile.Write(binData); err != nil {
-		_ = tmpFile.Close()
-		return fmt.Errorf("self-update: write temp file: %w", err)
-	}
-	if err := tmpFile.Chmod(0o755); err != nil {
-		_ = tmpFile.Close()
-		return fmt.Errorf("self-update: chmod temp file: %w", err)
-	}
-	if err := tmpFile.Close(); err != nil {
-		return fmt.Errorf("self-update: close temp file: %w", err)
-	}
-
-	// Atomic rename (same filesystem, so rename is atomic on POSIX).
-	destPath := filepath.Join(exeDir, exeBase)
-	if err := os.Rename(tmpPath, destPath); err != nil {
-		return fmt.Errorf("self-update: replace binary: %w", err)
-	}
-
-	if flags.JSON {
-		return emitJSON(out, selfUpdateJSONResult{Updated: true, From: currentTag, To: latestTag, Method: "direct"})
-	}
-	if !flags.Quiet {
-		fmt.Fprintf(out, "Updated: %s → %s\n", currentTag, latestTag)
-	} else {
-		fmt.Fprintf(out, "self-update: ok (%s → %s)\n", currentTag, latestTag)
-	}
-	return nil
+	return emitJSON(out, selfUpdateJSONResult{Updated: true, From: cmdVersion, To: latestTag, Method: "direct"})
 }
 
 // emitJSON encodes v as indented JSON to w.
@@ -483,30 +164,25 @@ func emitJSON(w io.Writer, v interface{}) error {
 	return enc.Encode(v)
 }
 
-// assetNames returns a comma-separated list of asset names (for error messages).
-func assetNames(assets []selfUpdateAsset) string {
-	names := make([]string, 0, len(assets))
-	for _, a := range assets {
-		names = append(names, a.Name)
-	}
-	return strings.Join(names, ", ")
+// ─── Helpers delegated to core (used by export_test.go) ─────────────────────
+
+// detectPackageManager delegates to core.DetectInstallMethod.
+// This function is called by export_test.go which re-exports DetectPackageManager.
+func detectPackageManager(exePath string) string {
+	return core.DetectInstallMethod(exePath)
 }
 
-// requireGitHubURL returns an error if url is not hosted on GitHub's release
-// CDN origins. This blocks SSRF via a tampered GitHub API response.
-func requireGitHubURL(url string) error {
-	if strings.HasPrefix(url, "https://github.com/") ||
-		strings.HasPrefix(url, "https://objects.githubusercontent.com/") {
-		return nil
-	}
-	return fmt.Errorf("self-update: refusing non-GitHub download URL: %s", url)
+// verifyChecksum delegates to core.VerifySelfUpdateChecksum.
+func verifyChecksum(archiveData, checksumsTxt []byte, archiveName string) error {
+	return core.VerifySelfUpdateChecksum(archiveData, checksumsTxt, archiveName)
 }
 
-// titleCase returns s with the first byte upper-cased.
-// It is a safe replacement for the deprecated strings.Title.
-func titleCase(s string) string {
-	if s == "" {
-		return s
-	}
-	return strings.ToUpper(s[:1]) + s[1:]
+// extractBinaryFromArchive delegates to core.ExtractBinaryFromSelfUpdateArchive.
+func extractBinaryFromArchive(archiveData []byte, archiveName string) ([]byte, error) {
+	return core.ExtractBinaryFromSelfUpdateArchive(archiveData, archiveName)
+}
+
+// archiveNameForPlatform delegates to core.ArchiveNameForPlatform.
+func archiveNameForPlatform(tag string) string {
+	return core.ArchiveNameForPlatform(tag)
 }

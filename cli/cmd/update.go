@@ -33,7 +33,7 @@ update reports "nothing installed yet — run install first".
 
 A backup is taken before any write. User edits outside managed blocks are always
 preserved (managed-block and structured-merge writers guarantee this). The update
-is idempotent: if the embedded mirror matches what is on disk, no file is touched.
+is idempotent: if the embedded assets match what is on disk, no file is touched.
 
 Use --component to limit the update to a single component; omit it to update all
 installed components for the harness.`,
@@ -231,7 +231,7 @@ installed components for the harness.`,
 		if flags.DryRun {
 			fmt.Fprint(out, "\n[dry-run] No files will be written. Showing what would change:\n\n")
 			for _, ut := range updateTargets {
-				plan := core.Plan([]core.DetectedHarness{ut.dh}, ut.components, osfs, assets.Mirror, assets.Agents, assets.TemplateFS, projectDir)
+				plan := core.Plan([]core.DetectedHarness{ut.dh}, ut.components, osfs, assets.SkillsFS, assets.Agents, assets.TemplateFS, assets.CommandsFS, projectDir)
 				for _, t := range plan.Targets {
 					if t.Skip {
 						fmt.Fprintf(out, "  would skip    %s/%s (%s)\n", t.Harness.Name(), t.Component.String(), t.SkipReason)
@@ -249,7 +249,7 @@ installed components for the harness.`,
 
 		// Execute per-target update (each target is a harness+components slice).
 		for _, ut := range updateTargets {
-			plan := core.Plan([]core.DetectedHarness{ut.dh}, ut.components, osfs, assets.Mirror, assets.Agents, assets.TemplateFS, projectDir)
+			plan := core.Plan([]core.DetectedHarness{ut.dh}, ut.components, osfs, assets.SkillsFS, assets.Agents, assets.TemplateFS, assets.CommandsFS, projectDir)
 
 			result, applyErr := core.Apply(plan, osfs, backupStore, cmdVersion, false)
 			if applyErr != nil {
@@ -292,7 +292,6 @@ installed components for the harness.`,
 
 		// Persist updated state.
 		state.Version = cmdVersion
-		state.MirrorVersion = cmdMirrorVersion
 		if err := core.SaveState(osfs, stateRoot, state); err != nil {
 			// Non-fatal: log but do not fail the command.
 			fmt.Fprintf(out, "  warning: could not save state.json: %v\n", err)

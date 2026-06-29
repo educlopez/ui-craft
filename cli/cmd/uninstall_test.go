@@ -6,16 +6,22 @@ package cmd_test
 //   - Uninstall removes our entries AND preserves a pre-existing user MCP server.
 //   - Design-memory is preserved unless explicitly targeted.
 //   - A snapshot is created before removal.
+//   - Owned paths are derived from embedded FS (not hardcoded).
+//   - Unrelated user skills/commands/agents are preserved.
+//   - Shared parent dir is preserved when user files remain.
+//   - Stale depth-2 layout (skills/ui-craft/ui-craft/) is cleaned.
 //
 // Tests use real OS filesystem (temp dirs) for backup/snapshot checks.
 
 import (
 	"encoding/json"
 	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"testing/fstest"
 
 	"github.com/educlopez/ui-craft/cli/backup"
 	"github.com/educlopez/ui-craft/cli/cmd"
@@ -280,5 +286,280 @@ func TestUninstall_snapshotCreated(t *testing.T) {
 	after, _ := store.List()
 	if len(after) != len(before)+1 {
 		t.Errorf("expected 1 more snapshot, got before=%d after=%d", len(before), len(after))
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Slice 5: derived-path uninstall tests (TDD — RED first)
+// ---------------------------------------------------------------------------
+
+// fakeSkillsFS builds a minimal in-memory FS that looks like assets.SkillsFS:
+// top-level entries are skill IDs (depth-1 dirs), each containing a SKILL.md.
+func fakeSkillsFS(ids ...string) fs.FS {
+	m := fstest.MapFS{}
+	for _, id := range ids {
+		m[id+"/SKILL.md"] = &fstest.MapFile{Data: []byte("# " + id)}
+	}
+	return m
+}
+
+// fakeCommandsFS builds a minimal in-memory FS with flat *.md command files.
+func fakeCommandsFS(files ...string) fs.FS {
+	m := fstest.MapFS{}
+	for _, f := range files {
+		m[f] = &fstest.MapFile{Data: []byte("# cmd " + f)}
+	}
+	return m
+}
+
+// TestUninstall_derivesOwnedSkillPaths verifies that RemoveOwnedSkills removes
+// exactly the skill dirs present in the embedded FS and no others.
+func TestUninstall_derivesOwnedSkillPaths(t *testing.T) {
+	tmpDir := t.TempDir()
+	osfs := fsutil.OsFS{}
+	skillsDir := filepath.Join(tmpDir, "skills")
+
+	// Create managed skill dirs (from embedded FS).
+	for _, id := range []string{"ui-craft", "ui-craft-minimal"} {
+		dir := filepath.Join(skillsDir, id)
+		if err := osfs.MkdirAll(dir, 0o755); err != nil {
+			t.Fatalf("mkdir %s: %v", dir, err)
+		}
+		if err := osfs.WriteFile(filepath.Join(dir, "SKILL.md"), []byte("# "+id), 0o644); err != nil {
+			t.Fatalf("write SKILL.md: %v", err)
+		}
+	}
+
+	// Create an unrelated user skill dir that must survive.
+	userSkill := filepath.Join(skillsDir, "my-custom-skill")
+	if err := osfs.MkdirAll(userSkill, 0o755); err != nil {
+		t.Fatalf("mkdir user skill: %v", err)
+	}
+	if err := osfs.WriteFile(filepath.Join(userSkill, "SKILL.md"), []byte("user"), 0o644); err != nil {
+		t.Fatalf("write user SKILL.md: %v", err)
+	}
+
+	embeddedSkillsFS := fakeSkillsFS("ui-craft", "ui-craft-minimal")
+
+	notices, err := cmd.RemoveOwnedSkills(osfs, skillsDir, embeddedSkillsFS)
+	if err != nil {
+		t.Fatalf("RemoveOwnedSkills: %v", err)
+	}
+	_ = notices
+
+	// Managed dirs must be gone.
+	for _, id := range []string{"ui-craft", "ui-craft-minimal"} {
+		if _, err := osfs.Stat(filepath.Join(skillsDir, id)); err == nil {
+			t.Errorf("skill dir %q should be removed", id)
+		}
+	}
+
+	// User skill must survive.
+	if _, err := osfs.Stat(userSkill); err != nil {
+		t.Errorf("user skill dir should be preserved: %v", err)
+	}
+
+	// skills/ dir itself survives because user skill is still there.
+	if _, err := osfs.Stat(skillsDir); err != nil {
+		t.Errorf("skills/ parent dir should be preserved when user files remain: %v", err)
+	}
+}
+
+// TestUninstall_skillsDirRemovedWhenEmpty verifies that the skills/ parent dir
+// is removed when all remaining entries after uninstall are gone.
+func TestUninstall_skillsDirRemovedWhenEmpty(t *testing.T) {
+	tmpDir := t.TempDir()
+	osfs := fsutil.OsFS{}
+	skillsDir := filepath.Join(tmpDir, "skills")
+
+	// Only managed skills, no user files.
+	dir := filepath.Join(skillsDir, "ui-craft")
+	if err := osfs.MkdirAll(dir, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+
+	embeddedSkillsFS := fakeSkillsFS("ui-craft")
+
+	if _, err := cmd.RemoveOwnedSkills(osfs, skillsDir, embeddedSkillsFS); err != nil {
+		t.Fatalf("RemoveOwnedSkills: %v", err)
+	}
+
+	// skills/ dir itself should be removed when empty.
+	if _, err := osfs.Stat(skillsDir); err == nil {
+		t.Error("empty skills/ dir should be removed after uninstall")
+	}
+}
+
+// TestUninstall_emitsManualNotice verifies that when the skills/ parent dir
+// still has user files after removing managed dirs, a manual-action notice
+// is returned (dir not removed, user informed).
+func TestUninstall_emitsManualNotice(t *testing.T) {
+	tmpDir := t.TempDir()
+	osfs := fsutil.OsFS{}
+	skillsDir := filepath.Join(tmpDir, "skills")
+
+	// Create managed skill dir.
+	managedDir := filepath.Join(skillsDir, "ui-craft")
+	if err := osfs.MkdirAll(managedDir, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+
+	// Create a loose user file directly in skills/ (not in a subdir).
+	userFile := filepath.Join(skillsDir, "my-notes.md")
+	if err := osfs.WriteFile(userFile, []byte("user notes"), 0o644); err != nil {
+		t.Fatalf("write user file: %v", err)
+	}
+
+	embeddedSkillsFS := fakeSkillsFS("ui-craft")
+
+	notices, err := cmd.RemoveOwnedSkills(osfs, skillsDir, embeddedSkillsFS)
+	if err != nil {
+		t.Fatalf("RemoveOwnedSkills: %v", err)
+	}
+
+	// skills/ dir must NOT be removed (user file remains).
+	if _, err := osfs.Stat(skillsDir); err != nil {
+		t.Errorf("skills/ dir should be preserved when user files remain")
+	}
+
+	// A manual-action notice must be returned.
+	if len(notices) == 0 {
+		t.Error("expected at least one manual-action notice, got none")
+	}
+}
+
+// TestUninstall_derivesOwnedCommandPaths verifies that RemoveOwnedCommands
+// removes exactly the command files present in the embedded FS and no others.
+func TestUninstall_derivesOwnedCommandPaths(t *testing.T) {
+	tmpDir := t.TempDir()
+	osfs := fsutil.OsFS{}
+	commandsDir := filepath.Join(tmpDir, "commands")
+
+	// Create managed command files.
+	if err := osfs.MkdirAll(commandsDir, 0o755); err != nil {
+		t.Fatalf("mkdir commands: %v", err)
+	}
+	for _, f := range []string{"adapt.md", "animate.md"} {
+		if err := osfs.WriteFile(filepath.Join(commandsDir, f), []byte("# "+f), 0o644); err != nil {
+			t.Fatalf("write %s: %v", f, err)
+		}
+	}
+
+	// Create an unrelated user command file that must survive.
+	userCmd := filepath.Join(commandsDir, "my-workflow.md")
+	if err := osfs.WriteFile(userCmd, []byte("user cmd"), 0o644); err != nil {
+		t.Fatalf("write user cmd: %v", err)
+	}
+
+	embeddedCommandsFS := fakeCommandsFS("adapt.md", "animate.md")
+
+	notices, err := cmd.RemoveOwnedCommands(osfs, commandsDir, embeddedCommandsFS)
+	if err != nil {
+		t.Fatalf("RemoveOwnedCommands: %v", err)
+	}
+
+	// Managed files must be gone.
+	for _, f := range []string{"adapt.md", "animate.md"} {
+		if _, err := osfs.Stat(filepath.Join(commandsDir, f)); err == nil {
+			t.Errorf("command file %q should be removed", f)
+		}
+	}
+
+	// User command must survive.
+	if _, err := osfs.Stat(userCmd); err != nil {
+		t.Errorf("user command should be preserved: %v", err)
+	}
+
+	// Notice: commands/ dir survives because user file is still there.
+	_ = notices
+	if _, err := osfs.Stat(commandsDir); err != nil {
+		t.Errorf("commands/ dir should be preserved when user files remain: %v", err)
+	}
+}
+
+// TestUninstall_derivesOwnedAgentPaths verifies that RemoveOwnedAgents removes
+// exactly the agent files present in the embedded FS and no others.
+func TestUninstall_derivesOwnedAgentPaths(t *testing.T) {
+	tmpDir := t.TempDir()
+	osfs := fsutil.OsFS{}
+	agentsDir := filepath.Join(tmpDir, "agents")
+
+	if err := osfs.MkdirAll(agentsDir, 0o755); err != nil {
+		t.Fatalf("mkdir agents: %v", err)
+	}
+
+	// Create managed agent files.
+	for _, f := range []string{"design-reviewer.md", "a11y-auditor.md"} {
+		if err := osfs.WriteFile(filepath.Join(agentsDir, f), []byte("# "+f), 0o644); err != nil {
+			t.Fatalf("write %s: %v", f, err)
+		}
+	}
+
+	// Create an unrelated user agent that must survive.
+	userAgent := filepath.Join(agentsDir, "my-reviewer.md")
+	if err := osfs.WriteFile(userAgent, []byte("user agent"), 0o644); err != nil {
+		t.Fatalf("write user agent: %v", err)
+	}
+
+	embeddedAgentsFS := fakeCommandsFS("design-reviewer.md", "a11y-auditor.md")
+
+	notices, err := cmd.RemoveOwnedAgents(osfs, agentsDir, embeddedAgentsFS)
+	if err != nil {
+		t.Fatalf("RemoveOwnedAgents: %v", err)
+	}
+
+	// Managed agents must be gone.
+	for _, f := range []string{"design-reviewer.md", "a11y-auditor.md"} {
+		if _, err := osfs.Stat(filepath.Join(agentsDir, f)); err == nil {
+			t.Errorf("agent file %q should be removed", f)
+		}
+	}
+
+	// User agent must survive.
+	if _, err := osfs.Stat(userAgent); err != nil {
+		t.Errorf("user agent should be preserved: %v", err)
+	}
+
+	// Notice may or may not be emitted, but agents/ dir must survive.
+	_ = notices
+	if _, err := osfs.Stat(agentsDir); err != nil {
+		t.Errorf("agents/ dir should be preserved when user files remain: %v", err)
+	}
+}
+
+// TestUninstall_cleansStaleDepth2 verifies that a pre-existing stale depth-2
+// layout (skills/ui-craft/ui-craft/) is removed during uninstall.
+func TestUninstall_cleansStaleDepth2(t *testing.T) {
+	tmpDir := t.TempDir()
+	osfs := fsutil.OsFS{}
+	skillsDir := filepath.Join(tmpDir, "skills")
+
+	// Pre-populate stale depth-2 layout: skills/ui-craft/ui-craft/SKILL.md
+	staleDir := filepath.Join(skillsDir, "ui-craft", "ui-craft")
+	if err := osfs.MkdirAll(staleDir, 0o755); err != nil {
+		t.Fatalf("mkdir stale: %v", err)
+	}
+	staleFile := filepath.Join(staleDir, "SKILL.md")
+	if err := osfs.WriteFile(staleFile, []byte("stale"), 0o644); err != nil {
+		t.Fatalf("write stale: %v", err)
+	}
+	// Also populate the correct depth-1 file.
+	depth1File := filepath.Join(skillsDir, "ui-craft", "SKILL.md")
+	if err := osfs.WriteFile(depth1File, []byte("current"), 0o644); err != nil {
+		t.Fatalf("write depth-1: %v", err)
+	}
+
+	embeddedSkillsFS := fakeSkillsFS("ui-craft")
+
+	if _, err := cmd.RemoveOwnedSkills(osfs, skillsDir, embeddedSkillsFS); err != nil {
+		t.Fatalf("RemoveOwnedSkills: %v", err)
+	}
+
+	// The entire ui-craft/ dir (including stale depth-2) must be removed.
+	if _, err := osfs.Stat(filepath.Join(skillsDir, "ui-craft")); err == nil {
+		t.Error("skills/ui-craft/ dir should be removed on uninstall")
+	}
+	if _, err := osfs.Stat(staleFile); err == nil {
+		t.Error("stale depth-2 file should be removed")
 	}
 }

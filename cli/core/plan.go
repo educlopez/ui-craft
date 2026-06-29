@@ -1,6 +1,7 @@
 package core
 
 import (
+	"errors"
 	"io/fs"
 	"path/filepath"
 
@@ -55,19 +56,25 @@ var mcpServer = harness.MCPServer{
 	Args:    []string{"-y", "ui-craft-mcp"},
 }
 
-// MirrorProvider is a function that returns the embedded fs.FS subtree for the
-// named harness. In production callers pass assets.Mirror; in tests a fixture
-// FS can be injected.
-type MirrorProvider func(harnessName string) fs.FS
+// SkillsProvider is a function that returns the skills-rooted embedded fs.FS
+// subtree for the named harness. In production callers pass assets.SkillsFS;
+// in tests a fixture FS can be injected.
+type SkillsProvider func(harnessName string) fs.FS
 
 // AgentProvider is a function that returns the embedded fs.FS containing the
 // review agent definitions for the named harness. The returned FS is rooted at
-// the agent definitions directory for that harness (e.g. mirrors/claude/agents/).
+// the agent definitions directory for that harness (e.g. assets/agents/claude/).
 // Returns nil when no agent definitions exist for the harness (e.g. Cursor, Codex,
 // Gemini — which have Supports(ReviewAgents)=false and are already skipped before
 // AgentProvider is called). In production callers pass assets.Agents; in tests a
 // fixture FS can be injected.
 type AgentProvider func(harnessName string) fs.FS
+
+// CommandsProvider is a function that returns the commands-rooted fs.FS for the
+// named harness. In production callers pass assets.CommandsFS; in tests a fixture
+// FS can be injected. Returns nil for harnesses that have no embedded commands
+// (cursor, codex, gemini).
+type CommandsProvider func(harnessName string) fs.FS
 
 // Plan builds an InstallPlan from the set of detected harnesses and the
 // components the user selected. Targets whose harness does not support the
@@ -76,10 +83,12 @@ type AgentProvider func(harnessName string) fs.FS
 //
 // For the MCPGates component, Plan wires the concrete WriteMCP op and sets
 // SnapPath so that core.Apply can snapshot the config file before writing.
-// For the SkillCommands component, Plan wires WriteSkill with the mirror
-// returned by mirrorProvider(harness.Name()) and sets SnapPath to the
-// …/skills/ui-craft subdir (the subtree the CLI owns, bounding rollback to it).
-// When the mirror provider returns nil for a harness, the target is marked Skip.
+// For the SkillCommands component, Plan wires WriteSkill with the skills FS
+// returned by skillsProvider(harness.Name()) and then chains WriteCommands
+// for command-capable harnesses (claude, opencode). CommandsDir is added to
+// SnapPaths for harnesses that support commands. For harnesses where WriteCommands
+// returns ErrUnsupported, the commands step is silently skipped (skills-only mode).
+// When the skills provider returns nil for a harness, the target is marked Skip.
 // For the DesignMemory component, Plan wires ScaffoldDesignMemory with the
 // template FS returned by templateProvider() and sets SnapPath to the
 // .ui-craft/ subdir inside projectDir. When templateProvider is nil or
@@ -95,7 +104,7 @@ type AgentProvider func(harnessName string) fs.FS
 // assets.TemplateFS(), not the raw embed.FS). If the raw embed.FS were used,
 // ScaffoldDesignMemory would write files under a "templates/" prefix inside
 // .ui-craft/, producing wrong destination paths.
-func Plan(detected []DetectedHarness, selected []component.Component, filesystem fsutil.FileSystem, mirrorProvider MirrorProvider, agentProvider AgentProvider, templateProvider TemplateProvider, projectDir string) InstallPlan {
+func Plan(detected []DetectedHarness, selected []component.Component, filesystem fsutil.FileSystem, skillsProvider SkillsProvider, agentProvider AgentProvider, templateProvider TemplateProvider, commandsProvider CommandsProvider, projectDir string) InstallPlan {
 	var targets []ComponentTarget
 	for _, dh := range detected {
 		for _, c := range selected {
@@ -128,36 +137,68 @@ func Plan(detected []DetectedHarness, selected []component.Component, filesystem
 				}
 
 			case component.SkillCommands:
-				// Wire the concrete write op for SkillCommands (Slice 5).
-				// SnapPath is the ui-craft subdir within skills — we own only
-				// that subtree, so rollback blast radius is bounded to it.
+				// Wire the concrete write op for SkillCommands.
+				// SnapPath is the skills dir — WriteSkill now uses depth-1 layout,
+				// writing each skill as a peer subdirectory directly under SkillsDir.
+				// The CLI owns only the subdirs it installs; rollback removes those.
+				// For command-capable harnesses (claude, opencode), WriteCommands is
+				// also called after WriteSkill, and CommandsDir is added to SnapPaths.
 				paths := dh.Harness.ConfigPaths()
-				uicraftSubDir := paths.SkillsDir + "/ui-craft"
+				skillsDir := paths.SkillsDir
 				h := dh.Harness
 				w := filesystem
 				var mirror fs.FS
-				if mirrorProvider != nil {
-					mirror = mirrorProvider(h.Name())
+				if skillsProvider != nil {
+					mirror = skillsProvider(h.Name())
 				}
-				// Nil-mirror safety: if the harness has no embedded mirror, mark
+				// Nil-skills safety: if the harness has no embedded skills tree, mark
 				// the target as skipped rather than wiring a WriteSkill op with a
-				// nil fs.FS (which would panic inside writeMirrorToDir).
+				// nil fs.FS (which would panic inside writeSkillsToDir).
 				if mirror == nil {
 					target.Skip = true
-					target.SkipReason = "mirror not embedded for " + h.Name()
+					target.SkipReason = "skills not embedded for " + h.Name()
 					targets = append(targets, target)
 					continue
 				}
+				// Resolve the commands FS for this harness (nil for cursor/codex/gemini).
+				var commandsFS fs.FS
+				if commandsProvider != nil {
+					commandsFS = commandsProvider(h.Name())
+				}
 				// Build the snap path list. For Codex, AGENTS.md is also written
 				// by WriteSkill, so it must be snapshotted to allow full rollback.
-				snapPaths := []string{uicraftSubDir}
+				// For command-capable harnesses, CommandsDir is also snapshotted.
+				snapPaths := []string{skillsDir}
 				if paths.AgentsMDPath != "" {
 					snapPaths = append(snapPaths, paths.AgentsMDPath)
 				}
+				if commandsFS != nil && paths.CommandsDir != "" {
+					snapPaths = append(snapPaths, paths.CommandsDir)
+				}
 				target.SnapPaths = snapPaths
-				target.SnapPath = uicraftSubDir // keep for legacy callers that read SnapPath
+				target.SnapPath = skillsDir // keep for legacy callers that read SnapPath
+				cFS := commandsFS           // capture for closure
 				target.Op = func() (harness.Change, error) {
-					return h.WriteSkill(w, mirror)
+					ch, err := h.WriteSkill(w, mirror)
+					if err != nil {
+						return ch, err
+					}
+					// Chain WriteCommands for command-capable harnesses.
+					// ErrUnsupported is silently skipped (skills-only mode).
+					if cFS != nil {
+						cmdChanges, cmdErr := h.WriteCommands(w, cFS)
+						if cmdErr != nil && !errors.Is(cmdErr, harness.ErrUnsupported) {
+							return ch, cmdErr
+						}
+						// If any command file changed, mark the aggregate Change as changed.
+						for _, cc := range cmdChanges {
+							if cc.Changed {
+								ch.Changed = true
+								break
+							}
+						}
+					}
+					return ch, nil
 				}
 
 			case component.DesignMemory:

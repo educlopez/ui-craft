@@ -3,10 +3,6 @@
 # --config .goreleaser.yaml; the `builds[].dir` field points into cli/ so the
 # correct Go module (github.com/educlopez/ui-craft/cli) is used.
 #
-# CI ordering (gotcha #5): the release CI workflow MUST run sync-harnesses.mjs
-# and copy mirrors into cli/assets/mirrors/ BEFORE goreleaser executes. This
-# file does not enforce that — the workflow does (see .github/workflows/cli-release.yml).
-#
 # Homebrew tap:  educlopez/homebrew-tap   (shared — also duck-ai + other tools)
 # Scoop bucket:  educlopez/scoop-bucket    (shared)
 # Both use HOMEBREW_TAP_TOKEN (same token for homebrew + scoop push).
@@ -14,12 +10,6 @@
 version: 2
 
 project_name: ui-craft
-
-before:
-  hooks:
-    # Verify that mirrors/ was populated before goreleaser runs.
-    # This guard catches any CI step-ordering bug (gotcha #5).
-    - "sh -c \"test -d cli/assets/mirrors && find cli/assets/mirrors -not -name .gitkeep -not -name VERSION -type f | grep -q . || (echo 'ERROR: cli/assets/mirrors/ is empty - run sync-harnesses step first' && exit 1)\""
 
 builds:
   - id: ui-craft
@@ -40,7 +30,6 @@ builds:
     ldflags:
       - -s -w
       - -X main.version={{.Version}}
-      - -X main.mirrorVersion={{.Env.MIRROR_VERSION}}
     mod_timestamp: "{{ .CommitTimestamp }}"
     flags:
       - -trimpath

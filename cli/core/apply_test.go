@@ -47,6 +47,9 @@ func (s stubHarness) WriteSkill(w fsutil.FileSystem, mirror fs.FS) (harness.Chan
 func (s stubHarness) WriteAgents(w fsutil.FileSystem, agentsFS fs.FS) ([]harness.Change, error) {
 	return nil, harness.ErrNotImplemented
 }
+func (s stubHarness) WriteCommands(w fsutil.FileSystem, commandsFS fs.FS) ([]harness.Change, error) {
+	return nil, harness.ErrUnsupported
+}
 
 // makeWriteOp creates a WriterOp that writes content to path on mem.
 // It also writes to snapPath so the pre-snapshot captures the file state.
@@ -400,7 +403,7 @@ func TestPlan_skipsUnsupportedComponents(t *testing.T) {
 	}
 	selected := component.All()
 
-	plan := core.Plan(detected, selected, fsutil.NewMemFS(), nil, nil, nil, "")
+	plan := core.Plan(detected, selected, fsutil.NewMemFS(), nil, nil, nil, nil, "")
 
 	for _, t2 := range plan.Targets {
 		if t2.Component == component.ReviewAgents {
@@ -513,6 +516,9 @@ func (a agentHarness) WriteAgents(w fsutil.FileSystem, agentsFS fs.FS) ([]harnes
 	})
 	return changes, err
 }
+func (a agentHarness) WriteCommands(w fsutil.FileSystem, commandsFS fs.FS) ([]harness.Change, error) {
+	return nil, harness.ErrUnsupported
+}
 
 // fixtureAgentsFS builds an in-memory fs.FS with two agent .md files,
 // mirroring the embedded agents/claude/ subtree for core-level tests.
@@ -583,7 +589,7 @@ func TestReviewAgents_rollbackPreservesUserAgent(t *testing.T) {
 			return aFS
 		}
 		return nil
-	}, nil, "")
+	}, nil, nil, "")
 
 	// Append a failing sentinel op to force rollback after WriteAgents succeeds.
 	failPath := filepath.Join(fakeHome, "fail-sentinel.json")
@@ -676,7 +682,7 @@ func TestDesignMemory_partialScaffoldRollbackSafety(t *testing.T) {
 	selected := []component.Component{component.DesignMemory}
 
 	tmplFS := fixtureTemplateFS()
-	plan := core.Plan(detected, selected, mem, nil, nil, func() fs.FS { return tmplFS }, projectDir)
+	plan := core.Plan(detected, selected, mem, nil, nil, func() fs.FS { return tmplFS }, nil, projectDir)
 
 	// Append a failing sentinel op to trigger rollback.
 	failPath := filepath.Join("/home/user", "fail-sentinel.json")
@@ -712,5 +718,158 @@ func TestDesignMemory_partialScaffoldRollbackSafety(t *testing.T) {
 		if _, statErr := mem.Stat(f); statErr == nil {
 			t.Errorf("scaffold-created file %s should be deleted after rollback, but still exists", f)
 		}
+	}
+}
+
+// commandCapableHarness is a test harness that supports commands (like claude/opencode).
+// It reports a fixed CommandsDir so Plan can wire the commands provider into SnapPaths.
+type commandCapableHarness struct {
+	name        string
+	skillsDir   string
+	commandsDir string
+}
+
+func (h commandCapableHarness) Name() string { return h.name }
+func (h commandCapableHarness) Detect() (harness.DetectResult, error) {
+	return harness.DetectResult{Installed: true, ConfigRoot: "/home/user/." + h.name}, nil
+}
+func (h commandCapableHarness) ConfigPaths() harness.ConfigPaths {
+	return harness.ConfigPaths{
+		MCPConfig:   "/home/user/." + h.name + "/mcp.json",
+		SkillsDir:   h.skillsDir,
+		CommandsDir: h.commandsDir,
+	}
+}
+func (h commandCapableHarness) Supports(c component.Component) bool {
+	return c == component.SkillCommands || c == component.MCPGates
+}
+func (h commandCapableHarness) ConfigRoot() string { return "/home/user/." + h.name }
+func (h commandCapableHarness) WriteMCP(w fsutil.FileSystem, server harness.MCPServer) (harness.Change, error) {
+	return harness.Change{}, nil
+}
+func (h commandCapableHarness) WriteSkill(w fsutil.FileSystem, mirror fs.FS) (harness.Change, error) {
+	return harness.Change{Changed: true}, nil
+}
+func (h commandCapableHarness) WriteAgents(w fsutil.FileSystem, agentsFS fs.FS) ([]harness.Change, error) {
+	return nil, harness.ErrUnsupported
+}
+func (h commandCapableHarness) WriteCommands(w fsutil.FileSystem, commandsFS fs.FS) ([]harness.Change, error) {
+	if commandsFS == nil {
+		return nil, harness.ErrUnsupported
+	}
+	return []harness.Change{{FilePath: h.commandsDir + "/craft.md", Changed: true}}, nil
+}
+
+// TestPlan_includesCommandsInSnapPaths verifies that Plan includes CommandsDir in
+// SnapPaths for command-capable harnesses when a commandsProvider is supplied.
+func TestPlan_includesCommandsInSnapPaths(t *testing.T) {
+	skillsDir := "/home/user/.fakeclaude/skills"
+	commandsDir := "/home/user/.fakeclaude/commands"
+	h := commandCapableHarness{
+		name:        "fakeclaude",
+		skillsDir:   skillsDir,
+		commandsDir: commandsDir,
+	}
+	detected := []core.DetectedHarness{
+		{Harness: h, Result: harness.DetectResult{Installed: true}},
+	}
+	selected := []component.Component{component.SkillCommands}
+	mem := fsutil.NewMemFS()
+
+	// Fixture mirror FS (skills-rooted).
+	mirrorFS := fstest.MapFS{
+		"ui-craft/SKILL.md": {Data: []byte("# skill\n")},
+	}
+	// Fixture commands FS.
+	cmdFS := fstest.MapFS{
+		"craft.md": {Data: []byte("# /craft\n")},
+	}
+
+	plan := core.Plan(
+		detected,
+		selected,
+		mem,
+		func(name string) fs.FS { return mirrorFS },
+		nil,
+		nil,
+		func(name string) fs.FS { return cmdFS },
+		"",
+	)
+
+	if len(plan.Targets) == 0 {
+		t.Fatal("expected at least one plan target")
+	}
+
+	foundCommandsInSnap := false
+	for _, tgt := range plan.Targets {
+		if tgt.Component != component.SkillCommands || tgt.Skip {
+			continue
+		}
+		for _, p := range tgt.SnapPaths {
+			if p == commandsDir {
+				foundCommandsInSnap = true
+			}
+		}
+	}
+	if !foundCommandsInSnap {
+		t.Errorf("expected CommandsDir %q to appear in SnapPaths for command-capable harness", commandsDir)
+	}
+}
+
+// TestPlan_commandsWrittenToDisk verifies the full pipeline:
+// Plan + Apply writes both skill files AND command files to the mem FS.
+func TestPlan_commandsWrittenToDisk(t *testing.T) {
+	skillsDir := "/home/user/.fakeclaude/skills"
+	commandsDir := "/home/user/.fakeclaude/commands"
+	h := commandCapableHarness{
+		name:        "fakeclaude",
+		skillsDir:   skillsDir,
+		commandsDir: commandsDir,
+	}
+	detected := []core.DetectedHarness{
+		{Harness: h, Result: harness.DetectResult{Installed: true}},
+	}
+	selected := []component.Component{component.SkillCommands}
+	mem := fsutil.NewMemFS()
+
+	mirrorFS := fstest.MapFS{
+		"ui-craft/SKILL.md": {Data: []byte("# skill\n")},
+	}
+	cmdFS := fstest.MapFS{
+		"craft.md": {Data: []byte("# /craft\n")},
+	}
+
+	plan := core.Plan(
+		detected,
+		selected,
+		mem,
+		func(name string) fs.FS { return mirrorFS },
+		nil,
+		nil,
+		func(name string) fs.FS { return cmdFS },
+		"",
+	)
+
+	backupRoot := t.TempDir()
+	store := backup.NewStore(backupRoot, mem, nil)
+	result, err := core.Apply(plan, mem, store, "v0-test", false)
+	if err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
+	if len(result.Changes) == 0 {
+		t.Fatal("expected at least one change from Apply")
+	}
+
+	// commandCapableHarness.WriteCommands returns a Change with FilePath = commandsDir/craft.md.
+	// The aggregate change from Plan's Op should report Changed:true.
+	anyChanged := false
+	for _, ch := range result.Changes {
+		if ch.Changed {
+			anyChanged = true
+			break
+		}
+	}
+	if !anyChanged {
+		t.Error("expected at least one Changed:true after plan+apply with commands")
 	}
 }

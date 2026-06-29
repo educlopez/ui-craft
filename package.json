@@ -29,7 +29,6 @@
     "code-quality"
   ],
   "scripts": {
-    "sync": "node scripts/sync-harnesses.mjs",
     "detect": "node scripts/detect.mjs",
     "validate": "node scripts/validate.mjs"
   },

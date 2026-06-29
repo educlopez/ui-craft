@@ -91,6 +91,64 @@ func TestCheckForUpdate_TTLChecksAfter24h(t *testing.T) {
 	}
 }
 
+// ─── 6h cooldown boundary tests ───────────────────────────────────────────────
+// These tests define the exact 6h TTL boundary (gentle-ai parity).
+// They will FAIL with updateCheckTTL = 24h and PASS with updateCheckTTL = 6h.
+
+// TestCheckForUpdate_TTLSkipsJustUnder6h verifies that a check timestamp that is
+// just under 6h ago (5h59m) does NOT trigger a network call — we are still within
+// the 6h cooldown window.
+func TestCheckForUpdate_TTLSkipsJustUnder6h(t *testing.T) {
+	m := fsutil.NewMemFS()
+	root := "/home/user/.ui-craft-6h-under"
+
+	now := time.Date(2026, 6, 25, 12, 0, 0, 0, time.UTC)
+	lastCheck := now.Add(-5*time.Hour - 59*time.Minute) // 5h59m ago — just under 6h
+
+	writeLastCheck(t, m, root, lastCheck)
+	withClock(t, func() time.Time { return now })
+
+	fetchCalled := false
+	withFetcher(t, func(_ string) (string, error) {
+		fetchCalled = true
+		return "v9.9.9", nil
+	})
+
+	result := core.CheckForUpdate(m, root, "v0.21.0")
+
+	if fetchCalled {
+		t.Error("fetcher must NOT be called when last check is within 6h TTL (5h59m elapsed)")
+	}
+	if result.Available {
+		t.Error("must return no update when within 6h TTL")
+	}
+}
+
+// TestCheckForUpdate_TTLChecksJustOver6h verifies that a check timestamp that is
+// just over 6h ago (6h1m) DOES trigger a network call — the 6h cooldown has expired.
+func TestCheckForUpdate_TTLChecksJustOver6h(t *testing.T) {
+	m := fsutil.NewMemFS()
+	root := "/home/user/.ui-craft-6h-over"
+
+	now := time.Date(2026, 6, 25, 12, 0, 0, 0, time.UTC)
+	lastCheck := now.Add(-6*time.Hour - 1*time.Minute) // 6h1m ago — just over 6h
+
+	writeLastCheck(t, m, root, lastCheck)
+	withClock(t, func() time.Time { return now })
+
+	fetchCalled := false
+	withFetcher(t, func(_ string) (string, error) {
+		fetchCalled = true
+		return "v0.21.0", nil // same version — no update
+	})
+
+	_ = core.CheckForUpdate(m, root, "v0.21.0")
+
+	if !fetchCalled {
+		t.Error("fetcher must be called when last check is outside 6h TTL (6h1m elapsed)")
+	}
+}
+
 // TestCheckForUpdate_NeverChecked verifies that on first run (no state.json),
 // the fetcher IS called.
 func TestCheckForUpdate_NeverChecked(t *testing.T) {

@@ -57,17 +57,20 @@ func TestVersionJSON_validJSON(t *testing.T) {
 	if v, _ := versionRaw.(string); !strings.Contains(v, "v1.2.3") {
 		t.Errorf("version --json: expected version v1.2.3, got %q", v)
 	}
-	if _, ok := m["mirror"]; !ok {
-		t.Error("version --json: missing 'mirror' key")
+	// 'mirror' key is removed in Slice 6 (freshness machinery teardown).
+	if _, ok := m["mirror"]; ok {
+		t.Error("version --json: 'mirror' key must NOT be present after freshness teardown")
 	}
 }
 
-func TestVersionJSON_hasVersionAndMirrorKeys(t *testing.T) {
+func TestVersionJSON_hasVersionKey(t *testing.T) {
 	m := runVersionJSON(t, "v9.9.9")
-	for _, key := range []string{"version", "mirror"} {
-		if _, ok := m[key]; !ok {
-			t.Errorf("version --json: missing key %q", key)
-		}
+	if _, ok := m["version"]; !ok {
+		t.Error("version --json: missing key 'version'")
+	}
+	// 'mirror' key is removed in Slice 6 (freshness machinery teardown).
+	if _, ok := m["mirror"]; ok {
+		t.Error("version --json: 'mirror' key must NOT be present after freshness teardown")
 	}
 }
 

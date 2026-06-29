@@ -43,27 +43,27 @@ func TestVersionCmd_containsBinaryVersion(t *testing.T) {
 	}
 }
 
-func TestVersionCmd_containsMirrorVersion(t *testing.T) {
-	out := runVersion(t, "dev")
-	// Mirror version comes from assets/mirrors/VERSION which contains "dev".
-	if !strings.Contains(out, "mirror:") {
-		t.Errorf("version output %q does not contain 'mirror:' label", out)
+// TestVersionCmd_noMirrorLine verifies the mirror-version line is gone after
+// Slice 6 freshness machinery teardown. The output must NOT contain "mirror:".
+func TestVersionCmd_noMirrorLine(t *testing.T) {
+	out := runVersion(t, "v1.0.0")
+	if strings.Contains(out, "mirror:") {
+		t.Errorf("version output %q must NOT contain 'mirror:' label after freshness teardown", out)
 	}
 }
 
 func TestVersionCmd_defaultVersionIsDev(t *testing.T) {
-	// Pass a binary version distinct from the mirror version so the test can
-	// verify BOTH are wired correctly.  If binary-version injection breaks, the
-	// output will not contain "v9.9.9-test" and the test will fail.
+	// Pass a binary version distinct from what was previously a mirror version so
+	// the test can verify version injection works correctly.
 	const binaryVersion = "v9.9.9-test"
 	out := runVersion(t, binaryVersion)
 
 	if !strings.Contains(out, binaryVersion) {
 		t.Errorf("version output %q does not contain binary version %q", out, binaryVersion)
 	}
-	// Mirror version label must also be present (contents come from assets/mirrors/VERSION).
-	if !strings.Contains(out, "mirror:") {
-		t.Errorf("version output %q does not contain 'mirror:' label", out)
+	// Mirror version label must NOT be present (freshness machinery removed in Slice 6).
+	if strings.Contains(out, "mirror:") {
+		t.Errorf("version output %q must NOT contain 'mirror:' label after freshness teardown", out)
 	}
 }
 

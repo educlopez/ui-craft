@@ -87,9 +87,10 @@ func (h OpenCodeHarness) Detect() (DetectResult, error) {
 func (h OpenCodeHarness) ConfigPaths() ConfigPaths {
 	root := h.configRoot()
 	return ConfigPaths{
-		MCPConfig: filepath.Join(root, "opencode.json"),
-		SkillsDir: filepath.Join(root, "skills"),
-		AgentsDir: filepath.Join(root, "agent"),
+		MCPConfig:   filepath.Join(root, "opencode.json"),
+		SkillsDir:   filepath.Join(root, "skills"),
+		AgentsDir:   filepath.Join(root, "agent"),
+		CommandsDir: filepath.Join(root, "commands"),
 	}
 }
 
@@ -169,10 +170,12 @@ func (h OpenCodeHarness) WriteMCP(w fsutil.FileSystem, server MCPServer) (Change
 	}, nil
 }
 
-// WriteSkill copies the embedded OpenCode mirror into ~/.config/opencode/skills/ui-craft/.
-// Full-file ownership; idempotent via byte-compare in WriteFileAtomic.
+// WriteSkill copies the embedded OpenCode skills tree into ~/.config/opencode/skills/.
+// The mirror FS is rooted at the skills level (assets.SkillsFS("opencode")),
+// so walking it yields <id>/SKILL.md paths that land at depth-1:
+// ~/.config/opencode/skills/<id>/SKILL.md. Full-file ownership; idempotent.
 func (h OpenCodeHarness) WriteSkill(w fsutil.FileSystem, mirror fs.FS) (Change, error) {
-	destDir := filepath.Join(h.ConfigPaths().SkillsDir, "ui-craft")
+	destDir := h.ConfigPaths().SkillsDir
 	ch, err := writeMirrorToDir(w, mirror, destDir)
 	if err != nil {
 		return Change{}, fmt.Errorf("opencode: write skill mirror: %w", err)
@@ -180,16 +183,29 @@ func (h OpenCodeHarness) WriteSkill(w fsutil.FileSystem, mirror fs.FS) (Change, 
 	return ch, nil
 }
 
+// WriteCommands writes slash-command .md files flat into ~/.config/opencode/commands/.
+// commandsFS is the commands-rooted FS from assets.CommandsFS("opencode"), where
+// each entry is a flat <name>.md file. The CLI owns the command files it
+// installs; stale files no longer in commandsFS are removed (scoped cleanup).
+// A nil commandsFS returns ErrUnsupported.
+func (h OpenCodeHarness) WriteCommands(w fsutil.FileSystem, commandsFS fs.FS) ([]Change, error) {
+	if commandsFS == nil {
+		return nil, ErrUnsupported
+	}
+	commandsDir := h.ConfigPaths().CommandsDir // ~/.config/opencode/commands/
+	return writeFlatMDToDir(w, commandsFS, commandsDir, "opencode")
+}
+
 // WriteAgents writes the review agent definitions into OpenCode's native agent
 // directory (~/.config/opencode/agent/). Each .md file in agentsFS is written
 // as a separate agent file using WriteFileAtomic (idempotent byte-compare).
 //
 // OpenCode uses a simpler frontmatter schema (name + description only, no tools
-// or color fields). The agent files in mirrors/opencode/agent/ are pre-formatted
+// or color fields). The agent files in assets/agents/opencode/ are pre-formatted
 // for OpenCode — the body/instructions are identical to the Claude versions but
 // only the harness-relevant frontmatter keys are present.
 //
-// agentsFS is the sub-FS rooted at mirrors/opencode/agent/. If agentsFS is nil,
+// agentsFS is the sub-FS rooted at assets/agents/opencode/. If agentsFS is nil,
 // ErrUnsupported is returned.
 func (h OpenCodeHarness) WriteAgents(w fsutil.FileSystem, agentsFS fs.FS) ([]Change, error) {
 	if agentsFS == nil {
