@@ -1,5 +1,11 @@
 # Versions
 
+## v1.0.3 (2026-06-29) — fix: install crash when the skills dir contains a directory symlink
+
+v1.0.2's depth-1 layout snapshots the shared `~/.<harness>/skills/` dir before installing (for rollback). If that dir contained a **directory symlink** — e.g. a skill another tool installed as `~/.claude/skills/agent-browser -> /elsewhere` — the pre-install snapshot crashed with `apply: snapshot: backup: read …/agent-browser: is a directory`, and the whole install rolled back. Cause: `os.DirEntry.IsDir()` reports `false` for a symlink, so the backup walk tried to `ReadFile` it and followed the link into a directory (EISDIR).
+
+**Fix (gentle-ai parity):** the backup snapshot walk now skips directory symlinks (never traverses into external trees) and still includes file symlinks (supports dotfile managers like stow/chezmoi). Unrelated symlinked skills are left untouched; the install completes normally.
+
 ## v1.0.2 (2026-06-29) — gentle-ai parity: correct install layout + interactive TUI hub
 
 Two coordinated CLI changes bring `ui-craft` to full parity with the proven gentle-ai installer.
