@@ -34,8 +34,8 @@ import (
 
 // SelfUpdateRelease holds the data extracted from the GitHub releases API.
 type SelfUpdateRelease struct {
-	TagName string             `json:"tag_name"`
-	Assets  []SelfUpdateAsset  `json:"assets"`
+	TagName string            `json:"tag_name"`
+	Assets  []SelfUpdateAsset `json:"assets"`
 }
 
 // SelfUpdateAsset is one release asset entry.

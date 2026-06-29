@@ -54,10 +54,10 @@ func TestUninstall_removesOwnedSkillDir(t *testing.T) {
 	})
 
 	opts := core.UninstallOpts{
-		HomeDir:     homeDir,
-		SkillsDir:   skillsDir,
-		SnapshotFn:  func() (string, error) { return "snap-001", nil },
-		Output:      discardWriter{},
+		HomeDir:    homeDir,
+		SkillsDir:  skillsDir,
+		SnapshotFn: func() (string, error) { return "snap-001", nil },
+		Output:     discardWriter{},
 	}
 	report, err := core.Uninstall(opts, mem)
 	if err != nil {
@@ -86,8 +86,8 @@ func TestUninstall_preservesDesignMemoryByDefault(t *testing.T) {
 	designMemDir := "/projects/myapp/.ui-craft"
 
 	populateMemFS(t, mem, map[string][]byte{
-		uiCraftSkillDir + "/SKILL.md":    []byte("# skill"),
-		designMemDir + "/brief.md":       []byte("# design"),
+		uiCraftSkillDir + "/SKILL.md": []byte("# skill"),
+		designMemDir + "/brief.md":    []byte("# design"),
 	})
 
 	opts := core.UninstallOpts{

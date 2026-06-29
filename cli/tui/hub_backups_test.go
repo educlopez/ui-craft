@@ -262,8 +262,7 @@ func TestBackups_enterOnItemDispatchesRestoreCmd(t *testing.T) {
 	m = updated.(AppModel)
 
 	// Press Enter to confirm restore.
-	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
-	m = updated.(AppModel)
+	_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
 
 	if cmd == nil {
 		t.Error("Enter on backup item must dispatch a non-nil cmd (restore)")

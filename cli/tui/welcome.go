@@ -113,4 +113,3 @@ func renderWelcome(m AppModel) string {
 	// No surrounding frame — the art + menu render flush, gentle-ai style.
 	return sb.String()
 }
-

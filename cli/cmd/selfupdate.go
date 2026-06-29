@@ -70,7 +70,7 @@ func runSelfUpdate(cmd *cobra.Command, _ []string) error {
 		return runSelfUpdateJSON(out)
 	}
 
-	var coreOut io.Writer = out
+	coreOut := out
 	if flags.Quiet {
 		coreOut = io.Discard
 	}
@@ -78,9 +78,9 @@ func runSelfUpdate(cmd *cobra.Command, _ []string) error {
 	opts := core.SelfUpdateOpts{
 		CurrentVersion: cmdVersion,
 		Output:         coreOut,
-		FetchRelease:   selfUpdateFetchRelease,   // nil → core uses real HTTP
-		DownloadAsset:  selfUpdateDownloadAsset,  // nil → core uses real HTTP
-		ExecPath:       selfUpdateExecPath,       // nil → core uses os.Executable
+		FetchRelease:   selfUpdateFetchRelease,  // nil → core uses real HTTP
+		DownloadAsset:  selfUpdateDownloadAsset, // nil → core uses real HTTP
+		ExecPath:       selfUpdateExecPath,      // nil → core uses os.Executable
 	}
 	_, err := core.RunSelfUpdate(opts)
 	return err

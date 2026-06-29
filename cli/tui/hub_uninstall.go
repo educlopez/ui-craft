@@ -6,8 +6,8 @@
 // Architecture:
 //   - ScreenUninstall has two sub-states:
 //     1. Confirm step (uninstallRunning == false): show detected harnesses /
-//        components that will be removed, prompt to confirm with Enter or cancel
-//        with Esc.
+//     components that will be removed, prompt to confirm with Enter or cancel
+//     with Esc.
 //     2. Running step (uninstallRunning == true): spinner while the goroutine runs.
 //   - uninstallDoneMsg is delivered when the goroutine completes.
 //   - AppModel carries two injection seams:
@@ -214,10 +214,10 @@ func realUninstall(version string) ([]string, error) {
 	}
 
 	report, err := core.Uninstall(core.UninstallOpts{
-		HomeDir:   home,
-		SkillsDir: skillsDir,
+		HomeDir:    home,
+		SkillsDir:  skillsDir,
 		SnapshotFn: nil, // snapshot already taken in realUninstallSnapshot
-		Output:    io.Discard,
+		Output:     io.Discard,
 	}, fs)
 	if err != nil {
 		return nil, err
