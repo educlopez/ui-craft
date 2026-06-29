@@ -10,12 +10,16 @@ mcp/node_modules/
 # MCP build output (rebuilt on prepublish)
 mcp/dist/
 
-# CLI: harness mirrors are committed directly (gentle-ai model — no gen-before-build).
-# Run `make gen-mirrors` to regenerate, then commit the result.
-# Drift from skills/ is caught at PR time by the check-mirrors CI step.
+# CLI: per-harness assets are hand-authored & committed under cli/assets/<harness>/.
 
 # CLI binary artifact
 cli/ui-craft
 
 # goreleaser local snapshot output
 dist/
+
+# Local tooling + out-of-scope artifacts (not part of the repo)
+.codegraph/
+.cursor/
+openspec/
+video/
