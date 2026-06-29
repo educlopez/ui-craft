@@ -1,5 +1,17 @@
 # Versions
 
+## v1.0.1 (2026-06-29) — fix: Homebrew cask SIGKILL on Apple Silicon
+
+The v1.0.0 cask installed cleanly but `ui-craft` was hard-killed (`killed: 9`) on first run on Apple Silicon. The static Go binary is ad-hoc signed (`CGO_ENABLED=0`), but Homebrew left the `com.apple.quarantine` flag on it — and Gatekeeper SIGKILLs a quarantined ad-hoc-signed binary instead of prompting.
+
+**Fix:** the goreleaser `homebrew_casks` definition now runs a `hooks.post.install` postflight that strips `com.apple.quarantine` from the staged binary on macOS. New installs (and `brew upgrade`) run without the kill.
+
+**Already installed v1.0.0?** Unblock without waiting for the upgrade:
+
+```
+xattr -dr com.apple.quarantine "$(brew --prefix)/Caskroom/ui-craft" && ui-craft --version
+```
+
 ## v1.0.0 (2026-06-25) — the ui-craft system: a cross-harness installer CLI
 
 ui-craft graduates from "a skill you install" to **a system you install**. New: a single static Go binary (`ui-craft`) that detects your AI coding harness and wires the whole system into its native config — the experience that was Claude-Code-only is now cross-harness in one command.

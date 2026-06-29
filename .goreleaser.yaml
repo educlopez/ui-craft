@@ -101,6 +101,15 @@ homebrew_casks:
     directory: Casks
     binaries:
       - ui-craft
+    # Strip the com.apple.quarantine flag on install. Without this, the
+    # ad-hoc-signed binary is SIGKILLed ("killed: 9") by Gatekeeper on
+    # Apple Silicon instead of running. Runs only on macOS.
+    hooks:
+      post:
+        install: |
+          if OS.mac? && File.exist?("#{staged_path}/ui-craft")
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/ui-craft"]
+          end
 
 scoops:
   - name: ui-craft
