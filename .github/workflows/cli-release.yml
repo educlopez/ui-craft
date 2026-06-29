@@ -7,9 +7,8 @@ name: CLI Release (goreleaser)
 # Distinct from release.yml (which only creates the GitHub Release note from
 # VERSIONS.md). This workflow builds and publishes the Go binary.
 #
-# Mirrors are committed directly (gentle-ai model — no gen-before-build).
+# Assets are committed directly (hand-authored, no gen-before-build).
 # The build is self-contained: checkout → setup-go → goreleaser.
-# Mirror drift is caught at PR time by the check-mirrors CI step (validate.yml).
 
 on:
   push:
@@ -49,13 +48,6 @@ jobs:
             echo "cli/assets/agents/ OK"
           fi
 
-      # Set MIRROR_VERSION from the top-level package.json version
-      - name: Set MIRROR_VERSION env
-        run: |
-          MIRROR_VERSION=$(node -p "require('./package.json').version")
-          echo "MIRROR_VERSION=$MIRROR_VERSION" >> "$GITHUB_ENV"
-          echo "Mirror version: $MIRROR_VERSION"
-
       # ── Step 2: Setup Go ──────────────────────────────────────────────────
       - name: Setup Go
         uses: actions/setup-go@v5
@@ -74,7 +66,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
-          MIRROR_VERSION: ${{ env.MIRROR_VERSION }}
 
   # ── Post-release smoke test ───────────────────────────────────────────────
   smoke-test:

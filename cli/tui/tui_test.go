@@ -40,6 +40,9 @@ func (a *fakeHarnessAdapter) WriteSkill(_ fsutil.FileSystem, _ fs.FS) (harness.C
 func (a *fakeHarnessAdapter) WriteAgents(_ fsutil.FileSystem, _ fs.FS) ([]harness.Change, error) {
 	return nil, harness.ErrNotImplemented
 }
+func (a *fakeHarnessAdapter) WriteCommands(_ fsutil.FileSystem, _ fs.FS) ([]harness.Change, error) {
+	return nil, harness.ErrUnsupported
+}
 
 // detectedFake wraps a fakeHarnessAdapter as core.DetectedHarness.
 func detectedFake(name string, supported map[component.Component]bool) core.DetectedHarness {
@@ -291,9 +294,10 @@ func TestAppModel_planBuildingParity(t *testing.T) {
 		m.selected,
 		m.components,
 		nil, // no FS needed — Plan only uses FS for write ops, not target building
-		assets.Mirror,
+		assets.SkillsFS,
 		assets.Agents,
 		assets.TemplateFS,
+		assets.CommandsFS,
 		"/tmp/parity-test",
 	)
 

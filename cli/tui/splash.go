@@ -2,9 +2,9 @@ package tui
 
 import (
 	"strings"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 )
 
 // arenArt is the Aren dog braille art (24×12), generated from the ui-craft logo.
@@ -49,10 +49,13 @@ func NewSplashModel(version string) SplashModel {
 // splashDoneMsg is the internal message emitted when the splash is complete.
 type splashDoneMsg struct{}
 
-// Init sends a one-shot command to auto-advance past the splash.
+// Init sends a one-shot command to auto-advance past the splash after a
+// 1500 ms dwell so at least one rendered frame is visible. Detection runs
+// concurrently in app.go via tea.Batch(m.splash.Init(), updateCmd).
 func (m SplashModel) Init() tea.Cmd {
-	// Advance immediately — the splash is rendered once then the app moves on.
-	return func() tea.Msg { return splashDoneMsg{} }
+	return tea.Tick(1500*time.Millisecond, func(time.Time) tea.Msg {
+		return splashDoneMsg{}
+	})
 }
 
 // Update handles messages for the SplashModel.
@@ -72,28 +75,10 @@ func (m SplashModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // View renders the Aren splash. Each row of the art is colored with a
 // gradient band from the palette defined in styles.go. When NO_COLOR or
 // TERM=dumb is active, the art is rendered as plain ASCII with no ANSI codes.
+// The gradient loop is now shared via renderArtHeader (welcome.go).
 func (m SplashModel) View() string {
-	bands := gradientBands()
-	numBands := len(bands)
-	numRows := len(arenArt)
-
 	var sb strings.Builder
-	for i, row := range arenArt {
-		// Distribute rows evenly across the 5 gradient bands.
-		bandIdx := 0
-		if numRows > 1 {
-			bandIdx = (i * (numBands - 1)) / (numRows - 1)
-		}
-		color := bands[bandIdx]
-
-		if color == "" || noColor() {
-			sb.WriteString(row)
-		} else {
-			style := lipgloss.NewStyle().Foreground(lipgloss.Color(color))
-			sb.WriteString(style.Render(row))
-		}
-		sb.WriteByte('\n')
-	}
+	sb.WriteString(renderArtHeader(m.width))
 
 	// Version line below the art.
 	versionLine := "ui-craft " + m.version

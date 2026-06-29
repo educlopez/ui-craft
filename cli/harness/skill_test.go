@@ -13,13 +13,16 @@ import (
 	"github.com/educlopez/ui-craft/cli/internal/filemerge"
 )
 
-// fixtureMirror builds an in-memory fs.FS with a SKILL.md and a subdir file.
+// fixtureMirror builds an in-memory fs.FS that simulates the skills-rooted FS
+// returned by assets.SkillsFS(h). Files live under a top-level skill-id dir
+// so that writeMirrorToDir(w, skillsFS, SkillsDir) produces depth-1 layout:
+// SkillsDir/ui-craft/SKILL.md (not SkillsDir/ui-craft/ui-craft/SKILL.md).
 func fixtureMirror() fs.FS {
 	return fstest.MapFS{
-		"SKILL.md": &fstest.MapFile{
+		"ui-craft/SKILL.md": &fstest.MapFile{
 			Data: []byte("# ui-craft skill\n\nThis is the skill content.\n"),
 		},
-		"references/tokens.md": &fstest.MapFile{
+		"ui-craft/references/tokens.md": &fstest.MapFile{
 			Data: []byte("# Design Tokens\n"),
 		},
 	}
@@ -214,13 +217,16 @@ func TestWriteSkill_codexOrphanMarkerRepair(t *testing.T) {
 }
 
 // TestWriteSkill_copiesAllMirrorFiles verifies that every file in the mirror
-// (except .gitkeep) is written into the destination directory.
+// (except .gitkeep) is written into the destination directory at depth-1.
+// The skills-rooted mirror FS contains ui-craft/SKILL.md; WriteSkill must
+// write it to SkillsDir/ui-craft/SKILL.md (not SkillsDir/ui-craft/ui-craft/SKILL.md).
 func TestWriteSkill_copiesAllMirrorFiles(t *testing.T) {
 	mem := fsutil.NewMemFS()
+	// Mirror simulates assets.SkillsFS: files under a top-level skill-id dir.
 	mirror := fstest.MapFS{
-		"SKILL.md":             &fstest.MapFile{Data: []byte("skill")},
-		"references/tokens.md": &fstest.MapFile{Data: []byte("tokens")},
-		".gitkeep":             &fstest.MapFile{Data: []byte("")},
+		"ui-craft/SKILL.md":             &fstest.MapFile{Data: []byte("skill")},
+		"ui-craft/references/tokens.md": &fstest.MapFile{Data: []byte("tokens")},
+		"ui-craft/.gitkeep":             &fstest.MapFile{Data: []byte("")},
 	}
 
 	h := harness.ClaudeHarness{}
@@ -229,10 +235,11 @@ func TestWriteSkill_copiesAllMirrorFiles(t *testing.T) {
 		t.Fatalf("WriteSkill: %v", err)
 	}
 
-	skillsDir := filepath.Join(h.ConfigPaths().SkillsDir, "ui-craft")
+	// Depth-1: files land at SkillsDir/<id>/... not SkillsDir/ui-craft/<id>/...
+	skillsDir := h.ConfigPaths().SkillsDir
 
-	// SKILL.md and references/tokens.md should exist.
-	for _, rel := range []string{"SKILL.md", "references/tokens.md"} {
+	// SKILL.md and references/tokens.md should exist at depth-1.
+	for _, rel := range []string{"ui-craft/SKILL.md", "ui-craft/references/tokens.md"} {
 		p := filepath.Join(skillsDir, rel)
 		if _, err := mem.Stat(p); err != nil {
 			t.Errorf("expected %s to exist after WriteSkill: %v", p, err)
@@ -240,7 +247,7 @@ func TestWriteSkill_copiesAllMirrorFiles(t *testing.T) {
 	}
 
 	// .gitkeep should NOT be written.
-	gitkeep := filepath.Join(skillsDir, ".gitkeep")
+	gitkeep := filepath.Join(skillsDir, "ui-craft", ".gitkeep")
 	if _, err := mem.Stat(gitkeep); err == nil {
 		t.Errorf(".gitkeep should not be written to skills dir")
 	}
@@ -332,25 +339,27 @@ func TestWriteSkill_siblingSkillSurvives(t *testing.T) {
 // TestWriteSkill_staleFilesRemovedOnUpdate verifies that a file present in a
 // previous install but absent from the new mirror is removed during an update.
 // This guards against stale files persisting across mirror version upgrades.
+// The mirror FS simulates assets.SkillsFS: files are under a top-level skill-id dir.
 func TestWriteSkill_staleFilesRemovedOnUpdate(t *testing.T) {
 	mem := fsutil.NewMemFS()
 	h := harness.ClaudeHarness{}
 
 	mirror1 := fstest.MapFS{
-		"SKILL.md": &fstest.MapFile{Data: []byte("v1\n")},
-		"old.md":   &fstest.MapFile{Data: []byte("old file\n")},
+		"ui-craft/SKILL.md": &fstest.MapFile{Data: []byte("v1\n")},
+		"ui-craft/old.md":   &fstest.MapFile{Data: []byte("old file\n")},
 	}
 	mirror2 := fstest.MapFS{
-		"SKILL.md": &fstest.MapFile{Data: []byte("v2\n")},
-		// old.md deliberately removed from v2 mirror
+		"ui-craft/SKILL.md": &fstest.MapFile{Data: []byte("v2\n")},
+		// ui-craft/old.md deliberately removed from v2 mirror
 	}
 
 	if _, err := h.WriteSkill(mem, mirror1); err != nil {
 		t.Fatalf("first WriteSkill: %v", err)
 	}
 
-	skillsDir := filepath.Join(h.ConfigPaths().SkillsDir, "ui-craft")
-	oldFile := filepath.Join(skillsDir, "old.md")
+	// Depth-1: files land at SkillsDir/ui-craft/old.md
+	skillsDir := h.ConfigPaths().SkillsDir
+	oldFile := filepath.Join(skillsDir, "ui-craft", "old.md")
 
 	// Verify old.md exists after first install.
 	if _, err := mem.Stat(oldFile); err != nil {
@@ -371,13 +380,88 @@ func TestWriteSkill_staleFilesRemovedOnUpdate(t *testing.T) {
 		t.Error("old.md should have been removed after update with new mirror that lacks it")
 	}
 
-	// SKILL.md must be present with new content.
-	skillMD := filepath.Join(skillsDir, "SKILL.md")
+	// SKILL.md must be present with new content at depth-1.
+	skillMD := filepath.Join(skillsDir, "ui-craft", "SKILL.md")
 	data, err := mem.ReadFile(skillMD)
 	if err != nil {
 		t.Fatalf("SKILL.md missing after update: %v", err)
 	}
 	if string(data) != "v2\n" {
 		t.Errorf("SKILL.md content = %q; want %q", data, "v2\n")
+	}
+}
+
+// TestWriteSkill_noDoubleNesting verifies that WriteSkill places skills at
+// depth-1 (SkillsDir/ui-craft/SKILL.md) and NOT at depth-2
+// (SkillsDir/ui-craft/ui-craft/SKILL.md). This is the core bug fix for
+// Slice 3: the old code joined SkillsDir + "ui-craft" as destDir, then the
+// mirror walk prepended the skill-id dir again, producing double nesting.
+func TestWriteSkill_noDoubleNesting(t *testing.T) {
+	skillsOnlyHarnesses := []harness.Harness{
+		harness.ClaudeHarness{},
+		harness.CursorHarness{},
+		harness.GeminiHarness{},
+		harness.OpenCodeHarness{},
+	}
+
+	// Simulate assets.SkillsFS: skill dirs at the root of the FS.
+	mirror := fstest.MapFS{
+		"ui-craft/SKILL.md": &fstest.MapFile{Data: []byte("# ui-craft\n")},
+	}
+
+	for _, h := range skillsOnlyHarnesses {
+		t.Run(h.Name(), func(t *testing.T) {
+			mem := fsutil.NewMemFS()
+			if _, err := h.WriteSkill(mem, mirror); err != nil {
+				t.Fatalf("WriteSkill: %v", err)
+			}
+
+			skillsDir := h.ConfigPaths().SkillsDir
+
+			// Depth-1 path must exist.
+			depth1 := filepath.Join(skillsDir, "ui-craft", "SKILL.md")
+			if _, err := mem.Stat(depth1); err != nil {
+				t.Errorf("depth-1 path %s missing after WriteSkill: %v", depth1, err)
+			}
+
+			// Depth-2 path must NOT exist.
+			depth2 := filepath.Join(skillsDir, "ui-craft", "ui-craft", "SKILL.md")
+			if _, err := mem.Stat(depth2); err == nil {
+				t.Errorf("depth-2 path %s must NOT exist (double-nesting bug)", depth2)
+			}
+		})
+	}
+}
+
+// TestWriteSkill_cleansStaleDepth2 verifies that WriteSkill removes a pre-existing
+// stale depth-2 layout (skills/ui-craft/ui-craft/) left by an old broken install,
+// replacing it with the correct depth-1 layout.
+func TestWriteSkill_cleansStaleDepth2(t *testing.T) {
+	mem := fsutil.NewMemFS()
+	h := harness.ClaudeHarness{}
+	skillsDir := h.ConfigPaths().SkillsDir
+
+	// Pre-populate the stale depth-2 layout to simulate an old broken install.
+	staleFile := filepath.Join(skillsDir, "ui-craft", "ui-craft", "SKILL.md")
+	_ = mem.MkdirAll(filepath.Dir(staleFile), 0o755)
+	_ = mem.WriteFile(staleFile, []byte("# stale\n"), 0o644)
+
+	// Run WriteSkill with the correct skills-rooted mirror.
+	mirror := fstest.MapFS{
+		"ui-craft/SKILL.md": &fstest.MapFile{Data: []byte("# ui-craft\n")},
+	}
+	if _, err := h.WriteSkill(mem, mirror); err != nil {
+		t.Fatalf("WriteSkill: %v", err)
+	}
+
+	// Stale depth-2 file must be gone.
+	if _, err := mem.Stat(staleFile); err == nil {
+		t.Errorf("stale depth-2 path %s should have been removed by WriteSkill", staleFile)
+	}
+
+	// Correct depth-1 file must exist.
+	depth1 := filepath.Join(skillsDir, "ui-craft", "SKILL.md")
+	if _, err := mem.Stat(depth1); err != nil {
+		t.Errorf("depth-1 path %s missing after WriteSkill: %v", depth1, err)
 	}
 }

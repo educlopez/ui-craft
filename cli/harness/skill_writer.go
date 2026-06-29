@@ -5,33 +5,51 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/educlopez/ui-craft/cli/fsutil"
 )
 
-// writeMirrorToDir copies every file in mirror (a harness-specific subtree from
-// assets.MirrorFS()) into destDir on the target filesystem. The CLI has full
-// ownership of destDir (the …/skills/ui-craft/ subdir).
+// writeMirrorToDir copies every file in mirror (a skills-rooted FS, e.g. the
+// result of assets.SkillsFS(h)) into destDir on the target filesystem.
 //
-// Stale-file cleanup: files present in destDir but absent from the current
-// mirror (i.e. deleted upstream) are removed ONLY within destDir. Sibling
-// directories (e.g. …/skills/other-skill/) are never touched. Cleanup is
-// done by targeted Remove of extra files rather than a blanket RemoveAll, so
-// that idempotency (same mirror → Changed:false) is preserved.
+// Depth-1 layout: the mirror FS contains top-level skill-id dirs
+// (e.g. "ui-craft/SKILL.md", "ui-craft-minimal/SKILL.md") that map directly
+// to destDir/<id>/SKILL.md. The CLI owns exactly the top-level dirs present in
+// the mirror; sibling dirs in destDir that are unknown to the mirror are never
+// touched (isolation guarantee).
+//
+// Stale-file cleanup: files present in an owned top-level dir but absent from
+// the current mirror (i.e. deleted upstream) are removed. Cleanup is bounded
+// to the owned top-level dirs so that sibling skills are never affected. This
+// also removes stale depth-2 layouts (skills/<id>/<id>/) left by old installs.
 //
 // Returns Changed:true if any file was newly written, updated, or removed;
 // Changed:false if all files were already current and no stalefile existed.
 //
-// destDir is the ui-craft subdir of the skills directory
-// (e.g. ~/.claude/skills/ui-craft/). The Change record's FilePath is set to
-// destDir since WriteSkill may touch multiple files; callers use Changed to
-// determine overall install status.
+// The Change record's FilePath is set to destDir since WriteSkill may touch
+// multiple files; callers use Changed to determine overall install status.
 func writeMirrorToDir(w fsutil.FileSystem, mirror fs.FS, destDir string) (Change, error) {
-	// --- Step 1: collect the set of paths the new mirror will write ---
+	// --- Step 1: collect the set of paths the new mirror will write AND the
+	//             set of top-level dirs the mirror owns ---
 	mirrorFiles := make(map[string]struct{})
+	ownedTopDirs := make(map[string]struct{})
+
 	err := fs.WalkDir(mirror, ".", func(path string, d fs.DirEntry, walkErr error) error {
-		if walkErr != nil || d.IsDir() || d.Name() == ".gitkeep" {
+		if walkErr != nil {
 			return walkErr
+		}
+		if path == "." {
+			return nil
+		}
+		// The mirror FS uses forward-slash paths. Get the first path component
+		// (e.g. "ui-craft" from "ui-craft/SKILL.md") — this is the skill-id dir.
+		topComp := strings.SplitN(path, "/", 2)[0]
+		topDir := filepath.Join(destDir, topComp)
+		ownedTopDirs[topDir] = struct{}{}
+
+		if d.IsDir() || d.Name() == ".gitkeep" {
+			return nil
 		}
 		dest := filepath.Join(destDir, filepath.FromSlash(path))
 		mirrorFiles[dest] = struct{}{}
@@ -43,10 +61,12 @@ func writeMirrorToDir(w fsutil.FileSystem, mirror fs.FS, destDir string) (Change
 
 	anyChanged := false
 
-	// --- Step 2: remove stale files in destDir not present in the new mirror ---
-	// Only remove files under destDir (never sibling skill dirs or the parent).
-	if err := removeStaleFiles(w, destDir, mirrorFiles, &anyChanged); err != nil {
-		return Change{}, err
+	// --- Step 2: remove stale files within owned top-level dirs only ---
+	// Sibling dirs (e.g. destDir/other-skill/) are never touched.
+	for topDir := range ownedTopDirs {
+		if err := removeStaleFiles(w, topDir, mirrorFiles, &anyChanged); err != nil {
+			return Change{}, err
+		}
 	}
 
 	// --- Step 3: write all current mirror files (idempotent via byte-compare) ---

@@ -136,10 +136,12 @@ func (h CursorHarness) WriteMCP(w fsutil.FileSystem, server MCPServer) (Change, 
 	}, nil
 }
 
-// WriteSkill copies the embedded Cursor mirror into ~/.cursor/skills/ui-craft/.
-// Full-file ownership; idempotent via byte-compare in WriteFileAtomic.
+// WriteSkill copies the embedded Cursor skills tree into ~/.cursor/skills/.
+// The mirror FS is rooted at the skills level (assets.SkillsFS("cursor")),
+// so walking it yields <id>/SKILL.md paths that land at depth-1:
+// ~/.cursor/skills/<id>/SKILL.md. Full-file ownership; idempotent via byte-compare.
 func (h CursorHarness) WriteSkill(w fsutil.FileSystem, mirror fs.FS) (Change, error) {
-	destDir := filepath.Join(h.ConfigPaths().SkillsDir, "ui-craft")
+	destDir := h.ConfigPaths().SkillsDir
 	ch, err := writeMirrorToDir(w, mirror, destDir)
 	if err != nil {
 		return Change{}, fmt.Errorf("cursor: write skill mirror: %w", err)
@@ -152,5 +154,11 @@ func (h CursorHarness) WriteSkill(w fsutil.FileSystem, mirror fs.FS) (Change, er
 // returns false, so this method is not called in normal install flows — it is
 // present only to satisfy the Harness interface.
 func (h CursorHarness) WriteAgents(_ fsutil.FileSystem, _ fs.FS) ([]Change, error) {
+	return nil, ErrUnsupported
+}
+
+// WriteCommands returns ErrUnsupported. Cursor has no native slash-command
+// directory; commands are installed as peer skills via WriteSkill instead.
+func (h CursorHarness) WriteCommands(_ fsutil.FileSystem, _ fs.FS) ([]Change, error) {
 	return nil, ErrUnsupported
 }

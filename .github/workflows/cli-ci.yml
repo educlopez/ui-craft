@@ -1,18 +1,16 @@
 name: CLI CI
 
 # Runs Go tests, vet, fmt, lint, and vuln-scan for the cli/ package.
-# Mirrors are committed — no generation step required.
+# Per-harness assets are hand-authored and committed under cli/assets/ — no generation step.
 
 on:
   push:
     paths:
       - 'cli/**'
-      - 'scripts/sync-harnesses.mjs'
       - '.github/workflows/cli-ci.yml'
   pull_request:
     paths:
       - 'cli/**'
-      - 'scripts/sync-harnesses.mjs'
       - '.github/workflows/cli-ci.yml'
 
 jobs:

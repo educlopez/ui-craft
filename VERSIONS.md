@@ -1,5 +1,17 @@
 # Versions
 
+## v1.0.2 (2026-06-29) — gentle-ai parity: correct install layout + interactive TUI hub
+
+Two coordinated CLI changes bring `ui-craft` to full parity with the proven gentle-ai installer.
+
+**Fix: skills + commands now install where the harness can find them.** Every harness adapter wrote skills one directory too deep (`~/.<harness>/skills/ui-craft/<inner>/SKILL.md`), so Claude Code (and the others) discovered nothing — you'd see the MCP gates and review agents but no skill and no slash commands. Now skills land at depth-1 (`~/.claude/skills/ui-craft/SKILL.md`) and slash commands at `~/.claude/commands/*.md`, exactly like gentle-ai:
+
+- **Claude / OpenCode** (command-capable): the `ui-craft` skill (+ variants) under `skills/`, the 22 command lenses as real `commands/*.md`.
+- **Cursor / Codex / Gemini** (skills-only): each command lens installs as a flat depth-1 peer skill.
+- Hand-authored per-harness asset tree replaces the old generator (`scripts/sync-harnesses.mjs` + the `mirrors/` mirror + the mirror-version freshness machinery are gone); the embedded FS is the uninstall manifest, so cleanup removes exactly what it installed and never touches unrelated user skills/commands.
+
+**New: interactive TUI hub.** Running `ui-craft` with no subcommand now opens a full-screen welcome menu (gentle-ai pattern): the Aren dog art as a persistent header, a tagline, an async "Updates available" line (GitHub releases, 6h cooldown, ★ on Upgrade), and a navigable menu — Start installation · Upgrade (binary self-update, Homebrew-aware) · Manage backups · Managed uninstall · Quit. Each action runs as a TUI screen with a spinner and a result screen. The dog splash now has a visible dwell. Existing subcommands and `--help` are unchanged.
+
 ## v1.0.1 (2026-06-29) — fix: Homebrew cask SIGKILL on Apple Silicon
 
 The v1.0.0 cask installed cleanly but `ui-craft` was hard-killed (`killed: 9`) on first run on Apple Silicon. The static Go binary is ad-hoc signed (`CGO_ENABLED=0`), but Homebrew left the `com.apple.quarantine` flag on it — and Gatekeeper SIGKILLs a quarantined ad-hoc-signed binary instead of prompting.

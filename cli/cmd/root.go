@@ -2,9 +2,12 @@ package cmd
 
 import (
 	"os"
+	"path/filepath"
 	"sync"
 
 	"github.com/spf13/cobra"
+
+	"github.com/educlopez/ui-craft/cli/tui"
 )
 
 // rootFlags holds values for the persistent flags.
@@ -20,6 +23,12 @@ type rootFlags struct {
 
 var flags rootFlags
 
+// hubLaunchFn is the function called to launch the TUI hub. It is a var so
+// tests can replace it with a no-op or a recording stub without a TTY.
+var hubLaunchFn = func(version, dir string) error {
+	return tui.RunHub(version, dir)
+}
+
 // rootCmd is the base command for the ui-craft CLI.
 var rootCmd = &cobra.Command{
 	Use:   "ui-craft",
@@ -28,29 +37,42 @@ var rootCmd = &cobra.Command{
 Cursor, Codex, Gemini, OpenCode) and writes ui-craft components — skill+commands,
 MCP gates, review agents, and design-memory — into the harness's native config format.`,
 	SilenceUsage: true,
+	Args:         cobra.NoArgs,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		// Guard: only launch the TUI hub when stdout is a real TTY and no
+		// machine-readable flags are active. On non-TTY (CI, pipe, redirect),
+		// print help and exit cleanly — do NOT hang.
+		if !flags.JSON && !flags.Quiet && tui.IsTerminal() {
+			dir := flags.Dir
+			if dir == "" || dir == "." {
+				if cwd, err := os.Getwd(); err == nil {
+					dir = cwd
+				}
+			}
+			dir, _ = filepath.Abs(dir)
+			return hubLaunchFn(cmdVersion, dir)
+		}
+		// Non-TTY / JSON / Quiet path: print help and exit 0.
+		return cmd.Help()
+	},
 }
 
 // cmdVersion holds the binary version passed to Execute. It is available to
 // all subcommands (e.g. backup) for embedding in snapshot manifests.
 var cmdVersion = "dev"
 
-// cmdMirrorVersion holds the mirror version set via -X main.mirrorVersion ldflags.
-// It records the repo version whose sync-harnesses.mjs output is embedded (ADR-6).
-var cmdMirrorVersion = "dev"
-
 // versionOnce guards AddCommand so that calling Execute more than once
 // (e.g. in tests that reuse the package-level rootCmd) does not register a
 // duplicate "version" subcommand and trigger cobra's duplicate-command panic.
 var versionOnce sync.Once
 
-// Execute wires the binary version and mirror version into the root command and runs it.
-func Execute(version, mirrorVersion string) {
+// Execute wires the binary version into the root command and runs it.
+func Execute(version string) {
 	cmdVersion = version
-	cmdMirrorVersion = mirrorVersion
 	// Attach the version subcommand with the build-time version string.
 	// sync.Once ensures idempotency if Execute is called more than once.
 	versionOnce.Do(func() {
-		rootCmd.AddCommand(newVersionCmd(version, mirrorVersion))
+		rootCmd.AddCommand(newVersionCmd(version))
 	})
 
 	if err := rootCmd.Execute(); err != nil {

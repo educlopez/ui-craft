@@ -8,51 +8,37 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/educlopez/ui-craft/cli/assets"
 	"github.com/educlopez/ui-craft/cli/core"
 	"github.com/educlopez/ui-craft/cli/fsutil"
 )
 
 // newVersionCmd returns the version subcommand.
-// version and mirrorVersion are injected via -X main.version= and
-// -X main.mirrorVersion= ldflags at build time (ADR-6: one coordinated version).
+// version is injected via -X main.version= ldflags at build time.
 //
 // Output format:
 //
-//	ui-craft v0.35.0 (mirror: v0.35.0)
-//
-// The embedded mirrors/VERSION file is shown as "embedded" when it differs from
-// the ldflag mirrorVersion, which indicates a mismatch between the build-time
-// ldflags and the CI mirror-copy step. In a correct release build both are equal.
+//	ui-craft v0.35.0
 //
 // --check-parity flag (Slice 10): runs VerifyClaudeCodeParity and prints per-check
 // PASS/FAIL; exits 0 if all pass, 1 if any fail.
-func newVersionCmd(version, mirrorVersion string) *cobra.Command {
+func newVersionCmd(version string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "version",
-		Short: "Print ui-craft binary version and embedded mirror version",
+		Short: "Print ui-craft binary version",
 		// SilenceUsage inherited from root; suppresses usage on error.
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// mirrorVersion from ldflags (set by CI from package.json version).
-			// Falls back to the embedded mirrors/VERSION stamp when not set by ldflags.
-			effectiveMirror := mirrorVersion
-			if effectiveMirror == "" || effectiveMirror == "dev" {
-				effectiveMirror = assets.MirrorVersion()
-			}
-
 			// --json: emit a machine-readable object instead of human text.
 			if flags.JSON {
 				out := struct {
 					Version string `json:"version"`
-					Mirror  string `json:"mirror"`
-				}{Version: version, Mirror: effectiveMirror}
+				}{Version: version}
 				enc := json.NewEncoder(cmd.OutOrStdout())
 				enc.SetIndent("", "  ")
 				return enc.Encode(out)
 			}
 
 			if !flags.Quiet {
-				fmt.Fprintf(cmd.OutOrStdout(), "ui-craft %s (mirror: %s)\n", version, effectiveMirror)
+				fmt.Fprintf(cmd.OutOrStdout(), "ui-craft %s\n", version)
 			}
 
 			checkParity, _ := cmd.Flags().GetBool("check-parity")

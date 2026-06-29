@@ -42,6 +42,12 @@ type ConfigPaths struct {
 	// AgentsDir is the absolute path to the harness's sub-agent directory.
 	// Empty for harnesses that don't support review agents.
 	AgentsDir string
+	// CommandsDir is the absolute path to the harness's slash-commands directory.
+	// Non-empty only for command-capable harnesses (claude, opencode).
+	// claude:    ~/.claude/commands
+	// opencode:  ~/.config/opencode/commands
+	// cursor/codex/gemini: "" (unsupported)
+	CommandsDir string
 	// ProjectRoot is the working project directory (may be empty for global
 	// installs). Adapters that support project-scoped configs use this.
 	ProjectRoot string
@@ -136,18 +142,29 @@ type Harness interface {
 	// WriteMCP writes the ui-craft MCP server entry into the harness's MCP config.
 	WriteMCP(w fsutil.FileSystem, server MCPServer) (Change, error)
 
-	// WriteSkill copies the embedded harness mirror into the harness's skills dir.
-	// mirror is the harness-specific subtree from assets.MirrorFS() (rooted at the
-	// harness name, e.g. the "claude" subtree). The CLI owns the entire skills dir;
-	// every file is written via WriteFileAtomic (idempotent byte-compare).
+	// WriteSkill copies the embedded harness skills tree into the harness's skills dir.
+	// mirror is the skills-rooted sub-FS from assets.SkillsFS() for the harness.
+	// The CLI owns the top-level skill subdirs it installs; every file is written
+	// via WriteFileAtomic (idempotent byte-compare).
 	// For Codex, a second write target is the project AGENTS.md managed-block.
 	WriteSkill(w fsutil.FileSystem, mirror fs.FS) (Change, error)
 
 	// WriteAgents writes review agent definitions into the harness's agent dir.
 	// agentsFS is the harness-specific sub-FS rooted at the agent definitions
-	// directory (e.g. mirrors/claude/agents/ or mirrors/opencode/agent/). Each
+	// directory. Each
 	// .md file in the FS is written as a separate agent file.
 	// Harnesses without a native sub-agent format (Cursor, Codex, Gemini) return
 	// ErrUnsupported; core.Plan converts this to a graceful skip (exit code 0).
 	WriteAgents(w fsutil.FileSystem, agentsFS fs.FS) ([]Change, error)
+
+	// WriteCommands writes slash-command .md files flat into the harness's
+	// commands directory (ConfigPaths().CommandsDir). commandsFS is the
+	// harness-specific sub-FS from assets.CommandsFS(h), rooted at the commands
+	// level so each entry is a flat <name>.md file.
+	// Command-capable harnesses (claude, opencode) implement this; cursor, codex,
+	// and gemini return ErrUnsupported. A nil commandsFS also returns ErrUnsupported.
+	// Stale command files (owned by a prior install but absent from commandsFS)
+	// are removed — cleanup is bounded to files derived from commandsFS, never
+	// the entire CommandsDir (other user files are preserved).
+	WriteCommands(w fsutil.FileSystem, commandsFS fs.FS) ([]Change, error)
 }

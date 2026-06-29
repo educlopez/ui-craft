@@ -144,13 +144,15 @@ func (h GeminiHarness) WriteMCP(w fsutil.FileSystem, server MCPServer) (Change, 
 	}, nil
 }
 
-// WriteSkill copies the embedded Gemini mirror into ~/.gemini/skills/ui-craft/.
-// Full-file ownership; idempotent via byte-compare in WriteFileAtomic.
+// WriteSkill copies the embedded Gemini skills tree into ~/.gemini/skills/.
+// The mirror FS is rooted at the skills level (assets.SkillsFS("gemini")),
+// so walking it yields <id>/SKILL.md paths that land at depth-1:
+// ~/.gemini/skills/<id>/SKILL.md. Full-file ownership; idempotent via byte-compare.
 // Gotcha #7: if npm is global (no nvm/fnm/volta detected), an advisory is
 // printed by the caller — WriteSkill itself does not print but sets
 // Change.Changed so the caller can surface the advisory.
 func (h GeminiHarness) WriteSkill(w fsutil.FileSystem, mirror fs.FS) (Change, error) {
-	destDir := filepath.Join(h.ConfigPaths().SkillsDir, "ui-craft")
+	destDir := h.ConfigPaths().SkillsDir
 	ch, err := writeMirrorToDir(w, mirror, destDir)
 	if err != nil {
 		return Change{}, fmt.Errorf("gemini: write skill mirror: %w", err)
@@ -163,5 +165,11 @@ func (h GeminiHarness) WriteSkill(w fsutil.FileSystem, mirror fs.FS) (Change, er
 // returns false, so this method is not called in normal install flows — it is
 // present only to satisfy the Harness interface.
 func (h GeminiHarness) WriteAgents(_ fsutil.FileSystem, _ fs.FS) ([]Change, error) {
+	return nil, ErrUnsupported
+}
+
+// WriteCommands returns ErrUnsupported. Gemini CLI has no native slash-command
+// directory; commands are installed as peer skills via WriteSkill instead.
+func (h GeminiHarness) WriteCommands(_ fsutil.FileSystem, _ fs.FS) ([]Change, error) {
 	return nil, ErrUnsupported
 }

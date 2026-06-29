@@ -86,9 +86,10 @@ func (h ClaudeHarness) Detect() (DetectResult, error) {
 func (h ClaudeHarness) ConfigPaths() ConfigPaths {
 	root := h.configRoot()
 	return ConfigPaths{
-		MCPConfig: filepath.Join(root, "mcp", "ui-craft.json"),
-		SkillsDir: filepath.Join(root, "skills"),
-		AgentsDir: filepath.Join(root, "agents"),
+		MCPConfig:   filepath.Join(root, "mcp", "ui-craft.json"),
+		SkillsDir:   filepath.Join(root, "skills"),
+		AgentsDir:   filepath.Join(root, "agents"),
+		CommandsDir: filepath.Join(root, "commands"),
 	}
 }
 
@@ -146,16 +147,31 @@ func (h ClaudeHarness) WriteMCP(w fsutil.FileSystem, server MCPServer) (Change, 
 	}, nil
 }
 
-// WriteSkill copies the embedded Claude mirror into ~/.claude/skills/ui-craft/.
-// The CLI has full ownership of this directory; every file is written atomically
-// via WriteFileAtomic (byte-compare early exit = idempotent re-runs).
+// WriteSkill copies the embedded Claude skills tree into ~/.claude/skills/.
+// The mirror FS is rooted at the skills level (assets.SkillsFS("claude")),
+// so walking it yields <id>/SKILL.md paths that land at depth-1:
+// ~/.claude/skills/<id>/SKILL.md (not ~/.claude/skills/ui-craft/<id>/SKILL.md).
+// The CLI has full ownership of each skill subdirectory it writes.
 func (h ClaudeHarness) WriteSkill(w fsutil.FileSystem, mirror fs.FS) (Change, error) {
-	destDir := filepath.Join(h.ConfigPaths().SkillsDir, "ui-craft")
+	destDir := h.ConfigPaths().SkillsDir
 	ch, err := writeMirrorToDir(w, mirror, destDir)
 	if err != nil {
 		return Change{}, fmt.Errorf("claude: write skill mirror: %w", err)
 	}
 	return ch, nil
+}
+
+// WriteCommands writes slash-command .md files flat into ~/.claude/commands/.
+// commandsFS is the commands-rooted FS from assets.CommandsFS("claude"), where
+// each entry is a flat <name>.md file. The CLI owns the command files it
+// installs; stale files no longer in commandsFS are removed (scoped cleanup).
+// A nil commandsFS returns ErrUnsupported.
+func (h ClaudeHarness) WriteCommands(w fsutil.FileSystem, commandsFS fs.FS) ([]Change, error) {
+	if commandsFS == nil {
+		return nil, ErrUnsupported
+	}
+	commandsDir := h.ConfigPaths().CommandsDir // ~/.claude/commands/
+	return writeFlatMDToDir(w, commandsFS, commandsDir, "claude")
 }
 
 // WriteAgents writes the review agent definitions into Claude Code's native
@@ -164,7 +180,7 @@ func (h ClaudeHarness) WriteSkill(w fsutil.FileSystem, mirror fs.FS) (Change, er
 // The CLI has full-file ownership of each agent file it installs; a pre-existing
 // user agent with a different name is never touched.
 //
-// agentsFS is the sub-FS rooted at mirrors/claude/agents/ (the Claude-format
+// agentsFS is the sub-FS rooted at assets/agents/claude/ (the Claude-format
 // agent definitions). If agentsFS is nil, ErrUnsupported is returned.
 func (h ClaudeHarness) WriteAgents(w fsutil.FileSystem, agentsFS fs.FS) ([]Change, error) {
 	if agentsFS == nil {

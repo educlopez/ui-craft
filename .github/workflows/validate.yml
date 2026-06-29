@@ -24,25 +24,6 @@ jobs:
       - name: Validate plugin structure + skill metadata + links
         run: node scripts/validate.mjs
 
-      - name: Dry-run sync script (must not error)
-        run: node scripts/sync-harnesses.mjs
-
-  # Drift guard: ensure cli/assets/mirrors/ stays in sync with skills/.
-  # Runs on every push and PR to main — catches forgotten `make gen-mirrors && git add`.
-  check-mirrors:
-    name: Mirror drift guard
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-
-      - name: Check mirrors (skills/ vs cli/assets/mirrors/)
-        run: make -C cli check-mirrors
-
   # Drift guard: ensure cli/assets/agents/claude/ stays in sync with agents/.
   # Runs on every push and PR to main — cheap shell diff, no build required.
   check-agent-copies:

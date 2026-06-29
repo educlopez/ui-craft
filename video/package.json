@@ -1,0 +1,22 @@
+{
+  "name": "ui-craft-video",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Remotion launch clips for ui-craft v1 social posts",
+  "scripts": {
+    "dev": "remotion studio src/index.ts",
+    "render:terminal": "remotion render TerminalInstall out/terminal-install-square.mp4",
+    "render:terminal-x": "remotion render TerminalInstallWide out/terminal-install-x.mp4"
+  },
+  "dependencies": {
+    "@remotion/cli": "^4.0.0",
+    "@remotion/google-fonts": "^4.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "remotion": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "typescript": "^5.7.0"
+  }
+}

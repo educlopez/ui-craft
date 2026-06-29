@@ -52,6 +52,9 @@ func (g filterStubHarness) WriteSkill(w fsutil.FileSystem, mirror fs.FS) (harnes
 func (g filterStubHarness) WriteAgents(w fsutil.FileSystem, agentsFS fs.FS) ([]harness.Change, error) {
 	return nil, harness.ErrNotImplemented
 }
+func (g filterStubHarness) WriteCommands(w fsutil.FileSystem, commandsFS fs.FS) ([]harness.Change, error) {
+	return nil, harness.ErrUnsupported
+}
 
 // detectedSet builds a []core.DetectedHarness from a list of names.
 func detectedSet(names ...string) []core.DetectedHarness {
@@ -78,9 +81,10 @@ func TestInstallFilter_harnessFlag_planOnlyCursor(t *testing.T) {
 		detected,
 		component.All(),
 		mem,
-		func(name string) fs.FS { return nil }, // mirrorProvider: nil = skip SkillCommands
+		func(name string) fs.FS { return nil }, // skillsProvider: nil = skip SkillCommands
 		nil,                                    // agentProvider
 		nil,                                    // templateProvider
+		nil,                                    // commandsProvider
 		"/tmp/project",
 	)
 
@@ -113,6 +117,7 @@ func TestInstallFilter_componentsFlag_planOnlyMCPGates(t *testing.T) {
 		func(name string) fs.FS { return nil },
 		nil,
 		nil,
+		nil, // commandsProvider
 		"/tmp/project",
 	)
 

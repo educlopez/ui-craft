@@ -150,9 +150,11 @@ func (h CodexHarness) agentsMDPath(projectRoot string) string {
 
 // WriteSkill writes two targets for Codex:
 //
-//  1. Full-file mirror copy into ~/.codex/skills/ui-craft/ (same as other harnesses).
+//  1. Full-file mirror copy into ~/.codex/skills/ (depth-1: <id>/SKILL.md peers).
+//     The mirror FS is rooted at the skills level (assets.SkillsFS("codex")),
+//     so walking it writes SkillsDir/<id>/SKILL.md directly.
 //  2. A managed block injected into the project AGENTS.md (or global ~/.codex/AGENTS.md)
-//     referencing the installed skill, so Codex picks it up without a marketplace.
+//     referencing the installed skills dir, so Codex picks it up without a marketplace.
 //
 // Note: project-local AGENTS.md (--dir / ProjectRoot) is honored when
 // ConfigPaths().ProjectRoot is set; otherwise the global ~/.codex/AGENTS.md is used.
@@ -165,8 +167,8 @@ func (h CodexHarness) agentsMDPath(projectRoot string) string {
 func (h CodexHarness) WriteSkill(w fsutil.FileSystem, mirror fs.FS) (Change, error) {
 	paths := h.ConfigPaths()
 
-	// --- Target 1: full-file mirror copy into skills dir ---
-	destDir := filepath.Join(paths.SkillsDir, "ui-craft")
+	// --- Target 1: full-file mirror copy into skills dir (depth-1) ---
+	destDir := paths.SkillsDir
 	ch, err := writeMirrorToDir(w, mirror, destDir)
 	if err != nil {
 		return Change{}, fmt.Errorf("codex: write skill mirror: %w", err)
@@ -181,8 +183,9 @@ func (h CodexHarness) WriteSkill(w fsutil.FileSystem, mirror fs.FS) (Change, err
 		existing = []byte("")
 	}
 
+	uicraftSkillDir := filepath.Join(destDir, "ui-craft")
 	blockContent := "# ui-craft skill\n\n" +
-		"The ui-craft skill is installed at: " + destDir + "\n\n" +
+		"The ui-craft skill is installed at: " + uicraftSkillDir + "\n\n" +
 		"Load it at the start of any UI design or implementation task."
 	updated := filemerge.UpsertManagedBlock(string(existing), blockContent)
 
@@ -208,5 +211,11 @@ func (h CodexHarness) WriteSkill(w fsutil.FileSystem, mirror fs.FS) (Change, err
 // returns false, so this method is not called in normal install flows — it is
 // present only to satisfy the Harness interface.
 func (h CodexHarness) WriteAgents(_ fsutil.FileSystem, _ fs.FS) ([]Change, error) {
+	return nil, ErrUnsupported
+}
+
+// WriteCommands returns ErrUnsupported. Codex has no native slash-command
+// directory; commands are installed as peer skills via WriteSkill instead.
+func (h CodexHarness) WriteCommands(_ fsutil.FileSystem, _ fs.FS) ([]Change, error) {
 	return nil, ErrUnsupported
 }

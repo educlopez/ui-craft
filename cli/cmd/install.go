@@ -210,7 +210,7 @@ var installCmd = &cobra.Command{
 			selected = filtered
 		}
 		osfs := fsutil.OsFS{}
-		plan := core.Plan(detected, selected, osfs, assets.Mirror, assets.Agents, assets.TemplateFS, projectDir)
+		plan := core.Plan(detected, selected, osfs, assets.SkillsFS, assets.Agents, assets.TemplateFS, assets.CommandsFS, projectDir)
 
 		// --- Dry-run: print what would happen and exit without writing ---
 		if flags.DryRun {
@@ -406,7 +406,6 @@ var installCmd = &cobra.Command{
 		stateRoot := filepath.Join(home, ".ui-craft")
 		state, _ := core.LoadState(osfs, stateRoot)
 		state.Version = cmdVersion
-		state.MirrorVersion = cmdMirrorVersion
 		now := core.Now().UTC().Format("2006-01-02T15:04:05Z07:00")
 		for _, dh := range detected {
 			// Collect components that were actually applied (appear in result.Changes)

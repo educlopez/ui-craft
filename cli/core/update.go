@@ -1,5 +1,5 @@
 // Package core — update.go
-// Launch-time update-check with a 24h TTL cooldown.
+// Launch-time update-check with a 6h TTL cooldown (gentle-ai parity).
 //
 // Design: fail-open — any network or parse error silently returns "no update".
 // The check runs in a goroutine from the TUI Init() so it never blocks the flow.
@@ -21,7 +21,8 @@ import (
 
 const (
 	// updateCheckTTL is how long to wait between GitHub release checks.
-	updateCheckTTL = 24 * time.Hour
+	// Set to 6h for gentle-ai parity (was 24h).
+	updateCheckTTL = 6 * time.Hour
 
 	// githubReleasesURL is the GitHub API endpoint for the latest release.
 	githubReleasesURL = "https://api.github.com/repos/educlopez/ui-craft/releases/latest"
@@ -60,11 +61,11 @@ func isDevVersion(v string) bool {
 
 // CheckForUpdate checks whether a newer version of ui-craft is available.
 //
-// It is gated by a 24h TTL: if state.LastUpdateCheck is within the last 24h,
+// It is gated by a 6h TTL: if state.LastUpdateCheck is within the last 6h,
 // it returns UpdateResult{Available: false} immediately without hitting the network.
 //
 // After a successful network check (or a non-200 HTTP response), it writes the
-// new LastUpdateCheck timestamp to state.json at stateRoot so that the 24h TTL
+// new LastUpdateCheck timestamp to state.json at stateRoot so that the 6h TTL
 // is honoured even when the API responds with 403 / 500. This prevents hammering
 // the API on repeated launches during rate-limit windows.
 //
@@ -78,7 +79,7 @@ func CheckForUpdate(filesystem fsutil.FileSystem, stateRoot, currentVersion stri
 
 	us, _ := loadUpdateState(filesystem, stateRoot)
 
-	// TTL gate: skip check if we already checked within the last 24h.
+	// TTL gate: skip check if we already checked within the last 6h.
 	if !us.lastChecked.IsZero() {
 		elapsed := ClockFn().Sub(us.lastChecked)
 		if elapsed < updateCheckTTL {
@@ -120,12 +121,34 @@ func CheckForUpdate(filesystem fsutil.FileSystem, stateRoot, currentVersion stri
 
 // UpdateAdvisoryLine returns the one-line advisory string shown to the user
 // when an update is available, or an empty string when no update is available.
-// Example: "⬆ ui-craft v0.22.0 available — brew upgrade ui-craft"
-func UpdateAdvisoryLine(result UpdateResult) string {
+//
+// The upgrade command shown is install-method aware:
+//   - brew  → "brew upgrade ui-craft"
+//   - scoop → "scoop update ui-craft"
+//   - other → "run ui-craft and choose Upgrade"  (direct / unknown / Windows)
+//
+// exePath is the running binary's path (used to detect the package manager).
+// Pass "" to skip detection and use the generic message.
+func UpdateAdvisoryLine(result UpdateResult, exePath ...string) string {
 	if !result.Available {
 		return ""
 	}
-	return fmt.Sprintf("⬆ ui-craft %s available — brew upgrade ui-craft", result.LatestTag)
+	path := ""
+	if len(exePath) > 0 {
+		path = exePath[0]
+	}
+
+	pm := DetectInstallMethod(path)
+	var upgradeCmd string
+	switch pm {
+	case "brew":
+		upgradeCmd = "brew upgrade ui-craft"
+	case "scoop":
+		upgradeCmd = "scoop update ui-craft"
+	default:
+		upgradeCmd = "run ui-craft and choose Upgrade"
+	}
+	return fmt.Sprintf("⬆ ui-craft %s available — %s", result.LatestTag, upgradeCmd)
 }
 
 // ─── Internal helpers ─────────────────────────────────────────────────────

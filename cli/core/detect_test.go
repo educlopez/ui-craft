@@ -51,6 +51,9 @@ func (s stubHarness) WriteSkill(w fsutil.FileSystem, mirror fs.FS) (harness.Chan
 func (s stubHarness) WriteAgents(w fsutil.FileSystem, agentsFS fs.FS) ([]harness.Change, error) {
 	return nil, harness.ErrNotImplemented
 }
+func (s stubHarness) WriteCommands(w fsutil.FileSystem, commandsFS fs.FS) ([]harness.Change, error) {
+	return nil, harness.ErrUnsupported
+}
 
 // TestDetect_allPresent asserts that Detect returns all installed harnesses.
 func TestDetect_allPresent(t *testing.T) {

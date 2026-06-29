@@ -14,10 +14,12 @@ package cmd
 
 import (
 	"fmt"
+	iofs "io/fs"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/educlopez/ui-craft/cli/assets"
 	"github.com/educlopez/ui-craft/cli/backup"
 	"github.com/educlopez/ui-craft/cli/component"
 	"github.com/educlopez/ui-craft/cli/core"
@@ -199,18 +201,37 @@ func runUninstall(cmd *cobra.Command, _ []string) error {
 				}
 
 			case component.SkillCommands:
-				skillDir := filepath.Join(paths.SkillsDir, "ui-craft")
-				if !filepath.IsAbs(skillDir) {
+				if paths.SkillsDir == "" || !filepath.IsAbs(paths.SkillsDir) {
 					fmt.Fprintf(out, "  %s/skill+commands: skipped — could not resolve an absolute config path (HOME unset?)\n", hName)
 					break
 				}
-				res, acted, err := removeDirSafe(fs, skillDir)
-				if err != nil {
-					fmt.Fprintf(out, "  %s/skill+commands: error: %v\n", hName, err)
-				} else if res == removeDirNotExist || !acted {
-					fmt.Fprintf(out, "  %s/skill+commands: not present — skipped\n", hName)
-				} else {
-					fmt.Fprintf(out, "  %s/skill+commands: removed %s\n", hName, skillDir)
+				// Derive owned skill dirs from the embedded FS.
+				skillsFS := assets.SkillsFS(hName)
+				if skillsFS != nil {
+					notices, err := removeOwnedSkills(fs, paths.SkillsDir, skillsFS)
+					if err != nil {
+						fmt.Fprintf(out, "  %s/skill+commands: error removing skills: %v\n", hName, err)
+					} else {
+						fmt.Fprintf(out, "  %s/skill+commands: removed owned skill dirs from %s\n", hName, paths.SkillsDir)
+					}
+					for _, notice := range notices {
+						fmt.Fprintf(out, "  %s/skill+commands: manual action needed: %s\n", hName, notice)
+					}
+				}
+				// Derive owned command files from the embedded FS.
+				if paths.CommandsDir != "" {
+					commandsFS := assets.CommandsFS(hName)
+					if commandsFS != nil {
+						notices, err := removeOwnedCommands(fs, paths.CommandsDir, commandsFS)
+						if err != nil {
+							fmt.Fprintf(out, "  %s/commands: error removing commands: %v\n", hName, err)
+						} else {
+							fmt.Fprintf(out, "  %s/commands: removed owned command files from %s\n", hName, paths.CommandsDir)
+						}
+						for _, notice := range notices {
+							fmt.Fprintf(out, "  %s/commands: manual action needed: %s\n", hName, notice)
+						}
+					}
 				}
 				// For Codex: also remove the managed block from AGENTS.md
 				if hName == "codex" && paths.AgentsMDPath != "" {
@@ -229,14 +250,29 @@ func runUninstall(cmd *cobra.Command, _ []string) error {
 				if paths.AgentsDir == "" {
 					continue
 				}
-				count := 0
-				for _, name := range []string{"design-reviewer.md", "a11y-auditor.md"} {
-					p := filepath.Join(paths.AgentsDir, name)
-					if err := fs.Remove(p); err == nil {
-						count++
+				// Derive owned agent files from the embedded FS.
+				agentsFS := assets.Agents(hName)
+				if agentsFS != nil {
+					notices, agentErr := removeOwnedAgents(fs, paths.AgentsDir, agentsFS)
+					if agentErr != nil {
+						fmt.Fprintf(out, "  %s/review-agents: error: %v\n", hName, agentErr)
+					} else {
+						fmt.Fprintf(out, "  %s/review-agents: removed owned agent files from %s\n", hName, paths.AgentsDir)
 					}
+					for _, notice := range notices {
+						fmt.Fprintf(out, "  %s/review-agents: manual action needed: %s\n", hName, notice)
+					}
+				} else {
+					// Fallback: old hardcoded agent names for harnesses without embedded agents.
+					count := 0
+					for _, name := range []string{"design-reviewer.md", "a11y-auditor.md"} {
+						p := filepath.Join(paths.AgentsDir, name)
+						if err := fs.Remove(p); err == nil {
+							count++
+						}
+					}
+					fmt.Fprintf(out, "  %s/review-agents: removed %d agent file(s)\n", hName, count)
 				}
-				fmt.Fprintf(out, "  %s/review-agents: removed %d agent file(s)\n", hName, count)
 
 			case component.DesignMemory:
 				dmDir := flags.Dir
@@ -387,6 +423,129 @@ func removeAgentsMDBlock(fs fsutil.FileSystem, agentsMDPath string) error {
 	return nil
 }
 
+// removeOwnedSkills enumerates the top-level skill dirs in skillsFS (the embedded
+// skills FS rooted at <harness>/skills/) and removes each one from skillsDir on
+// the real filesystem. After removing all owned dirs, it calls removeDirIfEmpty
+// on skillsDir itself. If skillsDir still contains unmanaged user files/dirs,
+// removeDirIfEmpty is a no-op and a manual-action notice is returned.
+//
+// This function NEVER calls RemoveAll on skillsDir itself — it is scoped to
+// owned entries only (gentle-ai pattern).
+//
+// It also handles stale depth-2 installs (skills/<id>/<id>/) implicitly: the
+// entire owned top-level dir is removed with os.RemoveAll, so any stale
+// sub-nesting within it is cleaned up at the same time.
+func removeOwnedSkills(w fsutil.FileSystem, skillsDir string, skillsFS iofs.FS) (notices []string, err error) {
+	entries, readErr := iofs.ReadDir(skillsFS, ".")
+	if readErr != nil {
+		return nil, fmt.Errorf("removeOwnedSkills: read embedded skills: %w", readErr)
+	}
+
+	for _, e := range entries {
+		if !e.IsDir() {
+			continue
+		}
+		target := filepath.Join(skillsDir, e.Name())
+		if !filepath.IsAbs(target) {
+			continue
+		}
+		// removeDirSafe is scoped: only removes if it exists; no-op otherwise.
+		if _, err := w.Stat(target); err == nil {
+			// Exists — remove through the injected FS (covers stale depth-2 sub-trees too).
+			if removeErr := w.RemoveAll(target); removeErr != nil {
+				return notices, fmt.Errorf("removeOwnedSkills: remove %s: %w", target, removeErr)
+			}
+		}
+	}
+
+	// Remove the parent skillsDir if empty; emit a notice if user files remain.
+	if skipNotice := removeDirIfEmpty(w, skillsDir); skipNotice != "" {
+		notices = append(notices, skipNotice)
+	}
+	return notices, nil
+}
+
+// removeOwnedCommands enumerates the flat *.md files in commandsFS (the embedded
+// commands FS rooted at <harness>/commands/) and removes each one from commandsDir
+// on the real filesystem. After removing owned files, it calls removeDirIfEmpty
+// on commandsDir itself.
+func removeOwnedCommands(w fsutil.FileSystem, commandsDir string, commandsFS iofs.FS) (notices []string, err error) {
+	entries, readErr := iofs.ReadDir(commandsFS, ".")
+	if readErr != nil {
+		return nil, fmt.Errorf("removeOwnedCommands: read embedded commands: %w", readErr)
+	}
+
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
+		}
+		target := filepath.Join(commandsDir, e.Name())
+		if !filepath.IsAbs(target) {
+			continue
+		}
+		// Remove the file — ignore not-exist errors.
+		if removeErr := w.Remove(target); removeErr != nil && !os.IsNotExist(removeErr) {
+			return notices, fmt.Errorf("removeOwnedCommands: remove %s: %w", target, removeErr)
+		}
+	}
+
+	// Remove the parent commandsDir if empty; emit a notice if user files remain.
+	if skipNotice := removeDirIfEmpty(w, commandsDir); skipNotice != "" {
+		notices = append(notices, skipNotice)
+	}
+	return notices, nil
+}
+
+// removeOwnedAgents enumerates the flat *.md files in agentsFS (the embedded
+// agents FS rooted at agents/<harness>/) and removes each one from agentsDir
+// on the real filesystem. After removing owned files, it calls removeDirIfEmpty
+// on agentsDir itself.
+func removeOwnedAgents(w fsutil.FileSystem, agentsDir string, agentsFS iofs.FS) (notices []string, err error) {
+	entries, readErr := iofs.ReadDir(agentsFS, ".")
+	if readErr != nil {
+		return nil, fmt.Errorf("removeOwnedAgents: read embedded agents: %w", readErr)
+	}
+
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
+		}
+		target := filepath.Join(agentsDir, e.Name())
+		if !filepath.IsAbs(target) {
+			continue
+		}
+		// Remove the file — ignore not-exist errors.
+		if removeErr := w.Remove(target); removeErr != nil && !os.IsNotExist(removeErr) {
+			return notices, fmt.Errorf("removeOwnedAgents: remove %s: %w", target, removeErr)
+		}
+	}
+
+	// Remove the parent agentsDir if empty; emit a notice if user files remain.
+	if skipNotice := removeDirIfEmpty(w, agentsDir); skipNotice != "" {
+		notices = append(notices, skipNotice)
+	}
+	return notices, nil
+}
+
+// removeDirIfEmpty removes dir if it is empty. If dir does not exist, it is a
+// no-op. If dir still contains files or subdirectories after our removal pass,
+// the dir is left in place and a manual-action notice string is returned
+// (non-empty return means "dir was not removed — user should review").
+func removeDirIfEmpty(w fsutil.FileSystem, dir string) (manualActionNotice string) {
+	if _, err := w.Stat(dir); err != nil {
+		return "" // doesn't exist — nothing to do
+	}
+	entries, err := w.ReadDir(dir)
+	if err != nil {
+		return "" // can't determine — leave it
+	}
+	if len(entries) == 0 {
+		_ = w.Remove(dir)
+		return ""
+	}
+	return fmt.Sprintf("%s still contains user files — please review manually", dir)
+}
+
 // errRelativePath is returned by removeDir when dir is not absolute.
 var errRelativePath = fmt.Errorf("removeDir: refusing to remove a relative path (HOME may be unset)")
 
@@ -420,5 +579,5 @@ func removeDirSafe(fs fsutil.FileSystem, dir string) (removeDirResult, bool, err
 	if _, err := fs.Stat(dir); err != nil {
 		return removeDirNotExist, false, nil // doesn't exist — nothing to remove
 	}
-	return removeDirRemoved, true, os.RemoveAll(dir)
+	return removeDirRemoved, true, fs.RemoveAll(dir)
 }

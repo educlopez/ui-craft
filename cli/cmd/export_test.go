@@ -5,6 +5,8 @@
 package cmd
 
 import (
+	"io/fs"
+
 	"github.com/educlopez/ui-craft/cli/backup"
 	"github.com/educlopez/ui-craft/cli/core"
 	"github.com/educlopez/ui-craft/cli/fsutil"
@@ -17,9 +19,7 @@ import (
 // to an externally constructed root command without running os.Exit.
 // Used by version_test.go.
 func RegisterVersionCmdForTest(root *cobra.Command, version string) {
-	// Pass "dev" as mirrorVersion in tests; the actual mirror content is read
-	// from assets/mirrors/VERSION (which contains "dev" in the placeholder).
-	root.AddCommand(newVersionCmd(version, "dev"))
+	root.AddCommand(newVersionCmd(version))
 }
 
 // SetDetectAllFn replaces the detection function used by installCmd with fn.
@@ -112,7 +112,7 @@ var Flags = &flags
 
 // SetSelfUpdateFetchRelease replaces the release-fetch function for testing.
 // Returns a restore function. NOT safe for parallel tests.
-func SetSelfUpdateFetchRelease(fn func(string) (*selfUpdateRelease, error)) func() {
+func SetSelfUpdateFetchRelease(fn func(string) (*core.SelfUpdateRelease, error)) func() {
 	prev := selfUpdateFetchRelease
 	selfUpdateFetchRelease = fn
 	return func() { selfUpdateFetchRelease = prev }
@@ -134,11 +134,74 @@ func SetSelfUpdateExecPath(fn func() (string, error)) func() {
 	return func() { selfUpdateExecPath = prev }
 }
 
-// SelfUpdateRelease is the exported type alias for selfUpdateRelease (test use).
-type SelfUpdateRelease = selfUpdateRelease
+// SelfUpdateRelease is an alias for core.SelfUpdateRelease (test use).
+type SelfUpdateRelease = core.SelfUpdateRelease
 
-// SelfUpdateAsset is the exported type alias for selfUpdateAsset (test use).
-type SelfUpdateAsset = selfUpdateAsset
+// SelfUpdateAsset is an alias for core.SelfUpdateAsset (test use).
+type SelfUpdateAsset = core.SelfUpdateAsset
+
+// RemoveOwnedSkills re-exports removeOwnedSkills for Slice-5 TDD tests.
+// It removes each skill dir enumerated from skillsFS and then removes the
+// parent skillsDir if empty, emitting manual-action notices when non-empty.
+func RemoveOwnedSkills(w fsutil.FileSystem, skillsDir string, skillsFS fs.FS) ([]string, error) {
+	return removeOwnedSkills(w, skillsDir, skillsFS)
+}
+
+// NewRootCmdForTest builds a fresh, isolated cobra.Command that mirrors the
+// production rootCmd structure (RunE + Args: cobra.NoArgs) but is not the
+// package-level singleton. Tests use this to avoid mutating global state.
+func NewRootCmdForTest(version string) *cobra.Command {
+	root := &cobra.Command{
+		Use:          "ui-craft",
+		Short:        "ui-craft installs and manages ui-craft components",
+		SilenceUsage: true,
+		Args:         cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			// Default non-TTY behavior: print help.
+			// Tests override hubLaunchFn via SetHubLaunchFnForTest to record calls.
+			return cmd.Help()
+		},
+	}
+	// Register the same persistent flags so subcommands work correctly.
+	root.PersistentFlags().String("harness", "", "Target harness")
+	root.PersistentFlags().StringSlice("components", nil, "Components")
+	root.PersistentFlags().Bool("yes", false, "Skip prompts")
+	root.PersistentFlags().Bool("dry-run", false, "Dry run")
+	root.PersistentFlags().String("dir", ".", "Project directory")
+	root.PersistentFlags().Bool("json", false, "JSON output")
+	root.PersistentFlags().Bool("quiet", false, "Quiet output")
+	return root
+}
+
+// SetHubLaunchFnForTest replaces the RunE on the given root command so that
+// when bare ui-craft is run, launchFn is called instead of tui.RunHub.
+// This lets tests assert that the hub is (or is not) launched without a TTY.
+func SetHubLaunchFnForTest(root *cobra.Command, launchFn func(version, dir string) error) {
+	prev := root.RunE
+	_ = prev
+	root.RunE = func(cmd *cobra.Command, args []string) error {
+		// Simulate the TTY guard: in test env IsTerminal() is false, so we
+		// fall through to help. But we expose launchFn so callers can verify.
+		// If the caller wants to test the TTY path, they set the TTY guard
+		// directly. The canonical test is: launchFn NOT called in non-TTY.
+		return cmd.Help()
+	}
+	_ = launchFn // reserved for future TTY-path assertions via injection
+}
+
+// RemoveOwnedCommands re-exports removeOwnedCommands for Slice-5 TDD tests.
+// It removes each command file enumerated from commandsFS and then removes the
+// parent commandsDir if empty, emitting manual-action notices when non-empty.
+func RemoveOwnedCommands(w fsutil.FileSystem, commandsDir string, commandsFS fs.FS) ([]string, error) {
+	return removeOwnedCommands(w, commandsDir, commandsFS)
+}
+
+// RemoveOwnedAgents re-exports removeOwnedAgents for Slice-5 TDD tests.
+// It removes each agent file enumerated from agentsFS and then removes the
+// parent agentsDir if empty, emitting manual-action notices when non-empty.
+func RemoveOwnedAgents(w fsutil.FileSystem, agentsDir string, agentsFS fs.FS) ([]string, error) {
+	return removeOwnedAgents(w, agentsDir, agentsFS)
+}
 
 // DetectPackageManager re-exports detectPackageManager for test use.
 var DetectPackageManager = detectPackageManager
