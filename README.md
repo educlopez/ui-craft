@@ -126,10 +126,13 @@ git submodule add https://github.com/educlopez/ui-craft.git .skills/ui-craft
 
 The `ui-craft` binary is a single static Go binary (distributed via Homebrew and Scoop). It is the lifecycle and cross-harness wiring core for the system.
 
+Run `ui-craft` with no arguments to open the **interactive hub** — a full-screen menu with an async update check that routes into install, upgrade, backups, and uninstall. Every subcommand below also works directly for scripting/CI.
+
 ### Commands
 
 | Command | Does |
 |---------|------|
+| `ui-craft` *(no subcommand)* | Open the interactive TUI hub: welcome menu + update check → Start installation · Upgrade · Manage backups · Managed uninstall. |
 | `ui-craft install` | Detect harnesses, à-la-carte component selection, write configs. |
 | `ui-craft update [harness]` | Re-apply all installed components at the new embedded version. |
 | `ui-craft update [harness] --component <name>` | Re-apply one component only. |
@@ -140,7 +143,7 @@ The `ui-craft` binary is a single static Go binary (distributed via Homebrew and
 | `ui-craft backup pin <id>` / `unpin <id>` | Protect or unprotect a snapshot from retention cleanup. |
 | `ui-craft rollback [harness]` | Restore latest backup for a harness. |
 | `ui-craft self-update` | Upgrade binary to latest GitHub release (or prints the correct package-manager command when installed via Homebrew/Scoop). |
-| `ui-craft version` | Print binary + embedded mirror version. |
+| `ui-craft version` | Print the binary version. |
 | `ui-craft version --check-parity` | Verify the Claude Code install matches the expected surface. |
 
 ### Key flags for `install`
@@ -392,16 +395,15 @@ ui-craft/
 ├── evals/                         # Eval query sets for description optimizer
 │   └── presets/                   # Playful + brutalist eval JSONs (reference material)
 ├── scripts/
-│   ├── sync-harnesses.mjs        # Generates .codex/.cursor/.gemini/.opencode/.agents
 │   ├── detect.mjs                # ui-craft-detect CLI (also shipped on npm)
 │   └── validate.mjs              # Manifest + link checker
-├── .codex/skills/                 # AUTO-GENERATED — do not edit
-├── .cursor/skills/                # AUTO-GENERATED
-├── .gemini/skills/                # AUTO-GENERATED
-├── .opencode/skills/              # AUTO-GENERATED
-├── .agents/skills/                # AUTO-GENERATED (generic agent-skills spec)
+├── .codex/skills/                 # harness mirror for `npx skills add` / submodule installs
+├── .cursor/skills/                # harness mirror
+├── .gemini/skills/                # harness mirror
+├── .opencode/skills/              # harness mirror
+├── .agents/skills/                # harness mirror (generic agent-skills spec)
+├── cli/assets/<harness>/          # hand-authored per-harness assets the CLI embeds + installs
 ├── .github/workflows/
-│   ├── sync-harnesses.yml        # Regenerates mirrors on push to main
 │   └── validate.yml              # Runs validator on PR + push
 ├── README.md
 ├── CONTRIBUTING.md
@@ -548,14 +550,14 @@ The `ui-craft-mcp` package exposes four deterministic design-quality tools over 
 
 See [`mcp/README.md`](mcp/README.md) for full install, tool docs, and the `acceptance-data.json` regen note.
 
-## Maintaining harness mirrors
+## Maintaining harness assets
 
-```bash
-npm run sync
-# or: node scripts/sync-harnesses.mjs
-```
+The canonical skill content lives in `skills/` (main skill + variants) and `commands/` (the slash-command lenses). Two consumers ship that content:
 
-The sync script copies every folder under `skills/` (main skill + variants) into each harness dir and converts each file in `commands/` into a standalone sub-skill. It wipes and regenerates the harness dirs, so never edit `.codex/`, `.cursor/`, etc. directly — change `skills/` or `commands/`, then run sync. GitHub Actions runs it automatically on push to `main` (`.github/workflows/sync-harnesses.yml`).
+- **CLI (`ui-craft install`)** — per-harness assets are hand-authored under `cli/assets/<harness>/` (claude, cursor, codex, gemini, opencode) and compiled into the binary via `go:embed`. Command-capable harnesses (Claude Code, OpenCode) receive real `commands/*.md`; skills-only harnesses (Cursor, Codex, Gemini) receive each lens as a flat depth-1 peer skill. The embedded tree is also the uninstall manifest — cleanup removes exactly what it installed.
+- **`npx skills add` / git submodule** — the repo-root mirror dirs (`.codex/`, `.cursor/`, `.gemini/`, `.opencode/`, `.agents/`) serve those install paths.
+
+When you change a skill or command, update the canonical source under `skills/` + `commands/` and the matching harness copies.
 
 ## Tuning skill descriptions
 
