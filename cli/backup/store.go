@@ -517,7 +517,19 @@ func (s *Store) snapshotDir(harness, dirPath string) ([]archiveEntry, error) {
 		}
 		for _, child := range children {
 			childPath := filepath.Join(dir, child.Name())
-			if child.IsDir() {
+			// Symlink handling (gentle-ai parity): a directory symlink — e.g. a
+			// skill another tool installed as ~/.claude/skills/foo -> /elsewhere —
+			// must be skipped so the walk never follows it into an external tree.
+			// Otherwise os.DirEntry.IsDir() reports false for the symlink and the
+			// ReadFile below follows it, failing with EISDIR ("is a directory").
+			// File symlinks are still included (supports dotfile managers).
+			if child.Type()&os.ModeSymlink != 0 {
+				resolved, statErr := s.fs.Stat(childPath)
+				if statErr != nil || resolved.IsDir() {
+					continue // broken symlink or directory symlink — skip
+				}
+				// file symlink — fall through and read it as a file
+			} else if child.IsDir() {
 				if err := walkDir(childPath); err != nil {
 					return err
 				}
