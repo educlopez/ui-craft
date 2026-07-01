@@ -6,6 +6,8 @@ import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
+import os from "node:os";
+import fs from "node:fs";
 import {
   scan,
   parseUnifiedDiff,
@@ -365,4 +367,226 @@ test("resolveBaseRef: default resolution returns null outside a git work tree", 
   const result = resolveBaseRef(null, { cwd: "/tmp" });
   assert.doesNotThrow(() => resolveBaseRef(null, { cwd: "/tmp" }));
   assert.equal(result, null);
+});
+
+// ---------------------------------------------------------------------------
+// Diff-scoped scanning — Phase 3/4 (PR 2 of detect-ci-integration)
+// CLI wiring integration tests: --scope, --base, --fail-on, end-to-end via a
+// real ephemeral git repo, plus the non-git fallback path. See design obs #869.
+// ---------------------------------------------------------------------------
+
+/**
+ * Runs the CLI via execFileSync and returns { stdout, stderr, exitCode },
+ * regardless of whether the process exited non-zero (execFileSync throws in
+ * that case — this normalizes both paths into one shape for assertions).
+ * @param {string[]} args
+ * @param {{cwd?: string}} [opts]
+ */
+function runCli(args, opts = {}) {
+  try {
+    const stdout = execFileSync(process.execPath, [DETECT_MJS, ...args], {
+      encoding: "utf8",
+      ...opts,
+    });
+    return { stdout, stderr: "", exitCode: 0 };
+  } catch (err) {
+    return { stdout: err.stdout ?? "", stderr: err.stderr ?? "", exitCode: err.status };
+  }
+}
+
+/**
+ * Builds a throwaway git repo in a fresh temp dir with a "main" branch
+ * commit, then a second commit on top that both modifies an existing file
+ * (adding a slop pattern in a fresh hunk) and touches an untouched-relative
+ * file with a pre-existing (out-of-scope) slop pattern already committed on
+ * main. Returns { dir, baseSha }.
+ */
+function buildScopeFixtureRepo() {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "ui-craft-detect-scope-"));
+  const git = (args) => execFileSync("git", args, { cwd: dir, encoding: "utf8" });
+
+  git(["init", "-q", "-b", "main"]);
+  git(["config", "user.email", "test@example.com"]);
+  git(["config", "user.name", "Test"]);
+
+  // Base commit: one file with a pre-existing slop pattern (out-of-scope for
+  // any diff against this base — it's already on main untouched by HEAD).
+  fs.writeFileSync(
+    path.join(dir, "preexisting.tsx"),
+    `export function Old() {\n  return <div className="uppercase transition-all">OLD</div>;\n}\n`,
+  );
+  git(["add", "."]);
+  git(["commit", "-q", "-m", "base"]);
+  const baseSha = git(["rev-parse", "HEAD"]).trim();
+
+  // HEAD commit: a brand-new file containing a slop pattern — this is the
+  // only in-scope change vs baseSha.
+  fs.writeFileSync(
+    path.join(dir, "changed.tsx"),
+    `export function New() {\n  return <div className="bg-gradient-to-r from-purple-500 to-cyan-500">NEW</div>;\n}\n`,
+  );
+  git(["add", "."]);
+  git(["commit", "-q", "-m", "add changed file with slop"]);
+
+  return { dir, baseSha };
+}
+
+test("integration: --scope changed reports only findings in the new file, not the pre-existing one", () => {
+  const { dir, baseSha } = buildScopeFixtureRepo();
+  try {
+    const { stdout } = runCli([".", "--scope", "changed", "--base", baseSha, "--json"], { cwd: dir });
+    const result = JSON.parse(stdout);
+    const files = result.findings.map((f) => f.file);
+    assert.ok(files.some((f) => f.includes("changed.tsx")), "must report finding in the new/changed file");
+    assert.ok(
+      !files.some((f) => f.includes("preexisting.tsx")),
+      "must NOT report finding in the untouched pre-existing file",
+    );
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("integration: --scope files vs --scope changed both exclude the untouched file", () => {
+  const { dir, baseSha } = buildScopeFixtureRepo();
+  try {
+    for (const scope of ["files", "changed"]) {
+      const { stdout } = runCli([".", "--scope", scope, "--base", baseSha, "--json"], { cwd: dir });
+      const result = JSON.parse(stdout);
+      const files = result.findings.map((f) => f.file);
+      assert.ok(
+        !files.some((f) => f.includes("preexisting.tsx")),
+        `--scope ${scope} must exclude untouched file`,
+      );
+    }
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("integration: --scope full (default) matches no-scope output (parity, byte-identical)", () => {
+  const { dir, baseSha } = buildScopeFixtureRepo();
+  try {
+    const withFlag = runCli([".", "--scope", "full", "--base", baseSha, "--json"], { cwd: dir });
+    const withoutFlag = runCli([".", "--json"], { cwd: dir });
+    assert.deepStrictEqual(JSON.parse(withFlag.stdout), JSON.parse(withoutFlag.stdout));
+    assert.equal(withFlag.exitCode, withoutFlag.exitCode, "exit codes must match too");
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("integration: non-git directory falls back to full scan with a stderr note, no crash", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "ui-craft-detect-nogit-"));
+  try {
+    fs.writeFileSync(path.join(dir, "slop.tsx"), fs.readFileSync(SLOP_FIXTURE, "utf8"));
+    const { stdout, stderr, exitCode } = runCli([".", "--scope", "changed", "--json"], { cwd: dir });
+    const result = JSON.parse(stdout);
+    assert.ok(result.findings.length > 0, "fallback must run a full scan (slop fixture has findings)");
+    assert.equal(exitCode, 1, "fail-on default 'error' still applies to the unfiltered fallback set");
+    assert.ok(stderr.includes("falling back to full scan"), "must emit fallback note on stderr");
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("integration: --fail-on exit-code matrix over scope-filtered findings", () => {
+  const { dir, baseSha } = buildScopeFixtureRepo();
+  try {
+    // --fail-on none: always exits 0, even though the in-scope file has a
+    // critical finding.
+    let result = runCli(
+      [".", "--scope", "changed", "--base", baseSha, "--fail-on", "none", "--json"],
+      { cwd: dir },
+    );
+    assert.equal(result.exitCode, 0, "--fail-on none must always exit 0");
+
+    // --fail-on error with the critical finding in scope: exits 1.
+    result = runCli(
+      [".", "--scope", "changed", "--base", baseSha, "--fail-on", "error", "--json"],
+      { cwd: dir },
+    );
+    assert.equal(result.exitCode, 1, "--fail-on error must exit 1 when an in-scope critical finding exists");
+
+    // --fail-on error, but the critical finding is entirely OUT of scope
+    // (scope=changed against a base where nothing changed): exits 0.
+    result = runCli(
+      [".", "--scope", "changed", "--base", "HEAD", "--fail-on", "error", "--json"],
+      { cwd: dir },
+    );
+    assert.equal(
+      result.exitCode,
+      0,
+      "--fail-on error must exit 0 when the critical finding is filtered out by scope (base=HEAD, no diff)",
+    );
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("integration: --sarif output reflects scope-filtered results, not raw findings", () => {
+  const { dir, baseSha } = buildScopeFixtureRepo();
+  try {
+    const { stdout } = runCli([".", "--scope", "changed", "--base", baseSha, "--sarif"], { cwd: dir });
+    const sarif = JSON.parse(stdout);
+    const uris = sarif.runs[0].results.map((r) => r.locations[0].physicalLocation.artifactLocation.uri);
+    assert.ok(uris.some((u) => u.includes("changed.tsx")), "SARIF must include the in-scope finding");
+    assert.ok(!uris.some((u) => u.includes("preexisting.tsx")), "SARIF must exclude the out-of-scope finding");
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("integration: --fail-on error with --scope files and errors outside touched files exits 0 (JSON still emitted)", () => {
+  const { dir } = buildScopeFixtureRepo();
+  try {
+    // Diff against HEAD (nothing changed) to isolate the "errors exist, but
+    // outside scope" case with --scope files.
+    const { stdout, exitCode } = runCli(
+      [".", "--scope", "files", "--base", "HEAD", "--fail-on", "error", "--json"],
+      { cwd: dir },
+    );
+    const result = JSON.parse(stdout);
+    assert.ok(result.findings, "JSON output must still be emitted");
+    assert.equal(exitCode, 0, "exit code must be 0 — no in-scope errors when base=HEAD (no diff)");
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("integration: deleted file vs base — no crash, no fabricated findings", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "ui-craft-detect-deleted-"));
+  const git = (args) => execFileSync("git", args, { cwd: dir, encoding: "utf8" });
+  try {
+    git(["init", "-q", "-b", "main"]);
+    git(["config", "user.email", "test@example.com"]);
+    git(["config", "user.name", "Test"]);
+
+    fs.writeFileSync(
+      path.join(dir, "to-delete.tsx"),
+      `export function Gone() {\n  return <div className="uppercase">GONE</div>;\n}\n`,
+    );
+    git(["add", "."]);
+    git(["commit", "-q", "-m", "base"]);
+    const baseSha = git(["rev-parse", "HEAD"]).trim();
+
+    fs.rmSync(path.join(dir, "to-delete.tsx"));
+    git(["add", "."]);
+    git(["commit", "-q", "-m", "delete file"]);
+
+    let stdout;
+    assert.doesNotThrow(() => {
+      stdout = runCli(
+        [".", "--scope", "changed", "--base", baseSha, "--json", "--fail-on", "none"],
+        { cwd: dir },
+      ).stdout;
+    });
+    const result = JSON.parse(stdout);
+    assert.ok(
+      !result.findings.some((f) => f.file.includes("to-delete.tsx")),
+      "deleted file must not appear in findings",
+    );
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
 });

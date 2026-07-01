@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// ui-craft anti-slop detector v0.5.0
+// ui-craft anti-slop detector v0.6.0
 // Scans CSS/JSX/TSX/Vue/Svelte/etc for common AI-generated UI anti-patterns.
 // Zero dependencies. Node 18+. Rules mirror skills/ui-craft/SKILL.md "Anti-Slop Test".
 //
@@ -16,7 +16,7 @@ import path from "node:path";
 import readline from "node:readline";
 import { pathToFileURL } from "node:url";
 
-const VERSION = "0.5.0";
+const VERSION = "0.6.0";
 
 const SCAN_EXTENSIONS = new Set([
   ".css", ".scss", ".sass",
@@ -1684,6 +1684,9 @@ export function filterFindingsByScope(findings, scope, hunks, { cwd, repoTopleve
 
 // --- Main ----------------------------------------------------------------
 
+const SCOPE_VALUES = new Set(["full", "files", "changed"]);
+const FAIL_ON_VALUES = new Set(["none", "warning", "error"]);
+
 function parseArgs(argv) {
   const flags = {
     json: false,
@@ -1692,18 +1695,55 @@ function parseArgs(argv) {
     fixDryRun: false,
     version: false,
     help: false,
+    scope: "full",
+    base: null,
+    failOn: "error",
   };
   const positional = [];
-  for (const a of argv) {
+  for (let i = 0; i < argv.length; i++) {
+    const a = argv[i];
     if (a === "--json") flags.json = true;
     else if (a === "--sarif") flags.sarif = true;
     else if (a === "--fix") flags.fix = true;
     else if (a === "--fix-dry-run") flags.fixDryRun = true;
     else if (a === "--version" || a === "-v") flags.version = true;
     else if (a === "--help" || a === "-h") flags.help = true;
-    else if (!a.startsWith("--")) positional.push(a);
+    else if (a === "--scope" || a.startsWith("--scope=")) {
+      const value = a.startsWith("--scope=") ? a.slice("--scope=".length) : argv[++i];
+      if (!SCOPE_VALUES.has(value)) {
+        process.stderr.write(`error: invalid --scope value "${value}"; expected full|files|changed\n`);
+        process.exit(2);
+      }
+      flags.scope = value;
+    } else if (a === "--base" || a.startsWith("--base=")) {
+      const value = a.startsWith("--base=") ? a.slice("--base=".length) : argv[++i];
+      flags.base = value ?? null;
+    } else if (a === "--fail-on" || a.startsWith("--fail-on=")) {
+      const value = a.startsWith("--fail-on=") ? a.slice("--fail-on=".length) : argv[++i];
+      if (!FAIL_ON_VALUES.has(value)) {
+        process.stderr.write(`error: invalid --fail-on value "${value}"; expected none|warning|error\n`);
+        process.exit(2);
+      }
+      flags.failOn = value;
+    } else if (!a.startsWith("--")) positional.push(a);
   }
   return { flags, positional };
+}
+
+/**
+ * Decides the process exit code for a scan based on the `--fail-on` policy,
+ * evaluated strictly over POST-scope-filtered counts (never raw).
+ * - "none": always 0 (advisory).
+ * - "error": 1 iff errors (critical) > 0.
+ * - "warning": 1 iff errors > 0 || warnings (major+warn) > 0.
+ * @param {"none"|"warning"|"error"} failOn
+ * @param {{errors: number, warnings: number}} counts
+ * @returns {0|1}
+ */
+function failOnExit(failOn, { errors, warnings }) {
+  if (failOn === "none") return 0;
+  if (failOn === "warning") return errors > 0 || warnings > 0 ? 1 : 0;
+  return errors > 0 ? 1 : 0;
 }
 
 function printHelp() {
@@ -1713,10 +1753,13 @@ function printHelp() {
       `  ui-craft-detect [path] [flags]              # scan a directory\n` +
       `  ui-craft-detect init-hook [options]         # install pre-commit hooks or CI\n\n` +
       `Scan flags:\n` +
-      `  --json           machine-readable output\n` +
-      `  --sarif          SARIF 2.1.0 (GitHub code scanning)\n` +
-      `  --fix            auto-fix fixable rules (transition-all, animate-bounce)\n` +
-      `  --fix-dry-run    print would-be diff without writing\n\n` +
+      `  --json                     machine-readable output\n` +
+      `  --sarif                    SARIF 2.1.0 (GitHub code scanning)\n` +
+      `  --fix                      auto-fix fixable rules (transition-all, animate-bounce)\n` +
+      `  --fix-dry-run              print would-be diff without writing\n` +
+      `  --scope full|files|changed scope findings to a git diff (default: full)\n` +
+      `  --base <ref>               diff base ref (default: merge-base with default branch)\n` +
+      `  --fail-on none|warning|error  exit-code severity gate (default: error)\n\n` +
       `init-hook options:\n` +
       `  (no flag)        auto-detect husky or native\n` +
       `  --husky          write .husky/pre-commit\n` +
@@ -2159,23 +2202,50 @@ async function main() {
   // Delegate to the exported scan() function so programmatic callers get the same result.
   const scanResult = await scan(targetRaw, { config });
 
-  // Derive absolute-path findings for SARIF by mapping scan() relative paths back to absolute.
-  // scan() already ran once — no second disk read or rule evaluation needed.
   const cwd = process.cwd();
-  const absFindings = scanResult.findings.map((f) => ({
+
+  // Diff-scoped filtering: single filter point feeding ALL output paths
+  // (SARIF, JSON, human) — never duplicated per-renderer. `full` (default)
+  // is untouched below and remains byte-identical to prior behavior.
+  let scopedFindings = scanResult.findings;
+  if (flags.scope !== "full") {
+    const baseRef = resolveBaseRef(flags.base, { cwd });
+    if (baseRef === null) {
+      const reason = flags.base
+        ? `could not resolve base ref "${flags.base}"`
+        : "not a git repository or no resolvable default branch";
+      process.stderr.write(`warning: ${reason}; falling back to full scan\n`);
+    } else {
+      const hunks = parseGitDiffHunks(baseRef, { cwd });
+      scopedFindings = filterFindingsByScope(scanResult.findings, flags.scope, hunks, { cwd });
+    }
+  }
+
+  // Recompute summary counts over the scoped set so JSON/human/SARIF
+  // summaries and the fail-on gate all reason over the same filtered data.
+  const errorCount = scopedFindings.reduce((n, f) => n + (f.severity === "critical" ? 1 : 0), 0);
+  const warningCount = scopedFindings.reduce(
+    (n, f) => n + (f.severity === "major" || f.severity === "warn" ? 1 : 0),
+    0,
+  );
+  const summary = {
+    ...scanResult.summary,
+    files_flagged: new Set(scopedFindings.map((f) => f.file)).size,
+    errors: errorCount,
+    warnings: warningCount,
+  };
+
+  // Derive absolute-path findings for SARIF/human by mapping scan() relative
+  // paths back to absolute. scan() already ran once — no second disk read.
+  const absFindings = scopedFindings.map((f) => ({
     ...f,
     file: path.resolve(cwd, f.file),
   }));
 
-  const { summary } = scanResult;
-  // Exit code is driven by "error" severity (critical) only.
-  const errorCount = summary.errors;
-  const warningCount = summary.warnings;
-
   if (flags.sarif) {
     const sarif = toSarif(absFindings, rules);
     process.stdout.write(JSON.stringify(sarif, null, 2) + "\n");
-    process.exit(errorCount > 0 ? 1 : 0);
+    process.exit(failOnExit(flags.failOn, { errors: errorCount, warnings: warningCount }));
   }
 
   if (flags.json) {
@@ -2183,10 +2253,10 @@ async function main() {
       version: scanResult.version,
       summary,
       config: configPath ? { path: configPath, overrides: overrideCount } : null,
-      findings: scanResult.findings,
+      findings: scopedFindings,
     };
     process.stdout.write(JSON.stringify(out, null, 2) + "\n");
-    process.exit(errorCount > 0 ? 1 : 0);
+    process.exit(failOnExit(flags.failOn, { errors: errorCount, warnings: warningCount }));
   }
 
   // Human-readable output
@@ -2226,7 +2296,7 @@ async function main() {
   summaryLine += ` Auto-fixed: 0.`;
   process.stdout.write(summaryLine + "\n");
 
-  process.exit(errorCount > 0 ? 1 : 0);
+  process.exit(failOnExit(flags.failOn, { errors: errorCount, warnings: warningCount }));
 }
 
 // CLI entry guard. `UI_CRAFT_BUNDLE` is replaced with "1" at esbuild build time
