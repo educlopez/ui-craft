@@ -6,7 +6,12 @@ import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
-import { scan } from "./detect.mjs";
+import {
+  scan,
+  parseUnifiedDiff,
+  filterFindingsByScope,
+  resolveBaseRef,
+} from "./detect.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DETECT_MJS = path.join(__dirname, "detect.mjs");
@@ -162,4 +167,202 @@ test("scan() on nonexistent path returns structured error without throwing", asy
   assert.ok(result.error, "result must have an error field");
   assert.equal(result.findings.length, 0, "findings must be empty on error");
   assert.equal(result.summary.files_scanned, 0, "files_scanned must be 0 on error");
+});
+
+// ---------------------------------------------------------------------------
+// Diff-scoped scanning — Phase 1/2 (PR 1 of detect-ci-integration)
+// Pure parser/filter unit tests. String-fixture based (no temp repos) so
+// they're git-version independent. See design obs #869.
+// ---------------------------------------------------------------------------
+
+// --- parseUnifiedDiff -------------------------------------------------------
+
+test("parseUnifiedDiff: single hunk in one file", () => {
+  const diff = `diff --git a/src/foo.tsx b/src/foo.tsx
+index 1111111..2222222 100644
+--- a/src/foo.tsx
++++ b/src/foo.tsx
+@@ -10,0 +11,3 @@ function Foo() {
++  const a = 1;
++  const b = 2;
++  const c = 3;
+`;
+  const hunks = parseUnifiedDiff(diff);
+  assert.deepStrictEqual(hunks.get("src/foo.tsx"), [[11, 13]]);
+});
+
+test("parseUnifiedDiff: multiple hunks in one file", () => {
+  const diff = `diff --git a/src/foo.tsx b/src/foo.tsx
+--- a/src/foo.tsx
++++ b/src/foo.tsx
+@@ -5,0 +5,2 @@
++  const x = 1;
++  const y = 2;
+@@ -40,0 +42,1 @@
++  const z = 3;
+`;
+  const hunks = parseUnifiedDiff(diff);
+  assert.deepStrictEqual(hunks.get("src/foo.tsx"), [
+    [5, 6],
+    [42, 42],
+  ]);
+});
+
+test("parseUnifiedDiff: renamed file with edits is followed, not double-counted", () => {
+  const diff = `diff --git a/src/old-name.tsx b/src/new-name.tsx
+similarity index 90%
+rename from src/old-name.tsx
+rename to src/new-name.tsx
+index 1111111..2222222 100644
+--- a/src/old-name.tsx
++++ b/src/new-name.tsx
+@@ -3,0 +3,1 @@
++  const renamed = true;
+`;
+  const hunks = parseUnifiedDiff(diff);
+  assert.ok(!hunks.has("src/old-name.tsx"), "old path must not appear (no delete+add double count)");
+  assert.deepStrictEqual(hunks.get("src/new-name.tsx"), [[3, 3]]);
+});
+
+test("parseUnifiedDiff: pure rename (no edits) yields empty ranges for new path", () => {
+  const diff = `diff --git a/src/old-name.tsx b/src/new-name.tsx
+similarity index 100%
+rename from src/old-name.tsx
+rename to src/new-name.tsx
+`;
+  const hunks = parseUnifiedDiff(diff);
+  assert.ok(hunks.has("src/new-name.tsx"), "renamed file must be listed (visible in files scope)");
+  assert.deepStrictEqual(hunks.get("src/new-name.tsx"), [], "no ranges (invisible in changed scope)");
+});
+
+test("parseUnifiedDiff: newly-added file — all lines counted as changed", () => {
+  const diff = `diff --git a/src/brand-new.tsx b/src/brand-new.tsx
+new file mode 100644
+index 0000000..3333333
+--- /dev/null
++++ b/src/brand-new.tsx
+@@ -0,0 +1,5 @@
++export function BrandNew() {
++  return <div>new</div>;
++}
++
++export default BrandNew;
+`;
+  const hunks = parseUnifiedDiff(diff);
+  assert.deepStrictEqual(hunks.get("src/brand-new.tsx"), [[1, 5]]);
+});
+
+test("parseUnifiedDiff: binary file is skipped cleanly, no crash", () => {
+  const diff = `diff --git a/assets/logo.png b/assets/logo.png
+index 1111111..2222222 100644
+Binary files a/assets/logo.png and b/assets/logo.png differ
+`;
+  assert.doesNotThrow(() => parseUnifiedDiff(diff));
+  const hunks = parseUnifiedDiff(diff);
+  assert.ok(hunks.has("assets/logo.png"), "binary file must be listed (files scope)");
+  assert.deepStrictEqual(hunks.get("assets/logo.png"), [], "no ranges fabricated for binary file");
+});
+
+test("parseUnifiedDiff: pure-deletion hunk (+c,0) is skipped, no range added", () => {
+  const diff = `diff --git a/src/foo.tsx b/src/foo.tsx
+--- a/src/foo.tsx
++++ b/src/foo.tsx
+@@ -10,3 +10,0 @@
+-  const removed1 = 1;
+-  const removed2 = 2;
+-  const removed3 = 3;
+`;
+  const hunks = parseUnifiedDiff(diff);
+  assert.deepStrictEqual(hunks.get("src/foo.tsx"), []);
+});
+
+test("parseUnifiedDiff: multiple files in one diff are each tracked independently", () => {
+  const diff = `diff --git a/src/a.tsx b/src/a.tsx
+--- a/src/a.tsx
++++ b/src/a.tsx
+@@ -1,0 +1,2 @@
++line1
++line2
+diff --git a/src/b.tsx b/src/b.tsx
+--- a/src/b.tsx
++++ b/src/b.tsx
+@@ -8,0 +9,1 @@
++line9
+`;
+  const hunks = parseUnifiedDiff(diff);
+  assert.deepStrictEqual(hunks.get("src/a.tsx"), [[1, 2]]);
+  assert.deepStrictEqual(hunks.get("src/b.tsx"), [[9, 9]]);
+});
+
+// --- filterFindingsByScope ---------------------------------------------------
+
+const SCOPE_FIXTURE_FINDINGS = [
+  { file: "src/touched.tsx", line: 12, rule: "in-hunk", severity: "critical" },
+  { file: "src/touched.tsx", line: 99, rule: "out-of-hunk-same-file", severity: "warn" },
+  { file: "src/untouched.tsx", line: 5, rule: "untouched-file", severity: "major" },
+];
+
+function fixtureHunks() {
+  return new Map([["src/touched.tsx", [[10, 15]]]]);
+}
+
+test("filterFindingsByScope: 'full' returns the same array reference (identity)", () => {
+  const findings = SCOPE_FIXTURE_FINDINGS;
+  const result = filterFindingsByScope(findings, "full", fixtureHunks(), { cwd: "/repo", repoToplevel: "/repo" });
+  assert.strictEqual(result, findings, "full scope must return the identical array reference");
+});
+
+test("filterFindingsByScope: 'files' keeps whole-file findings, drops untouched files", () => {
+  const result = filterFindingsByScope(SCOPE_FIXTURE_FINDINGS, "files", fixtureHunks(), {
+    cwd: "/repo",
+    repoToplevel: "/repo",
+  });
+  const rules = result.map((f) => f.rule).sort();
+  assert.deepStrictEqual(rules, ["in-hunk", "out-of-hunk-same-file"]);
+});
+
+test("filterFindingsByScope: 'changed' excludes findings outside hunks, keeps in-hunk findings", () => {
+  const result = filterFindingsByScope(SCOPE_FIXTURE_FINDINGS, "changed", fixtureHunks(), {
+    cwd: "/repo",
+    repoToplevel: "/repo",
+  });
+  assert.equal(result.length, 1);
+  assert.equal(result[0].rule, "in-hunk");
+});
+
+test("filterFindingsByScope: normalizes cwd-relative paths for a subdirectory scan target", () => {
+  // Simulates scanning from a subdirectory: scan()'s finding.file is relative
+  // to process.cwd() (e.g. "touched.tsx" when cwd is "/repo/src"), while the
+  // hunk map keys are always repo-relative ("src/touched.tsx"). The filter
+  // must reconcile the two via repoToplevel.
+  const subdirFindings = [
+    { file: "touched.tsx", line: 12, rule: "in-hunk", severity: "critical" },
+  ];
+  const result = filterFindingsByScope(subdirFindings, "changed", fixtureHunks(), {
+    cwd: "/repo/src",
+    repoToplevel: "/repo",
+  });
+  assert.equal(result.length, 1, "finding must be matched after repo-relative normalization");
+  assert.equal(result[0].rule, "in-hunk");
+});
+
+// --- resolveBaseRef ----------------------------------------------------------
+
+test("resolveBaseRef: explicit base is verified and returned unchanged on success", () => {
+  // HEAD always resolves inside this repo's working tree.
+  const result = resolveBaseRef("HEAD", { cwd: __dirname });
+  assert.equal(result, "HEAD");
+});
+
+test("resolveBaseRef: explicit base returns null when it cannot be verified (fallback trigger)", () => {
+  const result = resolveBaseRef("this-ref-does-not-exist-anywhere-xyz", { cwd: __dirname });
+  assert.equal(result, null);
+});
+
+test("resolveBaseRef: default resolution returns null outside a git work tree", () => {
+  // /tmp is not (reliably) inside a git work tree; assert the non-git-repo
+  // fallback path resolves to null without throwing.
+  const result = resolveBaseRef(null, { cwd: "/tmp" });
+  assert.doesNotThrow(() => resolveBaseRef(null, { cwd: "/tmp" }));
+  assert.equal(result, null);
 });
