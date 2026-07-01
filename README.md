@@ -433,6 +433,29 @@ node scripts/detect.mjs ./src
 
 Exit code 0 when clean, 1 when findings — usable as a CI gate. Rules mirror the Anti-Slop Test in `skills/ui-craft/SKILL.md`.
 
+### Diff-scoped scanning — `--scope`, `--base`, `--fail-on`
+
+Scope findings to what a branch actually changed, so CI only flags new anti-patterns instead of the entire pre-existing codebase.
+
+| Flag | Values | Default | What it does |
+|------|--------|---------|--------------|
+| `--scope` | `full` \| `files` \| `changed` | `full` | `full` scans everything (unchanged behavior). `files` reports all findings in any file touched vs the base ref. `changed` reports only findings whose line falls inside an actual diff hunk. |
+| `--base <ref>` | any git ref | merge-base of `HEAD` with the default branch | Overrides the comparison ref used for `--scope files`/`changed`. |
+| `--fail-on` | `none` \| `warning` \| `error` | `error` | Exit-code gate, evaluated on the scope-filtered findings only. `none` is always advisory (exit 0). `warning` fails on any surviving finding. `error` fails only on critical findings (matches pre-existing default behavior). |
+
+```bash
+# Local pre-commit-style gate: only fail on new critical issues in changed lines
+npx ui-craft-detect --scope changed --fail-on error
+
+# Compare against a specific ref instead of the default branch
+npx ui-craft-detect --scope changed --base origin/develop
+
+# Advisory mode — see scoped findings without affecting the exit code
+npx ui-craft-detect --scope files --fail-on none --json
+```
+
+If git is unavailable, the directory isn't a git repository, or the base ref can't be resolved (e.g. shallow clone), the tool falls back to `--scope full` automatically and prints a note on stderr — it never crashes or silently drops findings.
+
 ### Pre-commit hooks + CI — `init-hook` subcommand
 
 `ui-craft-detect` can install its own pre-commit hook or GitHub Action with zero config.
