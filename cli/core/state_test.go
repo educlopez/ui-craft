@@ -2,6 +2,7 @@ package core_test
 
 import (
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -31,7 +32,11 @@ func TestLoadState_missingFile(t *testing.T) {
 }
 
 // TestLoadState_malformedFallback verifies that a malformed state.json returns
-// an empty state rather than an error (gotcha #2: never abort on bad data).
+// a clear, non-nil error naming the corrupt file (installer-hardening T6):
+// the state is unknown, not empty, so LoadState MUST NOT proceed as if
+// nothing were installed. It still returns a non-nil, zero-value state
+// alongside the error so callers that intentionally proceed after inspecting
+// the error (see cli/tui/hub_uninstall.go) have a safe struct to read.
 func TestLoadState_malformedFallback(t *testing.T) {
 	m := fsutil.NewMemFS()
 	root := "/home/user/.ui-craft"
@@ -39,14 +44,17 @@ func TestLoadState_malformedFallback(t *testing.T) {
 	_ = m.WriteFile(filepath.Join(root, "state.json"), []byte("{invalid json!!!"), 0o644)
 
 	state, err := core.LoadState(m, root)
-	if err != nil {
-		t.Fatalf("LoadState on malformed file: unexpected error: %v", err)
+	if err == nil {
+		t.Fatal("LoadState on malformed file: expected a clear error naming the corrupt file, got nil")
+	}
+	if !strings.Contains(err.Error(), filepath.Join(root, "state.json")) {
+		t.Errorf("LoadState error should name the corrupt file path; got: %v", err)
 	}
 	if state == nil {
-		t.Fatal("expected non-nil state on malformed file")
+		t.Fatal("expected non-nil state on malformed file (safe fallback struct for callers that proceed anyway)")
 	}
 	if len(state.Harnesses) != 0 {
-		t.Errorf("expected empty harnesses after malformed parse, got %d", len(state.Harnesses))
+		t.Errorf("expected empty harnesses in fallback state, got %d", len(state.Harnesses))
 	}
 }
 
