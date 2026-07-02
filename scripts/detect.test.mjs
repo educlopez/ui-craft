@@ -14,6 +14,7 @@ import {
   filterFindingsByScope,
   resolveBaseRef,
   renderGHAWorkflow,
+  renderReviewComments,
   DEFAULT_GHA_CONFIG,
 } from "./detect.mjs";
 
@@ -772,4 +773,234 @@ test("renderGHAWorkflow: status=false omits the commit-status step and the statu
   );
   // Config marker still reflects the requested (status:false) config exactly.
   assert.ok(yaml.includes('"status":false'), "config marker must reflect status:false");
+});
+
+// ---------------------------------------------------------------------------
+// Slice C2 — renderReviewComments(findings, commitSha): pure function, no
+// gh/network calls. Callers MUST feed already scope-filtered ("changed")
+// findings — this function trusts its input and does not re-filter by hunk
+// ranges. The actual `gh api .../reviews --input` invocation inside the
+// generated bash step is NOT unit-tested — untestable without a live PR.
+// ---------------------------------------------------------------------------
+
+test("renderReviewComments: builds a single review with one comment per finding", () => {
+  const findings = [
+    { file: "src/a.tsx", line: 5, description: "transition: all", fix: "list specific properties" },
+    { file: "src/b.tsx", line: 12, description: "ALL CAPS heading", fix: "use sentence case" },
+  ];
+  const review = renderReviewComments(findings, "abc123");
+
+  assert.equal(review.commit_id, "abc123");
+  assert.equal(review.event, "COMMENT");
+  assert.equal(review.comments.length, 2);
+});
+
+test("renderReviewComments: each comment has path, line, side RIGHT, and a body derived from description+fix", () => {
+  const findings = [
+    { file: "src/a.tsx", line: 5, description: "transition: all", fix: "list specific properties" },
+  ];
+  const review = renderReviewComments(findings, "abc123");
+  const [comment] = review.comments;
+
+  assert.equal(comment.path, "src/a.tsx");
+  assert.equal(comment.line, 5);
+  assert.equal(comment.side, "RIGHT");
+  assert.ok(comment.body.includes("transition: all"), "body must include the finding description");
+  assert.ok(comment.body.includes("list specific properties"), "body must include the fix suggestion");
+  assert.ok(!("position" in comment), "must not include the deprecated position field");
+});
+
+test("renderReviewComments: side is always RIGHT regardless of input order/count", () => {
+  const findings = [
+    { file: "a.tsx", line: 1, description: "d1", fix: "f1" },
+    { file: "b.tsx", line: 2, description: "d2", fix: "f2" },
+    { file: "a.tsx", line: 9, description: "d3", fix: "f3" },
+  ];
+  const review = renderReviewComments(findings, "sha");
+  assert.ok(review.comments.every((c) => c.side === "RIGHT"), "every comment must have side: RIGHT");
+});
+
+test("renderReviewComments: multiple findings across multiple files all land in one review's comments array", () => {
+  const findings = [
+    { file: "a.tsx", line: 1, description: "d1", fix: "f1" },
+    { file: "b.tsx", line: 2, description: "d2", fix: "f2" },
+    { file: "a.tsx", line: 9, description: "d3", fix: "f3" },
+  ];
+  const review = renderReviewComments(findings, "sha");
+  const files = review.comments.map((c) => c.path);
+  assert.deepEqual(files, ["a.tsx", "b.tsx", "a.tsx"]);
+  assert.equal(review.comments.length, 3, "one review, three comments — not three separate reviews");
+});
+
+test("renderReviewComments: empty findings array returns null (guard against pointless empty review)", () => {
+  assert.equal(renderReviewComments([], "sha"), null);
+});
+
+test("renderReviewComments: does not filter by hunk ranges itself — trusts already-scoped input", () => {
+  // A finding that would be "out of scope" for a real diff still produces a
+  // comment here, because renderReviewComments is a pure payload builder,
+  // not a scope filter. The CLI wiring (--scope changed -> filterFindingsByScope
+  // -> renderReviewComments) is what guarantees only diff-visible findings
+  // are ever passed in; this test documents that renderReviewComments does
+  // not re-derive that guarantee on its own.
+  const findings = [{ file: "untouched.tsx", line: 999, description: "d", fix: "f" }];
+  const review = renderReviewComments(findings, "sha");
+  assert.equal(review.comments.length, 1);
+});
+
+// ---------------------------------------------------------------------------
+// Slice C2 — --review-json CLI flag (integration, real git repo + real CLI
+// invocation, no gh/network calls).
+// ---------------------------------------------------------------------------
+
+test("integration: --review-json requires --scope changed, else exits 2 with an error", () => {
+  const { dir, baseSha } = buildScopeFixtureRepo();
+  try {
+    const { stderr, exitCode } = runCli([".", "--review-json", "--base", baseSha], { cwd: dir });
+    assert.equal(exitCode, 2);
+    assert.ok(/requires --scope changed/.test(stderr), "must explain the --scope changed requirement");
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("integration: --review-json with --scope changed emits a Reviews API payload for the new file only", () => {
+  const { dir, baseSha } = buildScopeFixtureRepo();
+  try {
+    const { stdout, exitCode } = runCli(
+      [".", "--scope", "changed", "--base", baseSha, "--review-json", "--commit-sha", "deadbeef", "--fail-on", "none"],
+      { cwd: dir },
+    );
+    assert.equal(exitCode, 0);
+    const review = JSON.parse(stdout);
+    assert.equal(review.commit_id, "deadbeef");
+    assert.equal(review.event, "COMMENT");
+    assert.ok(review.comments.length > 0, "must include at least one comment for the new/changed file");
+    assert.ok(
+      review.comments.every((c) => c.path.includes("changed.tsx")),
+      "must only include comments for the new/changed file, not the pre-existing untouched one",
+    );
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("integration: --review-json defaults commit_id to HEAD when --commit-sha is omitted", () => {
+  const { dir, baseSha } = buildScopeFixtureRepo();
+  try {
+    const headSha = execFileSync("git", ["rev-parse", "HEAD"], { cwd: dir, encoding: "utf8" }).trim();
+    const { stdout, exitCode } = runCli(
+      [".", "--scope", "changed", "--base", baseSha, "--review-json", "--fail-on", "none"],
+      { cwd: dir },
+    );
+    assert.equal(exitCode, 0);
+    const review = JSON.parse(stdout);
+    assert.equal(review.commit_id, headSha);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("integration: --review-json prints null when no findings survive --scope changed filtering", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "ui-craft-detect-reviewjson-empty-"));
+  const git = (args) => execFileSync("git", args, { cwd: dir, encoding: "utf8" });
+  try {
+    git(["init", "-q", "-b", "main"]);
+    git(["config", "user.email", "test@example.com"]);
+    git(["config", "user.name", "Test"]);
+    fs.writeFileSync(path.join(dir, "clean.ts"), "export const x = 1;\n");
+    git(["add", "."]);
+    git(["commit", "-q", "-m", "base"]);
+    const baseSha = git(["rev-parse", "HEAD"]).trim();
+    fs.writeFileSync(path.join(dir, "clean.ts"), "export const x = 2;\n");
+    git(["add", "."]);
+    git(["commit", "-q", "-m", "still clean"]);
+
+    const { stdout, exitCode } = runCli(
+      [".", "--scope", "changed", "--base", baseSha, "--review-json", "--fail-on", "none"],
+      { cwd: dir },
+    );
+    assert.equal(exitCode, 0);
+    assert.equal(stdout.trim(), "null");
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Slice C2 — inline-comments bash step inside renderGHAWorkflow. Pure-function
+// assertions on the generated YAML string only; the `gh api .../reviews`
+// invocation itself is NOT unit-tested — untestable without a live PR. See
+// the manual smoke-test checklist in tasks (Phase C2).
+// ---------------------------------------------------------------------------
+
+test("renderGHAWorkflow: inlineComments=true includes the inline-review-comments step gated on pull_request", () => {
+  const yaml = renderGHAWorkflow(DEFAULT_GHA_CONFIG);
+
+  assert.ok(yaml.includes("Post inline review comments"), "must include the inline-comments step");
+  assert.ok(
+    yaml.includes("if: always() && github.event_name == 'pull_request'"),
+    "inline-comments step must be gated on pull_request and run even if the scan step failed (always())",
+  );
+});
+
+test("renderGHAWorkflow: inline-comments step invokes --review-json with --scope changed and pipes to gh api --input", () => {
+  const yaml = renderGHAWorkflow(DEFAULT_GHA_CONFIG);
+  const stepIdx = yaml.indexOf("Post inline review comments");
+  assert.ok(stepIdx !== -1, "inline-comments step must be present");
+  const stepBlock = yaml.slice(stepIdx, stepIdx + 900);
+
+  assert.ok(
+    stepBlock.includes("--scope changed") && stepBlock.includes("--review-json"),
+    "must invoke the CLI with --scope changed --review-json to build the payload",
+  );
+  assert.ok(
+    stepBlock.includes("gh api --method POST") && stepBlock.includes("/reviews") && stepBlock.includes("--input"),
+    "must POST the payload to the pulls/{pr}/reviews endpoint via --input (full JSON body from file), not -f/-F field flags",
+  );
+  assert.ok(
+    !/--input.*-f |{ -f .*reviews/.test(stepBlock),
+    "must not mix --input with -f/-F field flags for the reviews POST",
+  );
+});
+
+test("renderGHAWorkflow: inline-comments step has continue-on-error: true", () => {
+  const yaml = renderGHAWorkflow(DEFAULT_GHA_CONFIG);
+  const stepIdx = yaml.indexOf("Post inline review comments");
+  const stepBlock = yaml.slice(stepIdx, stepIdx + 300);
+
+  assert.ok(
+    stepBlock.includes("continue-on-error: true"),
+    "a 422 (force-push drift, renamed files) must never fail the job — the separate fail-on-derived scan step is the sole gate",
+  );
+});
+
+test("renderGHAWorkflow: inline-comments step skips posting when the payload has zero comments", () => {
+  const yaml = renderGHAWorkflow(DEFAULT_GHA_CONFIG);
+  const stepIdx = yaml.indexOf("Post inline review comments");
+  const stepBlock = yaml.slice(stepIdx, stepIdx + 900);
+
+  assert.ok(
+    /COMMENT_COUNT/.test(stepBlock) && /skipping review comment post/.test(stepBlock),
+    "must guard against posting an empty/pointless review when no findings survive scope filtering",
+  );
+});
+
+test("renderGHAWorkflow: inlineComments=false omits the inline-comments step (no new permission needed either way)", () => {
+  const yaml = renderGHAWorkflow({ ...DEFAULT_GHA_CONFIG, inlineComments: false });
+
+  assert.ok(
+    !yaml.includes("Post inline review comments"),
+    "inline-comments step must be omitted when inlineComments is false",
+  );
+  // pull-requests: write is already granted by Slice B for the sticky
+  // comment; the Reviews API needs the same permission, no new grant.
+  assert.ok(yaml.includes("pull-requests: write"), "pull-requests: write must remain present regardless");
+  assert.ok(yaml.includes('"inlineComments":false'), "config marker must reflect inlineComments:false");
+});
+
+test("renderGHAWorkflow: pull-requests: write permission is not duplicated for the Reviews API — same grant as the sticky comment", () => {
+  const yaml = renderGHAWorkflow(DEFAULT_GHA_CONFIG);
+  const occurrences = yaml.split("pull-requests: write").length - 1;
+  assert.equal(occurrences, 1, "pull-requests: write must be declared exactly once, covering both sticky comment and Reviews API");
 });

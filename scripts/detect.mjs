@@ -16,7 +16,7 @@ import path from "node:path";
 import readline from "node:readline";
 import { pathToFileURL } from "node:url";
 
-const VERSION = "0.7.1";
+const VERSION = "0.7.2";
 
 const SCAN_EXTENSIONS = new Set([
   ".css", ".scss", ".sass",
@@ -1682,6 +1682,50 @@ export function filterFindingsByScope(findings, scope, hunks, { cwd, repoTopleve
   });
 }
 
+/**
+ * Builds the GitHub Reviews API JSON payload for
+ * `POST /repos/{owner}/{repo}/pulls/{pull_number}/reviews` — a single review
+ * with `event: "COMMENT"` and one comment entry per finding.
+ *
+ * Callers MUST feed already scope-filtered findings (i.e. the result of
+ * `filterFindingsByScope(findings, "changed", hunks, opts)`), not raw
+ * findings — a finding surviving "changed" scope filtering is by definition
+ * on a diff-visible line, so this function does not re-filter by hunk
+ * ranges itself; it trusts its input. This mirrors how the CLI wires it:
+ * scan --scope changed → filterFindingsByScope → renderReviewComments.
+ *
+ * Uses the current Reviews API's `line` + `side` fields (not the deprecated
+ * `position` field) — `side` is always `"RIGHT"` since the hunk map (Slice A)
+ * only carries new-side (post-change) line ranges; there is no old-side
+ * mapping to compute.
+ *
+ * Returns `null` when `findings` is empty — an empty review with zero
+ * comments is pointless (and the Reviews API may reject `comments: []` with
+ * `event: "COMMENT"` and no `body`), so callers must skip posting entirely
+ * in that case rather than submit a no-op review.
+ *
+ * @param {Array<{file: string, line: number, description: string, fix: string}>} findings
+ *   Pre-filtered findings (already scope-filtered to diff-visible lines).
+ * @param {string} commitSha
+ * @returns {{commit_id: string, event: "COMMENT", comments: Array<{path: string, line: number, side: "RIGHT", body: string}>} | null}
+ */
+export function renderReviewComments(findings, commitSha) {
+  if (!findings || findings.length === 0) return null;
+
+  const comments = findings.map((f) => ({
+    path: f.file,
+    line: f.line,
+    side: "RIGHT",
+    body: `**${f.description}**\n\nFix: ${f.fix}`,
+  }));
+
+  return {
+    commit_id: commitSha,
+    event: "COMMENT",
+    comments,
+  };
+}
+
 // --- Main ----------------------------------------------------------------
 
 const SCOPE_VALUES = new Set(["full", "files", "changed"]);
@@ -1691,6 +1735,7 @@ function parseArgs(argv) {
   const flags = {
     json: false,
     sarif: false,
+    reviewJson: false,
     fix: false,
     fixDryRun: false,
     version: false,
@@ -1698,11 +1743,18 @@ function parseArgs(argv) {
     scope: "full",
     base: null,
     failOn: "error",
+    commitSha: null,
   };
   const positional = [];
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--json") flags.json = true;
+    else if (a === "--review-json") flags.reviewJson = true;
+    else if (a === "--commit-sha" || a.startsWith("--commit-sha=")) {
+      flags.commitSha = a.startsWith("--commit-sha=")
+        ? a.slice("--commit-sha=".length)
+        : argv[++i];
+    }
     else if (a === "--sarif") flags.sarif = true;
     else if (a === "--fix") flags.fix = true;
     else if (a === "--fix-dry-run") flags.fixDryRun = true;
@@ -1755,6 +1807,8 @@ function printHelp() {
       `Scan flags:\n` +
       `  --json                     machine-readable output\n` +
       `  --sarif                    SARIF 2.1.0 (GitHub code scanning)\n` +
+      `  --review-json              GitHub Reviews API payload (requires --scope changed)\n` +
+      `  --commit-sha <sha>         commit_id for --review-json (default: HEAD)\n` +
       `  --fix                      auto-fix fixable rules (transition-all, animate-bounce)\n` +
       `  --fix-dry-run              print would-be diff without writing\n` +
       `  --scope full|files|changed scope findings to a git diff (default: full)\n` +
@@ -1856,13 +1910,12 @@ export const DEFAULT_GHA_CONFIG = Object.freeze({
  */
 export function renderGHAWorkflow(config) {
   const resolved = { ...DEFAULT_GHA_CONFIG, ...config };
-  // inlineComments lands in resolved for Slice C2 to read once implemented — not consumed yet.
-  const { scope, failOn, comment, status } = resolved;
+  const { scope, failOn, comment, status, inlineComments } = resolved;
 
   const stickyCommentStep = comment
     ? `
       - name: Post or update sticky PR summary comment
-        if: github.event_name == 'pull_request'
+        if: always() && github.event_name == 'pull_request'
         env:
           GH_TOKEN: \${{ github.token }}
         run: |
@@ -1919,6 +1972,43 @@ export function renderGHAWorkflow(config) {
   statuses: write`
     : "";
 
+  // Slice C2: inline review comments. Runs only on pull_request (a push has
+  // no PR to attach a review to). Re-invokes the scan with --scope changed
+  // --review-json — this recomputes hunks + re-scans rather than reusing the
+  // pull_request scan step's plain --json output above, since --review-json
+  // produces a different payload shape (GitHub Reviews API comments, not the
+  // scan's own findings JSON) and needs its own commit_id. `continue-on-error:
+  // true` — a 422 (force-push commit_id drift, renamed files) must never fail
+  // the job; the earlier --fail-on-derived scan step remains the sole
+  // authoritative gate. Gated on `always()` like the commit-status step: if
+  // the pull_request scan step above exits non-zero (findings breach
+  // --fail-on), GitHub Actions would otherwise skip this step by default —
+  // but inline comments on a *failing* PR are exactly the case reviewers most
+  // need to see, so this step must still run.
+  const inlineCommentsStep = inlineComments
+    ? `
+      - name: Post inline review comments
+        if: always() && github.event_name == 'pull_request'
+        continue-on-error: true
+        env:
+          GH_TOKEN: \${{ github.token }}
+        run: |
+          REPO="\${{ github.repository }}"
+          PR_NUMBER="\${{ github.event.number }}"
+          HEAD_SHA="\${{ github.event.pull_request.head.sha }}"
+          REVIEW_FILE="$(mktemp)"
+          npx --yes ui-craft-detect@latest . --scope changed --fail-on none \\
+            --review-json --commit-sha "$HEAD_SHA" > "$REVIEW_FILE" || true
+          COMMENT_COUNT="$(jq -r 'if . == null then 0 else (.comments | length) end' "$REVIEW_FILE")"
+          if [ "$COMMENT_COUNT" = "0" ]; then
+            echo "ui-craft-detect: no diff-visible findings — skipping review comment post"
+          else
+            if ! gh api --method POST "repos/$REPO/pulls/$PR_NUMBER/reviews" --input "$REVIEW_FILE"; then
+              echo "::warning::ui-craft-detect: failed to post inline review comments (see gh api output above) — this does not affect the scan's pass/fail result"
+            fi
+          fi`
+    : "";
+
   return `name: ui-craft-detect
 
 ${GHA_CONFIG_MARKER} ${JSON.stringify(resolved)}
@@ -1954,7 +2044,7 @@ jobs:
           npx --yes ui-craft-detect@latest . --scope full --fail-on ${failOn} --json > "$SCAN_JSON_FILE"
           EXIT_CODE=$?
           cat "$SCAN_JSON_FILE"
-          exit $EXIT_CODE${stickyCommentStep}${commitStatusStep}
+          exit $EXIT_CODE${stickyCommentStep}${inlineCommentsStep}${commitStatusStep}
 `;
 }
 
@@ -2354,6 +2444,23 @@ async function main() {
     errors: errorCount,
     warnings: warningCount,
   };
+
+  if (flags.reviewJson) {
+    if (flags.scope !== "changed") {
+      process.stderr.write(
+        `error: --review-json requires --scope changed (findings must be diff-scoped before building inline review comments)\n`,
+      );
+      process.exit(2);
+    }
+    // scopedFindings is already filtered to diff-visible lines by the
+    // --scope changed branch above — renderReviewComments trusts this and
+    // does not re-filter by hunk ranges itself.
+    const commitSha =
+      flags.commitSha ?? tryGit(["rev-parse", "HEAD"], { cwd }) ?? "HEAD";
+    const review = renderReviewComments(scopedFindings, commitSha);
+    process.stdout.write(JSON.stringify(review, null, 2) + "\n");
+    process.exit(failOnExit(flags.failOn, { errors: errorCount, warnings: warningCount }));
+  }
 
   // Derive absolute-path findings for SARIF/human by mapping scan() relative
   // paths back to absolute. scan() already ran once — no second disk read.
