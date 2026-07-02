@@ -456,9 +456,9 @@ npx ui-craft-detect --scope files --fail-on none --json
 
 If git is unavailable, the directory isn't a git repository, or the base ref can't be resolved (e.g. shallow clone), the tool falls back to `--scope full` automatically and prints a note on stderr — it never crashes or silently drops findings.
 
-### Pre-commit hooks + CI — `init-hook` subcommand
+### Pre-commit hooks — `init-hook` subcommand
 
-`ui-craft-detect` can install its own pre-commit hook or GitHub Action with zero config.
+`ui-craft-detect` can install its own pre-commit hook with zero config.
 
 ```bash
 # Auto-detect (uses husky if present, else native .githooks)
@@ -467,12 +467,53 @@ npx ui-craft-detect init-hook
 # Pick explicitly
 npx ui-craft-detect init-hook --native         # .githooks/pre-commit (no deps)
 npx ui-craft-detect init-hook --husky          # .husky/pre-commit (assumes husky)
-npx ui-craft-detect init-hook --github-action  # .github/workflows/ui-craft-detect.yml
+npx ui-craft-detect init-hook --github-action  # .github/workflows/ui-craft-detect.yml (deprecated; use `ci install`)
 npx ui-craft-detect init-hook --all            # all three
 npx ui-craft-detect init-hook --dry-run        # preview without writing
 ```
 
 The native hook scans only staged file content (via `git show :path`), so working-tree noise is ignored. Skip ad-hoc with `git commit --no-verify`. This repo's own `.githooks/pre-commit` also auto-bumps `marketplace.json` CalVer on every commit.
+
+### CI integration — `ci install` / `ci config` / `ci upgrade`
+
+One command sets up a full PR-feedback loop as a GitHub Action — no YAML to hand-write, no octokit dependency (it's all `gh api` under the hood):
+
+```bash
+npx ui-craft-detect@latest ci install
+```
+
+This writes `.github/workflows/ui-craft-detect.yml`, wired to:
+
+- **Sticky PR summary comment** — one comment per PR, created on first push and edited (not duplicated) on every subsequent push, matched via a hidden marker.
+- **Inline review comments** — findings are posted directly on the diff-visible lines that introduced them, scoped to `--scope changed` so pre-existing issues elsewhere in the file don't get flagged.
+- **Commit status** — on pushes to the default branch (no PR context), posts a `ui-craft-detect` status with error/warning counts.
+- **Minimal permissions** — `pull-requests: write` and `statuses: write` are each granted only for the steps that need them, with a one-line comment explaining why (same convention as this repo's own CodeQL workflow).
+
+By default the workflow scans `--scope changed --fail-on error` on pull requests (`--scope full` on default-branch pushes, since a push has no PR diff to scope against).
+
+Change settings anytime without reinstalling:
+
+```bash
+npx ui-craft-detect ci config --scope files            # widen scope to whole changed files
+npx ui-craft-detect ci config --fail-on warning         # stricter gate
+npx ui-craft-detect ci config --comment false           # disable the sticky PR comment
+npx ui-craft-detect ci config --inline-comments false   # disable inline review comments
+npx ui-craft-detect ci config --status false            # disable the commit status
+```
+
+`ci config` reads and rewrites a small config marker embedded in the workflow file, so only the settings you pass change — the rest of the file (steps, permissions) is left untouched.
+
+Bump the workflow to the latest template version while keeping your settings:
+
+```bash
+npx ui-craft-detect ci upgrade
+```
+
+`ci upgrade` compares the embedded version marker against the installed CLI version; if there's drift, it regenerates the template body and preserves your `ci config` settings exactly. If you're already current, it's a no-op.
+
+`init-hook --github-action` still works (it's the same code path `ci install` wraps) but is deprecated in favor of `ci install`.
+
+The `--scope`/`--fail-on` flags used above aren't CI-only — they work as plain CLI flags for local pre-commit-style gating too (see [Diff-scoped scanning](#diff-scoped-scanning---scope---base---fail-on) above).
 
 ## Design-quality score
 
