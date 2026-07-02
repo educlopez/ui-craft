@@ -16,6 +16,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/educlopez/ui-craft/cli/core"
 	"github.com/educlopez/ui-craft/cli/fsutil"
@@ -59,6 +60,81 @@ func (c checkResult) String() string {
 		return fmt.Sprintf("[%s] %s: %s — %s", c.level, c.label, c.detail, c.remedy)
 	}
 	return fmt.Sprintf("[%s] %s: %s", c.level, c.label, c.detail)
+}
+
+// parseSkillFrontmatter parses the leading YAML-style frontmatter block of a
+// SKILL.md file: an opening "---" fence on the first non-empty line, followed
+// by flat "key: value" lines, followed by a closing "---" fence. It returns
+// the trimmed "name" and "description" field values and ok=true only when:
+//   - the opening fence is present,
+//   - the fence is terminated by a closing "---" line,
+//   - "name" is present and non-empty after trimming,
+//   - "description" is present and at least 10 non-whitespace characters
+//     after trimming (per spec: this threshold catches placeholder/truncated
+//     values like "description: x" without penalizing legitimately terse
+//     but real descriptions).
+//
+// No YAML library is used — frontmatter here is a trivial flat key:value
+// list, so a minimal line-scanning parser avoids adding a new dependency.
+func parseSkillFrontmatter(b []byte) (name, desc string, ok bool) {
+	lines := strings.Split(string(b), "\n")
+
+	// Find the opening fence: the first non-empty line must be exactly "---".
+	start := -1
+	for i, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" {
+			continue
+		}
+		if trimmed == "---" {
+			start = i
+		}
+		break
+	}
+	if start == -1 {
+		return "", "", false
+	}
+
+	// Find the closing fence: the next line (after start) that is exactly "---".
+	end := -1
+	for i := start + 1; i < len(lines); i++ {
+		if strings.TrimSpace(lines[i]) == "---" {
+			end = i
+			break
+		}
+	}
+	if end == -1 {
+		// Unterminated frontmatter block.
+		return "", "", false
+	}
+
+	// Scan key:value lines between the fences.
+	for _, line := range lines[start+1 : end] {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" {
+			continue
+		}
+		key, val, found := strings.Cut(trimmed, ":")
+		if !found {
+			continue
+		}
+		key = strings.TrimSpace(key)
+		val = strings.TrimSpace(val)
+		switch key {
+		case "name":
+			name = val
+		case "description":
+			desc = val
+		}
+	}
+
+	if strings.TrimSpace(name) == "" {
+		return "", "", false
+	}
+	if len(strings.TrimSpace(desc)) < 10 {
+		return "", "", false
+	}
+	return name, desc, true
 }
 
 func runDoctor(cmd *cobra.Command, _ []string) error {
