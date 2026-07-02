@@ -1,0 +1,49 @@
+name: ui-craft-detect
+
+# ui-craft-detect-config: {"scope":"changed","failOn":"error","comment":true,"inlineComments":true,"status":true}
+# ui-craft-detect-version: 0.7.0
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  # needed to post/update the sticky PR summary comment
+  pull-requests: write
+
+jobs:
+  detect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Scan (pull_request — diff-scoped)
+        if: github.event_name == 'pull_request'
+        run: npx --yes ui-craft-detect@latest . --scope changed --fail-on error
+      - name: Scan (push — full-repo, no PR diff context available)
+        if: github.event_name != 'pull_request'
+        run: npx --yes ui-craft-detect@latest . --scope full --fail-on error
+      - name: Post or update sticky PR summary comment
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          REPO="${{ github.repository }}"
+          PR_NUMBER="${{ github.event.number }}"
+          MARKER='<!-- ui-craft-detect -->'
+          BODY_FILE="$(mktemp)"
+          printf '%s\n\n' "$MARKER" > "$BODY_FILE"
+          npx --yes ui-craft-detect@latest . --scope changed --fail-on none >> "$BODY_FILE" || true
+          COMMENT_ID="$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" --paginate --jq \
+            ".[] | select(.body | contains(\"$MARKER\")) | .id" | head -n1)"
+          if [ -n "$COMMENT_ID" ]; then
+            gh api --method PATCH "repos/$REPO/issues/comments/$COMMENT_ID" -F body=@"$BODY_FILE"
+          else
+            gh api --method POST "repos/$REPO/issues/$PR_NUMBER/comments" -F body=@"$BODY_FILE"
+          fi

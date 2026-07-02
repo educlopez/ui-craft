@@ -13,6 +13,8 @@ import {
   parseUnifiedDiff,
   filterFindingsByScope,
   resolveBaseRef,
+  renderGHAWorkflow,
+  DEFAULT_GHA_CONFIG,
 } from "./detect.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -589,4 +591,100 @@ test("integration: deleted file vs base — no crash, no fabricated findings", (
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
+});
+
+// ---------------------------------------------------------------------------
+// Slice B — renderGHAWorkflow(config): pure function, no gh/network calls.
+// gh api / gh pr comment invocations inside the generated bash step are
+// intentionally NOT unit-tested here — untestable without a live PR. See
+// the manual smoke-test checklist in tasks (Phase B2.4).
+// ---------------------------------------------------------------------------
+
+test("renderGHAWorkflow: default config interpolates scope/fail-on flags", () => {
+  const yaml = renderGHAWorkflow(DEFAULT_GHA_CONFIG);
+
+  assert.ok(
+    yaml.includes(`--scope ${DEFAULT_GHA_CONFIG.scope} --fail-on ${DEFAULT_GHA_CONFIG.failOn}`),
+    "pull_request scan step must use configured scope/fail-on",
+  );
+  assert.ok(
+    yaml.includes("--scope full --fail-on error"),
+    "push scan step must always use --scope full regardless of config.scope",
+  );
+});
+
+test("renderGHAWorkflow: includes pull-requests: write permission with justification", () => {
+  const yaml = renderGHAWorkflow(DEFAULT_GHA_CONFIG);
+
+  assert.ok(yaml.includes("pull-requests: write"), "must declare pull-requests: write");
+  assert.ok(
+    /needed to post\/update the sticky PR summary comment/.test(yaml),
+    "pull-requests: write must carry a one-line justification comment",
+  );
+  assert.ok(!/write-all/.test(yaml), "must not grant broader permissions than required");
+});
+
+test("renderGHAWorkflow: includes config and version marker lines", () => {
+  const yaml = renderGHAWorkflow(DEFAULT_GHA_CONFIG);
+
+  assert.ok(yaml.includes("# ui-craft-detect-config:"), "must emit config marker line");
+  assert.ok(yaml.includes("# ui-craft-detect-version:"), "must emit version marker line");
+});
+
+test("renderGHAWorkflow: config marker JSON round-trips via JSON.parse exactly", () => {
+  const config = { scope: "changed", failOn: "warning", comment: true, inlineComments: true, status: true };
+  const yaml = renderGHAWorkflow(config);
+
+  const markerLine = yaml
+    .split("\n")
+    .find((line) => line.startsWith("# ui-craft-detect-config:"));
+  assert.ok(markerLine, "config marker line must be present");
+
+  const jsonText = markerLine.slice("# ui-craft-detect-config:".length).trim();
+  const parsed = JSON.parse(jsonText);
+  assert.deepEqual(parsed, config, "parsed marker JSON must exactly match the input config");
+});
+
+test("renderGHAWorkflow: includes the sticky-comment step gated on pull_request", () => {
+  const yaml = renderGHAWorkflow(DEFAULT_GHA_CONFIG);
+
+  assert.ok(
+    yaml.includes("Post or update sticky PR summary comment"),
+    "must include the sticky-comment step",
+  );
+  assert.ok(yaml.includes("<!-- ui-craft-detect -->"), "must embed the hidden marker string");
+  assert.ok(
+    yaml.includes("github.event_name == 'pull_request'"),
+    "sticky-comment step must be gated on pull_request events",
+  );
+});
+
+test("renderGHAWorkflow: comment=false omits the sticky-comment step", () => {
+  const yaml = renderGHAWorkflow({ ...DEFAULT_GHA_CONFIG, comment: false });
+
+  assert.ok(
+    !yaml.includes("Post or update sticky PR summary comment"),
+    "sticky-comment step must be omitted when comment is false",
+  );
+  // Config marker still reflects the requested (comment:false) config exactly.
+  assert.ok(yaml.includes('"comment":false'), "config marker must reflect comment:false");
+});
+
+test("renderGHAWorkflow: output has no tab characters and consistent top-level key ordering", () => {
+  const yaml = renderGHAWorkflow(DEFAULT_GHA_CONFIG);
+
+  assert.ok(!yaml.includes("\t"), "generated YAML must not contain tab characters");
+
+  const topLevelKeys = yaml
+    .split("\n")
+    .filter((line) => /^[a-zA-Z_-]+:/.test(line))
+    .map((line) => line.split(":")[0]);
+  const nameIdx = topLevelKeys.indexOf("name");
+  const onIdx = topLevelKeys.indexOf("on");
+  const permissionsIdx = topLevelKeys.indexOf("permissions");
+  const jobsIdx = topLevelKeys.indexOf("jobs");
+  assert.ok(
+    nameIdx < onIdx && onIdx < permissionsIdx && permissionsIdx < jobsIdx,
+    "top-level keys must appear in a consistent order: name, on, permissions, jobs",
+  );
 });
