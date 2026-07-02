@@ -2532,7 +2532,24 @@ async function main() {
 // dist/server.mjs, its import.meta.url would equal the server entry and this CLI
 // main() would run (and process.exit) the server. Undefined everywhere else
 // (repo CLI, published ui-craft-detect), so the real CLI is unaffected.
-if (process.env.UI_CRAFT_BUNDLE !== "1" && process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+//
+// npx/npm invoke the published `ui-craft-detect` bin through a symlink
+// (node_modules/.bin/ui-craft-detect -> ../ui-craft-detect/scripts/detect.mjs).
+// import.meta.url resolves through that symlink to the real file, but
+// process.argv[1] is the symlink path as invoked — a direct URL comparison
+// never matches in that case, so main() silently never ran. Fall back to a
+// realpath-resolved comparison to cover the symlinked-bin invocation too.
+function isCliEntry() {
+  if (!process.argv[1]) return false;
+  if (import.meta.url === pathToFileURL(process.argv[1]).href) return true;
+  try {
+    return import.meta.url === pathToFileURL(fsSync.realpathSync(process.argv[1])).href;
+  } catch {
+    return false;
+  }
+}
+
+if (process.env.UI_CRAFT_BUNDLE !== "1" && isCliEntry()) {
   main().catch((err) => {
     process.stderr.write(`error: ${err.stack || err.message}\n`);
     process.exit(2);

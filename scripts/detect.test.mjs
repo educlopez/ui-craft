@@ -1004,3 +1004,22 @@ test("renderGHAWorkflow: pull-requests: write permission is not duplicated for t
   const occurrences = yaml.split("pull-requests: write").length - 1;
   assert.equal(occurrences, 1, "pull-requests: write must be declared exactly once, covering both sticky comment and Reviews API");
 });
+
+test("CLI entry guard: main() still runs when invoked through a symlink (npx/npm bin resolution)", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "detect-symlink-"));
+  const binDir = path.join(dir, "node_modules", ".bin");
+  fs.mkdirSync(binDir, { recursive: true });
+  const symlinkPath = path.join(binDir, "ui-craft-detect");
+  fs.symlinkSync(DETECT_MJS, symlinkPath);
+
+  try {
+    const stdout = execFileSync(process.execPath, [symlinkPath, "--version"], { encoding: "utf8" });
+    assert.match(
+      stdout,
+      /^ui-craft-detect v\d+\.\d+\.\d+/,
+      "main() must run (and print the version) when detect.mjs is invoked via a symlink, not silently exit 0",
+    );
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
