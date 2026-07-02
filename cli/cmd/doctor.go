@@ -15,11 +15,13 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
 	"unicode/utf8"
 
+	"github.com/educlopez/ui-craft/cli/assets"
 	"github.com/educlopez/ui-craft/cli/core"
 	"github.com/educlopez/ui-craft/cli/fsutil"
 	"github.com/educlopez/ui-craft/cli/harness"
@@ -256,6 +258,47 @@ func checkSkillFile(fs fsutil.FileSystem, diskPath string, embeddedContent []byt
 		})
 	}
 
+	return results
+}
+
+// checkInstalledSkills runs checkSkillFile for every skill-id shipped in the
+// embedded mirror for h (e.g. "ui-craft", "ui-craft-minimal",
+// "ui-craft-editorial", "ui-craft-dense-dashboard" for most harnesses).
+// The mirror (assets.SkillsFS(h.Name())) is the source of truth for which
+// skill-ids exist — this walks it rather than hardcoding "ui-craft" so newly
+// added skill variants are automatically covered without a doctor.go change.
+// Returns nil (no results, no error) if the harness has no embedded skills
+// mirror at all.
+func checkInstalledSkills(fsys fsutil.FileSystem, h harness.Harness) []checkResult {
+	mirror := assets.SkillsFS(h.Name())
+	if mirror == nil {
+		return nil
+	}
+
+	entries, err := fs.ReadDir(mirror, ".")
+	if err != nil {
+		return nil
+	}
+
+	skillsDir := h.ConfigPaths().SkillsDir
+
+	var results []checkResult
+	for _, e := range entries {
+		if !e.IsDir() {
+			continue
+		}
+		id := e.Name()
+
+		embeddedContent, err := fs.ReadFile(mirror, id+"/SKILL.md")
+		if err != nil {
+			// Embedded mirror is malformed for this skill-id (shouldn't happen
+			// in a real build) — skip rather than panic; nothing to compare.
+			continue
+		}
+
+		diskPath := filepath.Join(skillsDir, id, "SKILL.md")
+		results = append(results, checkSkillFile(fsys, diskPath, embeddedContent)...)
+	}
 	return results
 }
 
@@ -515,6 +558,39 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 				level:  "ok",
 				detail: fmt.Sprintf("%d MB available at %s", availMB, statPath),
 			})
+		}
+	}
+
+	// -----------------------------------------------------------------------
+	// (d) Skill layer: per detected harness, verify each installed skill
+	//     (SKILL.md under <ConfigRoot>/skills/<skill-id>/) is present,
+	//     readable, well-formed, non-stale, and — for Codex only — that
+	//     AGENTS.md carries a well-formed managed block. Read-only; no
+	//     auto-repair. Harnesses not present in detectedNames get zero
+	//     skill-layer check entries (matches (b)/(c)'s existing skip
+	//     behavior for undetected harnesses).
+	// -----------------------------------------------------------------------
+	for _, h := range harness.All() {
+		name := h.Name()
+		if !detectedNames[name] {
+			continue
+		}
+
+		results = append(results, checkInstalledSkills(fs, h)...)
+
+		if name == "codex" {
+			agentsMDPath := h.ConfigPaths().AgentsMDPath
+			results = append(results, checkCodexAgentsMD(fs, agentsMDPath))
+		}
+	}
+
+	// Aggregate anyFail across the FULL result set (including the new
+	// skill-layer checks appended above) — a single source of truth so JSON
+	// "ok" and the process exit code always agree with what's rendered.
+	for _, r := range results {
+		if r.level == "fail" {
+			anyFail = true
+			break
 		}
 	}
 
