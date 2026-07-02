@@ -152,9 +152,12 @@ type Harness interface {
 	//             "trusted projects", which is Codex's own trust/approval UX,
 	//             not something this installer implements)
 	//   Cursor:   <projectRoot>/.cursor/rules/*.mdc, <projectRoot>/.cursor/mcp.json
-	//   Gemini:   <projectRoot>/GEMINI.md (managed block, write logic is a later
-	//             change), <projectRoot>/.gemini/settings.json
+	//   Gemini:   <projectRoot>/GEMINI.md (managed block, written by WriteSkill
+	//             via filemerge.UpsertManagedBlock — mirrors Codex's AGENTS.md
+	//             pattern), <projectRoot>/.gemini/settings.json
 	//   OpenCode: <projectRoot>/.opencode/{skill,command,agent}, <projectRoot>/opencode.json
+	//             — NO AGENTS.md write (design Q3: OpenCode's native project
+	//             mechanism IS its skills/commands/agent dirs)
 	ConfigPathsFor(projectRoot string) ConfigPaths
 
 	// Supports reports whether this harness can accept the given component.
@@ -175,6 +178,9 @@ type Harness interface {
 	// The CLI owns the top-level skill subdirs it installs; every file is written
 	// via WriteFileAtomic (idempotent byte-compare).
 	// For Codex, a second write target is the project AGENTS.md managed-block.
+	// For Gemini, a second write target is the project GEMINI.md managed-block
+	// (only when the receiver is project-scoped via WithProjectRoot — global
+	// scope writes only the skills mirror, unchanged).
 	WriteSkill(w fsutil.FileSystem, mirror fs.FS) (Change, error)
 
 	// WriteAgents writes review agent definitions into the harness's agent dir.
@@ -195,4 +201,26 @@ type Harness interface {
 	// are removed — cleanup is bounded to files derived from commandsFS, never
 	// the entire CommandsDir (other user files are preserved).
 	WriteCommands(w fsutil.FileSystem, commandsFS fs.FS) ([]Change, error)
+
+	// WithProjectRoot returns a copy of this Harness whose ConfigPaths()
+	// resolves to the project-scoped paths for projectRoot instead of the
+	// global home-derived paths (i.e. ConfigPaths() becomes equivalent to
+	// ConfigPathsFor(projectRoot)). ConfigPathsFor itself is unaffected — it
+	// always takes an explicit projectRoot argument regardless of receiver
+	// state.
+	//
+	// This exists because every Write* method (WriteMCP, WriteSkill,
+	// WriteCommands, WriteAgents) resolves its target paths internally via
+	// h.ConfigPaths() on its own receiver — core.Plan cannot pass resolved
+	// ConfigPaths into those calls without changing all four signatures.
+	// Constructing a project-scoped Harness value via WithProjectRoot before
+	// wiring Write* closures is the minimal-blast-radius fix: it changes zero
+	// existing Write* signatures and zero existing call sites, while making
+	// project-scoped installs (core.Plan's Project InstallScope) actually
+	// write to project-local paths instead of always falling through to
+	// global ConfigPaths() regardless of scope.
+	//
+	// Passing "" returns an equivalent global-scope Harness (ConfigPaths()
+	// unchanged from before WithProjectRoot was introduced).
+	WithProjectRoot(projectRoot string) Harness
 }

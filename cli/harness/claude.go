@@ -21,12 +21,23 @@ import (
 // Supports:   SkillCommands, MCPGates, ReviewAgents, DesignMemory (all true).
 //
 // Windows: uses %APPDATA%\Claude as the config root instead of ~/.claude.
-type ClaudeHarness struct{}
+type ClaudeHarness struct {
+	// projectRoot is set via WithProjectRoot so ConfigPaths() resolves to
+	// project-scoped paths. Empty (zero value) means global scope.
+	projectRoot string
+}
 
 // Compile-time check: ClaudeHarness must satisfy Harness.
 var _ Harness = ClaudeHarness{}
 
 func (h ClaudeHarness) Name() string { return "claude" }
+
+// WithProjectRoot returns a copy of ClaudeHarness scoped to projectRoot. See
+// Harness.WithProjectRoot for why this exists.
+func (h ClaudeHarness) WithProjectRoot(projectRoot string) Harness {
+	h.projectRoot = projectRoot
+	return h
+}
 
 // ConfigRoot returns the OS-appropriate Claude config root (~/.claude or
 // %APPDATA%\Claude on Windows). Satisfies the Harness interface.
@@ -82,10 +93,11 @@ func (h ClaudeHarness) Detect() (DetectResult, error) {
 	return DetectResult{Installed: false}, nil
 }
 
-// ConfigPaths returns the canonical global paths for Claude Code. It is
-// equivalent to ConfigPathsFor("").
+// ConfigPaths returns Claude Code's paths for this harness's scope: global
+// (home-derived) by default, or project-scoped when constructed via
+// WithProjectRoot. Equivalent to ConfigPathsFor(h.projectRoot).
 func (h ClaudeHarness) ConfigPaths() ConfigPaths {
-	return h.ConfigPathsFor("")
+	return h.ConfigPathsFor(h.projectRoot)
 }
 
 // ConfigPathsFor returns Claude Code's paths, scoped to projectRoot when

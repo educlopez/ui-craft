@@ -21,12 +21,23 @@ import (
 // Skills dir: ~/.cursor/skills/
 // Agents dir: (none — Cursor has no native sub-agent format).
 // Supports:   SkillCommands, MCPGates, DesignMemory = true; ReviewAgents = false.
-type CursorHarness struct{}
+type CursorHarness struct {
+	// projectRoot is set via WithProjectRoot so ConfigPaths() resolves to
+	// project-scoped paths. Empty (zero value) means global scope.
+	projectRoot string
+}
 
 // Compile-time check: CursorHarness must satisfy Harness.
 var _ Harness = CursorHarness{}
 
 func (h CursorHarness) Name() string { return "cursor" }
+
+// WithProjectRoot returns a copy of CursorHarness scoped to projectRoot. See
+// Harness.WithProjectRoot for why this exists.
+func (h CursorHarness) WithProjectRoot(projectRoot string) Harness {
+	h.projectRoot = projectRoot
+	return h
+}
 
 // ConfigRoot returns the Cursor config root (~/.cursor). Satisfies the Harness interface.
 func (h CursorHarness) ConfigRoot() string { return h.configRoot() }
@@ -55,10 +66,11 @@ func (h CursorHarness) Detect() (DetectResult, error) {
 	return DetectResult{Installed: false}, nil
 }
 
-// ConfigPaths returns the canonical global paths for Cursor. It is
-// equivalent to ConfigPathsFor("").
+// ConfigPaths returns Cursor's paths for this harness's scope: global
+// (home-derived) by default, or project-scoped when constructed via
+// WithProjectRoot. Equivalent to ConfigPathsFor(h.projectRoot).
 func (h CursorHarness) ConfigPaths() ConfigPaths {
-	return h.ConfigPathsFor("")
+	return h.ConfigPathsFor(h.projectRoot)
 }
 
 // ConfigPathsFor returns Cursor's paths, scoped to projectRoot when

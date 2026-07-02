@@ -22,6 +22,9 @@ import (
 // stubHarness is a minimal harness for plan/apply tests.
 type stubHarness struct {
 	name string
+	// projectRoot is set via WithProjectRoot so ConfigPaths() resolves to
+	// project-scoped paths. Empty (zero value) means global scope.
+	projectRoot string
 }
 
 func (s stubHarness) Name() string { return s.name }
@@ -29,7 +32,7 @@ func (s stubHarness) Detect() (harness.DetectResult, error) {
 	return harness.DetectResult{Installed: true, ConfigRoot: "/home/user/." + s.name}, nil
 }
 func (s stubHarness) ConfigPaths() harness.ConfigPaths {
-	return s.ConfigPathsFor("")
+	return s.ConfigPathsFor(s.projectRoot)
 }
 func (s stubHarness) ConfigPathsFor(projectRoot string) harness.ConfigPaths {
 	if projectRoot != "" {
@@ -43,6 +46,10 @@ func (s stubHarness) ConfigPathsFor(projectRoot string) harness.ConfigPaths {
 		MCPConfig: "/home/user/." + s.name + "/mcp.json",
 		SkillsDir: "/home/user/." + s.name + "/skills",
 	}
+}
+func (s stubHarness) WithProjectRoot(projectRoot string) harness.Harness {
+	s.projectRoot = projectRoot
+	return s
 }
 func (s stubHarness) Supports(c component.Component) bool {
 	return c != component.ReviewAgents // stub doesn't support ReviewAgents
@@ -491,6 +498,12 @@ func (a agentHarness) ConfigPathsFor(projectRoot string) harness.ConfigPaths {
 }
 func (a agentHarness) Supports(c component.Component) bool { return true }
 func (a agentHarness) ConfigRoot() string                  { return fakeHome + "/.claude" }
+func (a agentHarness) WithProjectRoot(projectRoot string) harness.Harness {
+	// This test double does not model project-scope resolution beyond what
+	// ConfigPathsFor already returns; WithProjectRoot is present only to
+	// satisfy the Harness interface for tests that don't exercise it.
+	return a
+}
 func (a agentHarness) WriteMCP(w fsutil.FileSystem, server harness.MCPServer) (harness.Change, error) {
 	return harness.Change{}, harness.ErrNotImplemented
 }
@@ -776,6 +789,11 @@ func (h commandCapableHarness) Supports(c component.Component) bool {
 	return c == component.SkillCommands || c == component.MCPGates
 }
 func (h commandCapableHarness) ConfigRoot() string { return "/home/user/." + h.name }
+func (h commandCapableHarness) WithProjectRoot(projectRoot string) harness.Harness {
+	// Not exercised by this test double's current tests; present only to
+	// satisfy the Harness interface.
+	return h
+}
 func (h commandCapableHarness) WriteMCP(w fsutil.FileSystem, server harness.MCPServer) (harness.Change, error) {
 	return harness.Change{}, nil
 }

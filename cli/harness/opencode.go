@@ -24,12 +24,23 @@ import (
 // Windows: ~/.config resolves via %APPDATA% expansion.
 // Gotcha: the config root on Windows differs — always use configRoot() rather
 // than hardcoding a path.
-type OpenCodeHarness struct{}
+type OpenCodeHarness struct {
+	// projectRoot is set via WithProjectRoot so ConfigPaths() resolves to
+	// project-scoped paths. Empty (zero value) means global scope.
+	projectRoot string
+}
 
 // Compile-time check: OpenCodeHarness must satisfy Harness.
 var _ Harness = OpenCodeHarness{}
 
 func (h OpenCodeHarness) Name() string { return "opencode" }
+
+// WithProjectRoot returns a copy of OpenCodeHarness scoped to projectRoot.
+// See Harness.WithProjectRoot for why this exists.
+func (h OpenCodeHarness) WithProjectRoot(projectRoot string) Harness {
+	h.projectRoot = projectRoot
+	return h
+}
 
 // ConfigRoot returns the OpenCode config root. Satisfies the Harness interface.
 func (h OpenCodeHarness) ConfigRoot() string { return h.configRoot() }
@@ -83,10 +94,11 @@ func (h OpenCodeHarness) Detect() (DetectResult, error) {
 	return DetectResult{Installed: false}, nil
 }
 
-// ConfigPaths returns the canonical global paths for OpenCode. It is
-// equivalent to ConfigPathsFor("").
+// ConfigPaths returns OpenCode's paths for this harness's scope: global
+// (home-derived) by default, or project-scoped when constructed via
+// WithProjectRoot. Equivalent to ConfigPathsFor(h.projectRoot).
 func (h OpenCodeHarness) ConfigPaths() ConfigPaths {
-	return h.ConfigPathsFor("")
+	return h.ConfigPathsFor(h.projectRoot)
 }
 
 // ConfigPathsFor returns OpenCode's paths, scoped to projectRoot when
