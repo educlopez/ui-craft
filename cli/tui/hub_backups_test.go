@@ -42,9 +42,9 @@ func hubOnBackups(t *testing.T, metas []backup.SnapshotMeta, restoreErr error) A
 		return restoreErr
 	}
 
-	// Navigate to "Manage backups" (item 2) and Enter.
-	// j j = cursor 2.
-	for i := 0; i < 2; i++ {
+	// Navigate to "Manage backups" (item 3 — after "Start installation",
+	// "Install (this project)", and "Upgrade") and Enter. j j j = cursor 3.
+	for i := 0; i < 3; i++ {
 		updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
 		m = updated.(AppModel)
 	}
@@ -62,8 +62,8 @@ func TestBackups_enterBackupsRoutesToScreenBackups(t *testing.T) {
 	m.backupListOverride = func() ([]backup.SnapshotMeta, error) { return nil, nil }
 	m.backupRestoreOverride = func(_ backup.SnapshotID) error { return nil }
 
-	// Navigate to item 2.
-	for i := 0; i < 2; i++ {
+	// Navigate to item 3 ("Manage backups").
+	for i := 0; i < 3; i++ {
 		updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
 		m = updated.(AppModel)
 	}
@@ -387,8 +387,8 @@ func TestBackups_injectedStoreNotRealDir(t *testing.T) {
 	}
 	m.backupRestoreOverride = func(_ backup.SnapshotID) error { return nil }
 
-	// Navigate to backups and enter.
-	for i := 0; i < 2; i++ {
+	// Navigate to backups (item 3) and enter.
+	for i := 0; i < 3; i++ {
 		updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
 		m = updated.(AppModel)
 	}

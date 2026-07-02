@@ -105,8 +105,8 @@ func TestEsc_screenUpgrade_returnsToWelcome(t *testing.T) {
 func TestEsc_screenBackups_returnsToWelcome(t *testing.T) {
 	m := NewHubModel("v1.0.0", "/tmp/test")
 	m.backupListOverride = func() ([]backup.SnapshotMeta, error) { return nil, nil }
-	// Navigate to Backups (item 2) and Enter.
-	for i := 0; i < 2; i++ {
+	// Navigate to Backups (item 3) and Enter.
+	for i := 0; i < 3; i++ {
 		updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
 		m = updated.(AppModel)
 	}
@@ -267,10 +267,12 @@ func TestComplete_upgradeAfterBackup_showsUpgradeComplete(t *testing.T) {
 	// Navigate to ScreenWelcome directly (simulate esc-back).
 	m.screen = ScreenWelcome
 
-	// Step 3a: Navigate to Upgrade (item 1) and Enter.
-	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
-	m = updated.(AppModel)
-	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	// Step 3a: Navigate to Upgrade (item 2) and Enter.
+	for i := 0; i < 2; i++ {
+		updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
+		m = updated.(AppModel)
+	}
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	m = updated.(AppModel)
 
 	if m.screen != ScreenUpgrade {
@@ -314,8 +316,8 @@ func TestComplete_uninstallAfterBackup_showsUninstallComplete(t *testing.T) {
 	m.backupRestoredID = "snap-bak-001"
 	m.backupRestoreErr = nil
 
-	// Navigate to Uninstall (item 3).
-	for i := 0; i < 3; i++ {
+	// Navigate to Uninstall (item 4).
+	for i := 0; i < 4; i++ {
 		updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
 		m = updated.(AppModel)
 	}
@@ -367,8 +369,8 @@ func TestComplete_backupAfterUninstall_showsBackupComplete(t *testing.T) {
 	m.uninstallSnapshotID = "snap-old-uninstall"
 	m.uninstallErr = errors.New("old uninstall error")
 
-	// Navigate to Backups (item 2).
-	for i := 0; i < 2; i++ {
+	// Navigate to Backups (item 3).
+	for i := 0; i < 3; i++ {
 		updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
 		m = updated.(AppModel)
 	}
@@ -413,10 +415,12 @@ func TestComplete_upgradeAfterUninstall_showsUpgradeComplete(t *testing.T) {
 	m.uninstallSnapshotID = "snap-uninstall-stale"
 	m.uninstallErr = errors.New("stale uninstall error")
 
-	// Navigate to Upgrade (item 1) and Enter.
-	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
-	m = updated.(AppModel)
-	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	// Navigate to Upgrade (item 2) and Enter.
+	for i := 0; i < 2; i++ {
+		updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
+		m = updated.(AppModel)
+	}
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	m = updated.(AppModel)
 
 	if m.screen != ScreenUpgrade {
@@ -463,8 +467,8 @@ func TestComplete_uninstallNoSnapshot_showsUninstallComplete(t *testing.T) {
 		return []string{"/home/.claude/skills/ui-craft"}, nil
 	}
 
-	// Navigate to Uninstall (item 3) and Enter.
-	for i := 0; i < 3; i++ {
+	// Navigate to Uninstall (item 4) and Enter.
+	for i := 0; i < 4; i++ {
 		updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
 		m = updated.(AppModel)
 	}
