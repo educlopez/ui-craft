@@ -16,7 +16,7 @@ import path from "node:path";
 import readline from "node:readline";
 import { pathToFileURL } from "node:url";
 
-const VERSION = "0.7.0";
+const VERSION = "0.7.1";
 
 const SCAN_EXTENSIONS = new Set([
   ".css", ".scss", ".sass",
@@ -1856,8 +1856,8 @@ export const DEFAULT_GHA_CONFIG = Object.freeze({
  */
 export function renderGHAWorkflow(config) {
   const resolved = { ...DEFAULT_GHA_CONFIG, ...config };
-  // inlineComments/status land in resolved for Slice C/D to read once implemented — not consumed yet.
-  const { scope, failOn, comment } = resolved;
+  // inlineComments lands in resolved for Slice C2 to read once implemented — not consumed yet.
+  const { scope, failOn, comment, status } = resolved;
 
   const stickyCommentStep = comment
     ? `
@@ -1882,6 +1882,43 @@ export function renderGHAWorkflow(config) {
           fi`
     : "";
 
+  // Slice C1: commit-status step. Reuses the push-triggered scan step's JSON
+  // output (captured to a temp file in that same step) — no third scan
+  // invocation. Gated on config.status and non-pull_request events (a push
+  // has no PR to attach an inline/sticky comment to; the commit status is
+  // the push-side signal). `continue-on-error: true` — the separate
+  // failOnExit-derived scan step remains the sole authoritative gate.
+  const commitStatusStep = status
+    ? `
+      - name: Publish commit status
+        if: always() && github.event_name != 'pull_request'
+        continue-on-error: true
+        env:
+          GH_TOKEN: \${{ github.token }}
+          SCAN_JSON_FILE: \${{ runner.temp }}/ui-craft-detect-scan.json
+        run: |
+          set -e
+          ERRORS="$(jq -r '.summary.errors' "$SCAN_JSON_FILE")"
+          WARNINGS="$(jq -r '.summary.warnings' "$SCAN_JSON_FILE")"
+          if [ "$ERRORS" -gt 0 ]; then
+            STATE="failure"
+          else
+            STATE="success"
+          fi
+          DESCRIPTION="$ERRORS errors, $WARNINGS warnings"
+          gh api --method POST "repos/\${{ github.repository }}/statuses/\${{ github.sha }}" \\
+            -f state="$STATE" \\
+            -f context="ui-craft-detect" \\
+            -f target_url="\${{ github.server_url }}/\${{ github.repository }}/actions/runs/\${{ github.run_id }}" \\
+            -f description="$DESCRIPTION"`
+    : "";
+
+  const permissionsStatusLine = status
+    ? `
+  # needed to publish the ui-craft-detect commit status
+  statuses: write`
+    : "";
+
   return `name: ui-craft-detect
 
 ${GHA_CONFIG_MARKER} ${JSON.stringify(resolved)}
@@ -1896,7 +1933,7 @@ on:
 permissions:
   contents: read
   # needed to post/update the sticky PR summary comment
-  pull-requests: write
+  pull-requests: write${permissionsStatusLine}
 
 jobs:
   detect:
@@ -1911,7 +1948,13 @@ jobs:
         run: npx --yes ui-craft-detect@latest . --scope ${scope} --fail-on ${failOn}
       - name: Scan (push — full-repo, no PR diff context available)
         if: github.event_name != 'pull_request'
-        run: npx --yes ui-craft-detect@latest . --scope full --fail-on ${failOn}${stickyCommentStep}
+        env:
+          SCAN_JSON_FILE: \${{ runner.temp }}/ui-craft-detect-scan.json
+        run: |
+          npx --yes ui-craft-detect@latest . --scope full --fail-on ${failOn} --json > "$SCAN_JSON_FILE"
+          EXIT_CODE=$?
+          cat "$SCAN_JSON_FILE"
+          exit $EXIT_CODE${stickyCommentStep}${commitStatusStep}
 `;
 }
 

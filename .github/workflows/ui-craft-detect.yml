@@ -1,7 +1,7 @@
 name: ui-craft-detect
 
 # ui-craft-detect-config: {"scope":"changed","failOn":"error","comment":true,"inlineComments":true,"status":true}
-# ui-craft-detect-version: 0.7.0
+# ui-craft-detect-version: 0.7.1
 
 on:
   pull_request:
@@ -13,6 +13,8 @@ permissions:
   contents: read
   # needed to post/update the sticky PR summary comment
   pull-requests: write
+  # needed to publish the ui-craft-detect commit status
+  statuses: write
 
 jobs:
   detect:
@@ -27,7 +29,13 @@ jobs:
         run: npx --yes ui-craft-detect@latest . --scope changed --fail-on error
       - name: Scan (push — full-repo, no PR diff context available)
         if: github.event_name != 'pull_request'
-        run: npx --yes ui-craft-detect@latest . --scope full --fail-on error
+        env:
+          SCAN_JSON_FILE: ${{ runner.temp }}/ui-craft-detect-scan.json
+        run: |
+          npx --yes ui-craft-detect@latest . --scope full --fail-on error --json > "$SCAN_JSON_FILE"
+          EXIT_CODE=$?
+          cat "$SCAN_JSON_FILE"
+          exit $EXIT_CODE
       - name: Post or update sticky PR summary comment
         if: github.event_name == 'pull_request'
         env:
@@ -47,3 +55,24 @@ jobs:
           else
             gh api --method POST "repos/$REPO/issues/$PR_NUMBER/comments" -F body=@"$BODY_FILE"
           fi
+      - name: Publish commit status
+        if: always() && github.event_name != 'pull_request'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SCAN_JSON_FILE: ${{ runner.temp }}/ui-craft-detect-scan.json
+        run: |
+          set -e
+          ERRORS="$(jq -r '.summary.errors' "$SCAN_JSON_FILE")"
+          WARNINGS="$(jq -r '.summary.warnings' "$SCAN_JSON_FILE")"
+          if [ "$ERRORS" -gt 0 ]; then
+            STATE="failure"
+          else
+            STATE="success"
+          fi
+          DESCRIPTION="$ERRORS errors, $WARNINGS warnings"
+          gh api --method POST "repos/${{ github.repository }}/statuses/${{ github.sha }}" \
+            -f state="$STATE" \
+            -f context="ui-craft-detect" \
+            -f target_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            -f description="$DESCRIPTION"

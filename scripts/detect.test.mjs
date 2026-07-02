@@ -688,3 +688,88 @@ test("renderGHAWorkflow: output has no tab characters and consistent top-level k
     "top-level keys must appear in a consistent order: name, on, permissions, jobs",
   );
 });
+
+// ---------------------------------------------------------------------------
+// Slice C1 — commit-status step: pure-function assertions on renderGHAWorkflow
+// output only. The actual `gh api .../statuses/{sha}` invocation is NOT
+// unit-tested — untestable without a live push event. See the manual
+// smoke-test checklist in tasks (Phase C1.5).
+// ---------------------------------------------------------------------------
+
+test("renderGHAWorkflow: status=true includes the commit-status step gated on non-pull_request", () => {
+  const yaml = renderGHAWorkflow(DEFAULT_GHA_CONFIG);
+
+  assert.ok(yaml.includes("Publish commit status"), "must include the commit-status step");
+  assert.ok(
+    yaml.includes("statuses/${{ github.sha }}"),
+    "must POST to the statuses endpoint for the current commit SHA",
+  );
+  assert.ok(
+    yaml.includes('context="ui-craft-detect"'),
+    "must use the resolved context string ui-craft-detect",
+  );
+  assert.ok(
+    yaml.includes(
+      "target_url=\"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"",
+    ),
+    "must use the resolved target_url string",
+  );
+});
+
+test("renderGHAWorkflow: commit-status step is gated on github.event_name != 'pull_request' and continue-on-error", () => {
+  const yaml = renderGHAWorkflow(DEFAULT_GHA_CONFIG);
+  const stepIdx = yaml.indexOf("Publish commit status");
+  assert.ok(stepIdx !== -1, "commit-status step must be present");
+  const stepBlock = yaml.slice(stepIdx, stepIdx + 400);
+
+  assert.ok(
+    stepBlock.includes("if: always() && github.event_name != 'pull_request'"),
+    "commit-status step must be gated on non-pull_request events and run even if the scan step failed (always())",
+  );
+  assert.ok(
+    stepBlock.includes("continue-on-error: true"),
+    "commit-status step must not block the authoritative fail-on gate",
+  );
+});
+
+test("renderGHAWorkflow: commit-status step reuses the push-scan JSON output, no dedicated scan invocation of its own", () => {
+  const yaml = renderGHAWorkflow(DEFAULT_GHA_CONFIG);
+
+  const stepIdx = yaml.indexOf("Publish commit status");
+  assert.ok(stepIdx !== -1, "commit-status step must be present");
+  const stepBlock = yaml.slice(stepIdx, stepIdx + 400);
+
+  assert.ok(
+    !stepBlock.includes("npx --yes ui-craft-detect@latest"),
+    "commit-status step must not invoke the scan CLI itself — it reads the push-scan step's JSON output",
+  );
+  assert.ok(
+    stepBlock.includes("SCAN_JSON_FILE"),
+    "commit-status step must read the push-scan step's captured JSON output",
+  );
+});
+
+test("renderGHAWorkflow: includes statuses: write permission with justification when status is enabled", () => {
+  const yaml = renderGHAWorkflow(DEFAULT_GHA_CONFIG);
+
+  assert.ok(yaml.includes("statuses: write"), "must declare statuses: write");
+  assert.ok(
+    /needed to publish the ui-craft-detect commit status/.test(yaml),
+    "statuses: write must carry a one-line justification comment",
+  );
+});
+
+test("renderGHAWorkflow: status=false omits the commit-status step and the statuses: write permission", () => {
+  const yaml = renderGHAWorkflow({ ...DEFAULT_GHA_CONFIG, status: false });
+
+  assert.ok(
+    !yaml.includes("Publish commit status"),
+    "commit-status step must be omitted when status is false",
+  );
+  assert.ok(
+    !yaml.includes("statuses: write"),
+    "statuses: write permission must be omitted when status is false",
+  );
+  // Config marker still reflects the requested (status:false) config exactly.
+  assert.ok(yaml.includes('"status":false'), "config marker must reflect status:false");
+});
