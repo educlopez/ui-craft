@@ -5,7 +5,8 @@
 //
 // Usage:
 //   node scripts/detect.mjs [path] [--json] [--sarif] [--fix] [--fix-dry-run]
-//   node scripts/detect.mjs init-hook [--husky|--native|--github-action|--all] [--dry-run] [--yes]
+//   node scripts/detect.mjs ci install|config|upgrade [options]
+//   node scripts/detect.mjs init-hook [--husky|--native|--github-action|--all] [--dry-run] [--yes]  (deprecated alias)
 // Exit codes:
 //   0 clean (or only warnings), 1 errors present, 2 arg error / unreadable path
 
@@ -16,7 +17,7 @@ import path from "node:path";
 import readline from "node:readline";
 import { pathToFileURL } from "node:url";
 
-const VERSION = "0.7.3";
+const VERSION = "0.8.0";
 
 const SCAN_EXTENSIONS = new Set([
   ".css", ".scss", ".sass",
@@ -1803,7 +1804,8 @@ function printHelp() {
     `ui-craft-detect v${VERSION} \u2014 static anti-slop detector for UI code\n\n` +
       `Usage:\n` +
       `  ui-craft-detect [path] [flags]              # scan a directory\n` +
-      `  ui-craft-detect init-hook [options]         # install pre-commit hooks or CI\n\n` +
+      `  ui-craft-detect ci install|config|upgrade   # manage the generated CI workflow\n` +
+      `  ui-craft-detect init-hook [options]         # install pre-commit hooks or CI (deprecated; still supported — see \`ci install\`)\n\n` +
       `Scan flags:\n` +
       `  --json                     machine-readable output\n` +
       `  --sarif                    SARIF 2.1.0 (GitHub code scanning)\n` +
@@ -1822,6 +1824,10 @@ function printHelp() {
       `  --all            write all three\n` +
       `  --dry-run        show what would be written\n` +
       `  --yes            overwrite without prompting\n\n` +
+      `ci subcommands (run \`ui-craft-detect ci --help\` for full options):\n` +
+      `  ci install       write .github/workflows/ui-craft-detect.yml\n` +
+      `  ci config        change settings on an already-installed workflow\n` +
+      `  ci upgrade       regenerate the template body, preserving config\n\n` +
       `Global:\n` +
       `  --help, -h       this help\n` +
       `  --version, -v    print version\n\n` +
@@ -2052,6 +2058,67 @@ jobs:
           cat "$SCAN_JSON_FILE"
           exit $EXIT_CODE${stickyCommentStep}${inlineCommentsStep}${commitStatusStep}
 `;
+}
+
+/**
+ * Locates and parses the `# ui-craft-detect-config:`/`# ui-craft-detect-version:`
+ * marker comments in an already-generated workflow file's text. Pure function —
+ * no filesystem access, no side effects. Used by `ci config`/`ci upgrade`
+ * (read-modify-write) as the "read" and "modify" halves.
+ *
+ * @param {string} text - full text of an existing workflow file
+ * @returns {{config: GhaConfig, version: string}}
+ * @throws {Error} if either marker is missing, or the config marker's JSON
+ *   fails to parse (a hand-edited/corrupted marker must never be silently
+ *   accepted — see spec scenario "Marker parse failure does not silently
+ *   corrupt the file").
+ */
+export function parseWorkflowConfig(text) {
+  const configMatch = new RegExp(`^${escapeRegExp(GHA_CONFIG_MARKER)} (.*)$`, "m").exec(text);
+  if (!configMatch) {
+    throw new Error(
+      `could not find "${GHA_CONFIG_MARKER}" marker — is this a ui-craft-detect-generated workflow?`,
+    );
+  }
+  const versionMatch = new RegExp(`^${escapeRegExp(GHA_VERSION_MARKER)} (.*)$`, "m").exec(text);
+  if (!versionMatch) {
+    throw new Error(
+      `could not find "${GHA_VERSION_MARKER}" marker — is this a ui-craft-detect-generated workflow?`,
+    );
+  }
+
+  let config;
+  try {
+    config = JSON.parse(configMatch[1]);
+  } catch (err) {
+    throw new Error(
+      `failed to parse ${GHA_CONFIG_MARKER} marker as JSON (${err.message}) — the marker may have been hand-edited into an invalid state; refusing to proceed`,
+    );
+  }
+
+  return { config, version: versionMatch[1].trim() };
+}
+
+/** Escapes regex metacharacters in a literal string used inside `new RegExp(...)`. */
+function escapeRegExp(s) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/**
+ * Rewrites an already-generated workflow file's body, given an updated
+ * config. This is a FULL regen (template-authoritative — see design's
+ * resolved open question): the entire file text is replaced by
+ * `renderGHAWorkflow(config)`. There is no partial/line-level patch — the
+ * config marker's values are what "win" over template defaults on the next
+ * render, not the surrounding YAML (which is always regenerated fresh from
+ * the current template). This guarantees `ci config`/`ci upgrade` never
+ * leave a workflow with a stale mix of old/new step bodies.
+ *
+ * @param {GhaConfig} config
+ * @returns {string}
+ */
+export function replaceMarkers(config) {
+  return renderGHAWorkflow(config);
 }
 
 
@@ -2285,12 +2352,242 @@ async function runInitHook(argv) {
   process.exit(0);
 }
 
+// --- ci subcommands (Slice D) ----------------------------------------------
+// `ci install` is a thin alias for `init-hook --github-action` (per design:
+// aliasing, not renaming — `init-hook` keeps working, deprecated-but-supported).
+// `ci config`/`ci upgrade` operate on an ALREADY-installed workflow file via
+// the config/version marker scheme `renderGHAWorkflow` emits.
+
+function printCiHelp() {
+  process.stdout.write(
+    `ui-craft-detect ci — manage the generated GitHub Actions workflow\n\n` +
+      `Usage:\n` +
+      `  ui-craft-detect ci install [options]   # write .github/workflows/ui-craft-detect.yml\n` +
+      `  ui-craft-detect ci config [options]    # change settings on an already-installed workflow\n` +
+      `  ui-craft-detect ci upgrade [options]   # regenerate the template body, preserving config\n\n` +
+      `ci install options:\n` +
+      `  --dry-run        show what would be written\n` +
+      `  --yes, -y        overwrite without prompting\n\n` +
+      `ci config options (read-modify-write on ${HOOK_GHA_PATH}):\n` +
+      `  --scope full|files|changed\n` +
+      `  --fail-on none|warning|error\n` +
+      `  --comment true|false\n` +
+      `  --inline-comments true|false\n` +
+      `  --status true|false\n` +
+      `  --dry-run        show what would be written; write nothing\n\n` +
+      `ci upgrade options:\n` +
+      `  --dry-run        show what would be written; write nothing\n\n` +
+      `Global:\n` +
+      `  --help, -h       this help\n`,
+  );
+}
+
+/** Reads the installed workflow file's text, or exits 2 with a clear error. */
+async function readInstalledWorkflowOrExit(cwd) {
+  const full = path.join(cwd, HOOK_GHA_PATH);
+  let text;
+  try {
+    text = await fs.readFile(full, "utf8");
+  } catch (err) {
+    process.stderr.write(
+      `error: could not read ${HOOK_GHA_PATH} (${err.message}) — run \`ui-craft-detect ci install\` first\n`,
+    );
+    process.exit(2);
+  }
+  return text;
+}
+
+/** Parses a boolean CLI flag value ("true"/"false"), or exits 2 on garbage input. */
+function parseBoolFlag(name, value) {
+  if (value === "true") return true;
+  if (value === "false") return false;
+  process.stderr.write(`error: invalid value "${value}" for ${name}; expected true|false\n`);
+  process.exit(2);
+}
+
+/**
+ * Parses `ci config`'s flags into a partial config override object —
+ * only keys the user actually passed are present, so unspecified settings
+ * are left untouched when merged over the marker's current parsed config.
+ */
+function parseCiConfigArgs(argv) {
+  const overrides = {};
+  let dryRun = false;
+  let help = false;
+  const unknown = [];
+  for (let i = 0; i < argv.length; i++) {
+    const a = argv[i];
+    if (a === "--scope" || a.startsWith("--scope=")) {
+      const value = a.startsWith("--scope=") ? a.slice("--scope=".length) : argv[++i];
+      if (!SCOPE_VALUES.has(value)) {
+        process.stderr.write(`error: invalid --scope value "${value}"; expected full|files|changed\n`);
+        process.exit(2);
+      }
+      overrides.scope = value;
+    } else if (a === "--fail-on" || a.startsWith("--fail-on=")) {
+      const value = a.startsWith("--fail-on=") ? a.slice("--fail-on=".length) : argv[++i];
+      if (!FAIL_ON_VALUES.has(value)) {
+        process.stderr.write(`error: invalid --fail-on value "${value}"; expected none|warning|error\n`);
+        process.exit(2);
+      }
+      overrides.failOn = value;
+    } else if (a === "--comment" || a.startsWith("--comment=")) {
+      const value = a.startsWith("--comment=") ? a.slice("--comment=".length) : argv[++i];
+      overrides.comment = parseBoolFlag("--comment", value);
+    } else if (a === "--inline-comments" || a.startsWith("--inline-comments=")) {
+      const value = a.startsWith("--inline-comments=")
+        ? a.slice("--inline-comments=".length)
+        : argv[++i];
+      overrides.inlineComments = parseBoolFlag("--inline-comments", value);
+    } else if (a === "--status" || a.startsWith("--status=")) {
+      const value = a.startsWith("--status=") ? a.slice("--status=".length) : argv[++i];
+      overrides.status = parseBoolFlag("--status", value);
+    } else if (a === "--dry-run") dryRun = true;
+    else if (a === "--yes" || a === "-y") {
+      // accepted for symmetry with install/upgrade; config never prompts.
+    } else if (a === "--help" || a === "-h") help = true;
+    else unknown.push(a);
+  }
+  return { overrides, dryRun, help, unknown };
+}
+
+async function runCiInstall(argv) {
+  // Thin alias: `ci install` == `init-hook --github-action`.
+  await runInitHook(["--github-action", ...argv]);
+}
+
+async function runCiConfig(argv) {
+  const { overrides, dryRun, help, unknown } = parseCiConfigArgs(argv);
+
+  if (help) {
+    printCiHelp();
+    process.exit(0);
+  }
+  if (unknown.length > 0) {
+    process.stderr.write(`error: unknown flag(s): ${unknown.join(" ")}\n\n`);
+    printCiHelp();
+    process.exit(2);
+  }
+  if (Object.keys(overrides).length === 0) {
+    process.stderr.write(
+      `error: ci config requires at least one setting to change (--scope/--fail-on/--comment/--inline-comments/--status)\n\n`,
+    );
+    printCiHelp();
+    process.exit(2);
+  }
+
+  const cwd = process.cwd();
+  const text = await readInstalledWorkflowOrExit(cwd);
+
+  let parsed;
+  try {
+    parsed = parseWorkflowConfig(text);
+  } catch (err) {
+    process.stderr.write(`error: ${err.message}\n`);
+    process.exit(2);
+  }
+
+  // Marker's current values always win over template defaults; the
+  // requested overrides win over the marker's current values.
+  const nextConfig = { ...DEFAULT_GHA_CONFIG, ...parsed.config, ...overrides };
+  const nextText = replaceMarkers(nextConfig);
+
+  if (dryRun) {
+    process.stdout.write(`\n${bold("--- " + HOOK_GHA_PATH)} (dry-run — not written)\n`);
+    process.stdout.write(nextText);
+    process.exit(0);
+  }
+
+  await fs.writeFile(path.join(cwd, HOOK_GHA_PATH), nextText, "utf8");
+  process.stdout.write(`${c("32", "wrote")} ${HOOK_GHA_PATH}\n`);
+  process.exit(0);
+}
+
+async function runCiUpgrade(argv) {
+  const flags = { dryRun: false, help: false, unknown: [] };
+  for (const a of argv) {
+    if (a === "--dry-run") flags.dryRun = true;
+    else if (a === "--help" || a === "-h") flags.help = true;
+    else flags.unknown.push(a);
+  }
+
+  if (flags.help) {
+    printCiHelp();
+    process.exit(0);
+  }
+  if (flags.unknown.length > 0) {
+    process.stderr.write(`error: unknown flag(s): ${flags.unknown.join(" ")}\n\n`);
+    printCiHelp();
+    process.exit(2);
+  }
+
+  const cwd = process.cwd();
+  const text = await readInstalledWorkflowOrExit(cwd);
+
+  let parsed;
+  try {
+    parsed = parseWorkflowConfig(text);
+  } catch (err) {
+    process.stderr.write(`error: ${err.message}\n`);
+    process.exit(2);
+  }
+
+  if (parsed.version === VERSION) {
+    process.stdout.write(`${HOOK_GHA_PATH} is already up to date (v${VERSION}).\n`);
+    process.exit(0);
+  }
+
+  // Regenerate the template body from the CURRENT template, preserving the
+  // marker's existing config values exactly (config marker wins over
+  // template defaults — see design's resolved decision).
+  const nextConfig = { ...DEFAULT_GHA_CONFIG, ...parsed.config };
+  const nextText = replaceMarkers(nextConfig);
+
+  if (flags.dryRun) {
+    process.stdout.write(
+      `\n${bold("--- " + HOOK_GHA_PATH)} (dry-run — v${parsed.version} → v${VERSION}, not written)\n`,
+    );
+    process.stdout.write(nextText);
+    process.exit(0);
+  }
+
+  await fs.writeFile(path.join(cwd, HOOK_GHA_PATH), nextText, "utf8");
+  process.stdout.write(
+    `${c("32", "wrote")} ${HOOK_GHA_PATH} (v${parsed.version} → v${VERSION}, config preserved)\n`,
+  );
+  process.exit(0);
+}
+
+async function runCi(argv) {
+  const sub = argv[0];
+  if (sub === "install") {
+    await runCiInstall(argv.slice(1));
+  } else if (sub === "config") {
+    await runCiConfig(argv.slice(1));
+  } else if (sub === "upgrade") {
+    await runCiUpgrade(argv.slice(1));
+  } else if (sub === "--help" || sub === "-h" || sub === undefined) {
+    printCiHelp();
+    process.exit(sub === undefined ? 2 : 0);
+  } else {
+    process.stderr.write(`error: unknown ci subcommand "${sub}"\n\n`);
+    printCiHelp();
+    process.exit(2);
+  }
+}
+
 async function main() {
   const rawArgs = process.argv.slice(2);
 
   // Subcommand dispatch: `init-hook` is a sibling command, not a scan.
+  // `init-hook` is kept working, unchanged, deprecated-but-supported — `ci
+  // install/config/upgrade` (Slice D) is the new preferred surface.
   if (rawArgs[0] === "init-hook") {
     await runInitHook(rawArgs.slice(1));
+    return;
+  }
+  if (rawArgs[0] === "ci") {
+    await runCi(rawArgs.slice(1));
     return;
   }
 
