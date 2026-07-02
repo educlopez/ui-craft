@@ -122,6 +122,113 @@ func execBrewCommand(execFn func(args ...string) (string, error)) (string, error
 	return string(out), err
 }
 
+// ─── ci-install command builder (PR4) ─────────────────────────────────────────
+
+// ciInstallDoneMsg is the message delivered by the ci-install goroutine when
+// it finishes. Mirrors upgradeDoneMsg's shape: generation must match
+// AppModel.ciInstallGeneration to be applied (stale-result discard guard).
+type ciInstallDoneMsg struct {
+	err        error
+	generation int
+}
+
+// buildCIInstallCmd returns a tea.Cmd that shells out to
+// `npx ui-craft-detect@latest ci install --yes` in the current working
+// directory, mirroring buildUpgradeCmd's override/spinner/generation pattern.
+//
+// If ciInstallOverride is non-nil, it is used instead (test injection seam) —
+// same shape as upgradeOverride. Otherwise the real exec runs via execCIFn
+// (mirrors execBrewFn); passing nil for execCIFn uses the real os/exec.
+//
+// The subprocess is run non-interactively (--yes) since it is invoked from
+// inside the TUI, which already gathered user confirmation via the prompt
+// screen. A failure (npx missing, non-zero exit) is surfaced as an error on
+// ciInstallDoneMsg — it must never panic or hang the TUI.
+func buildCIInstallCmd(ciInstallOverride func() tea.Msg, execCIFn func(name string, args ...string) (string, error), generation int) tea.Cmd {
+	if ciInstallOverride != nil {
+		return func() tea.Msg {
+			msg := ciInstallOverride()
+			if done, ok := msg.(ciInstallDoneMsg); ok {
+				done.generation = generation
+				return done
+			}
+			return msg
+		}
+	}
+	return func() tea.Msg {
+		_, err := execCIInstallCommand(execCIFn)
+		if err != nil {
+			return ciInstallDoneMsg{err: fmt.Errorf("ci install: %w", err), generation: generation}
+		}
+		return ciInstallDoneMsg{err: nil, generation: generation}
+	}
+}
+
+// execCIInstallCommand runs `npx ui-craft-detect@latest ci install --yes`
+// using the provided execFn. If execFn is nil it falls back to the real
+// os/exec.Command, run in the current working directory.
+func execCIInstallCommand(execFn func(name string, args ...string) (string, error)) (string, error) {
+	if execFn != nil {
+		return execFn("npx", "ui-craft-detect@latest", "ci", "install", "--yes")
+	}
+	cmd := exec.Command("npx", "ui-craft-detect@latest", "ci", "install", "--yes")
+	out, err := cmd.CombinedOutput()
+	return string(out), err
+}
+
+// renderCIInstallPrompt renders the post-project-install follow-up prompt
+// asking whether to also set up the CI scan GitHub Action for this project.
+// Only reached when installScope==core.Project and a GitHub-hosted origin
+// was detected (see AppModel.Update's ApplyScreen branch).
+func renderCIInstallPrompt(m AppModel) string {
+	var sb strings.Builder
+	sb.WriteString(titleStyle().Render("Set up CI scan?"))
+	sb.WriteString("\n\n")
+	msg := "Also set up the AI-slop-scanning GitHub Action for this project?"
+	if noColor() {
+		sb.WriteString(msg)
+	} else {
+		sb.WriteString(accentStyle().Render(msg))
+	}
+	sb.WriteString("\n\n")
+	hint := "y/enter: install  n/esc: skip"
+	if noColor() {
+		sb.WriteString(hint)
+	} else {
+		sb.WriteString(mutedStyle().Render(hint))
+	}
+	sb.WriteByte('\n')
+	return sb.String()
+}
+
+// renderCIInstalling renders the spinner while the ci-install subprocess runs.
+func renderCIInstalling(m AppModel) string {
+	frame := spinnerFrames[m.spinnerFrame%len(spinnerFrames)]
+	msg := frame + " Setting up CI scan…"
+	hint := "\n(Press Esc to cancel and return)"
+	if noColor() {
+		return msg + hint + "\n"
+	}
+	return accentStyle().Render(msg) + mutedStyle().Render(hint) + "\n"
+}
+
+// renderCIInstallComplete renders the ScreenComplete result for the
+// ci-install action (routed via completedActionCIInstall).
+func renderCIInstallComplete(m AppModel) string {
+	var sb strings.Builder
+	if m.ciInstallErr == nil {
+		sb.WriteString("CI scan GitHub Action installed successfully.\n")
+	} else {
+		sb.WriteString("CI scan install failed: " + m.ciInstallErr.Error() + "\n")
+	}
+	hint := "\nPress Esc to return to the menu."
+	if noColor() {
+		sb.WriteString(hint)
+		return sb.String() + "\n"
+	}
+	return accentStyle().Render(sb.String()) + mutedStyle().Render(hint) + "\n"
+}
+
 // ─── renderUpgrade ────────────────────────────────────────────────────────────
 
 // renderUpgrade renders the Upgrade screen spinner while the upgrade is in progress.
