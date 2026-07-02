@@ -23,6 +23,7 @@ import (
 	"github.com/educlopez/ui-craft/cli/core"
 	"github.com/educlopez/ui-craft/cli/fsutil"
 	"github.com/educlopez/ui-craft/cli/harness"
+	"github.com/educlopez/ui-craft/cli/internal/filemerge"
 	"github.com/spf13/cobra"
 )
 
@@ -256,6 +257,46 @@ func checkSkillFile(fs fsutil.FileSystem, diskPath string, embeddedContent []byt
 	}
 
 	return results
+}
+
+// checkCodexAgentsMD verifies that Codex's AGENTS.md file exists and
+// contains a well-formed ui-craft managed block: filemerge.BeginMarker
+// appearing before filemerge.EndMarker. This is the only skills-dir
+// discovery pointer Codex has (no marketplace), per the proposal. The
+// markers are reused directly from filemerge (the same constants
+// filemerge.UpsertManagedBlock writes via harness/codex.go's WriteSkill) —
+// no duplicated marker strings or regex. This check is read-only; it never
+// repairs the file (that is codex.go's WriteSkill / `ui-craft update`
+// responsibility, not doctor's).
+func checkCodexAgentsMD(fs fsutil.FileSystem, agentsMDPath string) checkResult {
+	content, err := fs.ReadFile(agentsMDPath)
+	if err != nil {
+		return checkResult{
+			label:  "codex-agents-md",
+			level:  "fail",
+			detail: fmt.Sprintf("AGENTS.md not found at %s", agentsMDPath),
+			remedy: "run `ui-craft install`",
+		}
+	}
+
+	text := string(content)
+	beginIdx := strings.Index(text, filemerge.BeginMarker)
+	endIdx := strings.Index(text, filemerge.EndMarker)
+
+	if beginIdx != -1 && endIdx != -1 && beginIdx < endIdx {
+		return checkResult{
+			label:  "codex-agents-md",
+			level:  "ok",
+			detail: "managed block present and well-formed",
+		}
+	}
+
+	return checkResult{
+		label:  "codex-agents-md",
+		level:  "fail",
+		detail: "managed block markers malformed (orphan marker)",
+		remedy: "run `ui-craft update` to repair the managed block",
+	}
 }
 
 // frontmatterFailureDetail re-derives a specific failure reason for a
