@@ -1,5 +1,21 @@
 # Versions
 
+## v1.0.5 (2026-07-02) — project-scoped installs + CI-scan setup, both from the TUI
+
+**New: install ui-craft scoped to a single project, not just globally.** The interactive hub gained an "Install (this project)" item alongside the existing "Start installation" (global) — a completely separate installer that writes skills/commands/MCP into the current directory's project-local conventions instead of `~/.<harness>/`, for all 5 harnesses:
+
+- **Claude Code** — `.claude/{skills,commands,agents}/`
+- **Codex** — `AGENTS.md` + `.codex/config.toml` for MCP (full parity — Codex's own docs confirm project-scoped MCP, gated by its own "trusted projects" approval)
+- **Cursor** — `.cursor/rules/*.mdc` + `.cursor/mcp.json`
+- **Gemini** — `GEMINI.md` (a separate file Gemini's own loader concatenates with your global `~/.gemini/GEMINI.md` at runtime — not a merge, install/uninstall just add/remove this one file) + `.gemini/settings.json`
+- **OpenCode** — its existing skill/command/agent set, mirrored into `.opencode/`-scoped project dirs + `opencode.json`
+
+Project installs get their own self-contained backup/state tracking (`<project>/.ui-craft-backups/`, `<project>/.ui-craft/state.json`) — completely independent of the global installer, which is untouched.
+
+**New: set up the AI-slop CI scan for this project, right from the install flow.** After a project install completes, if the project's git remote points to GitHub, the hub offers to also run `ui-craft-detect`'s `ci install` — wiring up the sticky-PR-comment + inline-review-comments + commit-status GitHub Action in one step. Not offered at all on non-GitHub repos (GitLab, Bitbucket, no remote) rather than shown and failing.
+
+Found and fixed 3 real bugs while building this (each caught by reading the actual code, not just running tests): project installs were resolving the right paths but the write methods were still quietly using the global ones underneath; the hub's "update available" ★ marker would have landed on the wrong menu item once the new entry shifted everyone else down a slot; and pressing Esc during the new CI-install prompt would have quit the whole TUI instead of just declining.
+
 ## v1.0.4 (2026-07-02) — doctor diagnoses skill installs + fix: corrupted state.json silently treated as empty
 
 Two coordinated CLI changes.
