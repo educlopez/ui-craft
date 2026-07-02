@@ -1,7 +1,7 @@
 name: ui-craft-detect
 
 # ui-craft-detect-config: {"scope":"changed","failOn":"error","comment":true,"inlineComments":true,"status":true}
-# ui-craft-detect-version: 0.7.2
+# ui-craft-detect-version: 0.7.3
 
 on:
   pull_request:
@@ -21,6 +21,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # --scope changed/files needs merge-base resolution against the
+          # default branch — the default shallow (depth-1) checkout has no
+          # history to resolve it, so --scope silently falls back to full
+          # scan on every PR. Fetch full history so scoping actually works.
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '20'

@@ -1023,3 +1023,12 @@ test("CLI entry guard: main() still runs when invoked through a symlink (npx/npm
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test("renderGHAWorkflow: checkout uses fetch-depth: 0 so --scope changed/files can resolve a merge-base in CI", () => {
+  const yaml = renderGHAWorkflow(DEFAULT_GHA_CONFIG);
+
+  assert.ok(
+    /fetch-depth:\s*0/.test(yaml),
+    "default (depth-1) checkout has no history for merge-base resolution — --scope would always fall back to full scan in real CI, and inline-comments would 422 the whole review batch on out-of-diff findings",
+  );
+});
