@@ -68,6 +68,9 @@ jobs:
           HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
 
   # ── Post-release smoke test ───────────────────────────────────────────────
+  # This job covers what CI CAN automate. It is not a substitute for the
+  # manual Gatekeeper/Apple-Silicon verification in RELEASE_CHECKLIST.md —
+  # see that file for the steps CI structurally cannot cover.
   smoke-test:
     needs: release
     runs-on: ubuntu-latest
@@ -111,4 +114,17 @@ jobs:
             exit 1
           fi
 
+          # Assert: install --dry-run --json does not crash and emits valid JSON
+          # against the actual released binary (installer-hardening spec:
+          # release-verification / Release Smoke Test — Install Dry-Run).
+          mkdir -p ~/.claude
+          DRYRUN_OUTPUT=$(./ui-craft install --harness claude --dry-run --json --yes)
+          echo "ui-craft install --dry-run --json output: $DRYRUN_OUTPUT"
+
+          if ! echo "$DRYRUN_OUTPUT" | jq empty >/dev/null 2>&1; then
+            echo "ERROR: ui-craft install --dry-run --json did not emit valid JSON"
+            exit 1
+          fi
+
           echo "Smoke test passed."
+          echo "Reminder: complete the manual Gatekeeper/Apple-Silicon verification in RELEASE_CHECKLIST.md — CI cannot cover that step."
