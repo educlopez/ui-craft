@@ -17,7 +17,7 @@ import path from "node:path";
 import readline from "node:readline";
 import { pathToFileURL } from "node:url";
 
-const VERSION = "0.8.0";
+const VERSION = "0.9.0";
 
 const SCAN_EXTENSIONS = new Set([
   ".css", ".scss", ".sass",
@@ -1727,6 +1727,63 @@ export function renderReviewComments(findings, commitSha) {
   };
 }
 
+const MARKDOWN_REPORT_ICON =
+  '<img src="https://raw.githubusercontent.com/educlopez/ui-craft/main/assets/icon.svg" width="40">';
+
+// Escapes table-breaking characters in a markdown table cell: `|` would
+// otherwise terminate the cell early (findings' `fix`/`file` text can
+// plausibly contain a literal pipe, e.g. Tailwind arbitrary values or JS
+// bitwise-or), and embedded newlines would break out of the row entirely.
+const cell = (s) => String(s ?? "").replace(/\|/g, "\\|").replace(/\r?\n/g, " ");
+
+/**
+ * Renders findings as a branded markdown report for CI surfaces (sticky PR
+ * comment body, $GITHUB_STEP_SUMMARY). Pure function — no I/O, no network.
+ *
+ * Mirrors `renderReviewComments`'s contract: callers are responsible for any
+ * scope filtering before calling this — findings are rendered exactly as
+ * given, with no internal re-filtering.
+ *
+ * Unlike `renderReviewComments`, this ALWAYS returns a non-empty string —
+ * an empty/null/undefined `findings` array renders a positive "no issues"
+ * state rather than `null`, since CI surfaces should never render blank.
+ *
+ * @param {Array<{rule: string, severity: "critical"|"major"|"warn", file: string, line: number, fix: string}>} findings
+ * @param {{files_scanned: number, files_flagged: number, errors: number, warnings: number}} summary
+ * @returns {string}
+ */
+export function renderMarkdownReport(findings, summary) {
+  const header = `${MARKDOWN_REPORT_ICON}\n\n### ui-craft-detect\n\n`;
+
+  if (!findings || findings.length === 0) {
+    return `${header}✅ No issues found\n`;
+  }
+
+  const errs = findings.filter((f) => f.severity === "critical");
+  const warns = findings.filter((f) => f.severity === "major" || f.severity === "warn");
+
+  const table = (rows) =>
+    `| rule | file:line | severity | fix |\n|---|---|---|---|\n` +
+    rows
+      .map(
+        (f) =>
+          `| ${cell(f.rule)} | ${cell(path.relative(process.cwd(), f.file))}:${f.line} | ${cell(f.severity)} | ${cell(f.fix)} |`,
+      )
+      .join("\n") +
+    "\n";
+
+  const section = (rows, open, label) =>
+    rows.length
+      ? `<details${open ? " open" : ""}>\n<summary>${rows.length} ${label}</summary>\n\n${table(rows)}\n</details>\n\n`
+      : "";
+
+  const summaryLine =
+    `${summary?.files_scanned ?? 0} files scanned, ${findings.length} findings ` +
+    `(${summary?.errors ?? errs.length} errors, ${summary?.warnings ?? warns.length} warnings)\n\n`;
+
+  return header + summaryLine + section(errs, true, "errors") + section(warns, false, "warnings");
+}
+
 // --- Main ----------------------------------------------------------------
 
 const SCOPE_VALUES = new Set(["full", "files", "changed"]);
@@ -1736,6 +1793,7 @@ function parseArgs(argv) {
   const flags = {
     json: false,
     sarif: false,
+    markdown: false,
     reviewJson: false,
     fix: false,
     fixDryRun: false,
@@ -1757,6 +1815,7 @@ function parseArgs(argv) {
         : argv[++i];
     }
     else if (a === "--sarif") flags.sarif = true;
+    else if (a === "--markdown") flags.markdown = true;
     else if (a === "--fix") flags.fix = true;
     else if (a === "--fix-dry-run") flags.fixDryRun = true;
     else if (a === "--version" || a === "-v") flags.version = true;
@@ -1809,6 +1868,7 @@ function printHelp() {
       `Scan flags:\n` +
       `  --json                     machine-readable output\n` +
       `  --sarif                    SARIF 2.1.0 (GitHub code scanning)\n` +
+      `  --markdown                 branded markdown report (PR comments, CI summaries)\n` +
       `  --review-json              GitHub Reviews API payload (requires --scope changed)\n` +
       `  --commit-sha <sha>         commit_id for --review-json (default: HEAD)\n` +
       `  --fix                      auto-fix fixable rules (transition-all, animate-bounce)\n` +
@@ -1931,7 +1991,10 @@ export function renderGHAWorkflow(config) {
           MARKER='${GHA_STICKY_COMMENT_MARKER}'
           BODY_FILE="$(mktemp)"
           printf '%s\\n\\n' "$MARKER" > "$BODY_FILE"
-          npx --yes ui-craft-detect@latest . --scope changed --fail-on none >> "$BODY_FILE" || true
+          MD_FILE="$(mktemp)"
+          npx --yes ui-craft-detect@latest . --scope changed --fail-on none --markdown > "$MD_FILE" || true
+          cat "$MD_FILE" >> "$BODY_FILE"
+          cat "$MD_FILE" >> "$GITHUB_STEP_SUMMARY"
           COMMENT_ID="$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" --paginate --jq \\
             ".[] | select(.body | contains(\\"$MARKER\\")) | .id" | head -n1)"
           if [ -n "$COMMENT_ID" ]; then
@@ -2771,6 +2834,11 @@ async function main() {
     ...f,
     file: path.resolve(cwd, f.file),
   }));
+
+  if (flags.markdown) {
+    process.stdout.write(renderMarkdownReport(absFindings, summary));
+    process.exit(failOnExit(flags.failOn, { errors: errorCount, warnings: warningCount }));
+  }
 
   if (flags.sarif) {
     const sarif = toSarif(absFindings, rules);

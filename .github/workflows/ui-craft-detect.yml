@@ -1,7 +1,7 @@
 name: ui-craft-detect
 
 # ui-craft-detect-config: {"scope":"changed","failOn":"error","comment":true,"inlineComments":true,"status":true}
-# ui-craft-detect-version: 0.8.0
+# ui-craft-detect-version: 0.9.0
 
 on:
   pull_request:
@@ -53,7 +53,10 @@ jobs:
           MARKER='<!-- ui-craft-detect -->'
           BODY_FILE="$(mktemp)"
           printf '%s\n\n' "$MARKER" > "$BODY_FILE"
-          npx --yes ui-craft-detect@latest . --scope changed --fail-on none >> "$BODY_FILE" || true
+          MD_FILE="$(mktemp)"
+          npx --yes ui-craft-detect@latest . --scope changed --fail-on none --markdown > "$MD_FILE" || true
+          cat "$MD_FILE" >> "$BODY_FILE"
+          cat "$MD_FILE" >> "$GITHUB_STEP_SUMMARY"
           COMMENT_ID="$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" --paginate --jq \
             ".[] | select(.body | contains(\"$MARKER\")) | .id" | head -n1)"
           if [ -n "$COMMENT_ID" ]; then
