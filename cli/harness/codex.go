@@ -14,7 +14,8 @@ import (
 // CodexHarness is the adapter for OpenAI Codex CLI.
 //
 // Detection: "codex" on PATH.
-// MCP config: ~/.codex/config.toml (TOML / TOMLFile strategy).
+// MCP config: ~/.codex/config.toml (global) or <projectRoot>/.codex/config.toml
+// (project-scoped, full parity with the other harnesses — see ConfigPathsFor).
 // Skills dir: ~/.codex/skills/ (plus managed block in project AGENTS.md — Slice 5).
 // Agents dir: (none — Codex has no native sub-agent format).
 // Supports:   SkillCommands, MCPGates, DesignMemory = true; ReviewAgents = false.
@@ -66,10 +67,38 @@ func (h CodexHarness) Detect() (DetectResult, error) {
 	return DetectResult{Installed: false}, nil
 }
 
-// ConfigPaths returns the canonical paths for Codex.
-// AgentsMDPath honors --dir (ProjectRoot): when set, the project-local AGENTS.md
-// is used; otherwise the global ~/.codex/AGENTS.md is the target.
+// ConfigPaths returns the canonical global paths for Codex. It is equivalent
+// to ConfigPathsFor("").
 func (h CodexHarness) ConfigPaths() ConfigPaths {
+	return h.ConfigPathsFor("")
+}
+
+// ConfigPathsFor returns Codex's paths, scoped to projectRoot when non-empty.
+//
+// Project-local targets: <projectRoot>/.codex/skills, <projectRoot>/AGENTS.md
+// (managed block, via the existing agentsMDPath(projectRoot) branch), and
+// <projectRoot>/.codex/config.toml for MCP.
+//
+// Codex MCP is FULL PARITY with the other 4 harnesses in project mode — it is
+// NOT global-only. OpenAI's official Codex CLI docs
+// (developers.openai.com/codex/mcp) confirm Codex supports project-scoped MCP
+// via a .codex/config.toml at the project root, using the same TOML format as
+// the global ~/.codex/config.toml, just resolved from a different root. Codex
+// gates project-scoped configs behind its own "trusted projects only"
+// approval mechanism — that is Codex's own UX and is not something this
+// installer controls or needs to implement; it is documented here (and should
+// be surfaced in the project-install flow's summary text) purely so users
+// aren't surprised if Codex itself prompts for trust before honoring it.
+func (h CodexHarness) ConfigPathsFor(projectRoot string) ConfigPaths {
+	if projectRoot != "" {
+		return ConfigPaths{
+			MCPConfig:    filepath.Join(projectRoot, ".codex", "config.toml"),
+			SkillsDir:    filepath.Join(projectRoot, ".codex", "skills"),
+			AgentsDir:    "", // Codex has no sub-agent directory.
+			AgentsMDPath: h.agentsMDPath(projectRoot),
+			ProjectRoot:  projectRoot,
+		}
+	}
 	root := h.configRoot()
 	return ConfigPaths{
 		MCPConfig:    filepath.Join(root, "config.toml"),

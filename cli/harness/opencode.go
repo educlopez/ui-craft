@@ -83,8 +83,28 @@ func (h OpenCodeHarness) Detect() (DetectResult, error) {
 	return DetectResult{Installed: false}, nil
 }
 
-// ConfigPaths returns the canonical paths for OpenCode.
+// ConfigPaths returns the canonical global paths for OpenCode. It is
+// equivalent to ConfigPathsFor("").
 func (h OpenCodeHarness) ConfigPaths() ConfigPaths {
+	return h.ConfigPathsFor("")
+}
+
+// ConfigPathsFor returns OpenCode's paths, scoped to projectRoot when
+// non-empty. Project-local targets mirror OpenCode's existing global
+// component set (skills-dir, commands-dir, agent-dir) into `.opencode/`-scoped
+// project dirs, plus a project-root opencode.json for MCP. Per design's Q3
+// resolution, OpenCode never writes an AGENTS.md managed block in project
+// mode — its skills/commands/agent dirs are its native project mechanism.
+func (h OpenCodeHarness) ConfigPathsFor(projectRoot string) ConfigPaths {
+	if projectRoot != "" {
+		return ConfigPaths{
+			MCPConfig:   filepath.Join(projectRoot, "opencode.json"),
+			SkillsDir:   filepath.Join(projectRoot, ".opencode", "skill"),
+			AgentsDir:   filepath.Join(projectRoot, ".opencode", "agent"),
+			CommandsDir: filepath.Join(projectRoot, ".opencode", "command"),
+			ProjectRoot: projectRoot,
+		}
+	}
 	root := h.configRoot()
 	return ConfigPaths{
 		MCPConfig:   filepath.Join(root, "opencode.json"),

@@ -55,8 +55,27 @@ func (h CursorHarness) Detect() (DetectResult, error) {
 	return DetectResult{Installed: false}, nil
 }
 
-// ConfigPaths returns the canonical paths for Cursor.
+// ConfigPaths returns the canonical global paths for Cursor. It is
+// equivalent to ConfigPathsFor("").
 func (h CursorHarness) ConfigPaths() ConfigPaths {
+	return h.ConfigPathsFor("")
+}
+
+// ConfigPathsFor returns Cursor's paths, scoped to projectRoot when
+// non-empty. Project-local targets: <projectRoot>/.cursor/rules (per spec's
+// `.cursor/rules/*.mdc` convention — SkillsDir is repurposed as the rules dir
+// for the project branch; the WriteSkill call site's *.mdc write-format
+// alignment is a follow-up item, not part of this path-wiring task) and
+// <projectRoot>/.cursor/mcp.json.
+func (h CursorHarness) ConfigPathsFor(projectRoot string) ConfigPaths {
+	if projectRoot != "" {
+		return ConfigPaths{
+			MCPConfig:   filepath.Join(projectRoot, ".cursor", "mcp.json"),
+			SkillsDir:   filepath.Join(projectRoot, ".cursor", "rules"),
+			AgentsDir:   "", // Cursor has no sub-agent directory.
+			ProjectRoot: projectRoot,
+		}
+	}
 	root := h.configRoot()
 	return ConfigPaths{
 		MCPConfig: filepath.Join(root, "mcp.json"),

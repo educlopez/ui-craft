@@ -30,6 +30,17 @@ func (s stubHarness) Detect() (harness.DetectResult, error) {
 }
 
 func (s stubHarness) ConfigPaths() harness.ConfigPaths {
+	return s.ConfigPathsFor("")
+}
+
+func (s stubHarness) ConfigPathsFor(projectRoot string) harness.ConfigPaths {
+	if projectRoot != "" {
+		return harness.ConfigPaths{
+			MCPConfig:   projectRoot + "/." + s.name + "/mcp.json",
+			SkillsDir:   projectRoot + "/." + s.name + "/skills",
+			ProjectRoot: projectRoot,
+		}
+	}
 	return harness.ConfigPaths{
 		MCPConfig: "/fake/" + s.name + "/mcp.json",
 		SkillsDir: "/fake/" + s.name + "/skills",

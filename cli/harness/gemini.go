@@ -67,8 +67,28 @@ func (h GeminiHarness) Detect() (DetectResult, error) {
 	return DetectResult{Installed: false}, nil
 }
 
-// ConfigPaths returns the canonical paths for Gemini CLI.
+// ConfigPaths returns the canonical global paths for Gemini CLI. It is
+// equivalent to ConfigPathsFor("").
 func (h GeminiHarness) ConfigPaths() ConfigPaths {
+	return h.ConfigPathsFor("")
+}
+
+// ConfigPathsFor returns Gemini CLI's paths, scoped to projectRoot when
+// non-empty. Project-local targets: <projectRoot>/GEMINI.md (managed block —
+// the actual write logic is implemented in a later change; this method only
+// resolves the path) and <projectRoot>/.gemini/settings.json for MCP.
+// SkillsDir resolves to <projectRoot>/.gemini since Gemini's project-local
+// skills-equivalent surface is the project .gemini/ directory itself.
+func (h GeminiHarness) ConfigPathsFor(projectRoot string) ConfigPaths {
+	if projectRoot != "" {
+		return ConfigPaths{
+			MCPConfig:    filepath.Join(projectRoot, ".gemini", "settings.json"),
+			SkillsDir:    filepath.Join(projectRoot, ".gemini"),
+			AgentsDir:    "", // Gemini CLI has no sub-agent directory.
+			AgentsMDPath: filepath.Join(projectRoot, "GEMINI.md"),
+			ProjectRoot:  projectRoot,
+		}
+	}
 	root := h.configRoot()
 	return ConfigPaths{
 		MCPConfig: filepath.Join(root, "settings.json"),

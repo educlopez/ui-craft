@@ -701,6 +701,8 @@ func (m AppModel) runApplyCmd() tea.Cmd {
 			assets.TemplateFS,
 			assets.CommandsFS,
 			projectDir,
+			core.Global,
+			"",
 		)
 
 		// Capture the plan for test assertions (planCapture is a pointer set by

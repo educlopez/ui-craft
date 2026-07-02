@@ -51,10 +51,13 @@ type ConfigPaths struct {
 	// ProjectRoot is the working project directory (may be empty for global
 	// installs). Adapters that support project-scoped configs use this.
 	ProjectRoot string
-	// AgentsMDPath is the absolute path to the AGENTS.md file that receives
-	// the managed block for Codex. Empty for all other harnesses.
-	// When ProjectRoot is set, this is the project-local AGENTS.md; otherwise
-	// it is the global ~/.codex/AGENTS.md.
+	// AgentsMDPath is the absolute path to the managed-block rules file for
+	// harnesses that support one: AGENTS.md for Codex, GEMINI.md for Gemini
+	// (in project scope). Empty for harnesses without a managed-block rules
+	// file (Cursor, OpenCode) or when ProjectRoot is empty for Gemini (Gemini
+	// has no global managed-block target in this design).
+	// For Codex, when ProjectRoot is set this is the project-local AGENTS.md;
+	// otherwise it is the global ~/.codex/AGENTS.md.
 	AgentsMDPath string
 }
 
@@ -127,7 +130,32 @@ type Harness interface {
 	// ConfigPaths returns the set of filesystem paths relevant to this harness.
 	// The returned paths reflect the discovered installation root, not hardcoded
 	// defaults, satisfying gotcha #2 (OS/version path variance).
+	//
+	// ConfigPaths is equivalent to ConfigPathsFor("") — every adapter's
+	// ConfigPaths() delegates to ConfigPathsFor with an empty projectRoot, so
+	// global-install behavior is byte-for-byte unchanged by the addition of
+	// ConfigPathsFor.
 	ConfigPaths() ConfigPaths
+
+	// ConfigPathsFor returns the set of filesystem paths relevant to this
+	// harness, scoped to projectRoot when non-empty ("project install"), or
+	// to the global home-derived root when projectRoot is "" (equivalent to
+	// ConfigPaths()).
+	//
+	// Project-local targets (cwd-rooted, per design #917's confirmed
+	// component/path map):
+	//   Claude:   <projectRoot>/.claude/{skills,commands,agents}, <projectRoot>/.mcp.json
+	//   Codex:    <projectRoot>/.codex/skills, <projectRoot>/AGENTS.md (managed block),
+	//             <projectRoot>/.codex/config.toml (full parity — Codex MCP is
+	//             project-scoped too, not global-only; OpenAI's Codex CLI docs
+	//             confirm project-local .codex/config.toml support for
+	//             "trusted projects", which is Codex's own trust/approval UX,
+	//             not something this installer implements)
+	//   Cursor:   <projectRoot>/.cursor/rules/*.mdc, <projectRoot>/.cursor/mcp.json
+	//   Gemini:   <projectRoot>/GEMINI.md (managed block, write logic is a later
+	//             change), <projectRoot>/.gemini/settings.json
+	//   OpenCode: <projectRoot>/.opencode/{skill,command,agent}, <projectRoot>/opencode.json
+	ConfigPathsFor(projectRoot string) ConfigPaths
 
 	// Supports reports whether this harness can accept the given component.
 	// It is the single source of truth for the capability matrix.
