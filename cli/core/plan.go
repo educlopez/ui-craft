@@ -148,19 +148,34 @@ func Plan(detected []DetectedHarness, selected []component.Component, filesystem
 
 	var targets []ComponentTarget
 	for _, dh := range detected {
+		// Resolve the Harness instance whose Write* closures will actually be
+		// invoked. Every Write* method (WriteMCP, WriteSkill, WriteCommands,
+		// WriteAgents) resolves its own target paths internally via
+		// h.ConfigPaths() on its OWN receiver — it does NOT take a paths
+		// parameter. So for Project scope, the harness value used to build
+		// every WriterOp closure below MUST be constructed via
+		// WithProjectRoot(scopeProjectRoot) first; otherwise every Write* call
+		// would silently fall through to global ConfigPaths() regardless of
+		// scope, and configPathsFor's Project-scoped ConfigPathsFor(...)
+		// result (used only for SnapPath/SnapPaths bookkeeping above) would
+		// disagree with what actually gets written to disk.
+		h := dh.Harness
+		if scope == Project {
+			h = h.WithProjectRoot(scopeProjectRoot)
+		}
 		for _, c := range selected {
-			if !dh.Harness.Supports(c) {
+			if !h.Supports(c) {
 				targets = append(targets, ComponentTarget{
-					Harness:    dh.Harness,
+					Harness:    h,
 					Component:  c,
 					Skip:       true,
-					SkipReason: c.String() + " not supported by " + dh.Harness.Name(),
+					SkipReason: c.String() + " not supported by " + h.Name(),
 				})
 				continue
 			}
 
 			target := ComponentTarget{
-				Harness:   dh.Harness,
+				Harness:   h,
 				Component: c,
 				Skip:      false,
 			}
@@ -168,13 +183,13 @@ func Plan(detected []DetectedHarness, selected []component.Component, filesystem
 			switch c {
 			case component.MCPGates:
 				// Wire the concrete write op for MCPGates.
-				snapPath := configPathsFor(dh.Harness).MCPConfig
-				h := dh.Harness
+				snapPath := configPathsFor(h).MCPConfig
+				hh := h
 				w := filesystem
 				srv := mcpServer
 				target.SnapPath = snapPath
 				target.Op = func() (harness.Change, error) {
-					return h.WriteMCP(w, srv)
+					return hh.WriteMCP(w, srv)
 				}
 
 			case component.SkillCommands:
@@ -184,9 +199,9 @@ func Plan(detected []DetectedHarness, selected []component.Component, filesystem
 				// The CLI owns only the subdirs it installs; rollback removes those.
 				// For command-capable harnesses (claude, opencode), WriteCommands is
 				// also called after WriteSkill, and CommandsDir is added to SnapPaths.
-				paths := configPathsFor(dh.Harness)
+				paths := configPathsFor(h)
 				skillsDir := paths.SkillsDir
-				h := dh.Harness
+				hh := h
 				w := filesystem
 				var mirror fs.FS
 				if skillsProvider != nil {
@@ -220,14 +235,14 @@ func Plan(detected []DetectedHarness, selected []component.Component, filesystem
 				target.SnapPath = skillsDir // keep for legacy callers that read SnapPath
 				cFS := commandsFS           // capture for closure
 				target.Op = func() (harness.Change, error) {
-					ch, err := h.WriteSkill(w, mirror)
+					ch, err := hh.WriteSkill(w, mirror)
 					if err != nil {
 						return ch, err
 					}
 					// Chain WriteCommands for command-capable harnesses.
 					// ErrUnsupported is silently skipped (skills-only mode).
 					if cFS != nil {
-						cmdChanges, cmdErr := h.WriteCommands(w, cFS)
+						cmdChanges, cmdErr := hh.WriteCommands(w, cFS)
 						if cmdErr != nil && !errors.Is(cmdErr, harness.ErrUnsupported) {
 							return ch, cmdErr
 						}
@@ -302,17 +317,17 @@ func Plan(detected []DetectedHarness, selected []component.Component, filesystem
 				// remove it via the tombstone entry in the backup store).
 				var agentsFS fs.FS
 				if agentProvider != nil {
-					agentsFS = agentProvider(dh.Harness.Name())
+					agentsFS = agentProvider(h.Name())
 				}
 				// Nil agentsFS: mark as skip (no agent definitions embedded for this harness).
 				if agentsFS == nil {
 					target.Skip = true
-					target.SkipReason = "review-agents: agent definitions not embedded for " + dh.Harness.Name()
+					target.SkipReason = "review-agents: agent definitions not embedded for " + h.Name()
 					targets = append(targets, target)
 					continue
 				}
-				agentsDir := configPathsFor(dh.Harness).AgentsDir
-				h := dh.Harness
+				agentsDir := configPathsFor(h).AgentsDir
+				hh := h
 				w := filesystem
 				// Check whether the agents directory already exists before wiring the
 				// write op. This result is captured in the aggregate Change so callers
@@ -327,7 +342,7 @@ func Plan(detected []DetectedHarness, selected []component.Component, filesystem
 				target.SnapPaths = []string{agentsDir}
 				aFS := agentsFS
 				target.Op = func() (harness.Change, error) {
-					changes, err := h.WriteAgents(w, aFS)
+					changes, err := hh.WriteAgents(w, aFS)
 					if err != nil {
 						return harness.Change{}, err
 					}
@@ -344,7 +359,7 @@ func Plan(detected []DetectedHarness, selected []component.Component, filesystem
 						ExistedBefore: agentsDirExisted,
 						Changed:       anyChanged,
 						Component:     component.ReviewAgents.String(),
-						HarnessName:   h.Name(),
+						HarnessName:   hh.Name(),
 					}, nil
 				}
 			}

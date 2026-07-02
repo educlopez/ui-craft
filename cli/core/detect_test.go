@@ -51,6 +51,12 @@ func (s stubHarness) Supports(c component.Component) bool { return true }
 
 func (s stubHarness) ConfigRoot() string { return "/fake/" + s.name }
 
+func (s stubHarness) WithProjectRoot(projectRoot string) harness.Harness {
+	// Not exercised by this test double's current tests; present only to
+	// satisfy the Harness interface.
+	return s
+}
+
 func (s stubHarness) WriteMCP(w fsutil.FileSystem, srv harness.MCPServer) (harness.Change, error) {
 	return harness.Change{}, harness.ErrNotImplemented
 }

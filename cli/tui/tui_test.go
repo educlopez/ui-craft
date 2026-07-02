@@ -31,6 +31,11 @@ func (a *fakeHarnessAdapter) ConfigPathsFor(projectRoot string) harness.ConfigPa
 	return harness.ConfigPaths{ProjectRoot: projectRoot}
 }
 func (a *fakeHarnessAdapter) ConfigRoot() string { return "/fake/" + a.name }
+func (a *fakeHarnessAdapter) WithProjectRoot(projectRoot string) harness.Harness {
+	// Not exercised by this test double's current tests; present only to
+	// satisfy the Harness interface.
+	return a
+}
 func (a *fakeHarnessAdapter) Supports(c component.Component) bool {
 	return a.supported[c]
 }

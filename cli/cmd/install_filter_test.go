@@ -53,6 +53,11 @@ func (g filterStubHarness) Supports(c component.Component) bool {
 	return c == component.SkillCommands || c == component.MCPGates
 }
 func (g filterStubHarness) ConfigRoot() string { return "/fake/" + g.hname }
+func (g filterStubHarness) WithProjectRoot(projectRoot string) harness.Harness {
+	// Not exercised by this test double's current tests; present only to
+	// satisfy the Harness interface.
+	return g
+}
 func (g filterStubHarness) WriteMCP(w fsutil.FileSystem, srv harness.MCPServer) (harness.Change, error) {
 	return harness.Change{HarnessName: g.hname, Component: "mcp-gates", Changed: true}, nil
 }

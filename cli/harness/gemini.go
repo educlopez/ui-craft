@@ -19,12 +19,23 @@ import (
 // Skills dir: ~/.gemini/skills/
 // Agents dir: (none — Gemini CLI has no native sub-agent format).
 // Supports:   SkillCommands, MCPGates, DesignMemory = true; ReviewAgents = false.
-type GeminiHarness struct{}
+type GeminiHarness struct {
+	// projectRoot is set via WithProjectRoot so ConfigPaths() resolves to
+	// project-scoped paths. Empty (zero value) means global scope.
+	projectRoot string
+}
 
 // Compile-time check: GeminiHarness must satisfy Harness.
 var _ Harness = GeminiHarness{}
 
 func (h GeminiHarness) Name() string { return "gemini" }
+
+// WithProjectRoot returns a copy of GeminiHarness scoped to projectRoot. See
+// Harness.WithProjectRoot for why this exists.
+func (h GeminiHarness) WithProjectRoot(projectRoot string) Harness {
+	h.projectRoot = projectRoot
+	return h
+}
 
 // ConfigRoot returns the Gemini config root (~/.gemini). Satisfies the Harness interface.
 func (h GeminiHarness) ConfigRoot() string { return h.configRoot() }
@@ -67,16 +78,17 @@ func (h GeminiHarness) Detect() (DetectResult, error) {
 	return DetectResult{Installed: false}, nil
 }
 
-// ConfigPaths returns the canonical global paths for Gemini CLI. It is
-// equivalent to ConfigPathsFor("").
+// ConfigPaths returns Gemini CLI's paths for this harness's scope: global
+// (home-derived) by default, or project-scoped when constructed via
+// WithProjectRoot. Equivalent to ConfigPathsFor(h.projectRoot).
 func (h GeminiHarness) ConfigPaths() ConfigPaths {
-	return h.ConfigPathsFor("")
+	return h.ConfigPathsFor(h.projectRoot)
 }
 
 // ConfigPathsFor returns Gemini CLI's paths, scoped to projectRoot when
-// non-empty. Project-local targets: <projectRoot>/GEMINI.md (managed block —
-// the actual write logic is implemented in a later change; this method only
-// resolves the path) and <projectRoot>/.gemini/settings.json for MCP.
+// non-empty. Project-local targets: <projectRoot>/GEMINI.md (managed block,
+// written by WriteSkill via filemerge.UpsertManagedBlock — mirrors Codex's
+// AGENTS.md pattern) and <projectRoot>/.gemini/settings.json for MCP.
 // SkillsDir resolves to <projectRoot>/.gemini since Gemini's project-local
 // skills-equivalent surface is the project .gemini/ directory itself.
 func (h GeminiHarness) ConfigPathsFor(projectRoot string) ConfigPaths {
@@ -164,19 +176,62 @@ func (h GeminiHarness) WriteMCP(w fsutil.FileSystem, server MCPServer) (Change, 
 	}, nil
 }
 
-// WriteSkill copies the embedded Gemini skills tree into ~/.gemini/skills/.
-// The mirror FS is rooted at the skills level (assets.SkillsFS("gemini")),
-// so walking it yields <id>/SKILL.md paths that land at depth-1:
-// ~/.gemini/skills/<id>/SKILL.md. Full-file ownership; idempotent via byte-compare.
-// Gotcha #7: if npm is global (no nvm/fnm/volta detected), an advisory is
-// printed by the caller — WriteSkill itself does not print but sets
-// Change.Changed so the caller can surface the advisory.
+// WriteSkill writes two targets for Gemini when scoped to a project (mirrors
+// Codex's AGENTS.md pattern exactly):
+//
+//  1. Full-file mirror copy into the skills dir (global: ~/.gemini/skills/;
+//     project: <projectRoot>/.gemini/ — depth-1: <id>/SKILL.md peers). The
+//     mirror FS is rooted at the skills level (assets.SkillsFS("gemini")), so
+//     walking it writes SkillsDir/<id>/SKILL.md directly.
+//  2. When ConfigPaths().AgentsMDPath is non-empty (project scope), a managed
+//     block is injected into <projectRoot>/GEMINI.md via
+//     filemerge.UpsertManagedBlock, which repairs orphan markers before
+//     injecting (gotcha #3) and preserves any user-authored content around
+//     the block. This is the write-logic half of design's Q2 resolution:
+//     Gemini's own loader concatenates the project GEMINI.md with the global
+//     ~/.gemini/GEMINI.md at runtime, so ui-craft only ever needs to manage
+//     its own block in the project-local file — never a physical merge.
+//
+// In global scope (AgentsMDPath == ""), Gemini has no managed-block target
+// (no global GEMINI.md convention in this design) — only the skills mirror
+// is written, byte-for-byte identical to pre-project-scope behavior.
 func (h GeminiHarness) WriteSkill(w fsutil.FileSystem, mirror fs.FS) (Change, error) {
-	destDir := h.ConfigPaths().SkillsDir
+	paths := h.ConfigPaths()
+
+	// --- Target 1: full-file mirror copy into skills dir (depth-1) ---
+	destDir := paths.SkillsDir
 	ch, err := writeMirrorToDir(w, mirror, destDir)
 	if err != nil {
 		return Change{}, fmt.Errorf("gemini: write skill mirror: %w", err)
 	}
+
+	// --- Target 2 (project scope only): GEMINI.md managed-block inject ---
+	if paths.AgentsMDPath == "" {
+		return ch, nil
+	}
+	geminiMD := paths.AgentsMDPath
+	existing, readErr := w.ReadFile(geminiMD)
+	existedBefore := readErr == nil
+	if !existedBefore {
+		existing = []byte("")
+	}
+
+	uicraftSkillDir := filepath.Join(destDir, "ui-craft")
+	blockContent := "# ui-craft skill\n\n" +
+		"The ui-craft skill is installed at: " + uicraftSkillDir + "\n\n" +
+		"Load it at the start of any UI design or implementation task."
+	updated := filemerge.UpsertManagedBlock(string(existing), blockContent)
+
+	geminiWR, err := fsutil.WriteFileAtomic(w, geminiMD, []byte(updated), 0o644)
+	if err != nil {
+		return Change{}, fmt.Errorf("gemini: write GEMINI.md managed block: %w", err)
+	}
+
+	if geminiWR.Changed {
+		ch.Changed = true
+	}
+	ch.ExistedBefore = existedBefore
+
 	return ch, nil
 }
 

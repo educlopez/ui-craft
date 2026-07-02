@@ -19,12 +19,23 @@ import (
 // Skills dir: ~/.codex/skills/ (plus managed block in project AGENTS.md — Slice 5).
 // Agents dir: (none — Codex has no native sub-agent format).
 // Supports:   SkillCommands, MCPGates, DesignMemory = true; ReviewAgents = false.
-type CodexHarness struct{}
+type CodexHarness struct {
+	// projectRoot is set via WithProjectRoot so ConfigPaths() resolves to
+	// project-scoped paths. Empty (zero value) means global scope.
+	projectRoot string
+}
 
 // Compile-time check: CodexHarness must satisfy Harness.
 var _ Harness = CodexHarness{}
 
 func (h CodexHarness) Name() string { return "codex" }
+
+// WithProjectRoot returns a copy of CodexHarness scoped to projectRoot. See
+// Harness.WithProjectRoot for why this exists.
+func (h CodexHarness) WithProjectRoot(projectRoot string) Harness {
+	h.projectRoot = projectRoot
+	return h
+}
 
 // ConfigRoot returns the Codex config root (~/.codex). Satisfies the Harness interface.
 func (h CodexHarness) ConfigRoot() string { return h.configRoot() }
@@ -67,10 +78,11 @@ func (h CodexHarness) Detect() (DetectResult, error) {
 	return DetectResult{Installed: false}, nil
 }
 
-// ConfigPaths returns the canonical global paths for Codex. It is equivalent
-// to ConfigPathsFor("").
+// ConfigPaths returns Codex's paths for this harness's scope: global
+// (home-derived) by default, or project-scoped when constructed via
+// WithProjectRoot. Equivalent to ConfigPathsFor(h.projectRoot).
 func (h CodexHarness) ConfigPaths() ConfigPaths {
-	return h.ConfigPathsFor("")
+	return h.ConfigPathsFor(h.projectRoot)
 }
 
 // ConfigPathsFor returns Codex's paths, scoped to projectRoot when non-empty.
