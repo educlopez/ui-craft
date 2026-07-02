@@ -82,6 +82,9 @@ var ParseSkillFrontmatter = parseSkillFrontmatter
 // CheckSkillFile exposes checkSkillFile for test use.
 var CheckSkillFile = checkSkillFile
 
+// CheckCodexAgentsMD exposes checkCodexAgentsMD for test use.
+var CheckCodexAgentsMD = checkCodexAgentsMD
+
 // MakeUninstallCmd exposes the uninstall command constructor for test use.
 func MakeUninstallCmd() *cobra.Command { return uninstallCmd }
 
