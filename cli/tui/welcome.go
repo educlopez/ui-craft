@@ -78,7 +78,9 @@ func renderWelcome(m AppModel) string {
 	for i, item := range m.menuItems {
 		label := item
 		// Append ★ to Upgrade when an update is available (Slice 3 full wiring).
-		if i == 1 && m.updateResult.Available {
+		// Upgrade is menu item index 2 (after "Start installation" and
+		// "Install (this project)" — see hubMenuItems in app.go).
+		if i == 2 && m.updateResult.Available {
 			label += " ★"
 		}
 

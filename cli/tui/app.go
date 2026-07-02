@@ -82,6 +82,13 @@ type AppModel struct {
 	menuItems []string
 	cursor    int
 
+	// installScope governs whether runApplyCmd builds a global or
+	// project-scoped plan. Zero value is core.Global (NewAppModel's install
+	// flow and "Start installation" are unaffected — byte-identical to
+	// pre-PR3 behavior). Set to core.Project only by the "Install (this
+	// project)" hub menu item before entering the shared install-flow chain.
+	installScope core.InstallScope
+
 	// ─── Upgrade screen state (Slice 4) ──────────────────────────────────────
 	// spinnerFrame tracks the current spinner animation frame index.
 	// It is advanced on every TickMsg while on ScreenUpgrade.
@@ -210,6 +217,7 @@ func NewAppModel(version, projectDir string) AppModel {
 // hubMenuItems is the ordered list of hub menu entries.
 var hubMenuItems = []string{
 	"Start installation",
+	"Install (this project)",
 	"Upgrade",
 	"Manage backups",
 	"Managed uninstall",
@@ -258,11 +266,17 @@ func (m AppModel) Init() tea.Cmd {
 // appropriate screen or action.
 func (m AppModel) confirmSelectionHub() (AppModel, tea.Cmd) {
 	switch m.cursor {
-	case 0: // Start installation — route into the existing install flow
+	case 0: // Start installation — route into the existing install flow (global scope)
+		m.installScope = core.Global
 		m.screen = SplashScreen
 		m.splash = NewSplashModel(m.version)
 		return m, m.splash.Init()
-	case 1: // Upgrade — launch upgrade goroutine + spinner.
+	case 1: // Install (this project) — same install flow, project scope.
+		m.installScope = core.Project
+		m.screen = SplashScreen
+		m.splash = NewSplashModel(m.version)
+		return m, m.splash.Init()
+	case 2: // Upgrade — launch upgrade goroutine + spinner.
 		m.screen = ScreenUpgrade
 		m.spinnerFrame = 0
 		m.lastCompletedAction = completedActionUpgrade
@@ -281,7 +295,7 @@ func (m AppModel) confirmSelectionHub() (AppModel, tea.Cmd) {
 		m.uninstallRemovedPaths = nil
 		upgradeCmd := buildUpgradeCmd(m.version, m.upgradeOverride, nil, m.upgradeGeneration)
 		return m, tea.Batch(upgradeCmd, tickCmd())
-	case 2: // Manage backups — load backup list then show ScreenBackups.
+	case 3: // Manage backups — load backup list then show ScreenBackups.
 		m.screen = ScreenBackups
 		m.backupCursor = 0
 		m.backupsLoaded = false
@@ -298,7 +312,7 @@ func (m AppModel) confirmSelectionHub() (AppModel, tea.Cmd) {
 		m.uninstallErr = nil
 		m.uninstallRemovedPaths = nil
 		return m, buildBackupListCmd(m.backupListOverride)
-	case 3: // Managed uninstall — show confirm step first (Slice 6).
+	case 4: // Managed uninstall — show confirm step first (Slice 6).
 		// NOTE: No cmd is fired here; the confirm step is a static render.
 		// When the user presses Enter on ScreenUninstall, the uninstall cmd fires.
 		m.screen = ScreenUninstall
@@ -515,7 +529,7 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if !m.uninstallRunning {
 					// Confirm: fire the uninstall cmd batched with tickCmd() so the
 					// braille spinner animates reliably while the goroutine runs.
-					// This mirrors ScreenUpgrade (case 1) and ScreenBackups (enter).
+					// This mirrors ScreenUpgrade (case 2) and ScreenBackups (enter).
 					m.uninstallRunning = true
 					m.spinnerFrame = 0
 					uninstallCmd := buildUninstallCmd(m.version, m.uninstallSnapshotOverride, m.uninstallOverride)
@@ -688,9 +702,21 @@ func (m AppModel) runApplyCmd() tea.Cmd {
 	version := m.version
 	override := m.applyOverride
 	planPtr := m.planCapture
+	scope := m.installScope
 
 	return func() tea.Msg {
 		osfs := fsutil.OsFS{}
+
+		// scopeProjectRoot is only consulted by core.Plan when scope ==
+		// core.Project (see Plan's configPathsFor helper); it is the empty
+		// string for the (default) Global scope, matching pre-PR3 behavior
+		// byte-for-byte. Per PR2's WithProjectRoot fix, harness.All()-style
+		// detected harnesses are passed through unmodified — scope resolution
+		// happens INSIDE Plan, so no pre-scoping is needed here.
+		scopeProjectRoot := ""
+		if scope == core.Project {
+			scopeProjectRoot = projectDir
+		}
 
 		plan := core.Plan(
 			selected,
@@ -701,8 +727,8 @@ func (m AppModel) runApplyCmd() tea.Cmd {
 			assets.TemplateFS,
 			assets.CommandsFS,
 			projectDir,
-			core.Global,
-			"",
+			scope,
+			scopeProjectRoot,
 		)
 
 		// Capture the plan for test assertions (planCapture is a pointer set by
@@ -719,9 +745,14 @@ func (m AppModel) runApplyCmd() tea.Cmd {
 			return ApplyResultMsg{Changes: changes}
 		}
 
-		home, _ := os.UserHomeDir()
-		backupRoot := filepath.Join(home, ".ui-craft-backups")
-		backupStore := backup.NewStore(backupRoot, osfs, nil)
+		var backupStore *backup.Store
+		if scope == core.Project {
+			backupStore = core.NewProjectBackupStore(projectDir, osfs, nil)
+		} else {
+			home, _ := os.UserHomeDir()
+			backupRoot := filepath.Join(home, ".ui-craft-backups")
+			backupStore = backup.NewStore(backupRoot, osfs, nil)
+		}
 
 		result, err := core.Apply(plan, osfs, backupStore, version, false)
 		if err != nil {

@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/educlopez/ui-craft/cli/backup"
 	"github.com/educlopez/ui-craft/cli/core"
 )
 
@@ -164,25 +165,47 @@ func TestHubModel_enterLastItem_quits(t *testing.T) {
 	}
 }
 
-// TestHubModel_enterUpgrade_routesToScreenUpgrade verifies item 1 (Upgrade) goes to ScreenUpgrade.
-func TestHubModel_enterUpgrade_routesToScreenUpgrade(t *testing.T) {
+// TestHubModel_enterProjectInstall_routesToSplashScreenWithProjectScope verifies
+// item 1 ("Install (this project)") routes into the install flow (SplashScreen,
+// same as "Start installation") but sets installScope to core.Project.
+func TestHubModel_enterProjectInstall_routesToSplashScreenWithProjectScope(t *testing.T) {
 	m := NewHubModel("v1.0.0", "/tmp/test")
-	// Navigate to Upgrade (item 1).
+	// Navigate to "Install (this project)" (item 1).
 	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
 	m = updated.(AppModel)
 
 	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	m = updated.(AppModel)
+	if m.screen != SplashScreen {
+		t.Errorf("Enter on 'Install (this project)' must route to SplashScreen (install flow), got %v", m.screen)
+	}
+	if m.installScope != core.Project {
+		t.Errorf("Enter on 'Install (this project)' must set installScope=core.Project, got %v", m.installScope)
+	}
+}
+
+// TestHubModel_enterUpgrade_routesToScreenUpgrade verifies item 2 (Upgrade) goes to ScreenUpgrade.
+func TestHubModel_enterUpgrade_routesToScreenUpgrade(t *testing.T) {
+	m := NewHubModel("v1.0.0", "/tmp/test")
+	// Navigate to Upgrade (item 2 — after "Start installation" and
+	// "Install (this project)").
+	for i := 0; i < 2; i++ {
+		updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
+		m = updated.(AppModel)
+	}
+
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	m = updated.(AppModel)
 	if m.screen != ScreenUpgrade {
 		t.Errorf("Enter on Upgrade must route to ScreenUpgrade, got %v", m.screen)
 	}
 }
 
-// TestHubModel_enterBackups_routesToScreenBackups verifies item 2 routes to ScreenBackups.
+// TestHubModel_enterBackups_routesToScreenBackups verifies item 3 routes to ScreenBackups.
 func TestHubModel_enterBackups_routesToScreenBackups(t *testing.T) {
 	m := NewHubModel("v1.0.0", "/tmp/test")
-	// Navigate to Manage backups (item 2).
-	for i := 0; i < 2; i++ {
+	// Navigate to Manage backups (item 3).
+	for i := 0; i < 3; i++ {
 		updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
 		m = updated.(AppModel)
 	}
@@ -194,11 +217,11 @@ func TestHubModel_enterBackups_routesToScreenBackups(t *testing.T) {
 	}
 }
 
-// TestHubModel_enterUninstall_routesToScreenUninstall verifies item 3 routes to ScreenUninstall.
+// TestHubModel_enterUninstall_routesToScreenUninstall verifies item 4 routes to ScreenUninstall.
 func TestHubModel_enterUninstall_routesToScreenUninstall(t *testing.T) {
 	m := NewHubModel("v1.0.0", "/tmp/test")
-	// Navigate to Managed uninstall (item 3).
-	for i := 0; i < 3; i++ {
+	// Navigate to Managed uninstall (item 4).
+	for i := 0; i < 4; i++ {
 		updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
 		m = updated.(AppModel)
 	}
@@ -207,6 +230,113 @@ func TestHubModel_enterUninstall_routesToScreenUninstall(t *testing.T) {
 	m = updated.(AppModel)
 	if m.screen != ScreenUninstall {
 		t.Errorf("Enter on Managed uninstall must route to ScreenUninstall, got %v", m.screen)
+	}
+}
+
+// ─── Full menu navigation regression (PR3 — case-index cascade guard) ───────
+
+// TestHubModel_menuLabelsMatchExpectedOrder is a belt-and-suspenders guard on
+// the exact hubMenuItems order. If this test needs to change, every
+// case-index in confirmSelectionHub (app.go) AND every navigation helper in
+// this package's test files MUST be re-audited for the same shift — see the
+// PR3 apply-progress note on the case-index cascade risk.
+func TestHubModel_menuLabelsMatchExpectedOrder(t *testing.T) {
+	want := []string{
+		"Start installation",
+		"Install (this project)",
+		"Upgrade",
+		"Manage backups",
+		"Managed uninstall",
+		"Quit",
+	}
+	m := NewHubModel("v1.0.0", "/tmp/test")
+	if len(m.menuItems) != len(want) {
+		t.Fatalf("expected %d menu items, got %d: %v", len(want), len(m.menuItems), m.menuItems)
+	}
+	for i, label := range want {
+		if m.menuItems[i] != label {
+			t.Errorf("menu item %d: expected %q, got %q", i, label, m.menuItems[i])
+		}
+	}
+}
+
+// TestHubModel_fullNavigationRegression walks every menu item via down-key
+// navigation (confirming wrap-around across the now-6-item list), and for
+// each item asserts BOTH the label at that cursor position AND the
+// enter-routing destination — not just the new item. This is the explicit
+// regression guard for the case-index cascade flagged by design (#917) and
+// tasks (#918 T3.4): inserting "Install (this project)" at index 1 shifts
+// every downstream case (Upgrade 1→2, Backups 2→3, Uninstall 3→4).
+func TestHubModel_fullNavigationRegression(t *testing.T) {
+	type step struct {
+		wantLabel  string
+		wantScreen Screen
+		wantScope  core.InstallScope // only checked for install-flow items
+	}
+	steps := []step{
+		{wantLabel: "Start installation", wantScreen: SplashScreen, wantScope: core.Global},
+		{wantLabel: "Install (this project)", wantScreen: SplashScreen, wantScope: core.Project},
+		{wantLabel: "Upgrade", wantScreen: ScreenUpgrade},
+		{wantLabel: "Manage backups", wantScreen: ScreenBackups},
+		{wantLabel: "Managed uninstall", wantScreen: ScreenUninstall},
+		// Quit (index 5) is exercised separately by TestHubModel_enterLastItem_quits
+		// since pressing Enter there yields tea.Quit, not a screen transition.
+	}
+
+	for cursorPos, st := range steps {
+		t.Run(st.wantLabel, func(t *testing.T) {
+			m := NewHubModel("v1.0.0", "/tmp/test")
+			// Seams so any goroutine-firing action screen doesn't touch real
+			// resources; this test only cares about routing, not side effects.
+			m.upgradeOverride = func() tea.Msg { return nil }
+			m.backupListOverride = func() ([]backup.SnapshotMeta, error) { return nil, nil }
+
+			// Navigate down to cursorPos via 'j', verifying the label at each stop.
+			for i := 0; i < cursorPos; i++ {
+				updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
+				m = updated.(AppModel)
+			}
+			if m.cursor != cursorPos {
+				t.Fatalf("expected cursor at %d, got %d", cursorPos, m.cursor)
+			}
+			if m.menuItems[m.cursor] != st.wantLabel {
+				t.Fatalf("cursor %d: expected label %q, got %q", cursorPos, st.wantLabel, m.menuItems[m.cursor])
+			}
+
+			updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+			m = updated.(AppModel)
+			if m.screen != st.wantScreen {
+				t.Errorf("Enter on %q: expected screen %v, got %v", st.wantLabel, st.wantScreen, m.screen)
+			}
+			if st.wantLabel == "Start installation" || st.wantLabel == "Install (this project)" {
+				if m.installScope != st.wantScope {
+					t.Errorf("Enter on %q: expected installScope %v, got %v", st.wantLabel, st.wantScope, m.installScope)
+				}
+			}
+		})
+	}
+
+	// Wrap-around: from Quit (last item), one more 'j' must wrap to item 0.
+	m := NewHubModel("v1.0.0", "/tmp/test")
+	n := len(m.menuItems)
+	for i := 0; i < n-1; i++ {
+		updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
+		m = updated.(AppModel)
+	}
+	if m.menuItems[m.cursor] != "Quit" {
+		t.Fatalf("expected cursor on Quit before wrap, got %q", m.menuItems[m.cursor])
+	}
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
+	m = updated.(AppModel)
+	if m.cursor != 0 || m.menuItems[m.cursor] != "Start installation" {
+		t.Errorf("j from Quit must wrap to 'Start installation' at cursor 0, got cursor=%d label=%q", m.cursor, m.menuItems[m.cursor])
+	}
+
+	// Wrap-around the other direction: 'k' from item 0 must wrap to Quit.
+	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'k'}})
+	m = updated.(AppModel)
+	if m.menuItems[m.cursor] != "Quit" {
+		t.Errorf("k from 'Start installation' must wrap to 'Quit', got %q", m.menuItems[m.cursor])
 	}
 }
 

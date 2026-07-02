@@ -64,9 +64,9 @@ func hubOnUninstall(t *testing.T, snapshotErr error, uninstallErr error) AppMode
 		return []string{"/home/user/.claude/skills/ui-craft", "/home/user/.claude/agents/design-reviewer.md"}, nil
 	}
 
-	// Navigate to "Managed uninstall" (item 3) and Enter.
+	// Navigate to "Managed uninstall" (item 4) and Enter.
 	// j j j = cursor 3.
-	for i := 0; i < 3; i++ {
+	for i := 0; i < 4; i++ {
 		updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
 		m = updated.(AppModel)
 	}
@@ -111,8 +111,8 @@ func TestUninstall_confirmGateBlocksWithoutEnter(t *testing.T) {
 		return nil, nil
 	}
 
-	// Navigate to Managed uninstall (item 3).
-	for i := 0; i < 3; i++ {
+	// Navigate to Managed uninstall (item 4).
+	for i := 0; i < 4; i++ {
 		updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
 		m = updated.(AppModel)
 	}
@@ -144,7 +144,7 @@ func TestUninstall_escFromConfirmReturnsToWelcome(t *testing.T) {
 	}
 
 	// Navigate and enter.
-	for i := 0; i < 3; i++ {
+	for i := 0; i < 4; i++ {
 		updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
 		m = updated.(AppModel)
 	}
@@ -290,8 +290,8 @@ func TestUninstall_snapshotTakenBeforeRemoval(t *testing.T) {
 		return []string{"/home/.claude/skills/ui-craft"}, nil
 	}
 
-	// Navigate to Managed uninstall (item 3) and enter.
-	for i := 0; i < 3; i++ {
+	// Navigate to Managed uninstall (item 4) and enter.
+	for i := 0; i < 4; i++ {
 		updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
 		m = updated.(AppModel)
 	}
@@ -328,8 +328,8 @@ func TestUninstall_snapshotFailureReturnsError(t *testing.T) {
 		return nil, nil
 	}
 
-	// Navigate to Managed uninstall (item 3) and enter.
-	for i := 0; i < 3; i++ {
+	// Navigate to Managed uninstall (item 4) and enter.
+	for i := 0; i < 4; i++ {
 		updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
 		m = updated.(AppModel)
 	}
@@ -387,8 +387,8 @@ func TestUninstall_injectedFnsUsedNotRealFS(t *testing.T) {
 		return []string{"/injected/path/removed"}, nil
 	}
 
-	// Navigate to Managed uninstall (item 3) and enter.
-	for i := 0; i < 3; i++ {
+	// Navigate to Managed uninstall (item 4) and enter.
+	for i := 0; i < 4; i++ {
 		updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
 		m = updated.(AppModel)
 	}

@@ -22,10 +22,13 @@ func hubOnUpgrade(t *testing.T) AppModel {
 	m := NewHubModel("v1.0.0", "/tmp/test")
 	m.upgradeOverride = func() tea.Msg { return nil } // no-op; test drives msgs manually
 
-	// Navigate to Upgrade (item 1) and Enter.
-	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
-	m = updated.(AppModel)
-	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	// Navigate to Upgrade (item 2 — after "Start installation" and
+	// "Install (this project)") and Enter.
+	for i := 0; i < 2; i++ {
+		updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
+		m = updated.(AppModel)
+	}
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	m = updated.(AppModel)
 	return m
 }
@@ -244,9 +247,11 @@ func TestUpgrade_upgradeOverrideIsUsed(t *testing.T) {
 		return upgradeDoneMsg{err: nil, method: "test"}
 	}
 
-	// Navigate to Upgrade and Enter.
-	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
-	m = updated.(AppModel)
+	// Navigate to Upgrade (item 2) and Enter.
+	for i := 0; i < 2; i++ {
+		updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
+		m = updated.(AppModel)
+	}
 	// Capture the batch cmd returned by Enter.
 	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	m = updated.(AppModel)
