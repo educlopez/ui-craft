@@ -13,6 +13,7 @@ package core
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/fs"
 	"path/filepath"
 	"sync"
@@ -71,8 +72,23 @@ func statePath(root string) string {
 var Now = time.Now
 
 // LoadState reads the state file at <root>/state.json.
-// If the file is missing or malformed (gotcha #2), it returns a zero-value
-// InstallState and a nil error — "nothing installed yet" is a valid initial state.
+//
+// A MISSING file is "nothing installed yet" — a valid initial state — and
+// returns a zero-value InstallState with a nil error (gotcha #2: never abort
+// just because install has never run).
+//
+// A file that EXISTS but cannot be read (permission denied, etc.) or cannot
+// be parsed (malformed/truncated JSON) is a DIFFERENT situation: the state is
+// unknown, not empty. LoadState returns a non-nil error naming statePath(root)
+// in that case, alongside a zero-value InstallState (SchemaVersion set) so
+// callers that intentionally choose to proceed with an empty state after
+// inspecting the error (see cli/tui/hub_uninstall.go's realUninstall /
+// realUninstallSnapshot) still get a safe, non-nil struct to read from.
+// Callers that ignore the error (`state, _ := LoadState(...)`) keep their
+// prior "nothing installed" fallback behavior, but now silently mask a real
+// problem — see apply-progress for the installer-hardening change for the
+// audit of every call site and why each one is safe to leave as-is or was
+// already handling this error path.
 func LoadState(filesystem fsutil.FileSystem, root string) (*InstallState, error) {
 	stateMu.Lock()
 	defer stateMu.Unlock()
@@ -89,14 +105,22 @@ func loadStateLocked(filesystem fsutil.FileSystem, root string) (*InstallState, 
 			// Missing file → empty state, not an error.
 			return &InstallState{SchemaVersion: StateSchemaVersion}, nil
 		}
-		// Any other read error (permission, etc.) → treat as empty state.
-		return &InstallState{SchemaVersion: StateSchemaVersion}, nil
+		// Any other read error (permission, etc.) → the file exists but we
+		// could not read it. This is NOT "nothing installed yet" — surface a
+		// clear, named error so callers can decide how to proceed instead of
+		// silently trusting an empty state as if it were valid.
+		return &InstallState{SchemaVersion: StateSchemaVersion},
+			fmt.Errorf("core: read state file %s: %w", p, err)
 	}
 
 	var state InstallState
 	if err := json.Unmarshal(data, &state); err != nil {
-		// Malformed JSON → fall back to empty state (gotcha #2).
-		return &InstallState{SchemaVersion: StateSchemaVersion}, nil
+		// Malformed/truncated JSON → the file exists and was read, but its
+		// content is not valid state. Surface a clear, named error rather
+		// than silently falling back to empty state (spec: "MUST NOT proceed
+		// as if state were empty or valid").
+		return &InstallState{SchemaVersion: StateSchemaVersion},
+			fmt.Errorf("core: parse state file %s: %w", p, err)
 	}
 
 	return &state, nil
