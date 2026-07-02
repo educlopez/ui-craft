@@ -30,7 +30,7 @@ func (a *fakeHarnessAdapter) ConfigPaths() harness.ConfigPaths { return a.Config
 func (a *fakeHarnessAdapter) ConfigPathsFor(projectRoot string) harness.ConfigPaths {
 	return harness.ConfigPaths{ProjectRoot: projectRoot}
 }
-func (a *fakeHarnessAdapter) ConfigRoot() string               { return "/fake/" + a.name }
+func (a *fakeHarnessAdapter) ConfigRoot() string { return "/fake/" + a.name }
 func (a *fakeHarnessAdapter) Supports(c component.Component) bool {
 	return a.supported[c]
 }
