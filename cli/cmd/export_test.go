@@ -79,6 +79,9 @@ var MakeDoctorCmd = makeDoctorCmd
 // ParseSkillFrontmatter exposes parseSkillFrontmatter for test use.
 var ParseSkillFrontmatter = parseSkillFrontmatter
 
+// CheckSkillFile exposes checkSkillFile for test use.
+var CheckSkillFile = checkSkillFile
+
 // MakeUninstallCmd exposes the uninstall command constructor for test use.
 func MakeUninstallCmd() *cobra.Command { return uninstallCmd }
 

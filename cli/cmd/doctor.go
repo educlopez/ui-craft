@@ -12,11 +12,13 @@
 package cmd
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/educlopez/ui-craft/cli/core"
 	"github.com/educlopez/ui-craft/cli/fsutil"
@@ -61,6 +63,14 @@ func (c checkResult) String() string {
 	}
 	return fmt.Sprintf("[%s] %s: %s", c.level, c.label, c.detail)
 }
+
+// Label, Level, and Detail expose checkResult's fields for tests outside the
+// cmd package (cmd_test). checkResult itself stays unexported; only these
+// narrow read accessors are part of the test-facing surface.
+func (c checkResult) Label() string  { return c.label }
+func (c checkResult) Level() string  { return c.level }
+func (c checkResult) Detail() string { return c.detail }
+func (c checkResult) Remedy() string { return c.remedy }
 
 // parseSkillFrontmatter parses the leading YAML-style frontmatter block of a
 // SKILL.md file: an opening "---" fence on the first non-empty line, followed
@@ -135,6 +145,189 @@ func parseSkillFrontmatter(b []byte) (name, desc string, ok bool) {
 		return "", "", false
 	}
 	return name, desc, true
+}
+
+// checkSkillFile runs the presence / readable / content / frontmatter /
+// staleness checks for a single installed SKILL.md file at diskPath,
+// comparing its content against embeddedContent (the mirror copy shipped
+// with this ui-craft build). It is read-only: it never writes to fs.
+//
+// Checks are gated in order — a failing presence check short-circuits the
+// rest (no file to read), and a failing readable check short-circuits
+// content/frontmatter/staleness (no bytes to inspect). This mirrors the
+// spec's "this check only runs if the presence check passed" language.
+//
+// Per spec, only presence / readable / content / frontmatter are [fail]
+// level; staleness is always [warn] (byte mismatch is not a correctness
+// failure) and this function never mutates the file to "fix" staleness.
+func checkSkillFile(fs fsutil.FileSystem, diskPath string, embeddedContent []byte) []checkResult {
+	var results []checkResult
+
+	// --- Presence -----------------------------------------------------
+	if _, err := fs.Stat(diskPath); err != nil {
+		results = append(results, checkResult{
+			label:  "skill-presence",
+			level:  "fail",
+			detail: fmt.Sprintf("SKILL.md not found at %s", diskPath),
+			remedy: "run `ui-craft install`",
+		})
+		return results
+	}
+	results = append(results, checkResult{
+		label:  "skill-presence",
+		level:  "ok",
+		detail: fmt.Sprintf("SKILL.md present at %s", diskPath),
+	})
+
+	// --- Readable -------------------------------------------------------
+	content, err := fs.ReadFile(diskPath)
+	if err != nil {
+		results = append(results, checkResult{
+			label:  "skill-readable",
+			level:  "fail",
+			detail: fmt.Sprintf("permission denied reading %s", diskPath),
+			remedy: "fix file permissions (chmod) or reinstall via `ui-craft update`",
+		})
+		return results
+	}
+	results = append(results, checkResult{
+		label:  "skill-readable",
+		level:  "ok",
+		detail: "file is readable",
+	})
+
+	// --- Content / malformed --------------------------------------------
+	switch {
+	case len(content) == 0:
+		results = append(results, checkResult{
+			label:  "skill-content",
+			level:  "fail",
+			detail: "file is empty (0 bytes)",
+			remedy: "reinstall via `ui-craft update`",
+		})
+		return results
+	case !utf8.Valid(content):
+		results = append(results, checkResult{
+			label:  "skill-content",
+			level:  "fail",
+			detail: "file contains invalid UTF-8",
+			remedy: "reinstall via `ui-craft update`",
+		})
+		return results
+	}
+	results = append(results, checkResult{
+		label:  "skill-content",
+		level:  "ok",
+		detail: "file is non-empty and valid UTF-8",
+	})
+
+	// --- Frontmatter ------------------------------------------------------
+	_, _, fmOK := parseSkillFrontmatter(content)
+	if !fmOK {
+		detail, remedy := frontmatterFailureDetail(content)
+		results = append(results, checkResult{
+			label:  "skill-frontmatter",
+			level:  "fail",
+			detail: detail,
+			remedy: remedy,
+		})
+	} else {
+		results = append(results, checkResult{
+			label:  "skill-frontmatter",
+			level:  "ok",
+			detail: "frontmatter is well-formed",
+		})
+	}
+
+	// --- Staleness --------------------------------------------------------
+	if bytes.Equal(content, embeddedContent) {
+		results = append(results, checkResult{
+			label:  "skill-staleness",
+			level:  "ok",
+			detail: "installed content matches current ui-craft version",
+		})
+	} else {
+		results = append(results, checkResult{
+			label:  "skill-staleness",
+			level:  "warn",
+			detail: "installed content differs from current ui-craft version",
+			remedy: "run `ui-craft update`",
+		})
+	}
+
+	return results
+}
+
+// frontmatterFailureDetail re-derives a specific failure reason for a
+// frontmatter block that parseSkillFrontmatter rejected, so checkSkillFile
+// can report a precise detail/remedy pair instead of a generic message.
+// It duplicates a small amount of parseSkillFrontmatter's fence-scanning
+// logic; this is intentional — parseSkillFrontmatter's contract is a single
+// ok bool, and re-deriving the reason here keeps that function's signature
+// simple while still giving doctor's output the specific wording the spec
+// requires ("frontmatter not terminated", "description missing or too
+// short (<10 chars)", "name field missing").
+func frontmatterFailureDetail(content []byte) (detail, remedy string) {
+	const remedyReinstall = "reinstall via `ui-craft update`"
+
+	lines := strings.Split(string(content), "\n")
+
+	start := -1
+	for i, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" {
+			continue
+		}
+		if trimmed == "---" {
+			start = i
+		}
+		break
+	}
+	if start == -1 {
+		return "frontmatter not terminated", remedyReinstall
+	}
+
+	end := -1
+	for i := start + 1; i < len(lines); i++ {
+		if strings.TrimSpace(lines[i]) == "---" {
+			end = i
+			break
+		}
+	}
+	if end == -1 {
+		return "frontmatter not terminated", remedyReinstall
+	}
+
+	var name, desc string
+	for _, line := range lines[start+1 : end] {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" {
+			continue
+		}
+		key, val, found := strings.Cut(trimmed, ":")
+		if !found {
+			continue
+		}
+		key = strings.TrimSpace(key)
+		val = strings.TrimSpace(val)
+		switch key {
+		case "name":
+			name = val
+		case "description":
+			desc = val
+		}
+	}
+
+	if strings.TrimSpace(name) == "" {
+		return "name field missing", remedyReinstall
+	}
+	if len(strings.TrimSpace(desc)) < 10 {
+		return "description missing or too short (<10 chars)", remedyReinstall
+	}
+	// Fences are terminated and name/description both pass — this function
+	// should not have been called (parseSkillFrontmatter would have
+	// returned ok=true). Fall back to a generic detail defensively.
+	return "frontmatter invalid", remedyReinstall
 }
 
 func runDoctor(cmd *cobra.Command, _ []string) error {
