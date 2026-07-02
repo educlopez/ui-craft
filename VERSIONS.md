@@ -1,5 +1,15 @@
 # Versions
 
+## v1.0.4 (2026-07-02) — doctor diagnoses skill installs + fix: corrupted state.json silently treated as empty
+
+Two coordinated CLI changes.
+
+**New: `doctor` now diagnoses your skill install, not just the CLI itself.** Running `ui-craft doctor` previously only checked harness detection, `state.json`, and disk space — nothing about whether the skill/command files it wrote are actually intact. It now walks every detected harness's installed skill files and reports: missing files, unreadable/permission-denied paths, malformed or truncated content (0 bytes, invalid UTF-8, broken frontmatter — `description` under 10 characters counts as effectively empty), and staleness against the version embedded in your current `ui-craft` binary (`[warn]`, remedy: `ui-craft update` — never auto-repaired). Codex additionally gets a check for its `AGENTS.md` skill-discovery managed block. This diagnoses *"is the skill correctly installed and well-formed"* — it can't tell you whether your AI agent is actually choosing to use it, since that's the agent's own runtime decision.
+
+**Fix: corrupted `state.json` no longer silently treated as "nothing installed".** If `state.json` was truncated, malformed, or unreadable, `ui-craft` previously swallowed the error and proceeded as if no install existed — masking real data loss as a clean slate. It now returns a clear error instead. The legitimate case (no prior install at all — the file genuinely doesn't exist) is unchanged and still treated as empty state, not an error.
+
+Also: added a real-filesystem integration test suite (stale nested layouts, dangling symlinks, malformed MCP config merges, permission-denied rollback) closing the gap behind three consecutive post-release installer bugs (v1.0.1–v1.0.3), an extended release smoke test that now exercises `install --dry-run` against the actual released binary, and a `RELEASE_CHECKLIST.md` for the one class of bug (Gatekeeper/quarantine on real Apple Silicon hardware) that structurally can't be caught by CI.
+
 ## v1.0.3 (2026-06-29) — fix: install crash when the skills dir contains a directory symlink
 
 v1.0.2's depth-1 layout snapshots the shared `~/.<harness>/skills/` dir before installing (for rollback). If that dir contained a **directory symlink** — e.g. a skill another tool installed as `~/.claude/skills/agent-browser -> /elsewhere` — the pre-install snapshot crashed with `apply: snapshot: backup: read …/agent-browser: is a directory`, and the whole install rolled back. Cause: `os.DirEntry.IsDir()` reports `false` for a symlink, so the backup walk tried to `ReadFile` it and followed the link into a directory (EISDIR).
