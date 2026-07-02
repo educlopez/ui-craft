@@ -16,7 +16,7 @@ import path from "node:path";
 import readline from "node:readline";
 import { pathToFileURL } from "node:url";
 
-const VERSION = "0.7.2";
+const VERSION = "0.7.3";
 
 const SCAN_EXTENSIONS = new Set([
   ".css", ".scss", ".sass",
@@ -2030,6 +2030,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # --scope changed/files needs merge-base resolution against the
+          # default branch — the default shallow (depth-1) checkout has no
+          # history to resolve it, so --scope silently falls back to full
+          # scan on every PR. Fetch full history so scoping actually works.
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
