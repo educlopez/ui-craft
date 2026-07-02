@@ -16,7 +16,7 @@ import path from "node:path";
 import readline from "node:readline";
 import { pathToFileURL } from "node:url";
 
-const VERSION = "0.6.0";
+const VERSION = "0.7.0";
 
 const SCAN_EXTENSIONS = new Set([
   ".css", ".scss", ".sass",
@@ -1820,13 +1820,83 @@ const HUSKY_HOOK_CONTENT = `#!/usr/bin/env sh
 npx ui-craft-detect .
 `;
 
-const GHA_CONTENT = `name: ui-craft-detect
+const GHA_CONFIG_MARKER = "# ui-craft-detect-config:";
+const GHA_VERSION_MARKER = "# ui-craft-detect-version:";
+const GHA_STICKY_COMMENT_MARKER = "<!-- ui-craft-detect -->";
+
+/**
+ * Default config embedded in a freshly-generated workflow. `ci config`/`ci
+ * upgrade` (Slice D) read-modify-write this via the marker comments below;
+ * these values ALWAYS win over template defaults on regen.
+ * @typedef {{scope: "full"|"files"|"changed", failOn: "none"|"warning"|"error", comment: boolean, inlineComments: boolean, status: boolean}} GhaConfig
+ */
+export const DEFAULT_GHA_CONFIG = Object.freeze({
+  scope: "changed",
+  failOn: "error",
+  comment: true,
+  inlineComments: true,
+  status: true,
+});
+
+/**
+ * Renders the generated GitHub Actions workflow YAML as a plain string.
+ *
+ * Scan-invocation policy (decided in Slice B, load-bearing for Slice C):
+ * - `pull_request` runs use `config.scope`/`config.failOn` as-is — a PR
+ *   diff/base ref is guaranteed, so "changed" scope is meaningful.
+ * - `push` runs (default-branch pushes) ALWAYS use `--scope full`,
+ *   regardless of `config.scope`. A push has no PR diff context, so
+ *   "changed" scope cannot be resolved reliably (squash/merge commits,
+ *   force-pushes, etc. make a single-parent diff fragile). `--fail-on`
+ *   still follows `config.failOn`. Slice C's commit-status step reuses
+ *   this same push-triggered job and its full-scope scan result.
+ *
+ * @param {GhaConfig} config
+ * @returns {string}
+ */
+export function renderGHAWorkflow(config) {
+  const resolved = { ...DEFAULT_GHA_CONFIG, ...config };
+  // inlineComments/status land in resolved for Slice C/D to read once implemented — not consumed yet.
+  const { scope, failOn, comment } = resolved;
+
+  const stickyCommentStep = comment
+    ? `
+      - name: Post or update sticky PR summary comment
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: \${{ github.token }}
+        run: |
+          set -e
+          REPO="\${{ github.repository }}"
+          PR_NUMBER="\${{ github.event.number }}"
+          MARKER='${GHA_STICKY_COMMENT_MARKER}'
+          BODY_FILE="$(mktemp)"
+          printf '%s\\n\\n' "$MARKER" > "$BODY_FILE"
+          npx --yes ui-craft-detect@latest . --scope changed --fail-on none >> "$BODY_FILE" || true
+          COMMENT_ID="$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" --paginate --jq \\
+            ".[] | select(.body | contains(\\"$MARKER\\")) | .id" | head -n1)"
+          if [ -n "$COMMENT_ID" ]; then
+            gh api --method PATCH "repos/$REPO/issues/comments/$COMMENT_ID" -f body=@"$BODY_FILE"
+          else
+            gh api --method POST "repos/$REPO/issues/$PR_NUMBER/comments" -f body=@"$BODY_FILE"
+          fi`
+    : "";
+
+  return `name: ui-craft-detect
+
+${GHA_CONFIG_MARKER} ${JSON.stringify(resolved)}
+${GHA_VERSION_MARKER} ${VERSION}
 
 on:
   pull_request:
     branches: [main]
   push:
     branches: [main]
+
+permissions:
+  contents: read
+  # needed to post/update the sticky PR summary comment
+  pull-requests: write
 
 jobs:
   detect:
@@ -1836,8 +1906,15 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - run: npx --yes ui-craft-detect@latest .
+      - name: Scan (pull_request — diff-scoped)
+        if: github.event_name == 'pull_request'
+        run: npx --yes ui-craft-detect@latest . --scope ${scope} --fail-on ${failOn}
+      - name: Scan (push — full-repo, no PR diff context available)
+        if: github.event_name != 'pull_request'
+        run: npx --yes ui-craft-detect@latest . --scope full --fail-on ${failOn}${stickyCommentStep}
 `;
+}
+
 
 function parseInitHookArgs(argv) {
   const flags = {
@@ -2054,7 +2131,7 @@ async function runInitHook(argv) {
   }
 
   if (doGha) {
-    await writeHookFile(cwd, HOOK_GHA_PATH, GHA_CONTENT, {
+    await writeHookFile(cwd, HOOK_GHA_PATH, renderGHAWorkflow(DEFAULT_GHA_CONFIG), {
       executable: false,
       yes,
       dryRun,
