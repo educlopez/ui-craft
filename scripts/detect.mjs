@@ -1876,9 +1876,9 @@ export function renderGHAWorkflow(config) {
           COMMENT_ID="$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" --paginate --jq \\
             ".[] | select(.body | contains(\\"$MARKER\\")) | .id" | head -n1)"
           if [ -n "$COMMENT_ID" ]; then
-            gh api --method PATCH "repos/$REPO/issues/comments/$COMMENT_ID" -f body=@"$BODY_FILE"
+            gh api --method PATCH "repos/$REPO/issues/comments/$COMMENT_ID" -F body=@"$BODY_FILE"
           else
-            gh api --method POST "repos/$REPO/issues/$PR_NUMBER/comments" -f body=@"$BODY_FILE"
+            gh api --method POST "repos/$REPO/issues/$PR_NUMBER/comments" -F body=@"$BODY_FILE"
           fi`
     : "";
 
