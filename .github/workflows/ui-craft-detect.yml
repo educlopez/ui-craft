@@ -1,7 +1,7 @@
 name: ui-craft-detect
 
 # ui-craft-detect-config: {"scope":"changed","failOn":"error","comment":true,"inlineComments":true,"status":true}
-# ui-craft-detect-version: 0.7.1
+# ui-craft-detect-version: 0.7.2
 
 on:
   pull_request:
@@ -37,7 +37,7 @@ jobs:
           cat "$SCAN_JSON_FILE"
           exit $EXIT_CODE
       - name: Post or update sticky PR summary comment
-        if: github.event_name == 'pull_request'
+        if: always() && github.event_name == 'pull_request'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -54,6 +54,26 @@ jobs:
             gh api --method PATCH "repos/$REPO/issues/comments/$COMMENT_ID" -F body=@"$BODY_FILE"
           else
             gh api --method POST "repos/$REPO/issues/$PR_NUMBER/comments" -F body=@"$BODY_FILE"
+          fi
+      - name: Post inline review comments
+        if: always() && github.event_name == 'pull_request'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          REPO="${{ github.repository }}"
+          PR_NUMBER="${{ github.event.number }}"
+          HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+          REVIEW_FILE="$(mktemp)"
+          npx --yes ui-craft-detect@latest . --scope changed --fail-on none \
+            --review-json --commit-sha "$HEAD_SHA" > "$REVIEW_FILE" || true
+          COMMENT_COUNT="$(jq -r 'if . == null then 0 else (.comments | length) end' "$REVIEW_FILE")"
+          if [ "$COMMENT_COUNT" = "0" ]; then
+            echo "ui-craft-detect: no diff-visible findings — skipping review comment post"
+          else
+            if ! gh api --method POST "repos/$REPO/pulls/$PR_NUMBER/reviews" --input "$REVIEW_FILE"; then
+              echo "::warning::ui-craft-detect: failed to post inline review comments (see gh api output above) — this does not affect the scan's pass/fail result"
+            fi
           fi
       - name: Publish commit status
         if: always() && github.event_name != 'pull_request'
