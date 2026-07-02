@@ -76,6 +76,9 @@ func SetDoctorStatfsFn(fn func(string) (uint64, error)) func() {
 // MakeDoctorCmd exposes makeDoctorCmd for test use.
 var MakeDoctorCmd = makeDoctorCmd
 
+// ParseSkillFrontmatter exposes parseSkillFrontmatter for test use.
+var ParseSkillFrontmatter = parseSkillFrontmatter
+
 // MakeUninstallCmd exposes the uninstall command constructor for test use.
 func MakeUninstallCmd() *cobra.Command { return uninstallCmd }
 
