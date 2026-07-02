@@ -210,7 +210,7 @@ var installCmd = &cobra.Command{
 			selected = filtered
 		}
 		osfs := fsutil.OsFS{}
-		plan := core.Plan(detected, selected, osfs, assets.SkillsFS, assets.Agents, assets.TemplateFS, assets.CommandsFS, projectDir)
+		plan := core.Plan(detected, selected, osfs, assets.SkillsFS, assets.Agents, assets.TemplateFS, assets.CommandsFS, projectDir, core.Global, "")
 
 		// --- Dry-run: print what would happen and exit without writing ---
 		if flags.DryRun {

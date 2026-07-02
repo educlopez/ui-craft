@@ -231,7 +231,7 @@ installed components for the harness.`,
 		if flags.DryRun {
 			fmt.Fprint(out, "\n[dry-run] No files will be written. Showing what would change:\n\n")
 			for _, ut := range updateTargets {
-				plan := core.Plan([]core.DetectedHarness{ut.dh}, ut.components, osfs, assets.SkillsFS, assets.Agents, assets.TemplateFS, assets.CommandsFS, projectDir)
+				plan := core.Plan([]core.DetectedHarness{ut.dh}, ut.components, osfs, assets.SkillsFS, assets.Agents, assets.TemplateFS, assets.CommandsFS, projectDir, core.Global, "")
 				for _, t := range plan.Targets {
 					if t.Skip {
 						fmt.Fprintf(out, "  would skip    %s/%s (%s)\n", t.Harness.Name(), t.Component.String(), t.SkipReason)
@@ -249,7 +249,7 @@ installed components for the harness.`,
 
 		// Execute per-target update (each target is a harness+components slice).
 		for _, ut := range updateTargets {
-			plan := core.Plan([]core.DetectedHarness{ut.dh}, ut.components, osfs, assets.SkillsFS, assets.Agents, assets.TemplateFS, assets.CommandsFS, projectDir)
+			plan := core.Plan([]core.DetectedHarness{ut.dh}, ut.components, osfs, assets.SkillsFS, assets.Agents, assets.TemplateFS, assets.CommandsFS, projectDir, core.Global, "")
 
 			result, applyErr := core.Apply(plan, osfs, backupStore, cmdVersion, false)
 			if applyErr != nil {

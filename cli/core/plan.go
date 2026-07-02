@@ -10,6 +10,28 @@ import (
 	"github.com/educlopez/ui-craft/cli/harness"
 )
 
+// InstallScope selects which set of Harness config paths Plan resolves when
+// building an InstallPlan: Global (home-derived, the existing behavior) or
+// Project (cwd-rooted, project-scoped installer).
+//
+// Global is the zero value so any caller that constructs an InstallScope
+// without an explicit value defaults to the existing, safe global behavior
+// rather than silently going project-scoped.
+type InstallScope int
+
+const (
+	// Global resolves every Harness's paths via Harness.ConfigPaths() — the
+	// existing home-derived behavior. Zero value; existing callers pass this
+	// explicitly to keep global-install behavior byte-for-byte unchanged.
+	Global InstallScope = iota
+	// Project resolves every Harness's paths via Harness.ConfigPathsFor(projectDir)
+	// instead of the global ConfigPaths(). projectDir must be non-empty when
+	// scope is Project (callers are responsible for validating this before
+	// calling Plan; Plan itself does not error on an empty projectDir here —
+	// it simply forwards whatever projectDir the harness adapter receives).
+	Project
+)
+
 // TemplateProvider is a function that returns the embedded fs.FS containing
 // the design-memory scaffold templates. In production callers pass
 // assets.TemplateFS; in tests a fixture FS can be injected.
@@ -99,12 +121,31 @@ type CommandsProvider func(harnessName string) fs.FS
 // other agents. When agentProvider is nil or returns nil for a harness, the
 // target is marked Skip.
 // The filesystem parameter is the FileSystem implementation to use for writes.
-// projectDir is the target project directory (--dir flag value or cwd).
+// projectDir is the target project directory (--dir flag value or cwd) used
+// for the DesignMemory component's scaffold location.
+// scope selects which Harness config paths are resolved: Global calls
+// Harness.ConfigPaths() (existing, home-derived behavior, byte-for-byte
+// unchanged); Project calls Harness.ConfigPathsFor(scopeProjectRoot) instead.
+// scopeProjectRoot is the project root passed to ConfigPathsFor when scope is
+// Project; it is ignored when scope is Global. NOTE: scopeProjectRoot is
+// deliberately a separate parameter from projectDir — projectDir governs
+// DesignMemory's scaffold location (unrelated to harness config-path scoping)
+// and the two may differ in future callers, so they are not conflated here.
 // NOTE: templateProvider must return the templates/-rooted sub-FS (i.e.
 // assets.TemplateFS(), not the raw embed.FS). If the raw embed.FS were used,
 // ScaffoldDesignMemory would write files under a "templates/" prefix inside
 // .ui-craft/, producing wrong destination paths.
-func Plan(detected []DetectedHarness, selected []component.Component, filesystem fsutil.FileSystem, skillsProvider SkillsProvider, agentProvider AgentProvider, templateProvider TemplateProvider, commandsProvider CommandsProvider, projectDir string) InstallPlan {
+func Plan(detected []DetectedHarness, selected []component.Component, filesystem fsutil.FileSystem, skillsProvider SkillsProvider, agentProvider AgentProvider, templateProvider TemplateProvider, commandsProvider CommandsProvider, projectDir string, scope InstallScope, scopeProjectRoot string) InstallPlan {
+	// configPathsFor resolves a single Harness's ConfigPaths according to scope,
+	// so every switch-case below shares one code path instead of duplicating
+	// the Global/Project branch per component.
+	configPathsFor := func(h harness.Harness) harness.ConfigPaths {
+		if scope == Project {
+			return h.ConfigPathsFor(scopeProjectRoot)
+		}
+		return h.ConfigPaths()
+	}
+
 	var targets []ComponentTarget
 	for _, dh := range detected {
 		for _, c := range selected {
@@ -127,7 +168,7 @@ func Plan(detected []DetectedHarness, selected []component.Component, filesystem
 			switch c {
 			case component.MCPGates:
 				// Wire the concrete write op for MCPGates.
-				snapPath := dh.Harness.ConfigPaths().MCPConfig
+				snapPath := configPathsFor(dh.Harness).MCPConfig
 				h := dh.Harness
 				w := filesystem
 				srv := mcpServer
@@ -143,7 +184,7 @@ func Plan(detected []DetectedHarness, selected []component.Component, filesystem
 				// The CLI owns only the subdirs it installs; rollback removes those.
 				// For command-capable harnesses (claude, opencode), WriteCommands is
 				// also called after WriteSkill, and CommandsDir is added to SnapPaths.
-				paths := dh.Harness.ConfigPaths()
+				paths := configPathsFor(dh.Harness)
 				skillsDir := paths.SkillsDir
 				h := dh.Harness
 				w := filesystem
@@ -270,7 +311,7 @@ func Plan(detected []DetectedHarness, selected []component.Component, filesystem
 					targets = append(targets, target)
 					continue
 				}
-				agentsDir := dh.Harness.ConfigPaths().AgentsDir
+				agentsDir := configPathsFor(dh.Harness).AgentsDir
 				h := dh.Harness
 				w := filesystem
 				// Check whether the agents directory already exists before wiring the

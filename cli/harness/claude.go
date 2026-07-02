@@ -82,8 +82,26 @@ func (h ClaudeHarness) Detect() (DetectResult, error) {
 	return DetectResult{Installed: false}, nil
 }
 
-// ConfigPaths returns the canonical paths for Claude Code.
+// ConfigPaths returns the canonical global paths for Claude Code. It is
+// equivalent to ConfigPathsFor("").
 func (h ClaudeHarness) ConfigPaths() ConfigPaths {
+	return h.ConfigPathsFor("")
+}
+
+// ConfigPathsFor returns Claude Code's paths, scoped to projectRoot when
+// non-empty. Project-local targets: <projectRoot>/.claude/{skills,commands,agents}
+// and <projectRoot>/.mcp.json (Claude Code's own project-scoped MCP config
+// convention, distinct from the global ~/.claude/mcp/ui-craft.json file).
+func (h ClaudeHarness) ConfigPathsFor(projectRoot string) ConfigPaths {
+	if projectRoot != "" {
+		return ConfigPaths{
+			MCPConfig:   filepath.Join(projectRoot, ".mcp.json"),
+			SkillsDir:   filepath.Join(projectRoot, ".claude", "skills"),
+			AgentsDir:   filepath.Join(projectRoot, ".claude", "agents"),
+			CommandsDir: filepath.Join(projectRoot, ".claude", "commands"),
+			ProjectRoot: projectRoot,
+		}
+	}
 	root := h.configRoot()
 	return ConfigPaths{
 		MCPConfig:   filepath.Join(root, "mcp", "ui-craft.json"),

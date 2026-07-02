@@ -29,6 +29,16 @@ func (s stubHarness) Detect() (harness.DetectResult, error) {
 	return harness.DetectResult{Installed: true, ConfigRoot: "/home/user/." + s.name}, nil
 }
 func (s stubHarness) ConfigPaths() harness.ConfigPaths {
+	return s.ConfigPathsFor("")
+}
+func (s stubHarness) ConfigPathsFor(projectRoot string) harness.ConfigPaths {
+	if projectRoot != "" {
+		return harness.ConfigPaths{
+			MCPConfig:   projectRoot + "/." + s.name + "/mcp.json",
+			SkillsDir:   projectRoot + "/." + s.name + "/skills",
+			ProjectRoot: projectRoot,
+		}
+	}
 	return harness.ConfigPaths{
 		MCPConfig: "/home/user/." + s.name + "/mcp.json",
 		SkillsDir: "/home/user/." + s.name + "/skills",
@@ -403,7 +413,7 @@ func TestPlan_skipsUnsupportedComponents(t *testing.T) {
 	}
 	selected := component.All()
 
-	plan := core.Plan(detected, selected, fsutil.NewMemFS(), nil, nil, nil, nil, "")
+	plan := core.Plan(detected, selected, fsutil.NewMemFS(), nil, nil, nil, nil, "", core.Global, "")
 
 	for _, t2 := range plan.Targets {
 		if t2.Component == component.ReviewAgents {
@@ -462,6 +472,17 @@ func (a agentHarness) Detect() (harness.DetectResult, error) {
 	return harness.DetectResult{Installed: true, ConfigRoot: fakeHome + "/.claude"}, nil
 }
 func (a agentHarness) ConfigPaths() harness.ConfigPaths {
+	return a.ConfigPathsFor("")
+}
+func (a agentHarness) ConfigPathsFor(projectRoot string) harness.ConfigPaths {
+	if projectRoot != "" {
+		return harness.ConfigPaths{
+			MCPConfig:   projectRoot + "/.claude/mcp/ui-craft.json",
+			SkillsDir:   projectRoot + "/.claude/skills",
+			AgentsDir:   a.agentsDir,
+			ProjectRoot: projectRoot,
+		}
+	}
 	return harness.ConfigPaths{
 		MCPConfig: fakeHome + "/.claude/mcp/ui-craft.json",
 		SkillsDir: fakeHome + "/.claude/skills",
@@ -589,7 +610,7 @@ func TestReviewAgents_rollbackPreservesUserAgent(t *testing.T) {
 			return aFS
 		}
 		return nil
-	}, nil, nil, "")
+	}, nil, nil, "", core.Global, "")
 
 	// Append a failing sentinel op to force rollback after WriteAgents succeeds.
 	failPath := filepath.Join(fakeHome, "fail-sentinel.json")
@@ -682,7 +703,7 @@ func TestDesignMemory_partialScaffoldRollbackSafety(t *testing.T) {
 	selected := []component.Component{component.DesignMemory}
 
 	tmplFS := fixtureTemplateFS()
-	plan := core.Plan(detected, selected, mem, nil, nil, func() fs.FS { return tmplFS }, nil, projectDir)
+	plan := core.Plan(detected, selected, mem, nil, nil, func() fs.FS { return tmplFS }, nil, projectDir, core.Global, "")
 
 	// Append a failing sentinel op to trigger rollback.
 	failPath := filepath.Join("/home/user", "fail-sentinel.json")
@@ -734,6 +755,17 @@ func (h commandCapableHarness) Detect() (harness.DetectResult, error) {
 	return harness.DetectResult{Installed: true, ConfigRoot: "/home/user/." + h.name}, nil
 }
 func (h commandCapableHarness) ConfigPaths() harness.ConfigPaths {
+	return h.ConfigPathsFor("")
+}
+func (h commandCapableHarness) ConfigPathsFor(projectRoot string) harness.ConfigPaths {
+	if projectRoot != "" {
+		return harness.ConfigPaths{
+			MCPConfig:   projectRoot + "/." + h.name + "/mcp.json",
+			SkillsDir:   h.skillsDir,
+			CommandsDir: h.commandsDir,
+			ProjectRoot: projectRoot,
+		}
+	}
 	return harness.ConfigPaths{
 		MCPConfig:   "/home/user/." + h.name + "/mcp.json",
 		SkillsDir:   h.skillsDir,
@@ -794,6 +826,8 @@ func TestPlan_includesCommandsInSnapPaths(t *testing.T) {
 		nil,
 		func(name string) fs.FS { return cmdFS },
 		"",
+		core.Global,
+		"",
 	)
 
 	if len(plan.Targets) == 0 {
@@ -847,6 +881,8 @@ func TestPlan_commandsWrittenToDisk(t *testing.T) {
 		nil,
 		nil,
 		func(name string) fs.FS { return cmdFS },
+		"",
+		core.Global,
 		"",
 	)
 

@@ -26,8 +26,11 @@ func (a *fakeHarnessAdapter) Name() string { return a.name }
 func (a *fakeHarnessAdapter) Detect() (harness.DetectResult, error) {
 	return harness.DetectResult{Installed: true}, nil
 }
-func (a *fakeHarnessAdapter) ConfigPaths() harness.ConfigPaths { return harness.ConfigPaths{} }
-func (a *fakeHarnessAdapter) ConfigRoot() string               { return "/fake/" + a.name }
+func (a *fakeHarnessAdapter) ConfigPaths() harness.ConfigPaths { return a.ConfigPathsFor("") }
+func (a *fakeHarnessAdapter) ConfigPathsFor(projectRoot string) harness.ConfigPaths {
+	return harness.ConfigPaths{ProjectRoot: projectRoot}
+}
+func (a *fakeHarnessAdapter) ConfigRoot() string { return "/fake/" + a.name }
 func (a *fakeHarnessAdapter) Supports(c component.Component) bool {
 	return a.supported[c]
 }
@@ -299,6 +302,8 @@ func TestAppModel_planBuildingParity(t *testing.T) {
 		assets.TemplateFS,
 		assets.CommandsFS,
 		"/tmp/parity-test",
+		core.Global,
+		"",
 	)
 
 	// Step 5: Compare the TUI plan (capturedPlan) with the reference plan (refPlan).

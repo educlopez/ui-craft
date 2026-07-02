@@ -33,6 +33,16 @@ func (g filterStubHarness) Detect() (harness.DetectResult, error) {
 	return harness.DetectResult{Installed: true, ConfigRoot: "/fake/" + g.hname}, nil
 }
 func (g filterStubHarness) ConfigPaths() harness.ConfigPaths {
+	return g.ConfigPathsFor("")
+}
+func (g filterStubHarness) ConfigPathsFor(projectRoot string) harness.ConfigPaths {
+	if projectRoot != "" {
+		return harness.ConfigPaths{
+			MCPConfig:   projectRoot + "/." + g.hname + "/mcp.json",
+			SkillsDir:   projectRoot + "/." + g.hname + "/skills",
+			ProjectRoot: projectRoot,
+		}
+	}
 	return harness.ConfigPaths{
 		MCPConfig: "/fake/" + g.hname + "/mcp.json",
 		SkillsDir: "/fake/" + g.hname + "/skills",
@@ -86,6 +96,8 @@ func TestInstallFilter_harnessFlag_planOnlyCursor(t *testing.T) {
 		nil,                                    // templateProvider
 		nil,                                    // commandsProvider
 		"/tmp/project",
+		core.Global,
+		"",
 	)
 
 	seen := make(map[string]bool)
@@ -119,6 +131,8 @@ func TestInstallFilter_componentsFlag_planOnlyMCPGates(t *testing.T) {
 		nil,
 		nil, // commandsProvider
 		"/tmp/project",
+		core.Global,
+		"",
 	)
 
 	for _, tgt := range plan.Targets {
