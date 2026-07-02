@@ -65,6 +65,42 @@ func SetFlags(h string, components []string, yes bool) func() {
 	}
 }
 
+// InstallFlagsForTest mirrors rootFlags for real end-to-end install tests
+// that need to drive installCmd.RunE directly (bypassing cobra flag
+// parsing, same approach as SetFlags) while controlling every flag the
+// RunE body reads.
+type InstallFlagsForTest struct {
+	Harness    string
+	Components []string
+	Yes        bool
+	DryRun     bool
+	Dir        string
+	JSON       bool
+	Quiet      bool
+}
+
+// SetInstallFlagsForTest sets every package-level install flag used by
+// installCmd.RunE. It returns a restore function that must be called (via
+// defer) to reset the vars. This is NOT safe for parallel tests.
+func SetInstallFlagsForTest(f InstallFlagsForTest) func() {
+	prev := flags
+	flags.Harness = f.Harness
+	flags.Components = f.Components
+	flags.Yes = f.Yes
+	flags.DryRun = f.DryRun
+	flags.Dir = f.Dir
+	flags.JSON = f.JSON
+	flags.Quiet = f.Quiet
+	return func() { flags = prev }
+}
+
+// MakeInstallCmd exposes the real installCmd singleton for end-to-end tests
+// that want to execute the actual detect → plan → apply pipeline (RunE)
+// against a real filesystem, not a stub. Callers should attach it to a
+// throwaway root (as runDoctorCmd does for MakeDoctorCmd) and drive flags
+// via SetInstallFlagsForTest + SetDetectAllFn rather than cobra flag parsing.
+func MakeInstallCmd() *cobra.Command { return installCmd }
+
 // SetDoctorStatfsFn replaces the disk-space probe used by runDoctor.
 // Returns a restore function. NOT safe for parallel tests.
 func SetDoctorStatfsFn(fn func(string) (uint64, error)) func() {
