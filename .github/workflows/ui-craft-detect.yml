@@ -1,7 +1,7 @@
 name: ui-craft-detect
 
 # ui-craft-detect-config: {"scope":"changed","failOn":"error","comment":true,"inlineComments":true,"status":true}
-# ui-craft-detect-version: 0.7.3
+# ui-craft-detect-version: 0.8.0
 
 on:
   pull_request:

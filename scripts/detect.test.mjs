@@ -15,6 +15,8 @@ import {
   resolveBaseRef,
   renderGHAWorkflow,
   renderReviewComments,
+  parseWorkflowConfig,
+  replaceMarkers,
   DEFAULT_GHA_CONFIG,
 } from "./detect.mjs";
 
@@ -1031,4 +1033,270 @@ test("renderGHAWorkflow: checkout uses fetch-depth: 0 so --scope changed/files c
     /fetch-depth:\s*0/.test(yaml),
     "default (depth-1) checkout has no history for merge-base resolution — --scope would always fall back to full scan in real CI, and inline-comments would 422 the whole review batch on out-of-diff findings",
   );
+});
+
+// ---------------------------------------------------------------------------
+// Slice D — parseWorkflowConfig / replaceMarkers (pure marker round-trip)
+// ---------------------------------------------------------------------------
+
+test("parseWorkflowConfig: parses config and version markers out of a generated workflow", () => {
+  const yaml = renderGHAWorkflow(DEFAULT_GHA_CONFIG);
+  const { config, version } = parseWorkflowConfig(yaml);
+
+  assert.deepEqual(config, DEFAULT_GHA_CONFIG, "parsed config must deep-equal the config it was rendered from");
+  assert.match(version, /^\d+\.\d+\.\d+$/, "version marker must be a semver string");
+});
+
+test("parseWorkflowConfig: throws a clear error when the config marker is missing", () => {
+  const yaml = renderGHAWorkflow(DEFAULT_GHA_CONFIG).replace(/^# ui-craft-detect-config:.*$/m, "");
+  assert.throws(
+    () => parseWorkflowConfig(yaml),
+    /ui-craft-detect-config/,
+    "must name the missing marker in the error",
+  );
+});
+
+test("parseWorkflowConfig: throws a clear error when the version marker is missing", () => {
+  const yaml = renderGHAWorkflow(DEFAULT_GHA_CONFIG).replace(/^# ui-craft-detect-version:.*$/m, "");
+  assert.throws(
+    () => parseWorkflowConfig(yaml),
+    /ui-craft-detect-version/,
+    "must name the missing marker in the error",
+  );
+});
+
+test("parseWorkflowConfig: throws (does not silently corrupt) on hand-edited invalid JSON in the config marker", () => {
+  const yaml = renderGHAWorkflow(DEFAULT_GHA_CONFIG).replace(
+    /^# ui-craft-detect-config:.*$/m,
+    "# ui-craft-detect-config: {this is not valid json,,,}",
+  );
+  assert.throws(
+    () => parseWorkflowConfig(yaml),
+    /failed to parse/,
+    "a hand-corrupted marker must raise, never be silently accepted",
+  );
+});
+
+test("parseWorkflowConfig -> replaceMarkers round-trip: mutating one field preserves all others exactly", () => {
+  const original = renderGHAWorkflow(DEFAULT_GHA_CONFIG);
+  const { config: parsed } = parseWorkflowConfig(original);
+
+  const mutated = { ...parsed, failOn: "warning" };
+  const regenerated = replaceMarkers(mutated);
+  const { config: reparsed } = parseWorkflowConfig(regenerated);
+
+  assert.equal(reparsed.failOn, "warning", "the mutated field must take effect");
+  for (const key of Object.keys(DEFAULT_GHA_CONFIG)) {
+    if (key === "failOn") continue;
+    assert.equal(reparsed[key], DEFAULT_GHA_CONFIG[key], `untouched key "${key}" must be preserved exactly`);
+  }
+});
+
+test("parseWorkflowConfig -> replaceMarkers round-trip: config marker JSON round-trips byte-for-byte via JSON.parse", () => {
+  const mutatedConfig = { ...DEFAULT_GHA_CONFIG, scope: "files", status: false };
+  const regenerated = replaceMarkers(mutatedConfig);
+  const { config: reparsed } = parseWorkflowConfig(regenerated);
+
+  assert.deepEqual(reparsed, mutatedConfig, "round-tripped config must deep-equal the input config exactly");
+});
+
+test("replaceMarkers: regenerated YAML outside the managed marker lines matches a fresh render with the same config (steps/permissions untouched by the read-modify-write)", () => {
+  const config = { ...DEFAULT_GHA_CONFIG, inlineComments: false };
+  const freshRender = renderGHAWorkflow(config);
+  const viaReplaceMarkers = replaceMarkers(config);
+
+  assert.equal(
+    viaReplaceMarkers,
+    freshRender,
+    "replaceMarkers must produce byte-identical output to a fresh renderGHAWorkflow call for the same config — template-authoritative regen, no partial patching",
+  );
+});
+
+// ---------------------------------------------------------------------------
+// Slice D — `ci install` / `ci config` / `ci upgrade` CLI subcommands
+// ---------------------------------------------------------------------------
+
+/** Builds a fresh temp git repo (no workflow installed yet). Returns the dir. */
+function buildBareGitRepo() {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "ui-craft-detect-ci-"));
+  const git = (args) => execFileSync("git", args, { cwd: dir, encoding: "utf8" });
+  git(["init", "-q", "-b", "main"]);
+  git(["config", "user.email", "test@example.com"]);
+  git(["config", "user.name", "Test"]);
+  fs.writeFileSync(path.join(dir, "README.md"), "# fixture\n");
+  git(["add", "."]);
+  git(["commit", "-q", "-m", "init"]);
+  return dir;
+}
+
+function runCiCli(args, opts = {}) {
+  try {
+    const stdout = execFileSync(process.execPath, [DETECT_MJS, "ci", ...args], {
+      encoding: "utf8",
+      ...opts,
+    });
+    return { stdout, stderr: "", exitCode: 0 };
+  } catch (err) {
+    return { stdout: err.stdout ?? "", stderr: err.stderr ?? "", exitCode: err.status };
+  }
+}
+
+test("integration: ci install writes .github/workflows/ui-craft-detect.yml, equivalent to init-hook --github-action", () => {
+  const dir = buildBareGitRepo();
+  try {
+    const { stdout, exitCode } = runCiCli(["install", "--yes"], { cwd: dir });
+    assert.equal(exitCode, 0, `ci install must exit 0; stdout: ${stdout}`);
+
+    const workflowPath = path.join(dir, ".github", "workflows", "ui-craft-detect.yml");
+    assert.ok(fs.existsSync(workflowPath), "ci install must write the workflow file");
+
+    const written = fs.readFileSync(workflowPath, "utf8");
+    assert.equal(
+      written,
+      renderGHAWorkflow(DEFAULT_GHA_CONFIG),
+      "ci install's output must be byte-identical to renderGHAWorkflow(DEFAULT_GHA_CONFIG), same as init-hook --github-action",
+    );
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("integration: ci config changes a setting without full reinstall, preserving untouched settings and surrounding YAML shape", () => {
+  const dir = buildBareGitRepo();
+  try {
+    runCiCli(["install", "--yes"], { cwd: dir });
+    const workflowPath = path.join(dir, ".github", "workflows", "ui-craft-detect.yml");
+
+    const { stdout, exitCode } = runCiCli(["config", "--scope", "full"], { cwd: dir });
+    assert.equal(exitCode, 0, `ci config must exit 0; stdout: ${stdout}`);
+
+    const updated = fs.readFileSync(workflowPath, "utf8");
+    const { config } = parseWorkflowConfig(updated);
+    assert.equal(config.scope, "full", "requested field must be updated");
+    assert.equal(config.failOn, DEFAULT_GHA_CONFIG.failOn, "untouched fields must be preserved");
+    assert.equal(config.comment, DEFAULT_GHA_CONFIG.comment, "untouched fields must be preserved");
+
+    // Must still be a fully valid, parseable render for the new config —
+    // not a partial/corrupted patch.
+    assert.equal(updated, renderGHAWorkflow(config), "rewritten file must equal a fresh render of the merged config");
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("integration: ci config errors clearly if no workflow is installed yet", () => {
+  const dir = buildBareGitRepo();
+  try {
+    const { stderr, exitCode } = runCiCli(["config", "--scope", "full"], { cwd: dir });
+    assert.equal(exitCode, 2);
+    assert.match(stderr, /ci install/, "error must point the user at ci install");
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("integration: ci config with no flags errors instead of silently no-op-writing", () => {
+  const dir = buildBareGitRepo();
+  try {
+    runCiCli(["install", "--yes"], { cwd: dir });
+    const { stderr, exitCode } = runCiCli(["config"], { cwd: dir });
+    assert.equal(exitCode, 2);
+    assert.match(stderr, /at least one setting/);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("integration: ci upgrade is a no-op (exit 0, unchanged file) when the version marker already matches the current version", () => {
+  const dir = buildBareGitRepo();
+  try {
+    runCiCli(["install", "--yes"], { cwd: dir });
+    const workflowPath = path.join(dir, ".github", "workflows", "ui-craft-detect.yml");
+    const before = fs.readFileSync(workflowPath, "utf8");
+
+    const { stdout, exitCode } = runCiCli(["upgrade"], { cwd: dir });
+    assert.equal(exitCode, 0, `ci upgrade must exit 0 cleanly when already current; stdout: ${stdout}`);
+    assert.match(stdout, /already up to date/);
+
+    const after = fs.readFileSync(workflowPath, "utf8");
+    assert.equal(after, before, "no-op upgrade must not touch the file");
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("integration: ci upgrade regenerates the template body and bumps the version marker while preserving config when version marker is stale", () => {
+  const dir = buildBareGitRepo();
+  try {
+    runCiCli(["install", "--yes"], { cwd: dir });
+    const workflowPath = path.join(dir, ".github", "workflows", "ui-craft-detect.yml");
+
+    // Simulate an older install: rewrite the version marker to an old value
+    // and change one config field, exactly like a real stale install would
+    // have both an old version marker and a user's customized config.
+    const staleConfig = { ...DEFAULT_GHA_CONFIG, failOn: "warning" };
+    const staleText = renderGHAWorkflow(staleConfig).replace(
+      /^# ui-craft-detect-version:.*$/m,
+      "# ui-craft-detect-version: 0.1.0",
+    );
+    fs.writeFileSync(workflowPath, staleText, "utf8");
+
+    const { stdout, exitCode } = runCiCli(["upgrade"], { cwd: dir });
+    assert.equal(exitCode, 0, `ci upgrade must exit 0; stdout: ${stdout}`);
+    assert.match(stdout, /0\.1\.0/, "must report the old version in its output");
+
+    const after = fs.readFileSync(workflowPath, "utf8");
+    const { config, version } = parseWorkflowConfig(after);
+    assert.notEqual(version, "0.1.0", "version marker must be bumped");
+    assert.equal(config.failOn, "warning", "user's config must be preserved across the upgrade, not reset to defaults");
+    assert.equal(after, renderGHAWorkflow(config), "post-upgrade file must equal a fresh render of the preserved config at the current version");
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("integration: ci upgrade errors clearly if no workflow is installed yet", () => {
+  const dir = buildBareGitRepo();
+  try {
+    const { stderr, exitCode } = runCiCli(["upgrade"], { cwd: dir });
+    assert.equal(exitCode, 2);
+    assert.match(stderr, /ci install/);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("integration: ci with no/unknown subcommand prints help and exits non-zero", () => {
+  const dir = buildBareGitRepo();
+  try {
+    const noneResult = runCiCli([], { cwd: dir });
+    assert.equal(noneResult.exitCode, 2);
+
+    const unknownResult = runCiCli(["frobnicate"], { cwd: dir });
+    assert.equal(unknownResult.exitCode, 2);
+    assert.match(unknownResult.stderr, /unknown ci subcommand/);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("integration: init-hook --github-action still works unchanged post-Slice-D (backward compatibility)", () => {
+  const dir = buildBareGitRepo();
+  try {
+    const stdout = execFileSync(process.execPath, [DETECT_MJS, "init-hook", "--github-action", "--yes"], {
+      cwd: dir,
+      encoding: "utf8",
+    });
+    assert.match(stdout, /wrote/);
+
+    const workflowPath = path.join(dir, ".github", "workflows", "ui-craft-detect.yml");
+    const written = fs.readFileSync(workflowPath, "utf8");
+    assert.equal(
+      written,
+      renderGHAWorkflow(DEFAULT_GHA_CONFIG),
+      "init-hook --github-action must remain byte-identical to its pre-Slice-D output",
+    );
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
 });
