@@ -15,6 +15,7 @@ import {
   resolveBaseRef,
   renderGHAWorkflow,
   renderReviewComments,
+  renderMarkdownReport,
   parseWorkflowConfig,
   replaceMarkers,
   DEFAULT_GHA_CONFIG,
@@ -662,6 +663,29 @@ test("renderGHAWorkflow: includes the sticky-comment step gated on pull_request"
   );
 });
 
+test("renderGHAWorkflow: sticky-comment step runs one --markdown scan and dual-appends to BODY_FILE and GITHUB_STEP_SUMMARY", () => {
+  const yaml = renderGHAWorkflow(DEFAULT_GHA_CONFIG);
+  const stepStart = yaml.indexOf("Post or update sticky PR summary comment");
+  const stepEnd = yaml.indexOf("COMMENT_ID=", stepStart);
+  const stepSlice = yaml.slice(stepStart, stepEnd);
+
+  assert.ok(stepSlice.includes("--markdown"), "must invoke the scan with --markdown");
+  assert.ok(
+    stepSlice.includes('cat "$MD_FILE" >> "$BODY_FILE"'),
+    "must append the markdown temp file into BODY_FILE",
+  );
+  assert.ok(
+    stepSlice.includes('cat "$MD_FILE" >> "$GITHUB_STEP_SUMMARY"'),
+    "must append the markdown temp file into GITHUB_STEP_SUMMARY",
+  );
+  assert.ok(
+    !stepSlice.includes('--fail-on none >> "$BODY_FILE"'),
+    "must not contain the old plain-output-appended-directly-to-BODY_FILE line",
+  );
+  const scanInvocations = stepSlice.split("ui-craft-detect@latest").length - 1;
+  assert.equal(scanInvocations, 1, "sticky-comment step must invoke the scan exactly once (single-scan invariant)");
+});
+
 test("renderGHAWorkflow: comment=false omits the sticky-comment step", () => {
   const yaml = renderGHAWorkflow({ ...DEFAULT_GHA_CONFIG, comment: false });
 
@@ -848,6 +872,126 @@ test("renderReviewComments: does not filter by hunk ranges itself — trusts alr
   const findings = [{ file: "untouched.tsx", line: 999, description: "d", fix: "f" }];
   const review = renderReviewComments(findings, "sha");
   assert.equal(review.comments.length, 1);
+});
+
+// ---------------------------------------------------------------------------
+// detect-ci-rich-output — renderMarkdownReport(findings, summary): pure
+// function, no I/O/network. Mirrors renderReviewComments's test shape:
+// inline fixtures, assert on returned string only.
+// ---------------------------------------------------------------------------
+
+test("renderMarkdownReport: valid findings render table, both accordions, branded header, and fix text", () => {
+  const findings = [
+    { rule: "transition-all", severity: "critical", file: "src/a.tsx", line: 5, fix: "list specific properties" },
+    { rule: "all-caps-heading", severity: "warn", file: "src/b.tsx", line: 12, fix: "use sentence case" },
+  ];
+  const summary = { files_scanned: 10, files_flagged: 2, errors: 1, warnings: 1 };
+  const out = renderMarkdownReport(findings, summary);
+
+  assert.ok(out.includes("| rule | file:line | severity | fix |"), "must include table header");
+  assert.ok(out.includes("<details open>"), "must include the always-open errors accordion");
+  assert.ok(out.includes("<details>"), "must include the collapsed warnings accordion");
+  assert.ok(
+    out.includes('<img src="https://raw.githubusercontent.com/educlopez/ui-craft/main/assets/icon.svg" width="40">'),
+    "must include the branded header image tag",
+  );
+  assert.ok(out.includes("list specific properties"), "must include fix text for errors");
+  assert.ok(out.includes("use sentence case"), "must include fix text for warnings");
+});
+
+test("renderMarkdownReport: summary line reflects files scanned, total findings, and errors/warnings breakdown", () => {
+  const findings = [
+    { rule: "r1", severity: "critical", file: "a.tsx", line: 1, fix: "f1" },
+    { rule: "r2", severity: "critical", file: "b.tsx", line: 2, fix: "f2" },
+    { rule: "r3", severity: "warn", file: "c.tsx", line: 3, fix: "f3" },
+    { rule: "r4", severity: "major", file: "d.tsx", line: 4, fix: "f4" },
+    { rule: "r5", severity: "warn", file: "e.tsx", line: 5, fix: "f5" },
+  ];
+  const summary = { files_scanned: 10, files_flagged: 5, errors: 2, warnings: 3 };
+  const out = renderMarkdownReport(findings, summary);
+
+  assert.ok(out.includes("10 files scanned"), "must report files scanned");
+  assert.ok(out.includes("5 findings"), "must report total findings count");
+  assert.ok(out.includes("2 errors"), "must report errors count");
+  assert.ok(out.includes("3 warnings"), "must report warnings count");
+});
+
+test("renderMarkdownReport: errors accordion is always <details open>, even with exactly one error", () => {
+  const findings = [{ rule: "r1", severity: "critical", file: "a.tsx", line: 1, fix: "f1" }];
+  const summary = { files_scanned: 1, files_flagged: 1, errors: 1, warnings: 0 };
+  const out = renderMarkdownReport(findings, summary);
+
+  const errorsSection = out.slice(out.indexOf("1 errors"));
+  assert.ok(errorsSection.startsWith("1 errors</summary>") || out.includes("<details open>\n<summary>1 errors"));
+  assert.ok(out.includes("<details open>"), "errors section must use <details open>");
+});
+
+test("renderMarkdownReport: warnings accordion is always collapsed (<details> without open), even with many warnings", () => {
+  const findings = Array.from({ length: 50 }, (_, i) => ({
+    rule: "r",
+    severity: "warn",
+    file: `f${i}.tsx`,
+    line: i,
+    fix: "fix",
+  }));
+  const summary = { files_scanned: 50, files_flagged: 50, errors: 0, warnings: 50 };
+  const out = renderMarkdownReport(findings, summary);
+
+  assert.ok(!out.includes("<details open>"), "warnings-only report must not contain any open accordion");
+  assert.ok(out.includes("<details>\n<summary>50 warnings"), "warnings accordion must be collapsed");
+});
+
+test("renderMarkdownReport: empty findings array renders the positive state, not null/empty", () => {
+  const summary = { files_scanned: 5, files_flagged: 0, errors: 0, warnings: 0 };
+  const out = renderMarkdownReport([], summary);
+
+  assert.ok(out.includes("✅ No issues found"), "must render the positive no-issues state");
+  assert.ok(out.length > 0, "must not return an empty string");
+  assert.ok(
+    out.includes('<img src="https://raw.githubusercontent.com/educlopez/ui-craft/main/assets/icon.svg"'),
+    "positive state must still include the branded header",
+  );
+});
+
+test("renderMarkdownReport: null and undefined findings also render the positive state, no throw", () => {
+  const summary = { files_scanned: 5, files_flagged: 0, errors: 0, warnings: 0 };
+  assert.ok(renderMarkdownReport(null, summary).includes("✅ No issues found"));
+  assert.ok(renderMarkdownReport(undefined, summary).includes("✅ No issues found"));
+});
+
+test("renderMarkdownReport: pipe characters in fix text and file paths are escaped, table row not broken", () => {
+  const findings = [
+    { rule: "r1", severity: "critical", file: "src/a|b.tsx", line: 1, fix: "use a | b" },
+  ];
+  const summary = { files_scanned: 1, files_flagged: 1, errors: 1, warnings: 0 };
+  const out = renderMarkdownReport(findings, summary);
+
+  assert.ok(out.includes("use a \\| b"), "fix text pipe must be escaped");
+  assert.ok(out.includes("a\\|b.tsx"), "file path pipe must be escaped");
+  const rowLine = out.split("\n").find((l) => l.includes("r1"));
+  assert.ok(rowLine, "the finding row must be present");
+  // Unescaped (unpreceded-by-backslash) pipes are the real cell delimiters.
+  const unescapedPipes = rowLine.replace(/\\\|/g, "").split("|").length - 1;
+  assert.equal(unescapedPipes, 5, "row must still have exactly 4 table cells (5 unescaped pipe delimiters)");
+});
+
+test("renderMarkdownReport: findings with only warnings omit the errors accordion entirely", () => {
+  const findings = [{ rule: "r1", severity: "warn", file: "a.tsx", line: 1, fix: "f1" }];
+  const summary = { files_scanned: 1, files_flagged: 1, errors: 0, warnings: 1 };
+  const out = renderMarkdownReport(findings, summary);
+
+  assert.ok(!out.includes("errors</summary>"), "no errors section should be rendered when there are zero errors");
+  assert.ok(out.includes("1 warnings</summary>"), "warnings section must still be rendered");
+});
+
+test("renderMarkdownReport: file:line column renders a relative path, not the fixture's absolute prefix", () => {
+  const absFile = path.join(process.cwd(), "src", "nested", "deep.tsx");
+  const findings = [{ rule: "r1", severity: "critical", file: absFile, line: 7, fix: "f1" }];
+  const summary = { files_scanned: 1, files_flagged: 1, errors: 1, warnings: 0 };
+  const out = renderMarkdownReport(findings, summary);
+
+  assert.ok(!out.includes(process.cwd()), "output must not contain the absolute cwd prefix");
+  assert.ok(out.includes("src/nested/deep.tsx:7"), "output must contain the relative file:line");
 });
 
 // ---------------------------------------------------------------------------
