@@ -3,6 +3,7 @@ package tui
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -28,11 +29,12 @@ const (
 	ErrorScreen                         // dedicated error display
 
 	// Hub screens — additive; install flow above is byte-identical.
-	ScreenWelcome   // welcome menu hub (bare `ui-craft` entry point)
-	ScreenUpgrade   // upgrade / self-update screen (stub — Slice 4)
-	ScreenBackups   // backup management screen (stub — Slice 5)
-	ScreenUninstall // managed uninstall screen (stub — Slice 6)
-	ScreenComplete  // action result / complete screen (stub — Slices 4-6)
+	ScreenWelcome         // welcome menu hub (bare `ui-craft` entry point)
+	ScreenUpgrade         // upgrade / self-update screen (stub — Slice 4)
+	ScreenBackups         // backup management screen (stub — Slice 5)
+	ScreenUninstall       // managed uninstall screen (stub — Slice 6)
+	ScreenComplete        // action result / complete screen (stub — Slices 4-6)
+	ScreenCIInstallPrompt // post-project-install ci-install follow-up prompt (PR4)
 )
 
 // completedAction is the discriminator for ScreenComplete routing.
@@ -46,6 +48,7 @@ const (
 	completedActionUpgrade                   // upgrade flow completed
 	completedActionBackup                    // backup-restore flow completed
 	completedActionUninstall                 // uninstall flow completed
+	completedActionCIInstall                 // ci-install flow completed (PR4)
 )
 
 // AppModel is the Bubble Tea root model. It routes to the appropriate
@@ -200,6 +203,32 @@ type AppModel struct {
 	// updateCheckOverride, when non-nil, replaces updateCheckCmd in Init().
 	// Tests inject this to avoid real network calls.
 	updateCheckOverride tea.Cmd
+
+	// ─── ci-install follow-up prompt state (PR4) ─────────────────────────────
+	// Reached only when a project-scoped install (installScope==core.Project)
+	// completes successfully AND the cwd's git origin is GitHub-hosted (per
+	// spec's fail-closed Conditional CI-Install Menu Item Visibility
+	// requirement: hidden entirely — not grayed out — when detection fails).
+
+	// gitHubRemoteOverride, when non-nil, replaces the real
+	// core.DetectGitHubRemote call. Returns (isGitHub, ownerRepo); ownerRepo is
+	// unused by the prompt today but kept for parity with the real detector's
+	// signature shape. This is the injection seam for tests.
+	gitHubRemoteOverride func() (bool, string)
+
+	// ciInstallErr holds the error (or nil) from the last ci-install run.
+	// Stored when ciInstallDoneMsg is received; read by renderCIInstallComplete.
+	ciInstallErr error
+
+	// ciInstallGeneration is incremented each time the user confirms the
+	// ci-install prompt. buildCIInstallCmd bakes the generation into
+	// ciInstallDoneMsg so a stale goroutine result from a prior interrupted
+	// run can be discarded (mirrors upgradeGeneration).
+	ciInstallGeneration int
+
+	// ciInstallOverride, when non-nil, is used instead of the real ci-install
+	// exec logic. Primary injection seam for PR4 tests.
+	ciInstallOverride func() tea.Msg
 }
 
 // NewAppModel creates the initial AppModel.
@@ -338,21 +367,35 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Global quit keybinding — intercept before sub-models.
 	//
 	// Esc routing table (Slice 7 — explicit per-screen scoping):
-	//   ScreenWelcome        → no-op (no parent screen to return to)
-	//   ScreenUpgrade        → handled locally (back to ScreenWelcome)
-	//   ScreenBackups        → handled locally (back to ScreenWelcome)
-	//   ScreenUninstall      → handled locally (back to ScreenWelcome on confirm step)
-	//   ScreenComplete       → handled locally (back to ScreenWelcome)
-	//   Install-flow screens → tea.Quit (install-flow esc semantics unchanged)
+	//   ScreenWelcome         → no-op (no parent screen to return to)
+	//   ScreenUpgrade         → handled locally (back to ScreenWelcome)
+	//   ScreenBackups         → handled locally (back to ScreenWelcome)
+	//   ScreenUninstall       → handled locally (back to ScreenWelcome on confirm step)
+	//   ScreenComplete        → handled locally (back to ScreenWelcome)
+	//   ScreenCIInstallPrompt → handled locally (decline → DoneScreen; PR4)
+	//   Install-flow screens  → tea.Quit (install-flow esc semantics unchanged)
 	//
 	// Guard (Fix 8): 'q' is blocked while an upgrade or uninstall is actively
 	// running to prevent partial state from a mid-binary-replace or mid-removal
 	// quit. ctrl+c is not blocked (OS signal; user intent is stronger).
+	//
+	// NOTE: isHubScreen is a hardcoded membership list — every NEW hub screen
+	// added to the Screen enum MUST be added here too, or Esc on that screen
+	// will incorrectly fall through to the install-flow tea.Quit branch below
+	// instead of its local handler. Confirmed via a full-source-read pre-check
+	// (not just test-file grep) per the PR3 lesson on latent index/membership
+	// bugs living in non-test render/dispatch code.
 	if key, ok := msg.(tea.KeyMsg); ok {
 		isHubScreen := m.screen == ScreenWelcome || m.screen == ScreenUpgrade ||
-			m.screen == ScreenBackups || m.screen == ScreenUninstall || m.screen == ScreenComplete
-		// isActionInFlight is true while an upgrade or uninstall goroutine is running.
-		isActionInFlight := m.screen == ScreenUpgrade || (m.screen == ScreenUninstall && m.uninstallRunning)
+			m.screen == ScreenBackups || m.screen == ScreenUninstall || m.screen == ScreenComplete ||
+			m.screen == ScreenCIInstallPrompt
+		// isActionInFlight is true while an upgrade, uninstall, or ci-install
+		// goroutine is running. ciInstallGeneration>0 on ScreenCIInstallPrompt
+		// means the user already confirmed and the subprocess is mid-run (see
+		// renderCIInstalling's identical discriminator in hub_actions.go).
+		isActionInFlight := m.screen == ScreenUpgrade ||
+			(m.screen == ScreenUninstall && m.uninstallRunning) ||
+			(m.screen == ScreenCIInstallPrompt && m.ciInstallGeneration > 0)
 		switch key.String() {
 		case "ctrl+c":
 			return m, tea.Quit
@@ -617,6 +660,18 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.screen = ErrorScreen
 				return m, nil
 			}
+			// PR4: after a SUCCESSFUL project-scoped install, offer the
+			// ci-install follow-up iff the cwd's git origin is GitHub-hosted.
+			// Fail-closed per spec: any non-GitHub/no-origin/not-a-repo result
+			// (or global scope) skips straight to DoneScreen — byte-identical
+			// to pre-PR4 behavior for every case except this one new branch.
+			if m.installScope == core.Project && !m.progress.HasError() {
+				isGitHub, _ := m.detectGitHubRemote()
+				if isGitHub {
+					m.screen = ScreenCIInstallPrompt
+					return m, nil
+				}
+			}
 			m.screen = DoneScreen
 		}
 		return m, cmd
@@ -633,9 +688,64 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		}
 		return m, nil
+
+	case ScreenCIInstallPrompt:
+		// Handle ci-install goroutine result (mirrors ScreenUpgrade's handling).
+		if done, ok := msg.(ciInstallDoneMsg); ok {
+			if done.generation != 0 && done.generation != m.ciInstallGeneration {
+				// Stale result from a prior goroutine — discard silently.
+				return m, nil
+			}
+			m.ciInstallErr = done.err
+			m.screen = ScreenComplete
+			return m, nil
+		}
+		// Advance spinner animation while the install is in flight
+		// (ciInstallGeneration>0 means the user already confirmed).
+		if _, ok := msg.(TickMsg); ok && m.ciInstallGeneration > 0 {
+			m.spinnerFrame = (m.spinnerFrame + 1) % len(spinnerFrames)
+			return m, tickCmd()
+		}
+		if key, ok := msg.(tea.KeyMsg); ok {
+			// Once confirmed (generation>0), the subprocess is running — Esc/n/y
+			// are inert until ciInstallDoneMsg arrives (mirrors ScreenUninstall's
+			// "only allowed on confirm step" guard on uninstallRunning).
+			if m.ciInstallGeneration > 0 {
+				return m, nil
+			}
+			switch key.String() {
+			case "y", "enter":
+				m.spinnerFrame = 0
+				m.lastCompletedAction = completedActionCIInstall
+				m.ciInstallGeneration++
+				m.ciInstallErr = nil
+				ciCmd := buildCIInstallCmd(m.ciInstallOverride, nil, m.ciInstallGeneration)
+				return m, tea.Batch(ciCmd, tickCmd())
+			case "n", "esc":
+				// Decline — skip straight to DoneScreen (no exec fired).
+				m.screen = DoneScreen
+				return m, nil
+			}
+		}
+		return m, nil
 	}
 
 	return m, nil
+}
+
+// detectGitHubRemote reports whether the current project directory's git
+// origin is GitHub-hosted. If gitHubRemoteOverride is set (test seam), it is
+// used instead of the real core.DetectGitHubRemote call.
+func (m AppModel) detectGitHubRemote() (isGitHub bool, ownerRepo string) {
+	if m.gitHubRemoteOverride != nil {
+		return m.gitHubRemoteOverride()
+	}
+	var err error
+	isGitHub, ownerRepo, err = core.DetectGitHubRemote(m.projectDir, func(name string, args ...string) ([]byte, error) {
+		return exec.Command(name, args...).CombinedOutput()
+	})
+	_ = err
+	return isGitHub, ownerRepo
 }
 
 // View delegates rendering to the active sub-model.
@@ -655,6 +765,8 @@ func (m AppModel) View() string {
 			return renderBackupComplete(m)
 		case completedActionUninstall:
 			return renderUninstallComplete(m)
+		case completedActionCIInstall:
+			return renderCIInstallComplete(m)
 		default:
 			return renderComplete(m)
 		}
@@ -662,6 +774,14 @@ func (m AppModel) View() string {
 		return renderBackups(m)
 	case ScreenUninstall:
 		return renderUninstall(m)
+	case ScreenCIInstallPrompt:
+		if m.lastCompletedAction == completedActionCIInstall && m.ciInstallGeneration > 0 {
+			// Spinner is only shown while the goroutine is in flight; once
+			// ciInstallDoneMsg arrives, Update() transitions to ScreenComplete,
+			// so reaching here with a generation set means we're mid-run.
+			return renderCIInstalling(m)
+		}
+		return renderCIInstallPrompt(m)
 	case SplashScreen:
 		return m.splash.View()
 	case SelectHarnessScreen:
