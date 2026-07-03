@@ -878,6 +878,42 @@ func (m AppModel) runApplyCmd() tea.Cmd {
 		if err != nil {
 			return ApplyResultMsg{Err: err}
 		}
+
+		// --- Save state (parity with cmd/install.go Slice-10) ---
+		// Scope-aware root: mirrors the backupStore scope conditional above.
+		var stateRoot string
+		if scope == core.Project {
+			stateRoot = core.ProjectStateRoot(projectDir)
+		} else {
+			home, _ := os.UserHomeDir()
+			stateRoot = filepath.Join(home, ".ui-craft")
+		}
+		state, _ := core.LoadState(osfs, stateRoot)
+		state.Version = version
+		now := core.Now().UTC().Format("2006-01-02T15:04:05Z07:00")
+		for _, dh := range selected {
+			seen := map[string]bool{}
+			var installedComps []string
+			for _, ch := range result.Changes {
+				if ch.HarnessName == dh.Harness.Name() && !seen[ch.Component] {
+					seen[ch.Component] = true
+					installedComps = append(installedComps, ch.Component)
+				}
+			}
+			core.UpsertHarnessState(state, core.HarnessState{
+				Name:                dh.Harness.Name(),
+				InstalledComponents: installedComps,
+				InstalledAt:         now,
+			})
+		}
+		// SaveState failure is non-fatal: state.json is advisory bookkeeping, not
+		// part of the install's success contract. core.Apply's own result is the
+		// sole determinant of success (mirrors core.SaveState's doc comment: "a
+		// non-nil error means the write failed; the caller should log it but not
+		// abort"). The TUI has no stdout mid-run to log to, so the error is
+		// intentionally discarded here.
+		_ = core.SaveState(osfs, stateRoot, state)
+
 		return ApplyResultMsg{
 			Changes:    result.Changes,
 			SnapshotID: string(result.SnapshotID),
