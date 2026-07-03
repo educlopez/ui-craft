@@ -1,5 +1,11 @@
 # Versions
 
+## v1.0.6 (2026-07-03) — fix: TUI installs never saved state, breaking `update`
+
+Found by actually installing through the interactive hub in a scratch test project: install via `ui-craft` (either "Start installation" or the new "Install (this project)") and everything writes correctly to disk — but `ui-craft update` afterward would say "nothing installed yet" and refuse to update. Root cause predates this week's work — the TUI hub has never called the state-saving step since it was introduced in v1.0.2, only the direct `ui-craft install` command did.
+
+**Fix:** the interactive hub now saves `state.json` after every install, scoped correctly to global (`~/.ui-craft`) or per-project, matching what `ui-craft install` already did correctly. `doctor` and `uninstall` were only cosmetically affected before (uninstall already re-detects from disk when state is empty) and need no changes.
+
 ## v1.0.5 (2026-07-02) — project-scoped installs + CI-scan setup, both from the TUI
 
 **New: install ui-craft scoped to a single project, not just globally.** The interactive hub gained an "Install (this project)" item alongside the existing "Start installation" (global) — a completely separate installer that writes skills/commands/MCP into the current directory's project-local conventions instead of `~/.<harness>/`, for all 5 harnesses:
