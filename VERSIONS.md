@@ -12,7 +12,9 @@ Closes the gap between "technically correct" builds and surfaces that feel inten
 
 **Themes:** `themes.md` gains an accent rotation table (indigo, teal, rose, amber, forest) for builds without brand direction.
 
-**Eval:** `evals/quality/fixtures/designer/product-shell.tsx` — production-shell patterns (tinted sidebar, tabular-nums, semantic structure) in the designer corpus.
+**Eval:** `evals/quality/fixtures/designer/product-shell.tsx` — production-shell patterns in the designer corpus. `evals/craft-quality/PROMPTS.md` — manual blind-build prompts for local auditor regression (Track A product + Track B marketing).
+
+**CI:** `scripts/check-mirror-copies.mjs` — drift guard for `skills/` + `commands/` ↔ harness mirrors (runs in `validate.yml` alongside agent copy guard).
 
 ## v1.0.6 (2026-07-03) — fix: TUI installs never saved state, breaking `update`
 

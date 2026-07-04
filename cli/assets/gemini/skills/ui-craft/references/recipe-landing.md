@@ -4,6 +4,8 @@ Outcome recipe for marketing landing pages — composition, section grammar, and
 
 **Who this serves:** zero-questions path → strong default. Designers treat the compositions as skeletons.
 
+**Portfolios / case studies:** use this recipe with **DESIGN_VARIANCE 8** (craft-intent default) — variable grid aspects, one hero project above fold, asymmetric about/contact. Marketing patterns (§5) apply; default composition is often message-forward or proof-forward with editorial type.
+
 **Load [craft-intent.md](craft-intent.md)** and [inspiration.md](inspiration.md) hero archetypes — apply marketing patterns (§5), default **DESIGN_VARIANCE 7** (6 for waitlist-only), pick **signature bet** from craft-intent §3 marketing list in the Craft Read.
 
 ## Step 0 — Three inputs (defaults if unanswered)

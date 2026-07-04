@@ -200,7 +200,7 @@ For playful and brutalist aesthetics (Clay / Gumroad / Duolingo / Arc-playful, N
 
 ## Slash commands
 
-Twenty single-lens passes, plus `/sddesign` (the pipeline that chains them) and `/start` (the front door).
+24 commands total — 22 single-lens passes, plus `/sddesign` (the pipeline that chains them) and `/start` (the front door).
 
 **Front door:**
 
@@ -232,7 +232,7 @@ Twenty single-lens passes, plus `/sddesign` (the pipeline that chains them) and 
 | Command | Does |
 |---------|------|
 | `/ui-craft:sddesign` | **Full spec-driven pipeline.** brief → tokens → shape → craft → converge → ship. Writes `.ui-craft/spec.md`. Run when starting a net-new surface. |
-| `/ui-craft:craft` | **One-shot surface build.** Outcome recipe pipeline — 3 inputs (or silent defaults) → named composition → theme preset → build order → acceptance bar. Surfaces: `dashboard`, `landing`, `auth`. |
+| `/ui-craft:craft` | **One-shot surface build.** Outcome recipe pipeline — Craft Read + variance + signature bet → named composition → theme → build order → acceptance bar. Surfaces: `dashboard`, `landing`, `auth`; portfolios use landing recipe at variance 8. |
 | `/ui-craft:shape` | **Wireframe-first.** ASCII layout + content inventory + state list + open questions before any JSX. Run when starting a new screen. |
 | `/ui-craft:animate` | Add / fix motion. Honors `MOTION_INTENSITY` + chosen stack. |
 | `/ui-craft:adapt` | Responsive pass — mobile, tablet, desktop, touch, safe areas. |
@@ -240,11 +240,14 @@ Twenty single-lens passes, plus `/sddesign` (the pipeline that chains them) and 
 | `/ui-craft:colorize` | Introduce color strategically — one accent, 3–5 placements, no decoration. |
 | `/ui-craft:clarify` | UX copy — button labels, error messages, empty states, CTAs. |
 | `/ui-craft:extract` | Pull repeated patterns into shared components and tokens. |
+| `/ui-craft:remember` | Record a learned design constraint into `.ui-craft/brief.md` — corrections that should persist across sessions. |
 
 **Taste dial:**
 
 | Command | Does |
 |---------|------|
+| `/ui-craft:bolder` | Raise DESIGN_VARIANCE and motion amplitude — stronger composition, type, and signature without a full rebuild. |
+| `/ui-craft:quieter` | Lower variance and motion — more restrained grids, type, and color. Honors `prefers-reduced-motion`. |
 | `/ui-craft:distill` | Strip to essence. Cut every section that doesn't earn its space. Absorbs visual-weight reduction (softer type, less motion). |
 | `/ui-craft:delight` | Add purposeful micro-interactions — copy first, animation last. |
 
@@ -259,11 +262,14 @@ The skill detects your intent and routes automatically.
 | **Review** | "Review this component" | Audits for generic AI patterns, accessibility gaps, and missed details |
 | **Polish** | "Polish this dashboard" | Finds the twenty small things that turn "done" into "crafted" |
 
-## 31 domain references
+## 32 domain references
 
 | Domain | Covers |
 |--------|--------|
+| Craft intent | Craft Read, DESIGN_VARIANCE knob, signature bets, product + marketing build patterns, accent rotation when no brand. **Load before `/craft` or any full-surface build** |
 | Dashboard recipe | Outcome blueprint: 3 named compositions (Overview / Command / Analytics), exact shell spec, build order, shippable acceptance bar. Run via `/craft dashboard` |
+| Landing recipe | Marketing page compositions (product-forward / message-forward / proof-forward), section grammar, CTA hierarchy, acceptance bar. Run via `/craft landing` |
+| Auth recipe | Sign-in/sign-up compositions (split panel / centered card), form contract, trust signals, acceptance bar. Run via `/craft auth` |
 | Theme presets | 4 named production token stacks (Graphite, Porcelain, Carbon, Signal) — full OKLCH color, type, radius, shadow, motion; light + dark both intentional |
 | Motion | Decision ladder, duration + easing token scales, interaction rules, choreography, motion budget, reduced-motion contract. Rendering performance (compositor, FLIP, scroll timelines, will-change lifecycle) |
 | Layout | Spacing systems, optical alignment, layered shadows, visual hierarchy |

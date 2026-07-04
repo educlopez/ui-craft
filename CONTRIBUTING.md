@@ -51,7 +51,7 @@ Since v1.0.2 there is **no** `sync-harnesses.mjs` generator. Assets are hand-mai
 
 **Never edit harness mirror files in isolation.** Each mirror file carries a `HARNESS MIRROR` header pointing back to its canonical source. After editing `skills/` or `commands/`, copy the change into the relevant `cli/assets/<harness>/` paths and repo-root mirrors before merging.
 
-CI enforces drift for review agents only: `agents/` must match `cli/assets/agents/claude/` (`make -C cli check-agent-copies`). Skill/command drift is not yet automated — keep mirrors in sync manually when you touch canonical sources.
+CI enforces drift for review agents (`agents/` ↔ `cli/assets/agents/claude/`, `make -C cli check-agent-copies`) and for skill/command mirrors (`skills/` + `commands/` ↔ `cli/assets/` + repo-root harness dirs, `node scripts/check-mirror-copies.mjs`). Keep mirrors in sync manually when you touch canonical sources — both guards run in `validate.yml`.
 
 ## How to contribute
 
@@ -171,8 +171,9 @@ Before a CLI release, see `RELEASE_CHECKLIST.md` for steps CI cannot automate (n
 Before opening a PR:
 
 ```bash
-node scripts/validate.mjs              # manifests + links (96 checks)
-node scripts/detect.mjs .              # self-scan — should be 0 findings
+node scripts/validate.mjs                # manifests + links
+node scripts/check-mirror-copies.mjs     # skills/commands ↔ harness mirrors
+node scripts/detect.mjs .                # self-scan — should be 0 findings
 node --test scripts/detect.test.mjs    # detector tests
 node scripts/eval.mjs --baseline         # quality-score regression gate
 make -C cli check-agent-copies         # agent drift guard
@@ -187,7 +188,7 @@ Version bump (if you changed the detector or the skill surface):
 3. The `.githooks/pre-commit` hook auto-bumps `marketplace.json` CalVer on commit (macOS/Linux)
 
 On push to main:
-- `validate.yml` runs the validator + agent copy drift guard
+- `validate.yml` runs the validator + skill/command mirror drift guard + agent copy drift guard
 - `cli-ci.yml` runs Go tests (path-filtered to `cli/**`)
 - `mcp-test.yml` runs MCP + eval harness (path-filtered)
 - `release.yml` creates a tag + GitHub release if VERSIONS.md has a new entry

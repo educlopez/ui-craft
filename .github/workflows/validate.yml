@@ -24,6 +24,20 @@ jobs:
       - name: Validate plugin structure + skill metadata + links
         run: node scripts/validate.mjs
 
+  check-mirror-copies:
+    name: Skill/command mirror drift guard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Check skills/commands mirror copies
+        run: node scripts/check-mirror-copies.mjs
+
   # Drift guard: ensure cli/assets/agents/claude/ stays in sync with agents/.
   # Runs on every push and PR to main — cheap shell diff, no build required.
   check-agent-copies:
