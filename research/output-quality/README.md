@@ -2,7 +2,8 @@
 
 > **Branch:** `cursor/output-quality-research-c607`  
 > **Status:** Phase 0 — competitive investigation (not implementation)  
-> **Question:** Why do Taste Skill and Impeccable feel like they *enamoran* al usuario, while ui-craft often feels correct but cold?
+> **North star:** [POSITIONING.md](./POSITIONING.md) — **production apps** for users without design knowledge  
+> **Trend reference:** [production-trends.md](./production-trends.md)
 
 ---
 
@@ -10,9 +11,11 @@
 
 ui-craft is stronger as a **design engineering system** (gates, heuristics, recipes, MCP score, finish-bar). Taste and Impeccable are stronger as **creative direction systems** — they tell the agent *what world to build* before they tell it *what not to do*.
 
-The gap is not "we lack rules." We have more rules than both. The gap is **generative intent**: a visible creative thesis, amplitude controls (`bolder` / quieter`), variance as a first-class dial, and output that leads with *feeling* before findings tables.
+**Product decision:** We are **not** optimizing for portfolio/landing wow. We optimize for **production apps** (dashboard, settings, auth, tables, onboarding) that make non-designers proud to demo.
 
-**Hypothesis:** Users fall in love with output that (1) surprises them once in the hero, (2) feels written for *their* brief not a checklist, (3) can be steered in plain language ("make it bolder"), and (4) is seen live — not only scored.
+The gap is not "we lack rules." We under-teach **current product trends and editorial creativity** in repetitive UI — while over-indexing on audit tables and anti-slop correction.
+
+**Reframed hypothesis:** Users fall in love when (1) the **first dashboard/settings screen** already looks like a 2025 product they'd pay for, (2) the agent declares a **Product Read** they can steer ("more like Notion"), (3) one **signature detail** ships in the shell — not only after `/polish` at CRAFT 8+, and (4) quality still passes gates without slop.
 
 ---
 
@@ -110,20 +113,17 @@ ui-craft's Discovery is equivalent in *information gathered* but equivalent in *
 | "Too safe / corporate" | CRAFT 7 + no VARIANCE dial; `/delight` motion-gated |
 | "I wanted something with personality" | Signature detail is rule #12, often skipped until polish at CRAFT 8+ |
 | "Other skills feel more designed" | Competitors push font/palette/motion defaults harder on first pass |
-| "Dashboard is great, landing is meh" | Recipes are strong; creative thesis layer is weak on marketing surfaces |
+| "Dashboard looks like every AI admin" | Trends doc not wired into build; themes default to safe Graphite + no rotation |
+| "I said modern but got 2022 card grid" | No trend layer; inspiration.md loaded at critique not craft |
 
 ---
 
 ## Proposed research phases
 
-### Phase 1 — Instrument (1–2 weeks of thinking, not code yet)
+### Phase 1 — Instrument (production-first benchmark)
 
-- [ ] Run **blind build benchmark**: same 5 prompts × ui-craft vs Taste vs Impeccable (or manual adherence). Prompts:
-  1. "Landing for a developer tool, Linear-like"
-  2. "Portfolio for a motion designer, Awwwards energy"
-  3. "Dashboard for finance ops" (ui-craft should win)
-  4. "Redesign this hero — keep brand colors" (screenshot input)
-  5. "Make it feel more premium" (iteration prompt)
+- [ ] Run **blind build benchmark** — see [benchmarks/PROMPTS.md](./benchmarks/PROMPTS.md). **Primary prompts are P1–P3 (production).** P4–P5 are secondary.
+- [ ] Reviewers are **non-designer developers** where possible — "would you demo this?"
 - [ ] Score outputs on: **first-impression wow**, **brief fit**, **technical correctness**, **would ship**, **user quote test** ("would you tweet this?")
 - [ ] Capture *agent prose* not just UI — how much of the session is tables vs creative declaration?
 
@@ -131,13 +131,13 @@ ui-craft's Discovery is equivalent in *information gathered* but equivalent in *
 
 Hypotheses to prototype:
 
-1. **Design Read** — mandatory one-liner before `/craft` and default Build mode (adapt Taste §0, ui-craft voice).
-2. **DESIGN_VARIANCE knob** — separate from density; gates asymmetry, layout breaks, kinetic type.
-3. **Creative brief block in `/craft` Step 2** — plan must include: thesis, one forbidden generic pattern, one signature bet, font pair from rotation pool.
-4. **`/bolder` and `/quieter` commands** — amplitude without re-architecting; Impeccable-parity steering.
-5. **`/overdrive` or extend `/animate`** — opt-in high-motion path with guardrails (reduced-motion still honored).
-6. **Palette + font rotation tables** in `color.md` / `typography.md` — generative pools, not only bans.
-7. **Output contract change** — after build, lead with *intent paragraph + screenshot request*; tables move to appendix unless user asked for audit.
+1. **Product Read** — mandatory one-liner before `/craft` (product context, not marketing Design Read). See POSITIONING.md.
+2. **Wire [production-trends.md](./production-trends.md) into recipes** — dashboard/auth/settings reference at build time.
+3. **PRODUCT_SIGNATURE dial** — one memorable bet in app shell (empty state, nav, command palette) on every `/craft`, not polish-gated.
+4. **Theme + accent rotation** — expand presets; agent picks and declares axis in Product Read.
+5. **`/bolder` and `/quieter`** — non-designer steering ("more personality" / "more restrained").
+6. **Output contract** — after build: Product Read recap + what trend was applied; tables only for `/critique` `/audit`.
+7. ~~High-variance marketing layouts~~ — out of scope for default; landing recipe stays, not the quality bar.
 
 ### Phase 3 — Experience loop (bigger lift)
 
@@ -163,13 +163,13 @@ Hypotheses to prototype:
 
 ---
 
-## Open questions (need product input)
+## Open questions (remaining)
 
-1. **Positioning:** Do we want ui-craft to win on landing/portfolio wow (Taste territory) or double down on "production app that feels designed" (less crowded)?
-2. **Risk budget:** How far can default `/craft` push variance before anti-slop brand is harmed?
-3. **Live mode:** Invest in native live loop, or standardize on Playwright MCP + screenshot critique?
-4. **Command proliferation:** Add `bolder`/`quieter`/`overdrive` vs fold into `/adapt` + `/animate` + knob overrides?
-5. **Naming:** "Design Read" vs ui-craft-native term ("Composition thesis", "Craft read")?
+1. ~~**Positioning**~~ — **Resolved:** production apps. See [POSITIONING.md](./POSITIONING.md).
+2. **Risk budget:** How bold can default dashboard be (accent tint cards, command palette) before non-designers call it "too much"?
+3. **Live mode:** Invest in native live loop, or Playwright MCP + screenshot for iteration?
+4. **Trend refresh cadence:** Quarterly `production-trends.md` update vs embedded in VERSIONS?
+5. **Naming:** "Product Read" vs "Craft read" vs keep "Design Read" with product-scoped definition?
 
 ---
 
@@ -191,4 +191,4 @@ Hypotheses to prototype:
 
 1. Review this doc with maintainers — validate positioning and risk budget.
 2. If approved: Phase 1 benchmark script + fixture prompts in `research/output-quality/benchmarks/`.
-3. First implementation slice (suggested): **Design Read + `/craft` Step 2 creative block** — smallest diff, highest user-visible impact.
+3. First implementation slice (suggested): **Product Read + wire `production-trends.md` into `recipe-dashboard.md` + one PRODUCT_SIGNATURE on build** — smallest diff, highest impact for non-designers.
