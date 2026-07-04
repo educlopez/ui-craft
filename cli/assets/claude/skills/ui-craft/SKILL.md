@@ -4,7 +4,7 @@ description: "Use for UI design and implementation work to avoid generic AI-look
 argument-hint: "[action: build|animate|review|polish|audit] [target]"
 ---
 
-<!-- AUTO-GENERATED. Do not edit here. Source: skills/ui-craft/ + commands/*.md. Regenerate with `node scripts/sync-harnesses.mjs`. -->
+<!-- HARNESS MIRROR — do not edit here. Canonical source: skills/ or commands/. After editing source, copy into cli/assets/<harness>/ and repo-root harness mirrors. -->
 
 # UI Craft
 

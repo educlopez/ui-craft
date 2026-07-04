@@ -206,4 +206,4 @@ Edit these files freely. The skill reads them as plain markdown — no memory pr
 
 ## Architecture
 
-The binary is an installer only — no AI logic runs in Go. It embeds pre-generated harness mirrors (`go:embed`) produced by `sync-harnesses.mjs` at build time. All design rules stay in JS, served via `npx ui-craft-mcp` (wired into each harness's MCP config on install). See [design.md](../openspec/changes/v1-cli-system/design.md) for the full architecture.
+The binary is an installer only — no AI logic runs in Go. It embeds hand-authored per-harness assets (`go:embed` from `cli/assets/<harness>/`). All design rules stay in JS, served via `npx ui-craft-mcp` (wired into each harness's MCP config on install). See `cli/assets/embed.go` and [CONTRIBUTING.md](../CONTRIBUTING.md) for the asset-tree layout.

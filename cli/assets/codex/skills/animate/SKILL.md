@@ -3,7 +3,7 @@ name: animate
 description: "Motion design pass — adds purposeful animations or removes excessive ones, respecting MOTION_INTENSITY and the project's animation stack. Use when the user asks to add animation, "make it feel smoother", fix janky transitions, or trim motion that's distracting. Invoke when the user asks for animate on their UI, or mentions 'animate' alongside design / UI / frontend work."
 ---
 
-<!-- AUTO-GENERATED. Do not edit here. Source: skills/ui-craft/ + commands/*.md. Regenerate with `node scripts/sync-harnesses.mjs`. -->
+<!-- HARNESS MIRROR — do not edit here. Canonical source: skills/ or commands/. After editing source, copy into cli/assets/<harness>/ and repo-root harness mirrors. -->
 
 **Context:** this sub-skill is one lens of the broader `ui-craft` skill. If the `ui-craft` skill is also installed, read its SKILL.md first for Discovery + Anti-Slop + Craft Test, then apply the specific lens below.
 

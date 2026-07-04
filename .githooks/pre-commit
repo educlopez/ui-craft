@@ -15,7 +15,11 @@ set -e
 
 VERSION=$(date +"%Y.%-m.%-d.%H%M")
 if [ -f ".claude-plugin/marketplace.json" ]; then
-  sed -i '' "s/\"version\": \"[^\"]*\"/\"version\": \"$VERSION\"/" .claude-plugin/marketplace.json
+  if sed --version >/dev/null 2>&1; then
+    sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$VERSION\"/" .claude-plugin/marketplace.json
+  else
+    sed -i '' "s/\"version\": \"[^\"]*\"/\"version\": \"$VERSION\"/" .claude-plugin/marketplace.json
+  fi
   git add .claude-plugin/marketplace.json
   echo "Auto-versioned to $VERSION"
 fi
