@@ -13,11 +13,11 @@ ui-craft/
 ├── skills/                         # Canonical skill sources (edit here)
 │   ├── ui-craft/                   # Main skill
 │   │   ├── SKILL.md                # Anti-slop test, craft test, routing, knobs, discovery
-│   │   └── references/             # 23 domain references
+│   │   └── references/             # 32 domain references
 │   ├── ui-craft-minimal/           # Variant — Linear / Notion aesthetic
 │   ├── ui-craft-editorial/         # Variant — Medium / Substack aesthetic
 │   └── ui-craft-dense-dashboard/   # Variant — Bloomberg / Retool aesthetic
-├── commands/                       # 22 Claude Code slash commands (canonical source)
+├── commands/                       # 24 Claude Code slash commands (canonical source)
 ├── agents/                         # Review agents (design-reviewer, a11y-auditor)
 ├── cli/                            # ui-craft Go installer (embedded assets, TUI, backup/rollback)
 │   └── assets/                     # Per-harness install tree (hand-authored, go:embed)

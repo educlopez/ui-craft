@@ -60,6 +60,14 @@ Every `/craft` ships **exactly one** memorable decision, chosen at plan time and
 4. Primary table row hover (subtle lift + shadow on the main table only)
 5. Command palette or keyboard hint (`⌘K`) when search/actions warrant it
 
+### Auth surfaces (pick one — load [recipe-auth.md](recipe-auth.md))
+
+1. Panel proof asset — one believable metric + sparkline **or** one attributed quote (not both)
+2. Trust footer line — compliance / data residency in tertiary text at panel foot
+3. Domain-specific welcome line — verb tied to product ("Pick up where you left off"), not generic filler
+4. Real provider marks on SSO row — equal-weight neutral outlines, no fake icons
+5. Subtle panel motif — simple SVG tied to domain on the tinted panel only
+
 ### Marketing surfaces (pick one)
 
 1. Hero crop — product visual cut mid-element at fold edge
@@ -122,4 +130,4 @@ Declare the axis in the Craft Read so the user can say "warmer accent" on iterat
 
 ## Cross-refs
 
-[recipe-dashboard.md](recipe-dashboard.md) · [recipe-landing.md](recipe-landing.md) · [inspiration.md](inspiration.md) · [themes.md](themes.md) · [dashboard.md](dashboard.md) · [review.md](review.md)
+[recipe-dashboard.md](recipe-dashboard.md) · [recipe-landing.md](recipe-landing.md) · [recipe-auth.md](recipe-auth.md) · [inspiration.md](inspiration.md) · [themes.md](themes.md) · [dashboard.md](dashboard.md) · [review.md](review.md)

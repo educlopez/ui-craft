@@ -2,12 +2,17 @@
 
 Outcome recipe for authentication surfaces. Small surface, zero tolerance: auth is used by 100% of users at their least patient moment, and it's where AI-generated UIs are most recognizable (full-bleed saturated brand panel, italic quote, "OR" divider). Field rules live in [forms.md](forms.md), component contracts in [components.md](components.md).
 
-## Step 0 — Two inputs (defaults if unanswered)
+**Load [craft-intent.md](craft-intent.md)** — apply product-surface patterns (§4), default **DESIGN_VARIANCE 4**, pick one **signature bet** from craft-intent §3 auth list in the Craft Read before Step 1.
+
+## Step 0 — Four inputs (defaults if unanswered)
 
 | Input | Options | Default |
 |---|---|---|
 | Brand surface | product has marketing presence worth showing / pure utility app | marketing presence |
 | Auth methods | SSO-first (Google/GitHub/SAML) / email-first / both | both, SSO on top |
+| Theme | preset from [themes.md](themes.md) or existing brand tokens | brand tokens if present, else **Graphite** |
+| Variance | DESIGN_VARIANCE 1-10 | 4 |
+| Signature bet | one from [craft-intent.md](craft-intent.md) §3 auth list | panel proof asset (metric + sparkline) or trust footer line |
 
 ## Step 1 — Pick the composition
 
@@ -67,6 +72,7 @@ No panel, no story — speed is the design. Card 360-400px, generous vertical rh
 
 ## Acceptance bar
 
+- [ ] Craft Read declared; variance 4 unless brief says otherwise; signature bet built in first pass
 - [ ] Squint test: eye lands on the submit button; accent appears ONLY on submit + links
 - [ ] No saturated full-bleed brand panel; panel (if any) is tinted neutral with one proof asset
 - [ ] Form column 360-400px, labels above, no asterisks, divider lowercase
@@ -75,7 +81,8 @@ No panel, no story — speed is the design. Card 360-400px, generous vertical rh
 - [ ] Keyboard: tab order top-to-bottom, Enter submits, focus visible on every control
 - [ ] Trust signals present (compliance line or equivalent) and honest
 - [ ] Works at 320px wide: panel drops, form survives alone
+- [ ] Product patterns from craft-intent §4: tinted panel surface, one accent-filled element, honest error copy
 
 ## Cross-refs
 
-[forms.md](forms.md) field layout, validation, marking · [components.md](components.md) buttons, links · [themes.md](themes.md) surface tokens · [state-design.md](state-design.md) loading/error states for the submit roundtrip
+[craft-intent.md](craft-intent.md) Craft Read, variance, auth signature bets · [forms.md](forms.md) field layout, validation, marking · [components.md](components.md) buttons, links · [themes.md](themes.md) surface tokens · [state-design.md](state-design.md) loading/error states for the submit roundtrip

@@ -8,6 +8,7 @@
     "evals/quality/fixtures/designer/clean-card.tsx":     { "scoreMin": 90, "scoreMax": 100 },
     "evals/quality/fixtures/designer/accessible-form.tsx":{ "scoreMin": 90, "scoreMax": 100 },
     "evals/quality/fixtures/designer/semantic-image.tsx": { "scoreMin": 90, "scoreMax": 100 },
-    "evals/quality/fixtures/designer/motion-safe.tsx":    { "scoreMin": 90, "scoreMax": 100 }
+    "evals/quality/fixtures/designer/motion-safe.tsx":    { "scoreMin": 90, "scoreMax": 100 },
+    "evals/quality/fixtures/designer/product-shell.tsx":  { "scoreMin": 90, "scoreMax": 100 }
   }
 }

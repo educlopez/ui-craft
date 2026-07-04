@@ -1,5 +1,19 @@
 # Versions
 
+## v0.35.0 (2026-07-04) — Craft Read, variance, and output personality
+
+Closes the gap between "technically correct" builds and surfaces that feel intentional. Product apps (dashboards, auth, settings) and marketing surfaces (landings, portfolios) are both first-class — not either/or.
+
+**New reference:** `craft-intent.md` — Craft Read (one-line creative thesis before code), **DESIGN_VARIANCE** knob (separate from density), mandatory **signature bet** on every `/craft`, product + marketing build patterns, rotation policy when no brand exists.
+
+**New commands:** `/bolder` and `/quieter` — adjust variance and motion amplitude without a full rebuild.
+
+**Recipe wiring:** `recipe-dashboard.md`, `recipe-landing.md`, and `recipe-auth.md` now load craft-intent defaults (variance 4 / 7 / 4), declare Craft Read in the acceptance bar, and gate signature bets on the first pass.
+
+**Themes:** `themes.md` gains an accent rotation table (indigo, teal, rose, amber, forest) for builds without brand direction.
+
+**Eval:** `evals/quality/fixtures/designer/product-shell.tsx` — production-shell patterns (tinted sidebar, tabular-nums, semantic structure) in the designer corpus.
+
 ## v1.0.6 (2026-07-03) — fix: TUI installs never saved state, breaking `update`
 
 Found by actually installing through the interactive hub in a scratch test project: install via `ui-craft` (either "Start installation" or the new "Install (this project)") and everything writes correctly to disk — but `ui-craft update` afterward would say "nothing installed yet" and refuse to update. Root cause predates this week's work — the TUI hub has never called the state-saving step since it was introduced in v1.0.2, only the direct `ui-craft install` command did.

@@ -31,7 +31,7 @@ You don't have to learn any of it to benefit. It grows with you.
 | Layer | You do | You get |
 |-------|--------|---------|
 | **1 · Just install it** | Nothing — ask for UI the way you always do | The agent designs with taste: real hierarchy, system tokens, no AI slop. Same prompt, shippable result. |
-| **2 · Drive it** | Run `/start` to see your options, then a slash command (`/craft`, `/sddesign`, `/finalize`, …) | Focused passes — build a surface, run a scored critique, gate a ship. 22 commands, one lens each. |
+| **2 · Drive it** | Run `/start` to see your options, then a slash command (`/craft`, `/sddesign`, `/finalize`, …) | Focused passes — build a surface, run a scored critique, gate a ship. 24 commands, one lens each. |
 | **3 · Verify it** | Wire the agents / MCP / CLI into review or CI | Independent design + a11y review, a deterministic 0-100 quality score, an anti-slop gate on every commit. |
 
 **Start at Layer 1.** Most people never leave it — that's the point. Layers 2 and 3 are there the day you want them.
@@ -90,7 +90,7 @@ ui-craft install
 
 ### Claude Code plugin — alternative (skill + commands + agents + MCP, no CLI needed)
 
-One command installs the skill, all 22 slash commands, the 2 review agents, and the MCP quality-gate server — auto-wired, no `.mcp.json` editing:
+One command installs the skill, all 24 slash commands, the 2 review agents, and the MCP quality-gate server — auto-wired, no `.mcp.json` editing:
 
 ```
 /plugin marketplace add educlopez/ui-craft
@@ -377,7 +377,7 @@ ui-craft/
 ├── skills/
 │   ├── ui-craft/                 # Main skill
 │   │   ├── SKILL.md              # Slim entry — knobs, discovery, anti-slop, routing
-│   │   └── references/           # 31 domain references (accessibility, motion, layout,
+│   │   └── references/           # 32 domain references (accessibility, motion, layout,
 │   │                             #   typography, color, modern-css, responsive,
 │   │                             #   sound, copy, review, dashboard, inspiration, stack,
 │   │                             #   heuristics, personas, state-design, dataviz,
@@ -386,7 +386,7 @@ ui-craft/
 │   ├── ui-craft-minimal/          # Variant — Linear/Notion aesthetic
 │   ├── ui-craft-editorial/        # Variant — Medium/Substack aesthetic
 │   └── ui-craft-dense-dashboard/  # Variant — Bloomberg/Retool aesthetic
-├── commands/                      # 22 Claude Code slash commands (source of truth)
+├── commands/                      # 24 Claude Code slash commands (source of truth)
 ├── examples/
 │   ├── animation-storyboard.md   # Multi-stage animation pattern template
 │   └── presets/
