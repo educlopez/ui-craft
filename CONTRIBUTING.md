@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for your interest in contributing to UI Craft. This guide covers the skill (craft rules + references + commands) and the `ui-craft-detect` npm CLI (static anti-slop detector).
+Thanks for your interest in contributing to UI Craft. This guide covers the skill (craft rules + references + commands), the `ui-craft` CLI installer (`cli/`), the MCP quality-gate server (`mcp/`), and the `ui-craft-detect` npm CLI (`scripts/detect.mjs`).
 
 ## Requesting Changes
 
@@ -10,62 +10,48 @@ Suggest new rules, patterns, references, commands, or detector checks by [openin
 
 ```
 ui-craft/
-├── skills/
+├── skills/                         # Canonical skill sources (edit here)
 │   ├── ui-craft/                   # Main skill
 │   │   ├── SKILL.md                # Anti-slop test, craft test, routing, knobs, discovery
 │   │   └── references/             # 23 domain references
-│   │       ├── accessibility.md    # WCAG, keyboard, focus, ARIA, forms, checklist
-│   │       ├── ai-chat.md          # Streaming, tool traces, citations, generative UI
-│   │       ├── brief.md            # Durable design brief format — `.ui-craft/brief.md` lives here
-│   │       ├── color.md            # OKLCH, palettes, dark mode, tokens
-│   │       ├── copy.md             # Voice / tone / locale / inclusive / microcopy
-│   │       ├── dashboard.md        # Signal-to-noise, sidebar, metric cards, tables
-│   │       ├── dataviz.md          # Cleveland-McGill, ColorBrewer, Tufte, small multiples
-│   │       ├── finish-bar.md       # 10-pass finishing protocol with measurable criteria
-│   │       ├── forms.md            # Validation, wizards, autosave, field patterns
-│   │       ├── heuristics.md       # Nielsen 10 + 6 design laws + scoring rubric
-│   │       ├── inspiration.md      # Pattern archetypes and signature details from observed mature SaaS
-│   │       ├── layout.md           # Spacing, grids, hierarchy, depth
-│   │       ├── modern-css.md       # View Transitions, Anchor, Popover, <dialog>, color-mix
-│   │       ├── motion.md           # Duration + easing tokens, choreography, budget, rendering perf
-│   │       ├── personas.md         # 5 walkthroughs with checklists
-│   │       ├── principles-catalog.md  # 42 example principles across 8 product categories
-│   │       ├── responsive.md       # Fluid sizing, mobile-first, safe areas
-│   │       ├── review.md           # Critique methodology + Polish Pass
-│   │       ├── sound.md            # Web Audio, appropriateness matrix
-│   │       ├── stack.md            # Motion / GSAP / Three.js (opt-in)
-│   │       ├── state-design.md     # State lattice — idle / loading / empty / error / ...
-│   │       ├── tokens.md           # 3-layer token spine + intentional dark mode
-│   │       └── typography.md       # Scale, fonts, readability, essentials
 │   ├── ui-craft-minimal/           # Variant — Linear / Notion aesthetic
 │   ├── ui-craft-editorial/         # Variant — Medium / Substack aesthetic
 │   └── ui-craft-dense-dashboard/   # Variant — Bloomberg / Retool aesthetic
-├── commands/                       # 18 Claude Code slash commands (source)
-├── examples/
-│   ├── animation-storyboard.md     # Multi-stage animation pattern template
-│   └── presets/
-│       ├── playful.md              # Clay / Gumroad / Duolingo / Arc aesthetic
-│       └── brutalist.md            # Swiss print / Nothing / terminal aesthetic
-├── evals/                          # Eval query sets for description optimizer
-│   └── presets/                    # Playful + brutalist eval JSONs
+├── commands/                       # 22 Claude Code slash commands (canonical source)
+├── agents/                         # Review agents (design-reviewer, a11y-auditor)
+├── cli/                            # ui-craft Go installer (embedded assets, TUI, backup/rollback)
+│   └── assets/                     # Per-harness install tree (hand-authored, go:embed)
+│       ├── claude/                 # skills/, commands/, agents/
+│       ├── codex/ cursor/ gemini/ opencode/
+│       └── agents/
+├── mcp/                            # ui-craft-mcp server (4 deterministic gate tools)
 ├── scripts/
 │   ├── detect.mjs                  # ui-craft-detect CLI (published to npm)
-│   ├── sync-harnesses.mjs          # Generates .codex / .cursor / .gemini / .opencode / .agents
+│   ├── eval.mjs                    # Quality-score baseline regression gate
 │   └── validate.mjs                # Plugin manifest + link checker
-├── .agents/skills/                 # AUTO-GENERATED — do not edit
-├── .codex/skills/                  # AUTO-GENERATED
-├── .cursor/skills/                 # AUTO-GENERATED
-├── .gemini/skills/                 # AUTO-GENERATED
-├── .opencode/skills/               # AUTO-GENERATED
+├── .codex/ .agents/ .gemini/ .opencode/   # Repo-root harness mirrors (npx skills add)
+├── examples/
+├── evals/
 ├── .claude-plugin/
-│   ├── marketplace.json
-│   └── plugin.json
-├── .github/workflows/              # sync-harnesses / validate / release
-├── .githooks/pre-commit            # Auto-version + detector on staged files
+├── .github/workflows/
+├── .githooks/pre-commit
+├── RELEASE_CHECKLIST.md            # Manual steps CI cannot cover (e.g. Gatekeeper on Apple Silicon)
 └── VERSIONS.md
 ```
 
-**Never edit files under `.codex/`, `.cursor/`, `.gemini/`, `.opencode/`, `.agents/`.** They are regenerated from `skills/` and `commands/` by `node scripts/sync-harnesses.mjs` on every push to main (via GitHub Actions).
+### Where to edit (three asset trees)
+
+Since v1.0.2 there is **no** `sync-harnesses.mjs` generator. Assets are hand-maintained in three places:
+
+| Tree | Purpose | Edit when… |
+|------|---------|------------|
+| `skills/` + `commands/` + `agents/` | **Canonical source** | Always — this is where changes start |
+| `cli/assets/<harness>/` | Embedded in the `ui-craft` binary at build time | Shipping a CLI release that installs updated skill/commands |
+| `.codex/`, `.agents/`, `.gemini/`, `.opencode/` | Repo-root mirrors for `npx skills add` | Shipping skill-only distribution updates |
+
+**Never edit harness mirror files in isolation.** Each mirror file carries a `HARNESS MIRROR` header pointing back to its canonical source. After editing `skills/` or `commands/`, copy the change into the relevant `cli/assets/<harness>/` paths and repo-root mirrors before merging.
+
+CI enforces drift for review agents only: `agents/` must match `cli/assets/agents/claude/` (`make -C cli check-agent-copies`). Skill/command drift is not yet automated — keep mirrors in sync manually when you touch canonical sources.
 
 ## How to contribute
 
@@ -108,6 +94,7 @@ Validate locally:
 ```bash
 node scripts/detect.mjs .                 # should find 0 in this repo
 node scripts/detect.mjs /path/to/test     # spot-check on synthetic input
+node --test scripts/detect.test.mjs       # detector unit tests
 ```
 
 After adding: bump `package.json` version, add a line to `VERSIONS.md`. The `release.yml` workflow publishes the GitHub release automatically. `npm publish` still manual (requires OTP).
@@ -125,6 +112,8 @@ Reference files in `skills/ui-craft/references/` are the depth layer. When editi
 - Prefer code examples over abstract principles
 - Don't contradict rules in `skills/ui-craft/SKILL.md`
 - Cite sources by name (Nielsen, Fitts, Cleveland-McGill, Tufte, ColorBrewer) where the rule traces back to established research — credibility compounds
+
+If the reference is duplicated under `cli/assets/*/skills/ui-craft/references/`, update those copies too when shipping a CLI release.
 
 ### Adding a new reference domain
 
@@ -150,6 +139,24 @@ Commands live in `commands/*.md`. Each needs YAML frontmatter with `description`
 4. Explicit `references/*.md` pointers
 5. Output block — either "edit code directly, print Review Format table" or "no code changes, critique only"
 
+After adding a command, also materialize it in harness-specific layouts:
+- **Claude / OpenCode:** `cli/assets/<harness>/commands/<name>.md`
+- **Cursor / Codex / Gemini / Agents:** flat peer skill at `cli/assets/<harness>/skills/<name>/SKILL.md` (and the matching repo-root mirror)
+
+### CLI changes (`cli/`)
+
+The Go installer requires **Go 1.23+**. From `cli/`:
+
+```bash
+make test              # go test -race ./...
+make check-agent-copies   # agents/ vs cli/assets/agents/claude/
+make check             # build + vet + test + gofmt + agent copies
+```
+
+Integration tests use real filesystem fixtures (`*_realfs_test.go`). Prefer extending those over MemFS-only tests for installer paths.
+
+Before a CLI release, see `RELEASE_CHECKLIST.md` for steps CI cannot automate (notably Gatekeeper on a real Apple Silicon Mac).
+
 ## Writing guidelines
 
 - **Explain the why** — "tight letter-spacing on large headings" is a rule; "because default spacing looks loose at display sizes" is understanding
@@ -164,20 +171,25 @@ Commands live in `commands/*.md`. Each needs YAML frontmatter with `description`
 Before opening a PR:
 
 ```bash
-node scripts/sync-harnesses.mjs   # regenerate harness mirrors
-node scripts/validate.mjs         # check manifests + links (69/69 expected)
-node scripts/detect.mjs .         # self-scan — should be 0 findings
+node scripts/validate.mjs              # manifests + links (96 checks)
+node scripts/detect.mjs .              # self-scan — should be 0 findings
+node --test scripts/detect.test.mjs    # detector tests
+node scripts/eval.mjs --baseline         # quality-score regression gate
+make -C cli check-agent-copies         # agent drift guard
+make -C cli test                       # Go tests (requires Go 1.23+)
+cd mcp && npm ci && npm test           # MCP server tests
 ```
 
 Version bump (if you changed the detector or the skill surface):
 
-1. Update the top entry in `VERSIONS.md` with a new `## v0.X.Y` heading + date + summary
+1. Update the top entry in `VERSIONS.md` with a new `## vX.Y.Z` heading + date + summary
 2. Bump `package.json` version if the detector changed
-3. The `.githooks/pre-commit` hook auto-bumps `marketplace.json` CalVer on commit
+3. The `.githooks/pre-commit` hook auto-bumps `marketplace.json` CalVer on commit (macOS/Linux)
 
 On push to main:
-- `sync-harnesses.yml` regenerates mirrors if skills / commands / scripts changed
-- `validate.yml` runs the validator
+- `validate.yml` runs the validator + agent copy drift guard
+- `cli-ci.yml` runs Go tests (path-filtered to `cli/**`)
+- `mcp-test.yml` runs MCP + eval harness (path-filtered)
 - `release.yml` creates a tag + GitHub release if VERSIONS.md has a new entry
 
 ## Submitting
@@ -195,6 +207,7 @@ On push to main:
 - [ ] No contradiction with existing rules in `skills/ui-craft/SKILL.md` or reference files
 - [ ] Concrete values and examples, not vague principles
 - [ ] Tested with at least one AI agent prompt
+- [ ] Harness mirrors updated if canonical `skills/` or `commands/` changed
 - [ ] No sensitive data or credentials
 - [ ] Follows existing tone and formatting
 - [ ] Stack-agnostic and design-engineer-pure (the two filters above)

@@ -3,7 +3,7 @@ name: typeset
 description: "Typography pass covering font choice, modular scale, tracking, leading, weight hierarchy, and micro-typography details. Use when fonts feel generic (default Inter with no reason), the scale is ad hoc, hierarchy is flat, or the user says "fix the typography" / "the text doesn't feel right". Invoke when the user asks for typeset on their UI, or mentions 'typeset' alongside design / UI / frontend work."
 ---
 
-<!-- AUTO-GENERATED. Do not edit here. Source: skills/ui-craft/ + commands/*.md. Regenerate with `node scripts/sync-harnesses.mjs`. -->
+<!-- HARNESS MIRROR — do not edit here. Canonical source: skills/ or commands/. After editing source, copy into cli/assets/<harness>/ and repo-root harness mirrors. -->
 
 **Context:** this sub-skill is one lens of the broader `ui-craft` skill. If the `ui-craft` skill is also installed, read its SKILL.md first for Discovery + Anti-Slop + Craft Test, then apply the specific lens below.
 
