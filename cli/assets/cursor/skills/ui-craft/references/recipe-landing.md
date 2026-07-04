@@ -4,6 +4,8 @@ Outcome recipe for marketing landing pages — composition, section grammar, and
 
 **Who this serves:** zero-questions path → strong default. Designers treat the compositions as skeletons.
 
+**Load [craft-intent.md](craft-intent.md)** and [inspiration.md](inspiration.md) hero archetypes — apply marketing patterns (§5), default **DESIGN_VARIANCE 7** (6 for waitlist-only), pick **signature bet** from craft-intent §3 marketing list in the Craft Read.
+
 ## Step 0 — Three inputs (defaults if unanswered)
 
 | Input | Options | Default |
@@ -11,6 +13,8 @@ Outcome recipe for marketing landing pages — composition, section grammar, and
 | What exists to show | live product (screenshots possible) / pre-launch (no product yet) / sales-led service | live product |
 | Theme | a preset from [themes.md](themes.md) or existing brand tokens | brand tokens if present, else **Graphite** |
 | One conversion action | trial signup / demo request / waitlist / purchase | trial signup |
+| Variance | DESIGN_VARIANCE 1-10 | 7 (6 if pre-launch / waitlist only) |
+| Signature bet | one from [craft-intent.md](craft-intent.md) §3 marketing list | hero crop or floating proof card |
 
 The first answer selects the composition. One page, ONE conversion action — every section either advances it or gets cut.
 
@@ -102,6 +106,8 @@ Order, each answering ONE question; spacing 80-160px between majors, varied:
 - [ ] Section spacing 80-160px, varied; every section answers one question
 - [ ] One signature detail, exactly one
 - [ ] Mobile: hero readable without zoom, CTAs thumb-reachable, no horizontal scroll
+- [ ] Craft Read declared; variance and signature bet match the built page
+- [ ] No two adjacent sections share the same layout structure
 - [ ] `prefers-reduced-motion` honored; entrances ≤400ms; no scroll-jacking
 
 ## Cross-refs

@@ -4,8 +4,6 @@ description: "Use for UI design and implementation work to avoid generic AI-look
 argument-hint: "[action: build|animate|review|polish|audit] [target]"
 ---
 
-<!-- HARNESS MIRROR — do not edit here. Canonical source: skills/ or commands/. After editing source, copy into cli/assets/<harness>/ and repo-root harness mirrors. -->
-
 # UI Craft
 
 You are a design engineer with craft sensibility. You build interfaces where every detail compounds into something that feels right. In a world where AI-generated UIs all look the same, taste is the differentiator.
@@ -19,8 +17,9 @@ Knobs are **fallback defaults applied only when the user declines to specify**. 
 - **CRAFT_LEVEL** (default 7) — refinement depth. 3 ships fast, 9 is pixel-perfect.
 - **MOTION_INTENSITY** (default 5) — 1 = hover only, 10 = scroll-triggered, magnetic, page transitions.
 - **VISUAL_DENSITY** (default 5) — 1 = whitespace-heavy editorial, 10 = dashboard-dense.
+- **DESIGN_VARIANCE** (default by surface — see [craft-intent.md](references/craft-intent.md)) — 1 = symmetric/safe layout, 10 = experimental composition. Dashboards default 4; landings 7; portfolios 8. Gates layout risk separately from density.
 
-Behavior: **CRAFT_LEVEL 8+** → run Polish Pass ([review.md](references/review.md)). **≤4** → skip it. **MOTION_INTENSITY ≤3** → hover only, no entrance/stagger/scroll animations. **4-7** → standard entrances + hover, one scroll reveal max per section. **8+** → scroll-linked, page transitions, magnetic cursor OK (still honor `prefers-reduced-motion`); load [stack.md](references/stack.md) if user opts in. **VISUAL_DENSITY ≤3** → wide spacing, 1-2 items/row. **8+** → dashboard-dense ([dashboard.md](references/dashboard.md)).
+Behavior: **CRAFT_LEVEL 8+** → run Polish Pass ([review.md](references/review.md)). **≤4** → skip it. **MOTION_INTENSITY ≤3** → hover only, no entrance/stagger/scroll animations. **4-7** → standard entrances + hover, one scroll reveal max per section. **8+** → scroll-linked, page transitions, magnetic cursor OK (still honor `prefers-reduced-motion`); load [stack.md](references/stack.md) if user opts in. **VISUAL_DENSITY ≤3** → wide spacing, 1-2 items/row. **8+** → dashboard-dense ([dashboard.md](references/dashboard.md)). **DESIGN_VARIANCE ≤4** → symmetric grids, safe product layouts. **5-7** → split heroes, alternating rows, one layout break. **8+** → display-scale drama, asymmetric marketing compositions; **9-10** only when user asks for experimental or brief demands it ([craft-intent.md](references/craft-intent.md)).
 
 ## Quick Start: Top 12
 
@@ -38,7 +37,7 @@ The rules that make the biggest difference between "AI-generated" and "designed 
 9. **Plain secondary text for comparisons** — "+12.5% from last month", not a colored pill.
 10. **Accent budget: one accent color, 3-5 placements of it per above-the-fold viewport** — CTA, one key metric, active states. **Why:** Hick's Law — every accent placement competes for attention budget; >5 dilutes the focal point. Modals and overlays count as their own viewport.
 11. **Every section earns its space** — if it doesn't answer a question or drive action, cut it.
-12. **One signature detail per UI** — subtle motif, layout break, custom markers, distinctive hover. This is what makes it feel designed.
+12. **One signature detail per UI** — subtle motif, layout break, custom markers, distinctive hover. On `/craft`, pick and **build** it in the first pass ([craft-intent.md](references/craft-intent.md)) — not only at polish.
 
 > **Before writing ANY code:** For non-trivial projects, run `/brief` and `/tokens` first — durable artifacts beat per-session re-derivation. Then run Stack Detection + Discovery Phase. Use existing tokens if any token system is present. If none exists, establish a minimal token set before writing components — at minimum: spacing scale, neutral ramp, one accent, two type sizes for body and display (see [layout.md](references/layout.md) and [color.md](references/color.md)). If preferences are missing, ask.
 
@@ -64,6 +63,8 @@ The rules that make the biggest difference between "AI-generated" and "designed 
 | UX critique, no code changes | Run `/critique` — [review.md](references/review.md) + [inspiration.md](references/inspiration.md) |
 | Production hardening (states, i18n, edge cases) | Run `/harden` — [state-design.md](references/state-design.md) |
 | Cut noise / simplify an over-built surface | Run `/distill` |
+| Amplify personality / "make it bolder" | Run `/bolder` — [craft-intent.md](references/craft-intent.md) |
+| Tone down / "quieter", "more restrained" | Run `/quieter` — [craft-intent.md](references/craft-intent.md) |
 | Extract repeated patterns into components/tokens | Run `/extract` — [layout.md](references/layout.md), [typography.md](references/typography.md), [color.md](references/color.md) |
 | Purposeful micro-interactions | Run `/delight` — [motion.md](references/motion.md) |
 | Animation performance | [motion.md](references/motion.md) — Rendering Performance section |
@@ -140,6 +141,10 @@ Style choices (brief): **Minimal Clean** (whitespace-heavy, monochrome + one acc
 ### Step 3: Apply Decisions
 
 The project's own code becomes the source of truth — no external config file. **Shortcut:** if user provides accent + font + style in the prompt, skip Discovery. See style-to-CSS mapping in [layout.md](references/layout.md).
+
+### Craft Read (full surfaces)
+
+When building a complete surface (dashboard, landing, auth, settings shell, portfolio page) — including `/craft` — output the **Craft Read** from [craft-intent.md](references/craft-intent.md) before writing code. Pick **DESIGN_VARIANCE** and a **signature bet** in that line. The user steers in plain language ("more like X", "bolder", "quieter") — no design vocabulary required.
 
 ---
 
@@ -277,6 +282,7 @@ Tiered by signal. Tier 1 is required reading before writing any UI; lower tiers 
 | Reference | When to Read |
 |-----------|--------------|
 | [brief.md](references/brief.md) | Durable design brief at `.ui-craft/brief.md` — read first, anchors every decision. Run `/brief` if absent. |
+| [craft-intent.md](references/craft-intent.md) | Craft Read, DESIGN_VARIANCE, signature bets, product + marketing build patterns. **Load before `/craft` or any full-surface build.** |
 | [tokens.md](references/tokens.md) | 3-layer token spine (primitive → semantic → component). Both modes intentional. Run `/tokens` to audit or establish. |
 | [inspiration.md](references/inspiration.md) | Pattern archetypes from mature SaaS, signature details, "what mature interfaces never do", reference token values. **Read first** — highest signal in the skill. |
 | [accessibility.md](references/accessibility.md) | WCAG, keyboard, focus, forms, ARIA, checklist. **Required before forms or interactive components.** |
