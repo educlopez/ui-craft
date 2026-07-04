@@ -1,96 +1,109 @@
 # Output Quality Benchmark — Prompt Set
 
-**Priority:** Production app prompts (P1–P3) are the quality bar for this initiative.  
-See [POSITIONING.md](../POSITIONING.md).
+**Dual objectives:** [POSITIONING.md](../POSITIONING.md) — run **Track A and Track B** prompts; both are quality-bar, not optional.
 
-Use the same harness, model, and project context for each run. Capture: full UI output, agent prose (first 3 messages), and subjective scores.
-
-**Ideal reviewer:** developer without formal design training — "would I demo this to my team?"
+Use the same harness, model, and project context for each run.
 
 ## Scoring rubric (1–5 each)
 
 | Criterion | 1 | 5 |
 |-----------|---|---|
-| **First-impression pride** | Embarrassed to demo | Proud to show in a meeting |
-| **Feels current (2024–26 product)** | 2022 card-grid admin template | Could pass for a shipped SaaS |
-| **Brief fit** | Ignores "like Notion/Linear" | Nails the reference without copying slop |
+| **First-impression pride** | Embarrassed to show | Proud to publish / demo |
+| **Feels current** | Generic AI template | Shipped-product quality |
+| **Brief fit** | Ignores vibe references | Nails "like Linear" / "editorial portfolio" |
 | **Technical correctness** | Broken a11y / states | Production-plausible |
-| **Non-designer steerability** | Needed design vocabulary | "Make it bolder" would work |
+| **Craft Read present** | Jumps to code | Declares thesis user can steer |
 
 ---
 
-## Primary prompts (production — run these first)
+## Track A — Production apps
 
-### P1 — Ops dashboard (core territory)
+### A1 — Ops dashboard
 ```
 Build an admin dashboard for a B2B tool that tracks overdue invoices and cash collected.
 Include: sidebar nav, 3–4 KPI cards (one primary), a chart, and a data table with filters.
-Vibe: modern SaaS, like Linear or Attio — professional, not flashy. Dark mode optional.
+Vibe: modern SaaS, like Linear or Attio — professional, not flashy.
 ```
 
-### P2 — Settings + profile (boring surface that must feel designed)
+### A2 — Settings
 ```
 Build a settings page for a team collaboration app: profile, notifications, billing teaser,
-and danger zone. Sidebar settings nav + content panels. Should feel as polished as Notion settings.
+and danger zone. Should feel as polished as Notion settings.
 ```
 
-### P3 — Onboarding + empty states (non-designer first impression)
+### A3 — Onboarding + empty states
 ```
 Build the first-run experience for a project management app: empty project list,
-onboarding checklist (3 steps), and one empty state with a clear CTA.
-No lorem ipsum — realistic copy.
+onboarding checklist (3 steps), and one empty state with a clear CTA. Realistic copy.
 ```
 
 ---
 
-## Secondary prompts (iteration + comparison)
+## Track B — Marketing surfaces (creative)
 
-### P4 — Steer without design vocabulary
+### B1 — Dev tool landing
 ```
-The dashboard works but feels boring and generic. More personality — still professional,
-something I'd be proud to demo. Not a marketing site.
-```
-
-### P5 — Reference steering (non-designer language)
-```
-Make it feel more like Stripe Dashboard — clean, confident numbers, subtle depth.
-Keep it a production app, not a landing page.
+Build a landing page for "Relay" — CI observability for platform teams.
+Vibe: Linear-like, minimal, dark mode. Product-forward hero with real UI screenshot.
+One conversion: start free trial. Section variety — no identical 3-col card grids.
 ```
 
-### P6 — Landing (out of scope for quality bar — optional)
+### B2 — Designer portfolio
 ```
-Build a landing page for a developer tool, Linear-like. 
-Note: ui-craft supports this but production apps are the north star.
+Build a portfolio homepage for a motion designer, Mika Tanaka.
+Vibe: experimental but professional — kinetic display type, scroll reveals, editorial grid.
+Not generic dark mesh gradient hero.
+```
+
+### B3 — Pre-launch waitlist
+```
+Build a waitlist landing for an AI writing tool aimed at founders.
+Message-forward composition, email capture, social proof strip. Premium but not beige+craft cliché.
+```
+
+---
+
+## Cross-track — Iteration
+
+### I1 — Steer (production)
+```
+The dashboard works but feels boring. More personality — still professional, demo-ready.
+```
+
+### I2 — Steer (marketing)
+```
+The landing is correct but template-y. More creative — asymmetric hero, stronger typography.
+Still anti-slop, no purple gradient mesh.
+```
+
+### I3 — Reference language (non-designer)
+```
+Make the dashboard feel more like Stripe Dashboard — confident numbers, subtle depth.
 ```
 
 ---
 
 ## Systems to compare
 
-- ui-craft (`/craft dashboard` or default build)
-- Taste Skill (note: may refuse dashboard — document behavior)
+- ui-craft (`/craft dashboard`, `/craft landing`)
+- Taste Skill (`design-taste-frontend`)
 - Impeccable (`/impeccable craft`)
 
 ## Output template
 
 ```markdown
-## Run: [system] × [prompt]
+## Run: [system] × [prompt] — Track [A|B]
 
-### Product Read / creative thesis present? (Y/N)
-[paste agent's opening declaration if any]
+### Craft Read present? (Y/N)
+[paste]
 
-### Scores
-| pride | current | fit | tech | steer |
-|-------|---------|-----|------|-------|
+### Scores: pride | current | fit | tech | craft-read
 
 ### Template tells (check any)
-- [ ] Dark gray-950 sidebar
-- [ ] 4 identical metric cards
-- [ ] Uppercase section headers
-- [ ] Purple gradient / glass hero in app shell
-- [ ] Plain spreadsheet table (no row context)
+- [ ] Track A: gray-950 sidebar, 4 identical cards, uppercase headers
+- [ ] Track B: centered symmetric hero, 3-col icon grid, mesh gradient, generic CTA
 
-### Signature detail in app shell? (Y/N — what?)
+### Signature bet? (Y/N — what?)
 
 ### Notes
 ```

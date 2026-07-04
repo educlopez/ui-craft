@@ -1,87 +1,143 @@
-# Product positioning — locked for this initiative
+# Product positioning — dual objectives
 
-> **Decision (maintainer, 2026-07-04):** ui-craft does **not** pivot to portfolio/landing wow as primary territory. The north star is **production apps** — helping thousands of users **without design knowledge** ship interfaces that look and feel professionally designed.
-
-Landings and portfolios were never a focus; that's fine. Taste Skill owns much of that aesthetic experimentation. Our opportunity is narrower and harder:
-
-**Make everyday product UI feel designed — dashboards, settings, onboarding, tables, forms, empty states — without requiring the user to know what "good design" means.**
+> **Updated (maintainer, 2026-07-04):** Two parallel goals — not either/or.
 
 ---
 
-## The real gap (reframed)
+## Objective A — Production apps (primary audience)
 
-The problem is not "we're too technical." Technical rigor is the moat for production apps (states, a11y, density, data viz, finish-bar).
+Help **thousands of users without design knowledge** ship **production UI** that looks and feels professionally designed:
 
-The problem is: **we teach the agent what to avoid and how to verify, but we under-teach what today's good product UI feels like** — the trends, micro-decisions, and small creative bets that make Linear, Notion, Raycast, or a well-crafted Retool app feel alive instead of "correct admin template."
+- Dashboards, settings, auth, tables, forms, onboarding, empty states
+- Demo-ready on first `/craft` — no design vocabulary required
+- Technical rigor stays (gates, states, a11y, density)
 
-Non-designers don't ask for "DESIGN_VARIANCE 8." They ask for:
-- "Make it look modern"
-- "It works but feels boring"
-- "Like Linear / Notion / Stripe Dashboard"
-- "More personality but still professional"
+**Win:** *"Did you hire a designer?"* on a CRUD admin panel.
 
-We need to translate **creativity + trends** into **production-safe defaults** the agent applies automatically.
+→ Patterns: [production-trends.md](./production-trends.md)
 
 ---
 
-## What "creativity" means for us (not for Taste)
+## Objective B — Marketing surfaces (creative ambition)
 
-| In portfolio/landing skills | In ui-craft (production) |
-|---------------------------|--------------------------|
-| Kinetic hero typography | Confident type scale + one display moment (empty state, onboarding hero) |
-| Scroll hijacking | Purposeful page transitions, optimistic UI, skeleton choreography |
-| Mesh gradients, glass everywhere | Layered neutrals, one accent, tinted surfaces (`accent/5` cards) |
-| Awwwards asymmetry | Sidebar rhythm, metric hierarchy, asymmetric feature rows in settings |
-| Bold font pairing drama | Curated font pairs per theme preset (not Inter-by-default) |
-| Full-bleed visual storytelling | Row context in tables, sparklines, status dots, command palette affordance |
-| "Make it viral" | "Make it trustworthy on first open" |
+**Also** improve landings, portfolios, and brand-facing pages with real creative range — composition, typography drama, motion, trend-aware layouts. We never focused here strongly; competitors (Taste) win hearts on these surfaces. That gap is real and worth closing.
 
-**Creativity in production = editorial decisions in repetitive UI** — not decoration on a hero.
+- Landing pages, portfolios, launch pages, waitlists, case-study sites
+- Higher **DESIGN_VARIANCE** authorized when surface = marketing
+- Learn from Taste: Design Read, palette rotation, asymmetric heroes, kinetic type — without becoming a landing-only skill
+
+**Win:** *"I'd put this on my site / send this to investors."*
+
+→ Patterns: [marketing-trends.md](./marketing-trends.md)
 
 ---
 
-## Audience implication
+## Shared creative layer (both tracks)
 
-| User | Needs from ui-craft |
-|------|---------------------|
-| Developer without design background | Defaults that already look current; no vocabulary required |
-| Founder shipping v1 | Dashboard + auth + settings that don't embarrass in a demo |
-| Team with designers | Gates + tokens + brief; designers steer, agent doesn't regress |
-| Power user | `/bolder`, themes, variants — optional amplitude |
+Both objectives share the same failure mode today: **we correct slop before we declare intent.** Fix once, apply everywhere:
 
-The skill must **feel creative on first `/craft dashboard`** without the user running five commands.
+| Primitive | Production (A) | Marketing (B) |
+|-----------|----------------|-----------------|
+| **Craft Read** | Product thesis — "ops B2B app, Linear-like shell" | Design thesis — "developer portfolio, editorial kinetic type" |
+| **Variance dial** | Low–medium (2–6): hierarchy, signature in shell | Medium–high (6–10): layout breaks, hero bets |
+| **Trend injection** | `production-trends.md` in recipes | `marketing-trends.md` in `recipe-landing.md` |
+| **Signature bet** | Nav, empty state, ⌘K, table hover | Hero motif, scroll moment, type treatment |
+| **Steering** | `/bolder` / `/quieter` | Same — "more experimental" / "more restrained" |
+| **Gates** | Anti-slop + a11y always | Same — wow must not mean purple gradient slop |
 
----
-
-## Competitive stance
-
-| Competitor | We learn from them | We do NOT copy |
-|------------|-------------------|----------------|
-| **Taste** | Design Read, palette rotation, dial inference | Landing-only scope, high-variance marketing layouts |
-| **Impeccable** | `bolder`/`quieter`, init personality, live loop | Brand/marketing-first framing |
-| **shadcn default** | Component quality floor | "Every app looks the same" |
-
-**Win condition:** A user builds a CRUD admin panel and their coworker asks *"did you hire a designer?"* — not *"nice landing page."*
+**Craft Read** = unified name for the one-line thesis before any `/craft` (replaces separate "Product Read" vs "Design Read" split).
 
 ---
 
-## Success metrics (draft)
+## The real gap (both tracks)
 
-1. **First-session pride** — user would demo the UI in a meeting without apologizing
-2. **Template tell rate** — blind reviewers can't spot "AI admin" in <5s (sidebar gray-950, 4 identical cards, uppercase headers)
-3. **Trend freshness** — outputs reference 2024–2026 product patterns (see `production-trends.md`), not 2022 card-grid SaaS
-4. **Still passes gates** — enchantment doesn't regress MCP score / anti-slop on production fixtures
-5. **Non-designer comprehension** — user can steer with "more like Notion" without knowing tokens
+| Track | User says | We under-deliver because… |
+|-------|-----------|---------------------------|
+| **A** | "Dashboard looks like every AI admin" | Trends not wired at build; safe Graphite default |
+| **B** | "Landing feels template-y" | `recipe-landing.md` is structural, not generative; no variance dial; inspiration.md loads at critique not craft |
+| **Both** | "Feels boring" | Signature detail polish-gated; no `/bolder` |
+| **Both** | "Other skills feel more designed" | Competitors lead with creative thesis + trend pools |
 
 ---
 
-## Implementation priority (ordered)
+## What "creativity" means — two flavors, one system
 
-1. **Product Read** — one-line thesis for *product* context (not marketing Design Read)
-2. **Trend layer in recipes** — dashboard/auth/settings inject current patterns at build time
-3. **Theme + font rotation** — generative pools in presets (expand `themes.md` beyond 4 static)
-4. **Signature in product surfaces** — one memorable moment per app shell (nav, empty state, or primary table)
-5. **`/bolder` / `/quieter`** — plain-language amplitude for non-designers
-6. **Benchmark on production prompts** — de-emphasize portfolio in Phase 1
+### Production creativity (Objective A)
 
-Landings stay supported via `recipe-landing.md` but are **not** the quality bar for this initiative.
+Editorial decisions in **repetitive UI** — not decoration:
+
+- Metric hierarchy, row context, soft sidebar, optimistic UI, empty states with wit
+- Feels like Linear / Notion / Stripe Dashboard, not 2022 card-grid admin
+
+### Marketing creativity (Objective B)
+
+Composition and **memorable first impression** — within anti-slop:
+
+- Asymmetric heroes, bento grids, kinetic display type, scroll choreography (reduced-motion safe)
+- Real product shots, proof strips, section variety — per `inspiration.md` archetypes
+- Palette + font rotation so portfolios don't all look identical
+
+**We borrow from Taste on Track B, not by abandoning Track A.**
+
+---
+
+## Audience
+
+| User | Primary track | Also needs |
+|------|---------------|------------|
+| Developer, no design background | **A** — ship the app | **B** — when they need a landing for launch |
+| Founder shipping v1 | **A** + **B** — product + marketing page |
+| Agency / portfolio builder | **B** | **A** — if they build the app too |
+| Team with designers | Both — gates + brief |
+
+---
+
+## Competitive stance (revised)
+
+| Competitor | Learn | Don't copy wholesale |
+|------------|-------|----------------------|
+| **Taste** | Design Read, variance, palette rotation, marketing motion | Landing-only scope; refuse dashboards |
+| **Impeccable** | bolder/quieter, live loop, emotional critique | Brand-first to exclusion of product |
+| **ui-craft moat** | Gates + recipes + both tracks in one system | — |
+
+**Unique position:** The only system that ships **production-grade app UI** and **creative marketing surfaces** with the same quality gates — not two separate skills.
+
+---
+
+## Success metrics
+
+### Track A (production)
+1. First-session pride on `/craft dashboard`
+2. Template tell rate <5s (gray-950 sidebar, 4 identical cards…)
+3. Passes MCP / anti-slop on dashboard fixtures
+
+### Track B (marketing)
+1. Landing/portfolio blind review: "would publish" not "would tweak"
+2. Section variety — no two adjacent blocks same structure
+3. Hero has one screenshot-worthy bet; passes anti-slop (no mesh-gradient default)
+
+### Shared
+4. Craft Read present in agent output before code
+5. Non-designer steering works ("more like Linear", "more experimental")
+
+---
+
+## Implementation priority
+
+**Shared foundation (do first)**
+1. **Craft Read** — mandatory before any `/craft` (routes to A or B thesis style)
+2. **DESIGN_VARIANCE knob** — gates creative amplitude; default by surface type
+3. **`/bolder` / `/quieter`**
+4. **Signature bet** on every `/craft` — not polish-gated
+
+**Track A**
+5. Wire `production-trends.md` → `recipe-dashboard.md`, auth, settings patterns
+6. Theme + accent rotation for app shells
+
+**Track B**
+7. Wire `marketing-trends.md` → `recipe-landing.md`; strengthen portfolio guidance
+8. Import Taste-inspired generative pools (fonts, palettes, hero archetypes) into build step
+9. Expand `inspiration.md` usage at **craft time**, not only critique
+
+**Measure**
+10. Benchmark both tracks equally — see [benchmarks/PROMPTS.md](./benchmarks/PROMPTS.md)

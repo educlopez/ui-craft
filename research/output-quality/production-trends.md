@@ -1,6 +1,6 @@
 # Production app trends — what to steal (2024–2026)
 
-Reference for skill authors. These are **product UI** patterns observed in mature shipped apps — not marketing-site tricks. Goal: give non-designer users *current* output without asking them to name trends.
+**Track A** in [POSITIONING.md](./POSITIONING.md). For landings/portfolios see [marketing-trends.md](./marketing-trends.md).
 
 **Usage:** Load during `/craft dashboard`, default Build mode for app shells, and `recipe-dashboard.md` updates. Each trend includes a **production-safe** implementation note and **anti-slop guard**.
 

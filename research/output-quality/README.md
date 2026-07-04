@@ -2,8 +2,8 @@
 
 > **Branch:** `cursor/output-quality-research-c607`  
 > **Status:** Phase 0 — competitive investigation (not implementation)  
-> **North star:** [POSITIONING.md](./POSITIONING.md) — **production apps** for users without design knowledge  
-> **Trend reference:** [production-trends.md](./production-trends.md)
+> **North star:** [POSITIONING.md](./POSITIONING.md) — **dual objectives:** production apps (A) + creative landings/portfolios (B)  
+> **Trend refs:** [production-trends.md](./production-trends.md) · [marketing-trends.md](./marketing-trends.md)
 
 ---
 
@@ -11,11 +11,16 @@
 
 ui-craft is stronger as a **design engineering system** (gates, heuristics, recipes, MCP score, finish-bar). Taste and Impeccable are stronger as **creative direction systems** — they tell the agent *what world to build* before they tell it *what not to do*.
 
-**Product decision:** We are **not** optimizing for portfolio/landing wow. We optimize for **production apps** (dashboard, settings, auth, tables, onboarding) that make non-designers proud to demo.
+**Product decision (dual objectives):**
 
-The gap is not "we lack rules." We under-teach **current product trends and editorial creativity** in repetitive UI — while over-indexing on audit tables and anti-slop correction.
+- **A — Production apps:** dashboards, settings, auth — non-designers proud to demo (primary audience).
+- **B — Marketing surfaces:** landings, portfolios, launches — creative, trend-aware, screenshot-worthy (also a goal; we under-invested here).
 
-**Reframed hypothesis:** Users fall in love when (1) the **first dashboard/settings screen** already looks like a 2025 product they'd pay for, (2) the agent declares a **Product Read** they can steer ("more like Notion"), (3) one **signature detail** ships in the shell — not only after `/polish` at CRAFT 8+, and (4) quality still passes gates without slop.
+Both share **Craft Read**, variance dial, signature bets, and gates. We borrow generative direction from Taste on Track B without becoming landing-only.
+
+The gap: we under-teach **trends and creative intent** on both tracks — while over-indexing on audit tables.
+
+**Reframed hypothesis:** Users fall in love when (1) output matches surface type — **app feels like a 2025 product**, **landing feels publishable**, (2) **Craft Read** lets them steer in plain language, (3) a **signature bet** ships on first `/craft`, not only at polish, (4) gates still pass.
 
 ---
 
@@ -131,13 +136,13 @@ ui-craft's Discovery is equivalent in *information gathered* but equivalent in *
 
 Hypotheses to prototype:
 
-1. **Product Read** — mandatory one-liner before `/craft` (product context, not marketing Design Read). See POSITIONING.md.
-2. **Wire [production-trends.md](./production-trends.md) into recipes** — dashboard/auth/settings reference at build time.
-3. **PRODUCT_SIGNATURE dial** — one memorable bet in app shell (empty state, nav, command palette) on every `/craft`, not polish-gated.
-4. **Theme + accent rotation** — expand presets; agent picks and declares axis in Product Read.
-5. **`/bolder` and `/quieter`** — non-designer steering ("more personality" / "more restrained").
-6. **Output contract** — after build: Product Read recap + what trend was applied; tables only for `/critique` `/audit`.
-7. ~~High-variance marketing layouts~~ — out of scope for default; landing recipe stays, not the quality bar.
+1. **Craft Read** — mandatory one-liner before `/craft` (product OR marketing thesis).
+2. **DESIGN_VARIANCE knob** — low default for apps, higher authorized for landings/portfolios.
+3. Wire **[production-trends.md](./production-trends.md)** + **[marketing-trends.md](./marketing-trends.md)** into recipes.
+4. **Signature bet** on every `/craft` — shell (A) or hero (B).
+5. **`/bolder` / `/quieter`** — plain-language amplitude.
+6. **Output contract** — Craft Read recap first; tables for audit commands only.
+7. **Track B uplift** — Taste-inspired pools (palette, fonts, hero archetypes) at craft time.
 
 ### Phase 3 — Experience loop (bigger lift)
 
@@ -165,7 +170,7 @@ Hypotheses to prototype:
 
 ## Open questions (remaining)
 
-1. ~~**Positioning**~~ — **Resolved:** production apps. See [POSITIONING.md](./POSITIONING.md).
+1. ~~**Positioning**~~ — **Resolved:** dual objectives A + B. See [POSITIONING.md](./POSITIONING.md).
 2. **Risk budget:** How bold can default dashboard be (accent tint cards, command palette) before non-designers call it "too much"?
 3. **Live mode:** Invest in native live loop, or Playwright MCP + screenshot for iteration?
 4. **Trend refresh cadence:** Quarterly `production-trends.md` update vs embedded in VERSIONS?
@@ -191,4 +196,4 @@ Hypotheses to prototype:
 
 1. Review this doc with maintainers — validate positioning and risk budget.
 2. If approved: Phase 1 benchmark script + fixture prompts in `research/output-quality/benchmarks/`.
-3. First implementation slice (suggested): **Product Read + wire `production-trends.md` into `recipe-dashboard.md` + one PRODUCT_SIGNATURE on build** — smallest diff, highest impact for non-designers.
+3. First implementation slice: **Craft Read + DESIGN_VARIANCE + wire both trend docs into recipes** — dashboard AND landing.
