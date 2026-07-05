@@ -74,6 +74,87 @@ test("scan() on clean fixture returns empty findings and summary.total === 0", a
 });
 
 // ---------------------------------------------------------------------------
+// craft-intent rules — copy/or-divider-caps + auth/brand-flood-panel
+// ---------------------------------------------------------------------------
+test("copy/or-divider-caps fires on <span>OR</span>, skips <option>OR</option>", async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "detect-ordivider-"));
+  try {
+    fs.writeFileSync(
+      path.join(dir, "auth.tsx"),
+      `export function Divider() {\n  return <span className="text-xs">OR</span>;\n}\n`,
+    );
+    fs.writeFileSync(
+      path.join(dir, "states.tsx"),
+      `export function States() {\n  return <select><option value="OR">OR</option></select>;\n}\n`,
+    );
+    const result = await scan(dir);
+    const hits = result.findings.filter((f) => f.rule === "copy/or-divider-caps");
+    assert.equal(hits.length, 1, "exactly one finding (auth.tsx), Oregon <option> skipped");
+    assert.ok(hits[0].file.endsWith("auth.tsx"));
+    assert.equal(hits[0].severity, "major");
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("auth/brand-flood-panel fires on saturated full-height panel next to password input", async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "detect-brandflood-"));
+  try {
+    fs.writeFileSync(
+      path.join(dir, "signin.tsx"),
+      [
+        `export function SignIn() {`,
+        `  return (`,
+        `    <div className="flex">`,
+        `      <aside className="min-h-screen w-1/2 bg-indigo-600" />`,
+        `      <form><input type="password" autoComplete="current-password" /></form>`,
+        `    </div>`,
+        `  );`,
+        `}`,
+        ``,
+      ].join("\n"),
+    );
+    // Same flood panel but NO password input → not an auth screen, must not fire.
+    fs.writeFileSync(
+      path.join(dir, "marketing.tsx"),
+      `export function Hero() {\n  return <div className="min-h-screen bg-indigo-600" />;\n}\n`,
+    );
+    const result = await scan(dir);
+    const hits = result.findings.filter((f) => f.rule === "auth/brand-flood-panel");
+    assert.equal(hits.length, 1, "fires only on the auth file");
+    assert.ok(hits[0].file.endsWith("signin.tsx"));
+    assert.equal(hits[0].severity, "major");
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("auth/brand-flood-panel does NOT fire on tinted neutral auth panel", async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "detect-brandclean-"));
+  try {
+    fs.writeFileSync(
+      path.join(dir, "signin.tsx"),
+      [
+        `export function SignIn() {`,
+        `  return (`,
+        `    <div className="flex">`,
+        `      <aside className="min-h-screen w-1/2 bg-neutral-100" />`,
+        `      <form><input type="password" aria-label="Password" autoComplete="current-password" /></form>`,
+        `    </div>`,
+        `  );`,
+        `}`,
+        ``,
+      ].join("\n"),
+    );
+    const result = await scan(dir);
+    const hits = result.findings.filter((f) => f.rule === "auth/brand-flood-panel");
+    assert.equal(hits.length, 0, "tinted neutral panel is the recommended pattern");
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+// ---------------------------------------------------------------------------
 // 2.3 — CLI parity: ui-craft-detect --json output == scan() output (full)
 // ---------------------------------------------------------------------------
 test("CLI --json findings match scan() findings (parity)", async () => {

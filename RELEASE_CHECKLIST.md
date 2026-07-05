@@ -23,6 +23,22 @@ to re-run them manually:
 If either is red, stop — do not proceed to the manual steps below until CI is
 green.
 
+## 1b. Skill-surface releases — quick gates
+
+When the release changes `skills/`, `commands/`, or their mirrors (not just the
+CLI binary), run these locally before tagging — they are cheap and catch the
+two classes of skill-release bug (broken links/manifests and mirror drift):
+
+- [ ] `node scripts/validate.mjs` — manifests, frontmatter, links.
+- [ ] `node scripts/check-mirror-copies.mjs` — canonical ↔ mirror drift.
+- [ ] `node scripts/eval.mjs --baseline` — quality-score fixtures within bands.
+- [ ] **Blind-build spot check (manual, judged):** run at least one Track A and
+      one Track B prompt from `evals/craft-quality/PROMPTS.md` in a fresh agent
+      session with the release build installed. Confirm the Craft Read appears
+      before code and exactly one signature bet is built in the first pass.
+      This is the only gate that exercises what the skill actually *produces* —
+      the scripts above cannot.
+
 ## 2. Manual — NOT CI-automatable
 
 > [!warning]

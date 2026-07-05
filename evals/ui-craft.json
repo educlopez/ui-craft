@@ -102,5 +102,17 @@
   {
     "query": "add a /api/export route that dumps the dashboard data to CSV. backend only, the UI button already exists",
     "should_trigger": false
+  },
+  {
+    "query": "this landing page works but looks like every AI-generated site — too safe, no personality. make it bolder without making it tacky. app/page.tsx",
+    "should_trigger": true
+  },
+  {
+    "query": "the marketing site is too loud — gradients everywhere, everything animated, three competing CTAs. tone it down so it feels premium and calm",
+    "should_trigger": true
+  },
+  {
+    "query": "build a sign-in page for our fintech app — google + email auth, needs to feel trustworthy, not like a template. react + tailwind",
+    "should_trigger": true
   }
 ]

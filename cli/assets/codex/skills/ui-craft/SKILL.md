@@ -173,6 +173,8 @@ Before shipping any UI, ask: "If someone said AI made this, would they believe i
 - Soft blurry gradient blobs/orbs
 - Generic CTAs ("Learn more", "Click here") — be specific
 - Walls of text — no landing section > 2-3 sentences
+- "OR" divider in caps between auth options — lowercase it: "or with email"
+- Full-bleed saturated brand panel beside a sign-in form — tinted neutral surface with one proof asset ([recipe-auth.md](references/recipe-auth.md))
 
 **Minor** (polish that separates good from great — full list in [review.md](references/review.md) Polish Pass): no `tabular-nums` on data, missing `text-wrap: balance`, straight quotes, no `&nbsp;` in brand names, testimonial star ratings, hero metric without adjacent context.
 

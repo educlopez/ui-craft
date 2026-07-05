@@ -75,7 +75,7 @@ Located in `evals/quality/fixtures/`:
 
 | Category | Files | Expected score |
 |---|---|---|
-| `slop/` | ~4 files with intentional violations | ≤ 70 |
+| `slop/` | ~5 files with intentional violations (incl. `auth-brand-flood.tsx`) | ≤ 70 |
 | `designer/` | ~5 files with clean, well-structured patterns (incl. `product-shell.tsx`) | ≥ 80 |
 
 **Craft-quality prompts** (`craft-quality/PROMPTS.md`): manual blind-build regression for Craft Read, variance, and signature bets — run by a human or local auditor agent, not CI.

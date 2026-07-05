@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// ui-craft anti-slop detector v0.6.0
+// ui-craft anti-slop detector
 // Scans CSS/JSX/TSX/Vue/Svelte/etc for common AI-generated UI anti-patterns.
 // Zero dependencies. Node 18+. Rules mirror skills/ui-craft/SKILL.md "Anti-Slop Test".
 //
@@ -17,7 +17,7 @@ import path from "node:path";
 import readline from "node:readline";
 import { pathToFileURL } from "node:url";
 
-const VERSION = "0.9.0";
+const VERSION = "0.10.0";
 
 const SCAN_EXTENSIONS = new Set([
   ".css", ".scss", ".sass",
@@ -993,6 +993,49 @@ export const rules = [
         return { snippet: tag.slice(0, 100) };
       }
       return false;
+    },
+  },
+  {
+    id: "copy/or-divider-caps",
+    severity: "major",
+    description: '"OR" divider shouting in caps',
+    fix: 'Lowercase the divider — "or with email", "or continue with" — caps "OR" between auth options is the single most recognizable AI-generated form tell. See references/recipe-auth.md.',
+    scope: "line",
+    match(line) {
+      // <option value="OR"> is Oregon; <abbr>OR</abbr> is legit markup.
+      if (/<option\b|<abbr\b/i.test(line)) return false;
+      // Bare uppercase OR as the only text content of an element:
+      // <span>OR</span>, <div ...> OR </div>, >— OR —<
+      const m = line.match(/>(\s*[—–-]*\s*)OR(\s*[—–-]*\s*)</);
+      if (m) return { snippet: m[0].slice(0, 60) };
+      return false;
+    },
+  },
+  {
+    id: "auth/brand-flood-panel",
+    severity: "major",
+    scope: "file",
+    description: "full-bleed saturated brand panel on auth screen",
+    fix: "A wall of pure accent color next to a sign-in form is the loudest AI tell on auth screens and blows the entire accent budget on decoration. Use a tinted neutral surface (gray-1 of the theme) with ONE proof asset. See references/recipe-auth.md.",
+    matchFile(content, lines) {
+      // Only fire on auth-ish files: a password input or auth autocomplete.
+      const isAuth =
+        /type\s*=\s*["']password["']/.test(content) ||
+        /autocomplete\s*=\s*["'](?:current-password|new-password)["']/i.test(content);
+      if (!isAuth) return [];
+
+      // Full-height container painted with a saturated accent (Tailwind 500-700
+      // range or a gradient) — the "brand flood" panel.
+      const flood =
+        /\b(?:min-h-screen|h-screen|h-full|inset-0)\b[^"']*\bbg-(?:indigo|purple|violet|blue|fuchsia|rose|pink|emerald|teal|cyan|sky|orange|red)-[5-7]00\b|\bbg-(?:indigo|purple|violet|blue|fuchsia|rose|pink|emerald|teal|cyan|sky|orange|red)-[5-7]00\b[^"']*\b(?:min-h-screen|h-screen|h-full|inset-0)\b|\b(?:min-h-screen|h-screen|h-full)\b[^"']*\bbg-gradient-to-/;
+
+      for (let i = 0; i < lines.length; i++) {
+        const m = lines[i].match(flood);
+        if (m) {
+          return [{ line: i + 1, snippet: m[0].slice(0, 100) }];
+        }
+      }
+      return [];
     },
   },
 ];

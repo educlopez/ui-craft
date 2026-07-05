@@ -5,7 +5,7 @@
  * source on every Node version without import attributes. Edit here; this is the source of truth.
  */
 export default {
-  "_note": "Hand-derived from references/recipe-dashboard.md, recipe-landing.md, recipe-auth.md (## Acceptance bar sections) and references/finish-bar.md (10 passes). Regen-on-recipe-edit: update manually when recipe files change (v1 — no generator). Version: ui-craft v0.29.0.",
+  "_note": "Hand-derived from references/recipe-dashboard.md, recipe-landing.md, recipe-auth.md (## Acceptance bar sections), references/craft-intent.md, and references/finish-bar.md (10 passes). Regen-on-recipe-edit: update manually when recipe files change (v1 — no generator). Version: ui-craft v0.35.0.",
   "dashboard": [
     {
       "id": "dash-01",
@@ -56,6 +56,11 @@ export default {
       "id": "dash-10",
       "description": "prefers-reduced-motion honored; all transitions at most 400ms",
       "category": "motion"
+    },
+    {
+      "id": "dash-11",
+      "description": "Craft Read declared before code; exactly one signature bet from the product list, built in the first pass (not deferred to polish)",
+      "category": "craft"
     }
   ],
   "landing": [
@@ -108,6 +113,11 @@ export default {
       "id": "land-10",
       "description": "prefers-reduced-motion honored; entrances at most 400ms; no scroll-jacking",
       "category": "motion"
+    },
+    {
+      "id": "land-11",
+      "description": "Craft Read declared; DESIGN_VARIANCE and signature bet match the built page; no two adjacent sections share the same layout",
+      "category": "craft"
     }
   ],
   "auth": [
@@ -150,6 +160,11 @@ export default {
       "id": "auth-08",
       "description": "Works at 320px wide: panel drops, form survives alone",
       "category": "responsive"
+    },
+    {
+      "id": "auth-09",
+      "description": "Craft Read declared; variance 4 unless brief overrides; exactly one auth signature bet (panel proof asset, trust footer, or domain welcome) built in the first pass",
+      "category": "craft"
     }
   ],
   "generic": [

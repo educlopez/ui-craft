@@ -40,6 +40,18 @@ Any "no": flag as Major. Do not block ship. Append a recommendation: "Run `/toke
 
 ---
 
+## Step 3b — Craft-intent check (full surfaces only)
+
+Applies only when the target is a complete surface (dashboard, landing, auth, settings shell, portfolio) — skip for single components.
+
+1. **Signature bet present?** Scan for exactly one memorable decision from `references/craft-intent.md` §3 (product / auth / marketing lists). Zero → **Major** ("no signature — surface is competent but anonymous; run `/bolder` or `/polish`"). Two or more competing → **Major** ("signature bets stack — keep the strongest, cut the rest").
+2. **Variance matches surface?** Layout risk visibly inconsistent with the surface's DESIGN_VARIANCE default (e.g. experimental asymmetry on an auth form, or a landing that is one centered symmetric column) → **Major**, unless the brief or spec records the deviation.
+3. **Craft Read recorded?** If a `.ui-craft/spec.md` section or session declared a Craft Read, verify the built surface matches it (theme, variance, signature). Mismatch → **Major** with the specific delta.
+
+These findings are Major, never Critical — they gate NOT READY, not BLOCKED.
+
+---
+
 ## Step 4 — Finish bar
 
 Load `references/finish-bar.md`. Run all 10 passes in document order. Do not reorder.

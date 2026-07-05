@@ -48,7 +48,7 @@ If the UI is technically correct but forgettable, use typography as the weapon. 
 **Knob gating for amplification (CRAFT_LEVEL):**
 - `≤ 4` — skip. Boldness is a craft layer, not a baseline.
 - `5-7` — apply the type amplification only. No signature motif unless asked.
-- `8+` — type amplification + one signature detail (owned by `/polish`).
+- `8+` — type amplification + one signature detail (chosen at `/craft` first pass per `references/craft-intent.md`; `/polish` and `/bolder` strengthen it — never stack a second).
 
 **Pre-check:** if an accent is already overused or hierarchy is already loud, you don't have a tameness problem — you have a noise problem. Route to `/distill` (cut) or `/colorize` (reduce accents) instead.
 

@@ -12,9 +12,13 @@ Closes the gap between "technically correct" builds and surfaces that feel inten
 
 **Themes:** `themes.md` gains an accent rotation table (indigo, teal, rose, amber, forest) for builds without brand direction.
 
-**Eval:** `evals/quality/fixtures/designer/product-shell.tsx` — production-shell patterns in the designer corpus. `evals/craft-quality/PROMPTS.md` — manual blind-build prompts for local auditor regression (Track A product + Track B marketing).
+**Eval:** `evals/quality/fixtures/designer/product-shell.tsx` — production-shell patterns in the designer corpus. `evals/quality/fixtures/slop/auth-brand-flood.tsx` — the recognizable AI auth screen. `evals/craft-quality/PROMPTS.md` — manual blind-build prompts for local auditor regression (Track A product + Track B marketing).
 
 **CI:** `scripts/check-mirror-copies.mjs` — drift guard for `skills/` + `commands/` ↔ harness mirrors (runs in `validate.yml` alongside agent copy guard).
+
+**End-to-end alignment (same release):** `/polish` and `/typeset` now verify/strengthen the signature built at `/craft` first pass instead of owning it; `/sddesign` Gate 4 declares the Craft Read as part of the build contract; `/finalize` gains Step 3b — a craft-intent check (signature present, variance matches surface, Craft Read honored) issuing Major findings on full surfaces. MCP `acceptance_bar` adds `dash-11` / `land-11` / `auth-09` craft items.
+
+**Detector (`ui-craft-detect` v0.10.0):** two new majors — `copy/or-divider-caps` (caps "OR" between auth options; skips `<option>`/`<abbr>`) and `auth/brand-flood-panel` (full-height saturated accent panel in a file with a password input). Both mirrored in the SKILL.md Anti-Slop list.
 
 ## v1.0.6 (2026-07-03) — fix: TUI installs never saved state, breaking `update`
 
