@@ -10,6 +10,9 @@ import os from "node:os";
 import fs from "node:fs";
 import {
   scan,
+  scanUrl,
+  buildClaudeHookSettings,
+  buildCursorHookSettings,
   parseUnifiedDiff,
   filterFindingsByScope,
   resolveBaseRef,
@@ -1653,4 +1656,211 @@ test("integration: init-hook --github-action still works unchanged post-Slice-D 
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
+});
+
+// ---------------------------------------------------------------------------
+// Agent edit-time hooks — manifest builders (pure) + CLI integration
+// ---------------------------------------------------------------------------
+test("buildClaudeHookSettings installs a PostToolUse entry and is idempotent", () => {
+  const first = buildClaudeHookSettings(null);
+  assert.equal(first.changed, true);
+  const entries = first.next.hooks.PostToolUse;
+  assert.equal(entries.length, 1);
+  assert.equal(entries[0].matcher, "Edit|Write|MultiEdit");
+  assert.match(entries[0].hooks[0].command, /ui-craft-detect hook-run/);
+
+  const second = buildClaudeHookSettings(first.next);
+  assert.equal(second.changed, false, "re-install must be a no-op");
+  assert.equal(second.next.hooks.PostToolUse.length, 1, "must not duplicate the entry");
+});
+
+test("buildClaudeHookSettings preserves unrelated settings and hook entries", () => {
+  const current = {
+    permissions: { allow: ["Bash(npm run *)"] },
+    hooks: {
+      PostToolUse: [{ matcher: "Bash", hooks: [{ type: "command", command: "echo done" }] }],
+      Stop: [{ matcher: "", hooks: [{ type: "command", command: "notify" }] }],
+    },
+  };
+  const { next, changed } = buildClaudeHookSettings(current);
+  assert.equal(changed, true);
+  assert.deepEqual(next.permissions, current.permissions, "unrelated top-level keys must survive");
+  assert.equal(next.hooks.PostToolUse.length, 2, "existing PostToolUse entries must survive");
+  assert.equal(next.hooks.PostToolUse[0].hooks[0].command, "echo done");
+  assert.equal(next.hooks.Stop.length, 1, "other hook events must survive");
+
+  const removed = buildClaudeHookSettings(next, { remove: true });
+  assert.equal(removed.changed, true);
+  assert.equal(removed.next.hooks.PostToolUse.length, 1, "remove must only strip the detector entry");
+  assert.equal(removed.next.hooks.PostToolUse[0].hooks[0].command, "echo done");
+});
+
+test("buildCursorHookSettings installs an afterFileEdit entry, idempotent, removable", () => {
+  const first = buildCursorHookSettings(null);
+  assert.equal(first.changed, true);
+  assert.equal(first.next.version, 1, "must emit schema version 1");
+  assert.match(first.next.hooks.afterFileEdit[0].command, /ui-craft-detect hook-run/);
+
+  const second = buildCursorHookSettings(first.next);
+  assert.equal(second.changed, false);
+
+  const withOther = buildCursorHookSettings({
+    version: 1,
+    hooks: { afterFileEdit: [{ command: "./hooks/format.sh" }] },
+  });
+  assert.equal(withOther.next.hooks.afterFileEdit.length, 2, "existing entries must survive");
+
+  const removed = buildCursorHookSettings(withOther.next, { remove: true });
+  assert.equal(removed.next.hooks.afterFileEdit.length, 1);
+  assert.equal(removed.next.hooks.afterFileEdit[0].command, "./hooks/format.sh");
+});
+
+function runDetectCli(args, opts = {}) {
+  try {
+    const stdout = execFileSync(process.execPath, [DETECT_MJS, ...args], {
+      encoding: "utf8",
+      ...opts,
+    });
+    return { stdout, stderr: "", exitCode: 0 };
+  } catch (err) {
+    return { stdout: err.stdout ?? "", stderr: err.stderr ?? "", exitCode: err.status };
+  }
+}
+
+test("integration: hooks install writes both manifests; uninstall removes them; status reports", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "ui-craft-detect-hooks-"));
+  try {
+    const install = runDetectCli(["hooks", "install"], { cwd: dir });
+    assert.equal(install.exitCode, 0, install.stderr);
+
+    const claude = JSON.parse(fs.readFileSync(path.join(dir, ".claude", "settings.json"), "utf8"));
+    assert.match(claude.hooks.PostToolUse[0].hooks[0].command, /ui-craft-detect hook-run/);
+    const cursor = JSON.parse(fs.readFileSync(path.join(dir, ".cursor", "hooks.json"), "utf8"));
+    assert.equal(cursor.version, 1);
+    assert.match(cursor.hooks.afterFileEdit[0].command, /ui-craft-detect hook-run/);
+
+    const again = runDetectCli(["hooks", "install"], { cwd: dir });
+    assert.match(again.stdout, /already installed/, "second install must be a no-op");
+
+    const status = runDetectCli(["hooks", "status"], { cwd: dir });
+    assert.match(status.stdout, /claude\s+installed/);
+    assert.match(status.stdout, /cursor\s+installed/);
+
+    const uninstall = runDetectCli(["hooks", "uninstall"], { cwd: dir });
+    assert.equal(uninstall.exitCode, 0);
+    const statusAfter = runDetectCli(["hooks", "status"], { cwd: dir });
+    assert.match(statusAfter.stdout, /claude\s+not installed/);
+    assert.match(statusAfter.stdout, /cursor\s+not installed/);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("integration: hooks install --dry-run prints manifests without writing", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "ui-craft-detect-hooks-"));
+  try {
+    const { stdout, exitCode } = runDetectCli(["hooks", "install", "--dry-run"], { cwd: dir });
+    assert.equal(exitCode, 0);
+    assert.match(stdout, /\.claude\/settings\.json/);
+    assert.match(stdout, /\.cursor\/hooks\.json/);
+    assert.ok(!fs.existsSync(path.join(dir, ".claude")), "dry-run must not write .claude/");
+    assert.ok(!fs.existsSync(path.join(dir, ".cursor")), "dry-run must not write .cursor/");
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("integration: hook-run exits 2 with findings summary for a slop edit (Claude Code payload)", () => {
+  const payload = JSON.stringify({ tool_input: { file_path: SLOP_FIXTURE } });
+  const result = runDetectCli(["hook-run"], { input: payload });
+  assert.equal(result.exitCode, 2, "critical/major findings must exit 2 (agent feedback)");
+  assert.match(result.stderr, /design finding/);
+  assert.match(result.stderr, /L\d+ \[(critical|major)\]/);
+});
+
+test("integration: hook-run exits 0 silently for a clean edit (Cursor payload)", () => {
+  const payload = JSON.stringify({ file_path: CLEAN_FIXTURE });
+  const result = runDetectCli(["hook-run"], { input: payload });
+  assert.equal(result.exitCode, 0, result.stderr);
+});
+
+test("integration: hook-run fails open on non-scannable files and malformed stdin", () => {
+  const mdPayload = JSON.stringify({ tool_input: { file_path: "/tmp/some-notes.md" } });
+  assert.equal(runDetectCli(["hook-run"], { input: mdPayload }).exitCode, 0);
+  assert.equal(runDetectCli(["hook-run"], { input: "not json{{" }).exitCode, 0);
+  assert.equal(runDetectCli(["hook-run"], { input: "" }).exitCode, 0);
+});
+
+// ---------------------------------------------------------------------------
+// URL scanning — scanUrl() + CLI URL mode (fetch engine; puppeteer not in CI)
+// ---------------------------------------------------------------------------
+const SLOP_HTML = `<!doctype html><html><head><title>t</title></head><body>
+<div class="bg-gradient-to-r from-purple-500 to-cyan-400 transition-all">
+<button>Get Started</button>
+</div></body></html>`;
+
+async function withHtmlServer(html, fn) {
+  const { createServer } = await import("node:http");
+  const server = createServer((req, res) => {
+    res.writeHead(200, { "content-type": "text/html" });
+    res.end(html);
+  });
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const url = `http://127.0.0.1:${server.address().port}/`;
+  try {
+    return await fn(url);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+  }
+}
+
+test("scanUrl() scans live HTML over the fetch engine and reports the URL as file", async () => {
+  await withHtmlServer(SLOP_HTML, async (url) => {
+    const result = await scanUrl(url, { engine: "fetch" });
+    assert.equal(result.engine, "fetch");
+    assert.equal(result.summary.files_scanned, 1);
+    const ruleIds = result.findings.map((f) => f.rule);
+    assert.ok(ruleIds.includes("transition-all"), `expected transition-all in ${ruleIds}`);
+    assert.ok(ruleIds.includes("purple-cyan-gradient"), `expected purple-cyan-gradient in ${ruleIds}`);
+    assert.equal(result.findings[0].file, url, "findings must report the URL as file");
+  });
+});
+
+test("scanUrl() returns a structured error for unreachable URLs (no throw)", async () => {
+  const result = await scanUrl("http://127.0.0.1:9/", { engine: "fetch", timeoutMs: 2000 });
+  assert.ok(result.error, "must set error field");
+  assert.equal(result.findings.length, 0);
+});
+
+// execFileSync would block the parent event loop and starve the in-process
+// HTTP server the child is fetching from — URL CLI tests must spawn async.
+async function runDetectCliAsync(args) {
+  const { spawn } = await import("node:child_process");
+  return new Promise((resolve) => {
+    const child = spawn(process.execPath, [DETECT_MJS, ...args], { stdio: ["ignore", "pipe", "pipe"] });
+    let stdout = "";
+    let stderr = "";
+    child.stdout.on("data", (d) => (stdout += d));
+    child.stderr.on("data", (d) => (stderr += d));
+    child.on("close", (exitCode) => resolve({ stdout, stderr, exitCode }));
+  });
+}
+
+test("integration: CLI URL mode outputs --json with engine field and honors --fail-on", async () => {
+  await withHtmlServer(SLOP_HTML, async (url) => {
+    const failing = await runDetectCliAsync([url, "--json", "--engine", "fetch"]);
+    assert.equal(failing.exitCode, 1, `critical findings must exit 1; stderr: ${failing.stderr}`);
+    const parsed = JSON.parse(failing.stdout);
+    assert.equal(parsed.engine, "fetch");
+    assert.ok(parsed.findings.length >= 2);
+
+    const advisory = await runDetectCliAsync([url, "--json", "--engine", "fetch", "--fail-on", "none"]);
+    assert.equal(advisory.exitCode, 0, "--fail-on none must exit 0");
+  });
+});
+
+test("integration: CLI URL mode rejects file-oriented flags", async () => {
+  const result = runDetectCli(["https://example.com", "--fix"]);
+  assert.equal(result.exitCode, 2);
+  assert.match(result.stderr, /not supported for URL scans/);
 });

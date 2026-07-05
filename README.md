@@ -31,7 +31,7 @@ You don't have to learn any of it to benefit. It grows with you.
 | Layer | You do | You get |
 |-------|--------|---------|
 | **1 · Just install it** | Nothing — ask for UI the way you always do | The agent designs with taste: real hierarchy, system tokens, no AI slop. Same prompt, shippable result. |
-| **2 · Drive it** | Run `/start` to see your options, then a slash command (`/craft`, `/sddesign`, `/finalize`, …) | Focused passes — build a surface, run a scored critique, gate a ship. 24 commands, one lens each. |
+| **2 · Drive it** | Run `/start` to see your options, then a slash command (`/craft`, `/sddesign`, `/finalize`, …) | Focused passes — build a surface, run a scored critique, gate a ship. 25 commands, one lens each. |
 | **3 · Verify it** | Wire the agents / MCP / CLI into review or CI | Independent design + a11y review, a deterministic 0-100 quality score, an anti-slop gate on every commit. |
 
 **Start at Layer 1.** Most people never leave it — that's the point. Layers 2 and 3 are there the day you want them.
@@ -90,7 +90,7 @@ ui-craft install
 
 ### Claude Code plugin — alternative (skill + commands + agents + MCP, no CLI needed)
 
-One command installs the skill, all 24 slash commands, the 2 review agents, and the MCP quality-gate server — auto-wired, no `.mcp.json` editing:
+One command installs the skill, all 25 slash commands, the 2 review agents, and the MCP quality-gate server — auto-wired, no `.mcp.json` editing:
 
 ```
 /plugin marketplace add educlopez/ui-craft
@@ -200,7 +200,7 @@ For playful and brutalist aesthetics (Clay / Gumroad / Duolingo / Arc-playful, N
 
 ## Slash commands
 
-24 commands total — 22 single-lens passes, plus `/sddesign` (the pipeline that chains them) and `/start` (the front door).
+25 commands total — 23 single-lens passes, plus `/sddesign` (the pipeline that chains them) and `/start` (the front door).
 
 **Front door:**
 
@@ -233,6 +233,7 @@ For playful and brutalist aesthetics (Clay / Gumroad / Duolingo / Arc-playful, N
 |---------|------|
 | `/ui-craft:sddesign` | **Full spec-driven pipeline.** brief → tokens → shape → craft → converge → ship. Writes `.ui-craft/spec.md`. Run when starting a net-new surface. |
 | `/ui-craft:craft` | **One-shot surface build.** Outcome recipe pipeline — Craft Read + variance + signature bet → named composition → theme → build order → acceptance bar. Surfaces: `dashboard`, `landing`, `auth`; portfolios use landing recipe at variance 8. |
+| `/ui-craft:redesign` | **Redesign without regression.** Audits the existing surface first, classifies what to preserve (brand, IA/SEO, content, conversion paths), picks refresh/reskin/rebuild scope, then modernizes. |
 | `/ui-craft:shape` | **Wireframe-first.** ASCII layout + content inventory + state list + open questions before any JSX. Run when starting a new screen. |
 | `/ui-craft:animate` | Add / fix motion. Honors `MOTION_INTENSITY` + chosen stack. |
 | `/ui-craft:adapt` | Responsive pass — mobile, tablet, desktop, touch, safe areas. |
@@ -392,7 +393,7 @@ ui-craft/
 │   ├── ui-craft-minimal/          # Variant — Linear/Notion aesthetic
 │   ├── ui-craft-editorial/        # Variant — Medium/Substack aesthetic
 │   └── ui-craft-dense-dashboard/  # Variant — Bloomberg/Retool aesthetic
-├── commands/                      # 24 Claude Code slash commands (source of truth)
+├── commands/                      # 25 Claude Code slash commands (source of truth)
 ├── examples/
 │   ├── animation-storyboard.md   # Multi-stage animation pattern template
 │   └── presets/
@@ -461,6 +462,40 @@ npx ui-craft-detect --scope files --fail-on none --json
 ```
 
 If git is unavailable, the directory isn't a git repository, or the base ref can't be resolved (e.g. shallow clone), the tool falls back to `--scope full` automatically and prints a note on stderr — it never crashes or silently drops findings.
+
+### Live URL scanning
+
+Point the detector at a deployed page instead of source files:
+
+```bash
+npx ui-craft-detect https://your-site.com
+npx ui-craft-detect https://your-site.com --json --fail-on none
+```
+
+Two engines, picked automatically:
+
+- **puppeteer** (optional — `npm install puppeteer`) loads the page in headless Chromium and scans the JS-rendered DOM, so SPA/client-rendered markup is covered.
+- **fetch** (zero-dep fallback) scans the server-rendered HTML as delivered. No JS execution.
+
+Force one with `--engine puppeteer` or `--engine fetch`. Findings report the URL as the file and line numbers within the fetched HTML document. The core detector stays zero-dependency — puppeteer is resolved via dynamic import only when present.
+
+### Agent edit-time hooks — `hooks` subcommand
+
+Pre-commit and CI catch problems after the fact. Agent hooks catch them **while the agent is still working** — the detector runs after every agent file edit and feeds findings straight back into the loop:
+
+```bash
+npx ui-craft-detect hooks install            # both harnesses
+npx ui-craft-detect hooks install --harness claude   # just one
+npx ui-craft-detect hooks status
+npx ui-craft-detect hooks uninstall
+```
+
+| Harness | Manifest | Mechanism |
+|---------|----------|-----------|
+| **Claude Code** | `.claude/settings.json` | `PostToolUse` hook (matcher `Edit\|Write\|MultiEdit`). On critical/major findings the hook exits 2, so the findings summary is fed back to the model as actionable feedback — the agent fixes the slop before finishing. |
+| **Cursor** | `.cursor/hooks.json` | `afterFileEdit` hook (schema version 1). Findings appear in Cursor's Hooks output channel. Committed to the repo, project hooks load for the whole team — including Cloud Agents. |
+
+Install is merge-safe and idempotent: existing manifest entries are always preserved, re-running is a no-op, and `uninstall` removes only the detector's own entries. The hook runner scans just the edited file, stays silent on clean edits and warn-level findings, and fails open on internal errors so a broken hook can never stall an agent.
 
 ### Pre-commit hooks — `init-hook` subcommand
 
@@ -606,7 +641,7 @@ The `ui-craft-mcp` package exposes four deterministic design-quality tools over 
 
 | Tool | What it does |
 |------|-------------|
-| `check_anti_slop` | 33-rule anti-slop scanner via `scan()` from `ui-craft-detect` — in-process, no subprocess |
+| `check_anti_slop` | 37-rule anti-slop scanner via `scan()` from `ui-craft-detect` — in-process, no subprocess |
 | `tokens_lint` | Off-system token detector: raw hex colors, non-scale radius/spacing px, magic z-index |
 | `acceptance_bar` | Acceptance checklist for a UI surface (`dashboard`, `landing`, `auth`, `generic`) — data only, no scoring |
 | `score_ui` | Composite UICraftScore (0-100 + grade + per-dim subscores) via `evals/quality/score.mjs` — all three dimensions in one call |
