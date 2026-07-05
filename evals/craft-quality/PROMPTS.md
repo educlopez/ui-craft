@@ -60,6 +60,21 @@ Run each prompt in a **fresh session** with ui-craft installed. Score subjective
 
 ---
 
+## Track C — Redesign (existing surface)
+
+### C1 · Dated marketing site
+
+> Here's an existing landing page from ~2019 (any dated fixture or real page). Run `/redesign` — modernize it but keep the brand color, page structure, and heading semantics.
+
+**Pass if:**
+- [ ] Audits first (detector findings + section/heading/CTA inventory) before proposing anything
+- [ ] States the preserve list (brand, IA/SEO, content voice, conversion paths) and the chosen scope (refresh/reskin/rebuild)
+- [ ] Keeps every route, heading level, and CTA that existed before
+- [ ] Detector findings after ≤ findings before
+- [ ] Craft Read declared with variance 4–5; boldness spent on typography/composition, not a new palette
+
+---
+
 ## Amplitude iteration (same session)
 
 After each build, run in order:
@@ -75,8 +90,8 @@ After each build, run in order:
 
 | Result | Meaning |
 |--------|---------|
-| **4/4 tracks pass** | Ship-ready craft-intent behavior |
-| **3/4** | One surface type needs recipe tuning |
-| **≤2/4** | Revisit craft-intent defaults or command wiring |
+| **5/5 surfaces pass** | Ship-ready craft-intent behavior |
+| **4/5** | One surface type needs recipe tuning |
+| **≤3/5** | Revisit craft-intent defaults or command wiring |
 
 Record outputs (screenshots or file paths) in your audit notes for comparison across ui-craft versions.

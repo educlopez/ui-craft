@@ -122,5 +122,13 @@
   {
     "query": "our premium cookware landing came out beige and brass like every other AI site — give it a palette with an actual point of view",
     "should_trigger": true
+  },
+  {
+    "query": "our company site is from 2019 and looks it — modernize the design but keep our brand colors, page structure, and SEO intact",
+    "should_trigger": true
+  },
+  {
+    "query": "redesign this dashboard's visual layer — the layout is fine but the styling feels dated and generic",
+    "should_trigger": true
   }
 ]

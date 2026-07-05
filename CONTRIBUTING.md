@@ -17,7 +17,7 @@ ui-craft/
 │   ├── ui-craft-minimal/           # Variant — Linear / Notion aesthetic
 │   ├── ui-craft-editorial/         # Variant — Medium / Substack aesthetic
 │   └── ui-craft-dense-dashboard/   # Variant — Bloomberg / Retool aesthetic
-├── commands/                       # 24 Claude Code slash commands (canonical source)
+├── commands/                       # 25 Claude Code slash commands (canonical source)
 ├── agents/                         # Review agents (design-reviewer, a11y-auditor)
 ├── cli/                            # ui-craft Go installer (embedded assets, TUI, backup/rollback)
 │   └── assets/                     # Per-harness install tree (hand-authored, go:embed)

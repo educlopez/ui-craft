@@ -63,6 +63,7 @@ The rules that make the biggest difference between "AI-generated" and "designed 
 | UX critique, no code changes | Run `/critique` — [review.md](references/review.md) + [inspiration.md](references/inspiration.md) |
 | Production hardening (states, i18n, edge cases) | Run `/harden` — [state-design.md](references/state-design.md) |
 | Cut noise / simplify an over-built surface | Run `/distill` |
+| Redesign / modernize an existing site without losing brand, IA, or SEO | Run `/redesign` — audit first, preserve list, refresh/reskin/rebuild scope |
 | Amplify personality / "make it bolder" | Run `/bolder` — [craft-intent.md](references/craft-intent.md) |
 | Tone down / "quieter", "more restrained" | Run `/quieter` — [craft-intent.md](references/craft-intent.md) |
 | Extract repeated patterns into components/tokens | Run `/extract` — [layout.md](references/layout.md), [typography.md](references/typography.md), [color.md](references/color.md) |
