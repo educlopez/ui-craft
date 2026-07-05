@@ -9,6 +9,7 @@
   "main": "scripts/detect.mjs",
   "files": [
     "scripts/detect.mjs",
+    "scripts/detect/",
     "LICENSE",
     "README.md"
   ],
