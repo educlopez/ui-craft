@@ -49,7 +49,7 @@ server.registerTool(
       'Scans source code for anti-slop violations using the deterministic rules from ui-craft-detect. ' +
       'Accepts either a `code` string (inline source) or a `path` string (file or directory). ' +
       'Returns findings with severity, rule ID, file, line, and message. ' +
-      'These are the 37 deterministic rules only — no taste or aesthetic judgment.',
+      'These are the 38 deterministic rules only — no taste or aesthetic judgment.',
     inputSchema: {
       code: z.string().optional().describe('Inline source code to scan (alternative to path)'),
       path: z.string().optional().describe('File or directory path to scan (alternative to code)'),

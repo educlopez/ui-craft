@@ -84,7 +84,7 @@ test("copy/or-divider-caps fires on <span>OR</span>, skips <option>OR</option>",
   try {
     fs.writeFileSync(
       path.join(dir, "auth.tsx"),
-      `export function Divider() {\n  return <span className="text-xs">OR</span>;\n}\n`,
+      `export function Divider() {\n  return (\n    <form>\n      <input type="password" />\n      <span className="text-xs">OR</span>\n    </form>\n  );\n}\n`,
     );
     fs.writeFileSync(
       path.join(dir, "states.tsx"),
@@ -95,6 +95,21 @@ test("copy/or-divider-caps fires on <span>OR</span>, skips <option>OR</option>",
     assert.equal(hits.length, 1, "exactly one finding (auth.tsx), Oregon <option> skipped");
     assert.ok(hits[0].file.endsWith("auth.tsx"));
     assert.equal(hits[0].severity, "major");
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("copy/or-divider-caps does NOT fire on <span>OR</span> in a non-auth address context", async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "detect-ordivider-address-"));
+  try {
+    fs.writeFileSync(
+      path.join(dir, "address.tsx"),
+      `export function Address() {\n  return <p>Portland, <span>OR</span> 97201</p>;\n}\n`,
+    );
+    const result = await scan(dir);
+    const hits = result.findings.filter((f) => f.rule === "copy/or-divider-caps");
+    assert.equal(hits.length, 0, "Oregon state abbreviation outside any auth context must not fire");
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
@@ -282,6 +297,40 @@ test("copy/section-number-eyebrow fires on zero-padded counters, skips dates", a
     const hits = result.findings.filter((f) => f.rule === "copy/section-number-eyebrow");
     assert.equal(hits.length, 2, "both numbered eyebrows fire; date and count do not");
     assert.equal(hits[0].severity, "major");
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("copy/section-number-eyebrow does NOT fire on hyphenated tokens or table cells", async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "detect-secnum-fp-"));
+  try {
+    fs.writeFileSync(
+      path.join(dir, "table.tsx"),
+      [
+        `export function Invoices() {`,
+        `  return (`,
+        `    <table>`,
+        `      <tbody>`,
+        `        <tr>`,
+        `          <td>03-Jan Invoice</td>`,
+        `          <td>07-Eleven Corp</td>`,
+        `          <td>01 · About</td>`,
+        `        </tr>`,
+        `      </tbody>`,
+        `    </table>`,
+        `  );`,
+        `}`,
+        ``,
+      ].join("\n"),
+    );
+    const result = await scan(dir);
+    const hits = result.findings.filter((f) => f.rule === "copy/section-number-eyebrow");
+    assert.equal(
+      hits.length,
+      0,
+      "hyphenated compound tokens (07-Eleven, 03-Jan) and table cells (even a padded eyebrow) must not fire",
+    );
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }

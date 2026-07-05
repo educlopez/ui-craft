@@ -680,7 +680,7 @@ Where ui-craft is heading. Not commitments with dates — a public list of the d
 **Detector**
 
 - **Computed-style checks for URL scans** — the URL engine currently scans rendered markup; the next layer is computed styles via the browser engine: real contrast ratios (not class-name heuristics), effective tap-target sizes, actual font fallback chains.
-- **Screenshot-diff regression** — capture a surface per commit and flag visual regressions (spacing collapses, overflow, font swaps) in CI, complementing the static rules.
+- **Screenshot-diff regression (exploratory)** — likely as a thin integration over existing visual-regression tooling (Playwright snapshots / Chromatic-style diffs) rather than a bespoke engine.
 - **More harnesses for edit-time hooks** — `hooks install` covers Claude Code and Cursor today; extend to other agents as their hook mechanisms stabilize.
 
 **Skill & pipeline**

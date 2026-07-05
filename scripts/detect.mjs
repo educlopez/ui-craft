@@ -1004,9 +1004,17 @@ export const rules = [
     description: '"OR" divider shouting in caps',
     fix: 'Lowercase the divider — "or with email", "or continue with" — caps "OR" between auth options is the single most recognizable AI-generated form tell. See references/recipe-auth.md.',
     scope: "line",
-    match(line) {
+    match(line, ctx) {
       // <option value="OR"> is Oregon; <abbr>OR</abbr> is legit markup.
       if (/<option\b|<abbr\b/i.test(line)) return false;
+      // Only fire in auth-ish files: a password input or a sign-in/sign-up
+      // signal somewhere in the file. Otherwise "OR" is legitimate text —
+      // e.g. the Oregon abbreviation ("Portland, OR 97201").
+      const fileText = ctx && Array.isArray(ctx.lines) ? ctx.lines.join("\n") : line;
+      const isAuth =
+        /type\s*=\s*["']password["']|type\s*=\s*\{[^}]*password[^}]*\}/i.test(fileText) ||
+        /sign[-\s]?(?:in|up)/i.test(fileText);
+      if (!isAuth) return false;
       // Bare uppercase OR as the only text content of an element:
       // <span>OR</span>, <div ...> OR </div>, >— OR —<
       const m = line.match(/>(\s*[—–-]*\s*)OR(\s*[—–-]*\s*)</);
@@ -1086,8 +1094,14 @@ export const rules = [
     fix: 'Name the section in plain language or drop the label — zero-padded section counters ("01 · About", "02 / Process") are decorative numbering, not information. Numbers earn their place only when the content is a real ordered sequence. See references/recipe-landing.md.',
     scope: "line",
     match(line) {
-      // Zero-padded ordinal + separator + a word: "01 · About", "001 / Capabilities".
-      const m = line.match(/>\s*0\d{1,2}\s*[·\/—–-]\s*[A-Za-z]/);
+      // Table cells legitimately contain hyphenated codes/dates ("07-Eleven
+      // Corp", "03-Jan Invoice") — same exemption as layout/eyebrow-flood.
+      if (/<td\b|<th\b|<thead\b/i.test(line)) return false;
+      // Zero-padded ordinal + a SPACED separator + a word: "01 · About",
+      // "001 / Capabilities". Require whitespace around the separator so
+      // tightly-hyphenated tokens ("07-Eleven", "03-Jan") don't match —
+      // this rule targets padded counters, not compound words.
+      const m = line.match(/>\s*0\d{1,2}\s+[·\/—–-]\s+[A-Za-z]/);
       if (m) return { snippet: m[0].slice(0, 60) };
       return false;
     },
@@ -3194,6 +3208,7 @@ async function runHookRun(argv) {
     if (blocking.length > shown.length) {
       msg += `  …and ${blocking.length - shown.length} more (run \`npx ui-craft-detect ${rel}\` for the full list)\n`;
     }
+    msg += `False positive? Suppress with a  // ui-craft-detect-ignore-rule: <rule-id>  comment on the flagged line.\n`;
     process.stderr.write(msg);
     process.exit(2);
   } catch (err) {

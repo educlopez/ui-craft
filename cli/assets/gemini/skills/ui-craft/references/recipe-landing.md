@@ -78,7 +78,7 @@ The hero is a single moment, not a feature list. Hard limits:
 - **Max 4 text elements:** one eyebrow/badge (or none), headline (≤2 lines desktop), subtext (≤20 words, ≤4 lines), CTAs (1 primary + ≤1 secondary). If the value prop needs more than 20 words of subtext, the value prop is unclear — fix the copy, not the limit.
 - **Plan font scale and asset together.** Headline >6 words with a large hero shot → start at 48-60px, not 72-80px. A 4-line hero headline is always a font-size error.
 - **Nothing else rides the hero:** trust micro-strips, pricing teasers, feature bullets, avatar rows, and the logo wall all live in dedicated sections **below** the fold line. One micro-trust line under the CTAs is the ceiling.
-- **Top padding cap ~96px desktop.** Hero content floating halfway down the viewport reads as a layout bug, not breathing room. Need more presence? Scale the type or the asset, not the padding.
+- **Top padding cap ~96px desktop for standard top-aligned heroes.** Hero content floating halfway down the viewport reads as a layout bug, not breathing room. Need more presence? Scale the type or the asset, not the padding. Full-viewport or vertically-centered heroes are exempt — the cap targets top-aligned compositions where excess top padding pushes content down, not compositions that are deliberately centered in the viewport.
 - **No decorative cues:** no "Scroll to explore", no ↓ arrows, no version badges (BETA, v0.6) unless the brief is literally a launch announcement, no mono-caps decoration strips at the hero foot.
 
 Order, each answering ONE question; spacing 80-160px between majors, varied:
