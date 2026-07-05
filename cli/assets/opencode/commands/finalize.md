@@ -52,11 +52,13 @@ These findings are Major, never Critical — they gate NOT READY, not BLOCKED.
 
 Applies to landings, portfolios, and campaign pages — skip for product shells.
 
-1. **Read every visible string** (headlines, eyebrows, buttons, captions, alt text, footer). Grammatically broken copy, unclear referents, forced-clever labels ("Field notes" over testimonials, "Quietly trusted by"), or fake-precise numbers with no source → **Major** per `references/copy.md` Copy Self-Audit.
-2. **Eyebrow count (mechanical).** Count uppercase wide-tracked micro-labels above headings. Count > ceil(sections / 3) → **Major** ("eyebrow flood — delete labels until the count passes").
-3. **Layout-family count (mechanical).** Any layout family used twice, or 3+ consecutive image+text splits → **Major** per `references/recipe-landing.md` layout-family budget.
-4. **CTA intent (mechanical).** Two labels with the same intent ("Get in touch" + "Let's talk") → **Major**; a CTA wrapping to two lines at desktop → **Major**.
-5. **Hero discipline.** More than 4 text elements in the hero, subtext over 20 words, or a logo wall inside the hero → **Major**.
+Load `references/recipe-landing.md` and run its Acceptance-bar mechanical checks against the built surface — thresholds (eyebrow count, layout-family budget, hero discipline) live there, not here; this step only names which checks apply and where a violation lands.
+
+1. **Copy self-audit.** Read every visible string (headlines, eyebrows, buttons, captions, alt text, footer). Grammatically broken copy, unclear referents, forced-clever labels ("Field notes" over testimonials, "Quietly trusted by"), or fake-precise numbers with no source → **Major** per `references/copy.md` Copy Self-Audit.
+2. **Eyebrow count (mechanical)** — per `references/recipe-landing.md` Eyebrow budget. Over budget → **Major** ("eyebrow flood — delete labels until the count passes").
+3. **Layout-family count (mechanical)** — per `references/recipe-landing.md` Layout-family budget. Any repeat or consecutive-split overrun → **Major**.
+4. **CTA intent (mechanical)** — per `references/copy.md` CTAs & Buttons (one label per intent; CTA fits one line at desktop). Violation → **Major**.
+5. **Hero discipline** — per `references/recipe-landing.md` Hero discipline. Over budget → **Major**.
 
 ---
 

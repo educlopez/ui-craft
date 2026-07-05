@@ -112,7 +112,7 @@ Apply on landing, portfolio, waitlist — load with [recipe-landing.md](recipe-l
 
 **Color:** Pick a commitment strategy first ([color.md](color.md) Commitment Axis — restrained / committed / full palette / drenched, gated by variance); default restrained: 90% neutral + one accent; rotate accent family when no brand (indigo, teal, rose, amber, forest). No default warm-beige + brass "premium" palette unless the brief names it.
 
-**Imagery:** Marketing surfaces are visual products — a text-only page is incomplete work, not minimalism. Priority: real assets → image-generation tool if available → labeled placeholder slots + tell the user what's needed. Never div-built fake screenshots, never hand-drawn decorative SVG scenes. Logo walls use real SVG marks; invented brands get a simple monogram, not styled text.
+**Imagery:** marketing surfaces are visual products, not text-only pages — asset priority order, the div-built-screenshot ban, and the logo-wall rule live in [recipe-landing.md](recipe-landing.md) (Imagery is not optional).
 
 **Motion:** Hero stagger 50–80ms; one scroll reveal per section; multi-property hover on **one** featured block. No bounce, confetti, or idle float. Every animation must answer "what does this communicate?" in one sentence (hierarchy, sequence, feedback, state change) — "it looked cool" fails.
 
@@ -132,7 +132,7 @@ Rotate **one axis per build** so outputs don't converge:
 
 Declare the axis in the Craft Read so the user can say "warmer accent" on iteration.
 
-**Premium/artisan briefs rotate palette families.** Cookware, wellness, luxury, heritage-craft briefs all converge on warm beige + brass + espresso — the palette becomes invisible because every generated "premium" site wears it. Unless the brief names those colors, pick a different family per build: cold luxury (silver + chrome + smoke), forest (deep green + bone + amber), black-and-tan (off-black + warm tan, no beige), cobalt + cream, terracotta + slate, or monochrome + one saturated pop. Never ship the same premium family twice in a row ([themes.md](themes.md)).
+**Premium/artisan briefs must rotate palette families** — the default warm-beige + brass + espresso "premium" look is a convergence tell the moment the brief doesn't name those colors. Full family list and the never-twice-in-a-row rule: [themes.md](themes.md) Premium palette families.
 
 ---
 

@@ -26,7 +26,7 @@ Behavior: **CRAFT_LEVEL 8+** → run Polish Pass ([review.md](references/review.
 The rules that make the biggest difference between "AI-generated" and "designed by a human":
 
 0. **Ask before assuming** — never default accent, font, or style. Analyze project, then ask. Use Knob defaults only when the user explicitly declines to specify.
-1. **Sentence case by default** — uppercase = template. Exception: 11-13px category labels with wide tracking, rationed to max 1 per 3 sections on marketing pages — an eyebrow above every heading is template grammar.
+1. **Sentence case by default** — uppercase = template. Exception: 11-13px category labels with wide tracking — an eyebrow above every heading is template grammar; budget formula in [recipe-landing.md](references/recipe-landing.md) (Eyebrow budget).
 2. **90%+ neutral, one accent** — mostly black/white/gray; single brand color. NEVER *default* to blue — if your brand is blue, that's different.
 3. **Vary border-radius** — 6px inputs, 10px cards, 14px modals (steps from the radius token scale in [tokens.md](references/tokens.md)); uniform radii look stamped out.
 4. **Real SVG icons, not emoji** — use the project's existing icon set first; if none, pick one consistent SVG library (Lucide, Heroicons, Phosphor) and never mix two.
