@@ -31,7 +31,7 @@ You don't have to learn any of it to benefit. It grows with you.
 | Layer | You do | You get |
 |-------|--------|---------|
 | **1 · Just install it** | Nothing — ask for UI the way you always do | The agent designs with taste: real hierarchy, system tokens, no AI slop. Same prompt, shippable result. |
-| **2 · Drive it** | Run `/start` to see your options, then a slash command (`/craft`, `/sddesign`, `/finalize`, …) | Focused passes — build a surface, run a scored critique, gate a ship. 22 commands, one lens each. |
+| **2 · Drive it** | Run `/start` to see your options, then a slash command (`/craft`, `/sddesign`, `/finalize`, …) | Focused passes — build a surface, run a scored critique, gate a ship. 25 commands, one lens each. |
 | **3 · Verify it** | Wire the agents / MCP / CLI into review or CI | Independent design + a11y review, a deterministic 0-100 quality score, an anti-slop gate on every commit. |
 
 **Start at Layer 1.** Most people never leave it — that's the point. Layers 2 and 3 are there the day you want them.
@@ -90,7 +90,7 @@ ui-craft install
 
 ### Claude Code plugin — alternative (skill + commands + agents + MCP, no CLI needed)
 
-One command installs the skill, all 22 slash commands, the 2 review agents, and the MCP quality-gate server — auto-wired, no `.mcp.json` editing:
+One command installs the skill, all 25 slash commands, the 2 review agents, and the MCP quality-gate server — auto-wired, no `.mcp.json` editing:
 
 ```
 /plugin marketplace add educlopez/ui-craft
@@ -200,7 +200,7 @@ For playful and brutalist aesthetics (Clay / Gumroad / Duolingo / Arc-playful, N
 
 ## Slash commands
 
-Twenty single-lens passes, plus `/sddesign` (the pipeline that chains them) and `/start` (the front door).
+25 commands total — 23 single-lens passes, plus `/sddesign` (the pipeline that chains them) and `/start` (the front door).
 
 **Front door:**
 
@@ -232,7 +232,8 @@ Twenty single-lens passes, plus `/sddesign` (the pipeline that chains them) and 
 | Command | Does |
 |---------|------|
 | `/ui-craft:sddesign` | **Full spec-driven pipeline.** brief → tokens → shape → craft → converge → ship. Writes `.ui-craft/spec.md`. Run when starting a net-new surface. |
-| `/ui-craft:craft` | **One-shot surface build.** Outcome recipe pipeline — 3 inputs (or silent defaults) → named composition → theme preset → build order → acceptance bar. Surfaces: `dashboard`, `landing`, `auth`. |
+| `/ui-craft:craft` | **One-shot surface build.** Outcome recipe pipeline — Craft Read + variance + signature bet → named composition → theme → build order → acceptance bar. Surfaces: `dashboard`, `landing`, `auth`; portfolios use landing recipe at variance 8. |
+| `/ui-craft:redesign` | **Redesign without regression.** Audits the existing surface first, classifies what to preserve (brand, IA/SEO, content, conversion paths), picks refresh/reskin/rebuild scope, then modernizes. |
 | `/ui-craft:shape` | **Wireframe-first.** ASCII layout + content inventory + state list + open questions before any JSX. Run when starting a new screen. |
 | `/ui-craft:animate` | Add / fix motion. Honors `MOTION_INTENSITY` + chosen stack. |
 | `/ui-craft:adapt` | Responsive pass — mobile, tablet, desktop, touch, safe areas. |
@@ -240,11 +241,14 @@ Twenty single-lens passes, plus `/sddesign` (the pipeline that chains them) and 
 | `/ui-craft:colorize` | Introduce color strategically — one accent, 3–5 placements, no decoration. |
 | `/ui-craft:clarify` | UX copy — button labels, error messages, empty states, CTAs. |
 | `/ui-craft:extract` | Pull repeated patterns into shared components and tokens. |
+| `/ui-craft:remember` | Record a learned design constraint into `.ui-craft/brief.md` — corrections that should persist across sessions. |
 
 **Taste dial:**
 
 | Command | Does |
 |---------|------|
+| `/ui-craft:bolder` | Raise DESIGN_VARIANCE and motion amplitude — stronger composition, type, and signature without a full rebuild. |
+| `/ui-craft:quieter` | Lower variance and motion — more restrained grids, type, and color. Honors `prefers-reduced-motion`. |
 | `/ui-craft:distill` | Strip to essence. Cut every section that doesn't earn its space. Absorbs visual-weight reduction (softer type, less motion). |
 | `/ui-craft:delight` | Add purposeful micro-interactions — copy first, animation last. |
 
@@ -259,11 +263,14 @@ The skill detects your intent and routes automatically.
 | **Review** | "Review this component" | Audits for generic AI patterns, accessibility gaps, and missed details |
 | **Polish** | "Polish this dashboard" | Finds the twenty small things that turn "done" into "crafted" |
 
-## 31 domain references
+## 32 domain references
 
 | Domain | Covers |
 |--------|--------|
+| Craft intent | Craft Read, DESIGN_VARIANCE knob, signature bets, product + marketing build patterns, accent rotation when no brand. **Load before `/craft` or any full-surface build** |
 | Dashboard recipe | Outcome blueprint: 3 named compositions (Overview / Command / Analytics), exact shell spec, build order, shippable acceptance bar. Run via `/craft dashboard` |
+| Landing recipe | Marketing page compositions (product-forward / message-forward / proof-forward), section grammar, CTA hierarchy, acceptance bar. Run via `/craft landing` |
+| Auth recipe | Sign-in/sign-up compositions (split panel / centered card), form contract, trust signals, acceptance bar. Run via `/craft auth` |
 | Theme presets | 4 named production token stacks (Graphite, Porcelain, Carbon, Signal) — full OKLCH color, type, radius, shadow, motion; light + dark both intentional |
 | Motion | Decision ladder, duration + easing token scales, interaction rules, choreography, motion budget, reduced-motion contract. Rendering performance (compositor, FLIP, scroll timelines, will-change lifecycle) |
 | Layout | Spacing systems, optical alignment, layered shadows, visual hierarchy |
@@ -377,7 +384,7 @@ ui-craft/
 ├── skills/
 │   ├── ui-craft/                 # Main skill
 │   │   ├── SKILL.md              # Slim entry — knobs, discovery, anti-slop, routing
-│   │   └── references/           # 31 domain references (accessibility, motion, layout,
+│   │   └── references/           # 32 domain references (accessibility, motion, layout,
 │   │                             #   typography, color, modern-css, responsive,
 │   │                             #   sound, copy, review, dashboard, inspiration, stack,
 │   │                             #   heuristics, personas, state-design, dataviz,
@@ -386,7 +393,7 @@ ui-craft/
 │   ├── ui-craft-minimal/          # Variant — Linear/Notion aesthetic
 │   ├── ui-craft-editorial/        # Variant — Medium/Substack aesthetic
 │   └── ui-craft-dense-dashboard/  # Variant — Bloomberg/Retool aesthetic
-├── commands/                      # 22 Claude Code slash commands (source of truth)
+├── commands/                      # 25 Claude Code slash commands (source of truth)
 ├── examples/
 │   ├── animation-storyboard.md   # Multi-stage animation pattern template
 │   └── presets/
@@ -415,7 +422,7 @@ ui-craft/
 
 [![npm version](https://img.shields.io/npm/v/ui-craft-detect?style=flat-square&label=ui-craft-detect)](https://www.npmjs.com/package/ui-craft-detect)
 
-Scan a codebase for common AI-generated UI anti-patterns — 33 rules covering AI slop (`transition: all`, bounce easing, purple gradients, ALL CAPS headings), dark patterns (confirmshaming, destructive actions without confirmation), a11y (icon-only buttons without labels, modal-without-`<dialog>`, `outline: none` without `:focus-visible` replacement, streaming without `aria-live`, heading-level skips), forms (placeholder-as-label, missing `autocomplete`), perf (images without dimensions → CLS), tables (no overflow handling on mobile), dataviz (categorical rainbow palettes), state design (data fetching without empty/error branches), and placeholder copy shipped to prod (`Lorem ipsum`, `TODO`, `John Doe`). Zero dependencies, works out of the box.
+Scan a codebase for common AI-generated UI anti-patterns — 38 rules covering AI slop (`transition: all`, bounce easing, purple gradients, ALL CAPS headings), dark patterns (confirmshaming, destructive actions without confirmation), a11y (icon-only buttons without labels, modal-without-`<dialog>`, `outline: none` without `:focus-visible` replacement, streaming without `aria-live`, heading-level skips), forms (placeholder-as-label, missing `autocomplete`), auth tells (caps "OR" dividers, full-bleed saturated brand panels), marketing copy tells (eyebrow floods, scroll cues, numbered section eyebrows, duplicate CTA intent, em-dash floods), perf (images without dimensions → CLS), tables (no overflow handling on mobile), dataviz (categorical rainbow palettes), state design (data fetching without empty/error branches), and placeholder copy shipped to prod (`Lorem ipsum`, `TODO`, `John Doe`). Zero dependencies, works out of the box.
 
 Published as a standalone CLI on npm — use it anywhere without cloning:
 
@@ -455,6 +462,40 @@ npx ui-craft-detect --scope files --fail-on none --json
 ```
 
 If git is unavailable, the directory isn't a git repository, or the base ref can't be resolved (e.g. shallow clone), the tool falls back to `--scope full` automatically and prints a note on stderr — it never crashes or silently drops findings.
+
+### Live URL scanning
+
+Point the detector at a deployed page instead of source files:
+
+```bash
+npx ui-craft-detect https://your-site.com
+npx ui-craft-detect https://your-site.com --json --fail-on none
+```
+
+Two engines, picked automatically:
+
+- **puppeteer** (optional — `npm install puppeteer`) loads the page in headless Chromium and scans the JS-rendered DOM, so SPA/client-rendered markup is covered.
+- **fetch** (zero-dep fallback) scans the server-rendered HTML as delivered. No JS execution.
+
+Force one with `--engine puppeteer` or `--engine fetch`. Findings report the URL as the file and line numbers within the fetched HTML document. The core detector stays zero-dependency — puppeteer is resolved via dynamic import only when present.
+
+### Agent edit-time hooks — `hooks` subcommand
+
+Pre-commit and CI catch problems after the fact. Agent hooks catch them **while the agent is still working** — the detector runs after every agent file edit and feeds findings straight back into the loop:
+
+```bash
+npx ui-craft-detect hooks install            # both harnesses
+npx ui-craft-detect hooks install --harness claude   # just one
+npx ui-craft-detect hooks status
+npx ui-craft-detect hooks uninstall
+```
+
+| Harness | Manifest | Mechanism |
+|---------|----------|-----------|
+| **Claude Code** | `.claude/settings.json` | `PostToolUse` hook (matcher `Edit\|Write\|MultiEdit`). On critical/major findings the hook exits 2, so the findings summary is fed back to the model as actionable feedback — the agent fixes the slop before finishing. |
+| **Cursor** | `.cursor/hooks.json` | `afterFileEdit` hook (schema version 1). Findings appear in Cursor's Hooks output channel. Committed to the repo, project hooks load for the whole team — including Cloud Agents. |
+
+Install is merge-safe and idempotent: existing manifest entries are always preserved, re-running is a no-op, and `uninstall` removes only the detector's own entries. The hook runner scans just the edited file, stays silent on clean edits and warn-level findings, and fails open on internal errors so a broken hook can never stall an agent.
 
 ### Pre-commit hooks — `init-hook` subcommand
 
@@ -534,7 +575,7 @@ Three dimensions, each with its own subscore:
 
 | Dimension | Source | Penalty |
 |-----------|--------|---------|
-| **anti_slop** | 33 rules from `ui-craft-detect` | critical −8 · major −4 · warn −1 |
+| **anti_slop** | 38 rules from `ui-craft-detect` | critical −8 · major −4 · warn −1 |
 | **token_discipline** | Raw hex / off-scale radius / spacing / z-index | −2 per finding (flat) |
 | **a11y** | 5 new static checks (no overlap with detect.mjs): `img-no-alt`, `non-semantic-interactive`, `positive-tabindex`, `aria-invalid-no-describedby`, `no-reduced-motion` | critical −8 · major −4 |
 
@@ -600,7 +641,7 @@ The `ui-craft-mcp` package exposes four deterministic design-quality tools over 
 
 | Tool | What it does |
 |------|-------------|
-| `check_anti_slop` | 33-rule anti-slop scanner via `scan()` from `ui-craft-detect` — in-process, no subprocess |
+| `check_anti_slop` | 38-rule anti-slop scanner via `scan()` from `ui-craft-detect` — in-process, no subprocess |
 | `tokens_lint` | Off-system token detector: raw hex colors, non-scale radius/spacing px, magic z-index |
 | `acceptance_bar` | Acceptance checklist for a UI surface (`dashboard`, `landing`, `auth`, `generic`) — data only, no scoring |
 | `score_ui` | Composite UICraftScore (0-100 + grade + per-dim subscores) via `evals/quality/score.mjs` — all three dimensions in one call |
@@ -626,6 +667,33 @@ When you change a skill or command, update the canonical source under `skills/` 
 ## Tuning skill descriptions
 
 Every skill's `description` field is the primary trigger mechanism. The `evals/` folder holds query sets for `skill-creator`'s description optimizer (`run_loop.py`), which evaluates and iterates descriptions against realistic should-trigger / should-not-trigger prompts. See `evals/README.md` for the commands and how to add new eval sets.
+
+## Roadmap
+
+Where ui-craft is heading. Not commitments with dates — a public list of the directions we consider worth building, roughly ordered by how much they'd raise output quality. Feedback and PRs on any of these welcome.
+
+**Design-tool integration**
+
+- **Figma spec compliance** — read component specs (spacing, type, color, variants) via Figma's Dev Mode / REST API and score an implementation against them, the same way the detector scores anti-slop today. "Does the built component match the design?" becomes a deterministic gate instead of eyeball review.
+- **Design-token import** — pull a token set from Figma variables / Tokens Studio / a `design-tokens.json` and emit the project's 3-layer spine (`/tokens`) from it, instead of hand-transcribing values.
+
+**Detector**
+
+- **Computed-style checks for URL scans** — the URL engine currently scans rendered markup; the next layer is computed styles via the browser engine: real contrast ratios (not class-name heuristics), effective tap-target sizes, actual font fallback chains.
+- **Screenshot-diff regression (exploratory)** — likely as a thin integration over existing visual-regression tooling (Playwright snapshots / Chromatic-style diffs) rather than a bespoke engine.
+- **More harnesses for edit-time hooks** — `hooks install` covers Claude Code and Cursor today; extend to other agents as their hook mechanisms stabilize.
+
+**Skill & pipeline**
+
+- **Reference-board step** — optional pre-build step that generates or collects visual references (mood board, type specimens, palette candidates) before the Craft Read, for briefs where the direction is genuinely open.
+- **Multi-page consistency** — today's recipes reason about one surface at a time; a site-level pass would enforce shared rhythm, type scale, and CTA vocabulary across pages.
+- **UsabilityScore trend tracking** — persist `/heuristic` and UICraftScore results per commit so quality is a curve you watch, not a snapshot.
+
+**Evals**
+
+- **Automated blind-build harness** — run the `evals/craft-quality/PROMPTS.md` tracks through an agent automatically and score the output, turning today's manual auditor pass into a repeatable regression suite.
+
+Have a strong opinion on priority, or something missing? [Open an issue](https://github.com/educlopez/ui-craft/issues).
 
 ## Contributing
 

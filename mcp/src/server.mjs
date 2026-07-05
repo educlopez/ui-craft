@@ -49,7 +49,7 @@ server.registerTool(
       'Scans source code for anti-slop violations using the deterministic rules from ui-craft-detect. ' +
       'Accepts either a `code` string (inline source) or a `path` string (file or directory). ' +
       'Returns findings with severity, rule ID, file, line, and message. ' +
-      'These are the 33 deterministic rules only — no taste or aesthetic judgment.',
+      'These are the 38 deterministic rules only — no taste or aesthetic judgment.',
     inputSchema: {
       code: z.string().optional().describe('Inline source code to scan (alternative to path)'),
       path: z.string().optional().describe('File or directory path to scan (alternative to code)'),
@@ -154,7 +154,7 @@ server.registerTool(
     description:
       'Composite design-quality scorer (UICraftScore). Combines three deterministic dimensions into ' +
       'a single 0-100 score + letter grade (A/B/C/D/F) + per-dimension subscores and findings. ' +
-      'Dimensions: anti-slop (33 rules via ui-craft-detect), token-discipline (raw hex / off-scale values), ' +
+      'Dimensions: anti-slop (38 rules via ui-craft-detect), token-discipline (raw hex / off-scale values), ' +
       'and static a11y (5 checks: img-no-alt, non-semantic-interactive, positive-tabindex, ' +
       'aria-invalid-no-describedby, no-reduced-motion). ' +
       'Accepts either a `code` string (inline source) or a `path` string (file). ' +

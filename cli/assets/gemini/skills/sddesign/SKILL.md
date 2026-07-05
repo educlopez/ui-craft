@@ -73,6 +73,8 @@ Run `/shape` for the surface described in the target the user described. Shape p
 
 Run `/craft <surface>` where `<surface>` matches the description in the target the user described.
 
+`/craft` declares the **Craft Read** (`references/craft-intent.md`) before building — surface kind, audience, theme/accent, DESIGN_VARIANCE, and the one **signature bet**. The signature bet is built inside this gate, not deferred to converge or polish. If the spec section names a composition, the Craft Read must be consistent with it.
+
 `/craft` loads `.ui-craft/spec.md` before building. If `[✓] shape (spec)` was set, the spec's chosen composition, component inventory, state lattice, and acceptance bar take precedence over recipe defaults — every acceptance bar item from the spec must be green before craft reports done.
 
 If `[–] shape (spec, unsaved)`, craft builds against the shape output printed to the terminal. Note in the checklist.

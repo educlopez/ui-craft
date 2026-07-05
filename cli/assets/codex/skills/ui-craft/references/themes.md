@@ -192,3 +192,38 @@ High-contrast, near-mono neutrals, semantic color doing real work, minimal radiu
 | "dense", "fast", data is the product, power users | **Signal** |
 
 Brand color exists? Replace `--accent` with the brand hue at the preset's lightness/chroma discipline — the preset survives an accent swap; it does not survive a radius or shadow swap.
+
+---
+
+## Accent rotation (no brand yet)
+
+When the brief has no brand color, **rotate one accent family per build** so outputs don't all land on indigo. Declare the choice in the Craft Read ([craft-intent.md](craft-intent.md) §6). Swap only `--accent`, `--accent-hover`, `--accent-tint`, and `--on-accent` on the chosen preset — keep neutrals, radii, and shadows intact.
+
+| Family | Light `--accent` (OKLCH) | Best on preset | Avoid pairing with |
+|---|---|---|---|
+| **Indigo** | `oklch(46% 0.17 275)` | Graphite, Signal | — (default; rotate away often) |
+| **Teal** | `oklch(48% 0.12 195)` | Graphite, Carbon | Porcelain terracotta clash |
+| **Rose** | `oklch(52% 0.14 15)` | Porcelain, Graphite | Signal high-contrast grids |
+| **Amber** | `oklch(58% 0.14 75)` | Porcelain, Graphite | Carbon mint accent |
+| **Forest** | `oklch(46% 0.11 155)` | Porcelain, Graphite | Signal blue-violet default |
+
+**Hover / tint discipline:** `--accent-hover` ≈ 5% darker on the same hue; `--accent-tint` ≈ 8–10% alpha of accent; `--on-accent` must clear APCA Lc ≥ 60 against the filled button.
+
+**Dark mode:** lift accent lightness ~15–20% on dark surfaces (see each preset's dark mapping). Re-verify contrast after swap.
+
+**Marketing vs product:** landings and portfolios may rotate accent **and** theme preset; dashboards and auth rotate accent only unless the user asks for a full re-skin.
+
+## Premium palette families (artisan / luxury / wellness briefs)
+
+"Premium" briefs converge on one palette — warm cream background, brass/clay accent, espresso text — until every generated artisan site is interchangeable. Unless the brief names those colors, rotate through distinct families (one per build, never the same family twice in a row):
+
+| Family | Recipe | Reads as |
+|---|---|---|
+| **Cold luxury** | silver-grey neutrals + chrome + smoke dark | precision, engineering premium |
+| **Forest** | deep green + bone + amber accent | outdoor heritage, built-to-last |
+| **Black & tan** | true off-black + warm tan, hard contrast, no beige | leather-goods, deliberate |
+| **Cobalt + cream** | one saturated blue against a single neutral | confident, modern craft |
+| **Terracotta + slate** | warm rust against cool grey | earthy without the beige wash |
+| **Mono + pop** | off-white + off-black + one bright accent | gallery, editorial-modern |
+
+Warmth can come from typography, imagery, and copy — it doesn't have to live in the background color. Verify AA contrast after picking; dark-mode mapping per the preset rules above.

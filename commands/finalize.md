@@ -36,6 +36,32 @@ Any "no": flag as Major. Do not block ship. Append a recommendation: "Run `/toke
 
 ---
 
+## Step 3b — Craft-intent check (full surfaces only)
+
+Applies only when the target is a complete surface (dashboard, landing, auth, settings shell, portfolio) — skip for single components.
+
+1. **Signature bet present?** Scan for exactly one memorable decision from `references/craft-intent.md` §3 (product / auth / marketing lists). Zero → **Major** ("no signature — surface is competent but anonymous; run `/bolder` or `/polish`"). Two or more competing → **Major** ("signature bets stack — keep the strongest, cut the rest").
+2. **Variance matches surface?** Layout risk visibly inconsistent with the surface's DESIGN_VARIANCE default (e.g. experimental asymmetry on an auth form, or a landing that is one centered symmetric column) → **Major**, unless the brief or spec records the deviation.
+3. **Craft Read recorded?** If a `.ui-craft/spec.md` section or session declared a Craft Read, verify the built surface matches it (theme, variance, signature). Mismatch → **Major** with the specific delta.
+
+These findings are Major, never Critical — they gate NOT READY, not BLOCKED.
+
+---
+
+## Step 3c — Copy self-audit + mechanical counts (marketing surfaces only)
+
+Applies to landings, portfolios, and campaign pages — skip for product shells.
+
+Load `references/recipe-landing.md` and run its Acceptance-bar mechanical checks against the built surface — thresholds (eyebrow count, layout-family budget, hero discipline) live there, not here; this step only names which checks apply and where a violation lands.
+
+1. **Copy self-audit.** Read every visible string (headlines, eyebrows, buttons, captions, alt text, footer). Grammatically broken copy, unclear referents, forced-clever labels ("Field notes" over testimonials, "Quietly trusted by"), or fake-precise numbers with no source → **Major** per `references/copy.md` Copy Self-Audit.
+2. **Eyebrow count (mechanical)** — per `references/recipe-landing.md` Eyebrow budget. Over budget → **Major** ("eyebrow flood — delete labels until the count passes").
+3. **Layout-family count (mechanical)** — per `references/recipe-landing.md` Layout-family budget. Any repeat or consecutive-split overrun → **Major**.
+4. **CTA intent (mechanical)** — per `references/copy.md` CTAs & Buttons (one label per intent; CTA fits one line at desktop). Violation → **Major**.
+5. **Hero discipline** — per `references/recipe-landing.md` Hero discipline. Over budget → **Major**.
+
+---
+
 ## Step 4 — Finish bar
 
 Load `references/finish-bar.md`. Run all 10 passes in document order. Do not reorder.

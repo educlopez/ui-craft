@@ -31,7 +31,7 @@ Claude Desktop, Cursor, and other MCP clients read `.mcp.json` automatically.
 
 ### `check_anti_slop`
 
-Scans source code for anti-slop violations using the 33 deterministic rules from `ui-craft-detect`. In-process (no subprocess spawn).
+Scans source code for anti-slop violations using the 38 deterministic rules from `ui-craft-detect`. In-process (no subprocess spawn).
 
 **Input** (one required):
 - `code` — inline source string

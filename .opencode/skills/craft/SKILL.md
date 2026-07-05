@@ -33,6 +33,8 @@ Follow the recipe's Build order EXACTLY (tokens → shell → hero tier → prim
 
 ## Step 4 — Acceptance bar
 
-Run the recipe's acceptance checklist against the built surface. Fix every unchecked item before reporting — the bar is the definition of done, not a suggestion. Then report: checklist results, the one signature detail included, and any item the user explicitly waived.
+Run the recipe's acceptance checklist against the built surface. Fix every unchecked item before reporting — the bar is the definition of done, not a suggestion.
+
+**Visual self-check (when a screenshot tool is reachable):** if a Playwright/browser MCP or similar is available, capture the built surface at desktop width and look at it before reporting — a render exposes spacing collisions, hierarchy ties, and dead zones that code review can't. Run the similar-prompt self-test (craft-intent §1) against the screenshot: would this exact page pass for a different brand in the category? If yes, strengthen the signature before reporting. No tool available → skip silently, never block. Then report: checklist results, the one signature detail included, and any item the user explicitly waived.
 
 At CRAFT_LEVEL ≥ 8, finish with the full `/finalize` gate instead of the recipe's minimum passes.

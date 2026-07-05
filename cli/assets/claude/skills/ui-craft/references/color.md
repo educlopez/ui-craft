@@ -14,6 +14,19 @@ The 60-30-10 rule is for interior design and marketing sites — not application
 - **One accent color, used sparingly** — buttons, links, focus rings, emphasis states
 - **Secondary colors only for semantic meaning** — success green, warning amber, error red
 
+### Commitment Axis (marketing surfaces)
+
+Product UI stays restrained; marketing surfaces have permission to commit further. Pick a strategy **before** picking colors, gated by DESIGN_VARIANCE ([craft-intent.md](craft-intent.md)):
+
+| Strategy | What it means | Variance gate |
+|----------|---------------|---------------|
+| **Restrained** | 90%+ neutral, one accent ≤10% of surface | any — the product default |
+| **Committed** | one saturated color carries 30-60% of the surface (a drenched hero, a full-color section) | ≥7 |
+| **Full palette** | 3-4 named color roles, each used deliberately | ≥8, brand campaign or portfolio |
+| **Drenched** | the surface IS the color; neutrals are the exception | 9-10, explicit brief only |
+
+Commit or don't — a saturated hero hedged with timid neutrals around the edges reads as indecision. A beige-and-muted landing page on a brand brief ignores the register: on marketing surfaces, restraint without intent reads as mediocre, not refined. Name what the strategy is doing in the Craft Read so the user can push back.
+
 ### Color Purposes
 - **Semantic**: success (green), error (red/rose), warning (amber), info (blue)
 - **Hierarchy**: drawing attention to important elements

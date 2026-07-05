@@ -4,6 +4,8 @@ An outcome recipe is a build contract, not a rule list: follow it top to bottom 
 
 **Who this serves:** the zero-questions path produces a strong default for users who don't design. Every default below is overridable — users who do design treat the compositions as skeletons and go from there.
 
+**Load [craft-intent.md](craft-intent.md)** — apply product-surface patterns (§4), default **DESIGN_VARIANCE 4**, pick one **signature bet** from craft-intent §3 (product list) in the Craft Read before Step 1.
+
 ## Step 0 — Three inputs (defaults if unanswered)
 
 Ask once, in one compact prompt. If the user declines or says "you decide", apply the defaults — never block.
@@ -13,6 +15,8 @@ Ask once, in one compact prompt. If the user declines or says "you decide", appl
 | Primary user + 60-second decision | exec ("are we winning?") / operator ("what needs action now?") / analyst ("why did X change?") | operator |
 | Theme | one of the four presets in [themes.md](themes.md), or project's existing tokens | existing tokens if present, else **Graphite** |
 | Density | VISUAL_DENSITY knob 1-10 | 7 |
+| Variance | DESIGN_VARIANCE knob 1-10 | 4 |
+| Signature bet | one from [craft-intent.md](craft-intent.md) §3 product list | nav active indicator or hero metric sparkline |
 
 The first answer selects the composition. The persona is not cosmetic — it decides what the hero metric is and what gets buried ([dashboard.md](dashboard.md) "Ranking decisions").
 
@@ -117,6 +121,8 @@ Ship only when every box checks. One unchecked = not done, no exceptions:
 - [ ] Keyboard: tab order logical, focus visible, table rows reachable
 - [ ] Sidebar tinted (not black), headers sentence case, no uppercase anywhere except 11-13px tracked labels
 - [ ] Charts: correct type per data story, single-hue opacity ramp, no legend for single series
+- [ ] Signature bet from Craft Read is built and visible (not deferred to polish)
+- [ ] Product patterns from craft-intent §4: tinted sidebar, metric hierarchy, row context or sparkline on hero metric
 - [ ] `prefers-reduced-motion` honored; all transitions ≤400ms
 
 ## Cross-refs

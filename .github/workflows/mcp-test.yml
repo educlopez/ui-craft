@@ -6,6 +6,7 @@ on:
       - 'mcp/**'
       # Fix 11: check-anti-slop depends on scripts/detect.mjs — changes there must trigger MCP CI
       - 'scripts/detect.mjs'
+      - 'scripts/detect/**'
       - 'scripts/detect.test.mjs'
       # eval harness — also triggers when eval sources change
       - 'evals/quality/**'
@@ -14,6 +15,7 @@ on:
     paths:
       - 'mcp/**'
       - 'scripts/detect.mjs'
+      - 'scripts/detect/**'
       - 'scripts/detect.test.mjs'
       - 'evals/quality/**'
       - 'scripts/eval.mjs'

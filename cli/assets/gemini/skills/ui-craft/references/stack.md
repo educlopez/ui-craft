@@ -226,6 +226,57 @@ gsap.to(".panel", {
 ```
 Use `scrub: 1` (or higher), not `true` — `true` welds the animation to the wheel and jitters.
 
+**3a. Sticky-stack (cards pin and stack on scroll) — canonical skeleton**
+
+The #1 sticky-stack bug: the trigger fires halfway down the viewport instead of pinning at the top. The fix is always `start: "top top"`.
+
+```tsx
+useGSAP(() => {
+  const cards = gsap.utils.toArray<HTMLElement>(".stack-card")
+  cards.forEach((card, i) => {
+    if (i === cards.length - 1) return
+    ScrollTrigger.create({
+      trigger: card,
+      start: "top top",                      // pin at viewport top — never "top center"
+      endTrigger: cards[cards.length - 1],
+      end: "top top",
+      pin: true,
+      pinSpacing: false,
+    })
+    // previous card recedes as the NEXT card arrives
+    gsap.to(card, {
+      scale: 0.94, autoAlpha: 0.6, ease: "none",
+      scrollTrigger: { trigger: cards[i + 1], start: "top bottom", end: "top top", scrub: 1 },
+    })
+  })
+}, { scope: ref })
+```
+
+Every card except the last is pinned; the recede tween is driven by the *next* card's trigger. Cards themselves are `min-height: 100dvh` flex-centered wrappers.
+
+**3b. Horizontal pan (vertical scroll drives horizontal travel) — canonical skeleton**
+
+The #1 horizontal-pan bug: the pan starts before the section is pinned, so the user sees half a slide. Same fix: `start: "top top"`, pin the wrapper, scrub the inner track.
+
+```tsx
+useGSAP(() => {
+  const distance = track.current!.scrollWidth - window.innerWidth
+  gsap.to(track.current, {
+    x: -distance, ease: "none",
+    scrollTrigger: {
+      trigger: wrap.current,
+      start: "top top",
+      end: () => `+=${distance}`,            // scroll length = horizontal travel
+      pin: true,
+      scrub: 1,
+      invalidateOnRefresh: true,
+    },
+  })
+}, { scope: wrap })
+```
+
+Wrapper is `overflow: hidden`; the track is a `100dvh` flex row. Both skeletons collapse to plain stacked sections under `prefers-reduced-motion` (wrap in `gsap.matchMedia`, pattern 5 below).
+
 **4. SplitText (headlines only)**
 ```ts
 const split = SplitText.create(".headline", { type: "lines,words" })
