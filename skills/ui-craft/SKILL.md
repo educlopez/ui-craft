@@ -182,6 +182,9 @@ Before shipping any UI, ask: "If someone said AI made this, would they believe i
 - Two CTA labels with the same intent on one page ("Get in touch" + "Let's talk") — one label per intent, reused everywhere
 - Fake product screenshots built from styled `<div>` rectangles — use a real screenshot, a real mini component, or editorial imagery; never a div mockup
 - Logo walls as plain text wordmarks — use real SVG marks; for invented brands, a simple monogram mark, never a styled `<span>`
+- Carousels without narrative purpose — a carousel earns its place only when order tells a story (steps, timeline); as a "fit more stuff" device it hides content and reads as template
+- App UI built from stacked cards instead of a real layout — cards are for peer items in a collection; wrapping every section in a rounded card is avoidance of layout decisions
+- Em-dash flood in UI strings — 3+ em dashes in visible copy is prose grammar leaking into interface grammar; restructure with periods, colons, or separate elements
 
 **Minor** (polish that separates good from great — full list in [review.md](references/review.md) Polish Pass): no `tabular-nums` on data, missing `text-wrap: balance`, straight quotes, no `&nbsp;` in brand names, testimonial star ratings, hero metric without adjacent context.
 

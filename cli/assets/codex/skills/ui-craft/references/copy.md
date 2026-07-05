@@ -143,6 +143,7 @@ Rules agents routinely ignore. Every one is shippable to production the day the 
 - **Disabled states explain why** — not just grayed out, never rely on color alone.
 - **One label per intent, page-wide.** "Get in touch", "Contact us", and "Let's talk" on the same page are one action wearing three names — each variant dilutes the conversion path. Pick one label per intent (contact, signup, view-work) and reuse it in nav, hero, and footer. Same for "Try free" / "Get started" / "Sign up free".
 - **CTA labels fit one line at desktop.** A primary CTA that wraps to two lines is broken — shorten the label (≤3 words for primaries) or widen the button; never constrain a CTA's width artificially.
+- **An action keeps its name through the whole flow.** The button that says "Publish" produces a toast that says "Published" — not "Success!" or "Your post is live". Confirmation dialogs, progress states, and completion messages all conjugate the same verb the trigger used. Interface vocabulary is signposting; renaming an action mid-flow makes the user re-verify they did the right thing.
 
 ---
 

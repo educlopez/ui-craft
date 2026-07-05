@@ -422,7 +422,7 @@ ui-craft/
 
 [![npm version](https://img.shields.io/npm/v/ui-craft-detect?style=flat-square&label=ui-craft-detect)](https://www.npmjs.com/package/ui-craft-detect)
 
-Scan a codebase for common AI-generated UI anti-patterns — 37 rules covering AI slop (`transition: all`, bounce easing, purple gradients, ALL CAPS headings), dark patterns (confirmshaming, destructive actions without confirmation), a11y (icon-only buttons without labels, modal-without-`<dialog>`, `outline: none` without `:focus-visible` replacement, streaming without `aria-live`, heading-level skips), forms (placeholder-as-label, missing `autocomplete`), auth tells (caps "OR" dividers, full-bleed saturated brand panels), marketing copy tells (eyebrow floods, scroll cues, numbered section eyebrows, duplicate CTA intent), perf (images without dimensions → CLS), tables (no overflow handling on mobile), dataviz (categorical rainbow palettes), state design (data fetching without empty/error branches), and placeholder copy shipped to prod (`Lorem ipsum`, `TODO`, `John Doe`). Zero dependencies, works out of the box.
+Scan a codebase for common AI-generated UI anti-patterns — 38 rules covering AI slop (`transition: all`, bounce easing, purple gradients, ALL CAPS headings), dark patterns (confirmshaming, destructive actions without confirmation), a11y (icon-only buttons without labels, modal-without-`<dialog>`, `outline: none` without `:focus-visible` replacement, streaming without `aria-live`, heading-level skips), forms (placeholder-as-label, missing `autocomplete`), auth tells (caps "OR" dividers, full-bleed saturated brand panels), marketing copy tells (eyebrow floods, scroll cues, numbered section eyebrows, duplicate CTA intent, em-dash floods), perf (images without dimensions → CLS), tables (no overflow handling on mobile), dataviz (categorical rainbow palettes), state design (data fetching without empty/error branches), and placeholder copy shipped to prod (`Lorem ipsum`, `TODO`, `John Doe`). Zero dependencies, works out of the box.
 
 Published as a standalone CLI on npm — use it anywhere without cloning:
 
@@ -575,7 +575,7 @@ Three dimensions, each with its own subscore:
 
 | Dimension | Source | Penalty |
 |-----------|--------|---------|
-| **anti_slop** | 37 rules from `ui-craft-detect` | critical −8 · major −4 · warn −1 |
+| **anti_slop** | 38 rules from `ui-craft-detect` | critical −8 · major −4 · warn −1 |
 | **token_discipline** | Raw hex / off-scale radius / spacing / z-index | −2 per finding (flat) |
 | **a11y** | 5 new static checks (no overlap with detect.mjs): `img-no-alt`, `non-semantic-interactive`, `positive-tabindex`, `aria-invalid-no-describedby`, `no-reduced-motion` | critical −8 · major −4 |
 
@@ -641,7 +641,7 @@ The `ui-craft-mcp` package exposes four deterministic design-quality tools over 
 
 | Tool | What it does |
 |------|-------------|
-| `check_anti_slop` | 37-rule anti-slop scanner via `scan()` from `ui-craft-detect` — in-process, no subprocess |
+| `check_anti_slop` | 38-rule anti-slop scanner via `scan()` from `ui-craft-detect` — in-process, no subprocess |
 | `tokens_lint` | Off-system token detector: raw hex colors, non-scale radius/spacing px, magic z-index |
 | `acceptance_bar` | Acceptance checklist for a UI surface (`dashboard`, `landing`, `auth`, `generic`) — data only, no scoring |
 | `score_ui` | Composite UICraftScore (0-100 + grade + per-dim subscores) via `evals/quality/score.mjs` — all three dimensions in one call |

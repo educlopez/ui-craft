@@ -1131,6 +1131,32 @@ export const rules = [
       return [];
     },
   },
+  {
+    id: "copy/em-dash-flood",
+    severity: "major",
+    scope: "file",
+    description: "em-dash flood in UI copy (3+ in visible text)",
+    fix: "Em dashes are prose grammar leaking into interface grammar — and a recognizable generated-copy tell. Restructure with a period, colon, or separate elements; keep at most one or two deliberate em dashes per surface. See references/copy.md.",
+    matchFile(content, lines, ctx) {
+      // Only markup-capable files: visible copy lives in text nodes there.
+      // Plain .ts/.js/.css files use em dashes in comments too often to gate.
+      if (![".tsx", ".jsx", ".vue", ".svelte", ".html", ".astro"].includes(ctx.ext)) return [];
+      // Count em dashes inside visible text nodes only (>text<), so code
+      // comments, string keys, and attribute values never contribute.
+      let count = 0;
+      let firstLine = 0;
+      let firstSnippet = "";
+      for (const m of content.matchAll(/>([^<>{}]*—[^<>{}]*)</g)) {
+        count += (m[1].match(/—/g) || []).length;
+        if (!firstLine) {
+          firstLine = content.slice(0, m.index).split("\n").length;
+          firstSnippet = m[1].trim().slice(0, 80);
+        }
+      }
+      if (count < 3) return [];
+      return [{ line: firstLine, snippet: `${count} em dashes in visible copy — first: "${firstSnippet}"` }];
+    },
+  },
 ];
 
 // --- Config loading ------------------------------------------------------

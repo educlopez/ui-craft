@@ -41,6 +41,8 @@ States and keyboard are build steps, not polish — a surface without empty/load
 
 Run the recipe's acceptance checklist against the built surface. Fix every unchecked item before reporting — the bar is the definition of done, not a suggestion.
 
+**Visual self-check (when a screenshot tool is reachable):** if a Playwright/browser MCP or similar is available, capture the built surface at desktop width and look at it before reporting — a render exposes spacing collisions, hierarchy ties, and dead zones that code review can't. Run the similar-prompt self-test (craft-intent §1) against the screenshot: would this exact page pass for a different brand in the category? If yes, strengthen the signature before reporting. No tool available → skip silently, never block.
+
 **Report to the user:**
 
 1. The Craft Read (repeat)

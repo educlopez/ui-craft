@@ -154,7 +154,7 @@ server.registerTool(
     description:
       'Composite design-quality scorer (UICraftScore). Combines three deterministic dimensions into ' +
       'a single 0-100 score + letter grade (A/B/C/D/F) + per-dimension subscores and findings. ' +
-      'Dimensions: anti-slop (37 rules via ui-craft-detect), token-discipline (raw hex / off-scale values), ' +
+      'Dimensions: anti-slop (38 rules via ui-craft-detect), token-discipline (raw hex / off-scale values), ' +
       'and static a11y (5 checks: img-no-alt, non-semantic-interactive, positive-tabindex, ' +
       'aria-invalid-no-describedby, no-reduced-motion). ' +
       'Accepts either a `code` string (inline source) or a `path` string (file). ' +

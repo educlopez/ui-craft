@@ -189,6 +189,49 @@ test("layout/eyebrow-flood fires at 4+ uppercase-tracked labels, skips table hea
   }
 });
 
+test("copy/em-dash-flood fires at 3+ em dashes in visible text, ignores comments and .ts files", async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "detect-emdash-"));
+  try {
+    fs.writeFileSync(
+      path.join(dir, "flooded.tsx"),
+      [
+        `export function Page() {`,
+        `  return (`,
+        `    <div>`,
+        `      <p>Fast — really fast — builds for every team</p>`,
+        `      <p>Deploy in seconds — no config needed</p>`,
+        `    </div>`,
+        `  );`,
+        `}`,
+        ``,
+      ].join("\n"),
+    );
+    // Two em dashes in copy + comments full of them — must not fire.
+    fs.writeFileSync(
+      path.join(dir, "restrained.tsx"),
+      [
+        `// notes — with — many — em — dashes — in — comments`,
+        `export function Page() {`,
+        `  return <p>One deliberate aside — that's fine — and done.</p>;`,
+        `}`,
+        ``,
+      ].join("\n"),
+    );
+    // Plain .ts files never gate on this rule.
+    fs.writeFileSync(
+      path.join(dir, "constants.ts"),
+      `export const NOTES = "a — b — c — d — e";\n`,
+    );
+    const result = await scan(dir);
+    const hits = result.findings.filter((f) => f.rule === "copy/em-dash-flood");
+    assert.equal(hits.length, 1, "fires only on the flooded tsx file");
+    assert.ok(hits[0].file.endsWith("flooded.tsx"));
+    assert.equal(hits[0].severity, "major");
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test("copy/scroll-cue fires on scroll cues, skips real labels", async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "detect-scrollcue-"));
   try {

@@ -15,7 +15,7 @@ Check whether `.ui-craft/brief.md` exists. Use Read or ls on `.ui-craft/`.
 
 **If it exists:** load its contents. If the target the user described names a specific update ("update principles", "shift target user", "add out of scope"), focus the session there and skip unchanged sections. Otherwise summarize what's in the brief and ask: "What do you want to change?"
 
-**If it doesn't exist:** proceed to Step 2.
+**If it doesn't exist:** proceed to Step 2. Also check the repo root for a `DESIGN.md` or `design-tokens.json` (an ecosystem convention some teams already maintain) — if present, read it and pre-fill the brief's answers from it instead of re-asking; note the source. The brief complements an existing design contract, never contradicts it.
 
 ## Step 2: Draft a new brief (absent case)
 

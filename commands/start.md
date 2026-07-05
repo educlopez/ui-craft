@@ -28,6 +28,7 @@ Scan the project. Do not write anything. Gather:
 | **Framework / styling** | package.json deps, config files, file extensions — Tailwind, CSS Modules, styled-components/Emotion, vanilla CSS, Vue/Svelte/Astro SFC | Confirm ui-craft adapts to this stack |
 | **Token spine** | CSS vars (`--color-*`, `--accent-*`, `--font-*`), Tailwind `theme.extend`, a token file | Gate: is `/tokens` needed? |
 | **Brief** | `.ui-craft/brief.md` exists? | Gate: is `/brief` needed? |
+| **External design contract** | `DESIGN.md` or `design-tokens.json` at repo root (ecosystem convention some teams use) | Treat as brief + token input — read it, honor it, don't duplicate it |
 | **Spec** | `.ui-craft/spec.md` exists? which surfaces? | Is there work in flight? |
 | **Harness** | Claude Code (plugin/skill) vs `.codex`/`.cursor`/`.gemini`/`.opencode`/`.agents` mirror | Which layers are reachable (agents/MCP are Claude Code / MCP-client only) |
 | **Existing UI** | are there components/pages already, or is this greenfield? | Build-new vs review/polish framing |

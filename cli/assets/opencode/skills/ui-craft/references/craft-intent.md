@@ -24,6 +24,10 @@ If the brief is ambiguous, ask **one** clarifying question — never a questionn
 
 **Second-order check (marketing surfaces):** name the aesthetic lane before building ("editorial type", "terminal-dark devtool", "warm-craft artisan"). Then ask: could someone guess this lane from the domain alone? "Cookware brief → warm beige + serif" and "devtool → dark mode + mono" are the first training reflex; "AI tool that's not-purple → editorial serif restraint" is the same reflex one tier deeper. If the lane is guessable from the category, rework the read until it isn't — the brand's specifics (audience, voice, product truth) should pick the lane, not the category.
 
+**The three default looks (know them to avoid them):** generated design without a committed read clusters into three recognizable defaults, regardless of subject — (1) warm cream background (~`#F4F1EA`) + high-contrast serif display + terracotta/brass accent; (2) near-black background + one bright acid-green or vermilion accent; (3) broadsheet layout — hairline rules, zero border-radius, dense newspaper columns. All three are legitimate lanes *when the brief asks for them*; none is an acceptable answer to "no brand direction". If your plan lands on one of these without the brief pinning it, that axis was decided by the default, not by you — re-decide it.
+
+**Similar-prompt self-test (before building):** run the counterfactual — "if I got a similar brief for a *different* brand in this category, would I produce this same plan?" If yes for any axis (palette, display face, hero composition, signature), that axis is a category reflex, not a decision. Revise it and state what changed. This is the cheapest test that separates a read from a template.
+
 ---
 
 ## 2. DESIGN_VARIANCE knob (1–10)
