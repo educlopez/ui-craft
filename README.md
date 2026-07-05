@@ -421,7 +421,7 @@ ui-craft/
 
 [![npm version](https://img.shields.io/npm/v/ui-craft-detect?style=flat-square&label=ui-craft-detect)](https://www.npmjs.com/package/ui-craft-detect)
 
-Scan a codebase for common AI-generated UI anti-patterns — 33 rules covering AI slop (`transition: all`, bounce easing, purple gradients, ALL CAPS headings), dark patterns (confirmshaming, destructive actions without confirmation), a11y (icon-only buttons without labels, modal-without-`<dialog>`, `outline: none` without `:focus-visible` replacement, streaming without `aria-live`, heading-level skips), forms (placeholder-as-label, missing `autocomplete`), perf (images without dimensions → CLS), tables (no overflow handling on mobile), dataviz (categorical rainbow palettes), state design (data fetching without empty/error branches), and placeholder copy shipped to prod (`Lorem ipsum`, `TODO`, `John Doe`). Zero dependencies, works out of the box.
+Scan a codebase for common AI-generated UI anti-patterns — 37 rules covering AI slop (`transition: all`, bounce easing, purple gradients, ALL CAPS headings), dark patterns (confirmshaming, destructive actions without confirmation), a11y (icon-only buttons without labels, modal-without-`<dialog>`, `outline: none` without `:focus-visible` replacement, streaming without `aria-live`, heading-level skips), forms (placeholder-as-label, missing `autocomplete`), auth tells (caps "OR" dividers, full-bleed saturated brand panels), marketing copy tells (eyebrow floods, scroll cues, numbered section eyebrows, duplicate CTA intent), perf (images without dimensions → CLS), tables (no overflow handling on mobile), dataviz (categorical rainbow palettes), state design (data fetching without empty/error branches), and placeholder copy shipped to prod (`Lorem ipsum`, `TODO`, `John Doe`). Zero dependencies, works out of the box.
 
 Published as a standalone CLI on npm — use it anywhere without cloning:
 
@@ -540,7 +540,7 @@ Three dimensions, each with its own subscore:
 
 | Dimension | Source | Penalty |
 |-----------|--------|---------|
-| **anti_slop** | 33 rules from `ui-craft-detect` | critical −8 · major −4 · warn −1 |
+| **anti_slop** | 37 rules from `ui-craft-detect` | critical −8 · major −4 · warn −1 |
 | **token_discipline** | Raw hex / off-scale radius / spacing / z-index | −2 per finding (flat) |
 | **a11y** | 5 new static checks (no overlap with detect.mjs): `img-no-alt`, `non-semantic-interactive`, `positive-tabindex`, `aria-invalid-no-describedby`, `no-reduced-motion` | critical −8 · major −4 |
 

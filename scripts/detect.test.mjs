@@ -155,6 +155,135 @@ test("auth/brand-flood-panel does NOT fire on tinted neutral auth panel", async 
 });
 
 // ---------------------------------------------------------------------------
+// marketing production tells — eyebrow flood, scroll cue, numbered eyebrows,
+// duplicate CTA intent
+// ---------------------------------------------------------------------------
+test("layout/eyebrow-flood fires at 4+ uppercase-tracked labels, skips table headers", async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "detect-eyebrow-"));
+  try {
+    const label = `<p className="text-xs uppercase tracking-widest">LABEL</p>`;
+    fs.writeFileSync(
+      path.join(dir, "landing.tsx"),
+      `export function Page() {\n  return <div>\n    ${label}\n    ${label}\n    ${label}\n    ${label}\n  </div>;\n}\n`,
+    );
+    // Three labels — a deliberate kicker system, must not fire.
+    fs.writeFileSync(
+      path.join(dir, "restrained.tsx"),
+      `export function Page() {\n  return <div>\n    ${label}\n    ${label}\n    ${label}\n  </div>;\n}\n`,
+    );
+    // Table headers in caps are legitimate — must not count toward the flood.
+    fs.writeFileSync(
+      path.join(dir, "table.tsx"),
+      `export function Table() {\n  return <thead>\n    <th className="uppercase tracking-wide">Name</th>\n    <th className="uppercase tracking-wide">Role</th>\n    <th className="uppercase tracking-wide">Status</th>\n    <th className="uppercase tracking-wide">Owner</th>\n    <th className="uppercase tracking-wide">Updated</th>\n  </thead>;\n}\n`,
+    );
+    const result = await scan(dir);
+    const hits = result.findings.filter((f) => f.rule === "layout/eyebrow-flood");
+    assert.equal(hits.length, 1, "fires only on the flooded landing file");
+    assert.ok(hits[0].file.endsWith("landing.tsx"));
+    assert.equal(hits[0].severity, "major");
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("copy/scroll-cue fires on scroll cues, skips real labels", async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "detect-scrollcue-"));
+  try {
+    fs.writeFileSync(
+      path.join(dir, "hero.tsx"),
+      [
+        `export function Hero() {`,
+        `  return (`,
+        `    <div>`,
+        `      <span className="text-xs">Scroll to explore</span>`,
+        `      <span>↓ scroll</span>`,
+        `      <label>Scroll direction</label>`,
+        `    </div>`,
+        `  );`,
+        `}`,
+        ``,
+      ].join("\n"),
+    );
+    const result = await scan(dir);
+    const hits = result.findings.filter((f) => f.rule === "copy/scroll-cue");
+    assert.equal(hits.length, 2, "both cues fire; 'Scroll direction' label does not");
+    assert.equal(hits[0].severity, "major");
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("copy/section-number-eyebrow fires on zero-padded counters, skips dates", async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "detect-secnum-"));
+  try {
+    fs.writeFileSync(
+      path.join(dir, "sections.tsx"),
+      [
+        `export function Sections() {`,
+        `  return (`,
+        `    <div>`,
+        `      <span className="text-xs">01 · About</span>`,
+        `      <span>02 / Process</span>`,
+        `      <time>01/02/2026</time>`,
+        `      <span>10 projects</span>`,
+        `    </div>`,
+        `  );`,
+        `}`,
+        ``,
+      ].join("\n"),
+    );
+    const result = await scan(dir);
+    const hits = result.findings.filter((f) => f.rule === "copy/section-number-eyebrow");
+    assert.equal(hits.length, 2, "both numbered eyebrows fire; date and count do not");
+    assert.equal(hits[0].severity, "major");
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("copy/duplicate-cta-intent fires on two labels of one intent, not on reuse of one label", async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "detect-ctaintent-"));
+  try {
+    fs.writeFileSync(
+      path.join(dir, "duplicated.tsx"),
+      [
+        `export function Page() {`,
+        `  return (`,
+        `    <div>`,
+        `      <a href="#contact">Get in touch</a>`,
+        `      <button>Let's talk</button>`,
+        `    </div>`,
+        `  );`,
+        `}`,
+        ``,
+      ].join("\n"),
+    );
+    // Same label reused (nav + hero) is the recommended pattern — must not fire.
+    fs.writeFileSync(
+      path.join(dir, "consistent.tsx"),
+      [
+        `export function Page() {`,
+        `  return (`,
+        `    <div>`,
+        `      <a href="#contact">Get in touch</a>`,
+        `      <button>Get in touch</button>`,
+        `    </div>`,
+        `  );`,
+        `}`,
+        ``,
+      ].join("\n"),
+    );
+    const result = await scan(dir);
+    const hits = result.findings.filter((f) => f.rule === "copy/duplicate-cta-intent");
+    assert.equal(hits.length, 1, "fires only where two labels share one intent");
+    assert.ok(hits[0].file.endsWith("duplicated.tsx"));
+    assert.equal(hits[0].severity, "major");
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+// ---------------------------------------------------------------------------
 // 2.3 — CLI parity: ui-craft-detect --json output == scan() output (full)
 // ---------------------------------------------------------------------------
 test("CLI --json findings match scan() findings (parity)", async () => {

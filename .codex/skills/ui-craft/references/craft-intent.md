@@ -22,6 +22,8 @@ If the brief is ambiguous, ask **one** clarifying question — never a questionn
 
 **Anti-default discipline:** Do not reach for purple mesh gradients, centered symmetric heroes with three equal icon cards, full-black sidebars, or Inter-on-everything without an articulated reason.
 
+**Second-order check (marketing surfaces):** name the aesthetic lane before building ("editorial type", "terminal-dark devtool", "warm-craft artisan"). Then ask: could someone guess this lane from the domain alone? "Cookware brief → warm beige + serif" and "devtool → dark mode + mono" are the first training reflex; "AI tool that's not-purple → editorial serif restraint" is the same reflex one tier deeper. If the lane is guessable from the category, rework the read until it isn't — the brand's specifics (audience, voice, product truth) should pick the lane, not the category.
+
 ---
 
 ## 2. DESIGN_VARIANCE knob (1–10)
@@ -96,6 +98,8 @@ Apply on dashboard, auth, settings, onboarding, admin — load with [recipe-dash
 
 **Avoid in product shells:** scroll pinning, kinetic body copy, mesh backgrounds behind tables, glass on dense forms, decorative carousels.
 
+**Ecosystem briefs use the official system.** When the brief names a platform with a mandated or expected design system (a Shopify app, a gov service, an Atlassian/Microsoft-suite companion), install and use the official package and its tokens instead of hand-rolling a lookalike — recreating a known system's CSS by hand is both more work and instantly off. One system per project; don't mix component libraries in the same tree.
+
 ---
 
 ## 5. Marketing surface patterns (landings, portfolios)
@@ -106,9 +110,11 @@ Apply on landing, portfolio, waitlist — load with [recipe-landing.md](recipe-l
 
 **Type:** Display 48–80px H1, tight tracking, sentence case. Font pairing from theme preset or brief — body + optional display. Emphasize with italic/bold **same family**, not random serif injection.
 
-**Color:** 90% neutral + one accent; rotate accent family when no brand (indigo, teal, rose, amber, forest). No default warm-beige + brass "premium" palette unless the brief names it.
+**Color:** Pick a commitment strategy first ([color.md](color.md) Commitment Axis — restrained / committed / full palette / drenched, gated by variance); default restrained: 90% neutral + one accent; rotate accent family when no brand (indigo, teal, rose, amber, forest). No default warm-beige + brass "premium" palette unless the brief names it.
 
-**Motion:** Hero stagger 50–80ms; one scroll reveal per section; multi-property hover on **one** featured block. No bounce, confetti, or idle float.
+**Imagery:** Marketing surfaces are visual products — a text-only page is incomplete work, not minimalism. Priority: real assets → image-generation tool if available → labeled placeholder slots + tell the user what's needed. Never div-built fake screenshots, never hand-drawn decorative SVG scenes. Logo walls use real SVG marks; invented brands get a simple monogram, not styled text.
+
+**Motion:** Hero stagger 50–80ms; one scroll reveal per section; multi-property hover on **one** featured block. No bounce, confetti, or idle float. Every animation must answer "what does this communicate?" in one sentence (hierarchy, sequence, feedback, state change) — "it looked cool" fails.
 
 **Portfolio:** Variable grid aspects; one hero project above fold; asymmetric about/contact — not centered template.
 
@@ -125,6 +131,8 @@ Rotate **one axis per build** so outputs don't converge:
 | Signature bet | from §3 lists |
 
 Declare the axis in the Craft Read so the user can say "warmer accent" on iteration.
+
+**Premium/artisan briefs rotate palette families.** Cookware, wellness, luxury, heritage-craft briefs all converge on warm beige + brass + espresso — the palette becomes invisible because every generated "premium" site wears it. Unless the brief names those colors, pick a different family per build: cold luxury (silver + chrome + smoke), forest (deep green + bone + amber), black-and-tan (off-black + warm tan, no beige), cobalt + cream, terracotta + slate, or monochrome + one saturated pop. Never ship the same premium family twice in a row ([themes.md](themes.md)).
 
 ---
 

@@ -114,5 +114,13 @@
   {
     "query": "build a sign-in page for our fintech app — google + email auth, needs to feel trustworthy, not like a template. react + tailwind",
     "should_trigger": true
+  },
+  {
+    "query": "every section on my landing page has one of those little uppercase labels above the heading and it looks templated — fix the rhythm. app/page.tsx",
+    "should_trigger": true
+  },
+  {
+    "query": "our premium cookware landing came out beige and brass like every other AI site — give it a palette with an actual point of view",
+    "should_trigger": true
   }
 ]

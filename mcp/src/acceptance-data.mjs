@@ -118,6 +118,26 @@ export default {
       "id": "land-11",
       "description": "Craft Read declared; DESIGN_VARIANCE and signature bet match the built page; no two adjacent sections share the same layout",
       "category": "craft"
+    },
+    {
+      "id": "land-12",
+      "description": "Hero discipline: at most 4 text elements, subtext at most 20 words, headline at most 2 lines desktop, logo wall below the hero (never inside it)",
+      "category": "layout"
+    },
+    {
+      "id": "land-13",
+      "description": "Eyebrow count at most ceil(sections / 3); no numbered section eyebrows (01 · About); no scroll cues; no layout family repeated on the page",
+      "category": "craft"
+    },
+    {
+      "id": "land-14",
+      "description": "One CTA label per intent page-wide (nav, hero, footer reuse the same words); CTA fits one line at desktop and passes AA on its own background",
+      "category": "copy"
+    },
+    {
+      "id": "land-15",
+      "description": "Real imagery where the composition calls for it — no div-built fake screenshots, no text-wordmark logo walls (real SVG marks); copy self-audit passed (no fake-precise numbers, no forced-clever labels)",
+      "category": "craft"
     }
   ],
   "auth": [

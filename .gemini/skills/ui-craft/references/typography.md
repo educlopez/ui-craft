@@ -22,6 +22,15 @@ Apply these in all standard Latin-script web UI unless a specific context overri
 | Monospace | Geist Mono, JetBrains Mono, IBM Plex Mono |
 | System stack | `system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif` |
 
+**Safe choices are product-shell defaults, not marketing display picks.** On landings, portfolios, and brand surfaces the display face carries voice — reaching for the same safe sans every build produces monoculture. Selection procedure for marketing display type:
+
+1. Write three concrete brand-voice words from the brief ("warm, mechanical, opinionated" — not "modern, clean").
+2. Note the font you'd reach for by reflex; if it's the same face your last marketing build used, reject it and rotate.
+3. Pick for the voice words, then cross-check: "creative brief = serif" is itself a reflex — a distinctive sans display (Cabinet Grotesk, Satoshi, GT Walsheim class) is the right default for most creative/premium briefs. Serif display only when the brief is genuinely editorial, luxury, or publication-shaped, and rotate which serif.
+4. Emphasize within a headline using italic or bold of the **same family** — never inject a one-word serif into a sans headline for "visual interest".
+
+**Italic descender clearance:** italic display words containing `y g j p q` clip under `line-height: 1`. Use ≥1.1 and reserve bottom padding on the wrapper.
+
 ---
 
 ## Type Hierarchy

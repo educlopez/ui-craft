@@ -40,8 +40,10 @@ Run each prompt in a **fresh session** with ui-craft installed. Score subjective
 **Pass if:**
 - [ ] Craft Read with marketing language, variance ~7, marketing signature bet
 - [ ] Hero is asymmetric (text + product visual cropped at fold)
-- [ ] No uniform 3-column icon-card feature grid
-- [ ] CTA copy is specific ("Start syncing" beats "Get started")
+- [ ] Hero discipline: ≤4 text elements, subtext ≤20 words, no logo wall or trust strip inside the hero
+- [ ] No uniform 3-column icon-card feature grid; no layout family repeats
+- [ ] Eyebrow count ≤ ceil(sections / 3); no numbered section eyebrows; no "Scroll to explore" cue
+- [ ] CTA copy is specific ("Start syncing" beats "Get started"); one label per intent page-wide
 - [ ] Adjacent sections use different layouts
 
 ### B2 · Designer portfolio
@@ -53,6 +55,8 @@ Run each prompt in a **fresh session** with ui-craft installed. Score subjective
 - [ ] One hero project above the fold
 - [ ] Variable grid aspects or asymmetric about/contact block
 - [ ] Display-scale headline with emphasis in the same family (italic/bold), not random serif injection
+- [ ] Display face differs from the last marketing build (rotation, not the same safe sans every time)
+- [ ] Real imagery or labeled placeholder slots — no div-built fake screenshots
 
 ---
 

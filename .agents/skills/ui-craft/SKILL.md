@@ -26,7 +26,7 @@ Behavior: **CRAFT_LEVEL 8+** → run Polish Pass ([review.md](references/review.
 The rules that make the biggest difference between "AI-generated" and "designed by a human":
 
 0. **Ask before assuming** — never default accent, font, or style. Analyze project, then ask. Use Knob defaults only when the user explicitly declines to specify.
-1. **Sentence case by default** — uppercase = template. Exception: 11-13px category labels with wide tracking.
+1. **Sentence case by default** — uppercase = template. Exception: 11-13px category labels with wide tracking, rationed to max 1 per 3 sections on marketing pages — an eyebrow above every heading is template grammar.
 2. **90%+ neutral, one accent** — mostly black/white/gray; single brand color. NEVER *default* to blue — if your brand is blue, that's different.
 3. **Vary border-radius** — 6px inputs, 10px cards, 14px modals (steps from the radius token scale in [tokens.md](references/tokens.md)); uniform radii look stamped out.
 4. **Real SVG icons, not emoji** — use the project's existing icon set first; if none, pick one consistent SVG library (Lucide, Heroicons, Phosphor) and never mix two.
@@ -175,6 +175,12 @@ Before shipping any UI, ask: "If someone said AI made this, would they believe i
 - Walls of text — no landing section > 2-3 sentences
 - "OR" divider in caps between auth options — lowercase it: "or with email"
 - Full-bleed saturated brand panel beside a sign-in form — tinted neutral surface with one proof asset ([recipe-auth.md](references/recipe-auth.md))
+- Uppercase tracked eyebrow above every section heading — ration to max 1 per 3 sections; one deliberate kicker is voice, one per section is template grammar
+- Numbered section eyebrows ("01 · About", "02 / Process") — numbers earn their place only when content is a real ordered sequence
+- Scroll cues ("Scroll to explore", ↓ arrows) — the fold composition should imply continuation, not label it
+- Two CTA labels with the same intent on one page ("Get in touch" + "Let's talk") — one label per intent, reused everywhere
+- Fake product screenshots built from styled `<div>` rectangles — use a real screenshot, a real mini component, or editorial imagery; never a div mockup
+- Logo walls as plain text wordmarks — use real SVG marks; for invented brands, a simple monogram mark, never a styled `<span>`
 
 **Minor** (polish that separates good from great — full list in [review.md](references/review.md) Polish Pass): no `tabular-nums` on data, missing `text-wrap: balance`, straight quotes, no `&nbsp;` in brand names, testimonial star ratings, hero metric without adjacent context.
 

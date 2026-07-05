@@ -17,7 +17,7 @@ import path from "node:path";
 import readline from "node:readline";
 import { pathToFileURL } from "node:url";
 
-const VERSION = "0.10.0";
+const VERSION = "0.11.0";
 
 const SCAN_EXTENSIONS = new Set([
   ".css", ".scss", ".sass",
@@ -1033,6 +1033,96 @@ export const rules = [
         const m = lines[i].match(flood);
         if (m) {
           return [{ line: i + 1, snippet: m[0].slice(0, 100) }];
+        }
+      }
+      return [];
+    },
+  },
+  {
+    id: "layout/eyebrow-flood",
+    severity: "major",
+    scope: "file",
+    description: "uppercase tracked eyebrow label above every section",
+    fix: "Ration eyebrows to at most one per three sections — an uppercase wide-tracked micro-label above every heading is section grammar stamped from a template. Drop most of them; the headline alone is enough. See references/recipe-landing.md.",
+    matchFile(content, lines) {
+      // Count lines carrying the eyebrow CSS signature: `uppercase` combined
+      // with wide tracking in the same class list. Table headers are a
+      // legitimate use, so <th>/<thead> lines are skipped.
+      const eyebrow =
+        /\buppercase\b[^"'`]*\btracking-(?:wide|widest|\[)|\btracking-(?:wide|widest|\[[^\]]*\])[^"'`]*\buppercase\b/;
+      const hits = [];
+      for (let i = 0; i < lines.length; i++) {
+        if (/<th\b|<thead\b/i.test(lines[i])) continue;
+        const m = lines[i].match(eyebrow);
+        if (m) hits.push({ line: i + 1, snippet: m[0].slice(0, 80) });
+      }
+      // One deliberate kicker is voice; four or more in one file is grammar.
+      return hits.length >= 4 ? [hits[0]] : [];
+    },
+  },
+  {
+    id: "copy/scroll-cue",
+    severity: "major",
+    description: 'decorative scroll cue ("Scroll to explore")',
+    fix: 'Delete it — the user is looking at the hero and knows what scrolling is. If content below the fold matters, make the fold composition imply continuation instead of labeling it. See references/recipe-landing.md.',
+    scope: "line",
+    match(line) {
+      const m = line.match(/>([^<>{}]{1,40})</);
+      if (!m) return false;
+      const text = m[1].trim().toLowerCase();
+      const cue =
+        /^[↓⌄▼∨]?\s*scroll(?:\s+(?:down|to\s+\w+(?:\s+\w+)?))?\s*[↓⌄▼∨]?$/;
+      if (cue.test(text)) return { snippet: m[0].slice(0, 60) };
+      return false;
+    },
+  },
+  {
+    id: "copy/section-number-eyebrow",
+    severity: "major",
+    description: 'numbered section eyebrow ("01 · About")',
+    fix: 'Name the section in plain language or drop the label — zero-padded section counters ("01 · About", "02 / Process") are decorative numbering, not information. Numbers earn their place only when the content is a real ordered sequence. See references/recipe-landing.md.',
+    scope: "line",
+    match(line) {
+      // Zero-padded ordinal + separator + a word: "01 · About", "001 / Capabilities".
+      const m = line.match(/>\s*0\d{1,2}\s*[·\/—–-]\s*[A-Za-z]/);
+      if (m) return { snippet: m[0].slice(0, 60) };
+      return false;
+    },
+  },
+  {
+    id: "copy/duplicate-cta-intent",
+    severity: "major",
+    scope: "file",
+    description: "two CTA labels with the same intent on one page",
+    fix: 'Pick ONE label per intent and reuse it everywhere on the page — "Get in touch" in the hero and "Let\'s talk" in the footer are the same action wearing two names, which dilutes the conversion path. See references/copy.md.',
+    matchFile(content, lines) {
+      const INTENT_SETS = [
+        ["get in touch", "contact us", "let's talk", "lets talk", "let's chat",
+         "reach out", "talk to us", "start a project", "start something"],
+        ["get started", "get started free", "sign up", "sign up free",
+         "try free", "try for free", "start free", "start for free",
+         "start free trial", "create account", "start your free trial"],
+        ["view work", "see work", "view selected work", "see selected work",
+         "view projects", "browse projects", "see our work", "view portfolio"],
+      ];
+      // Collect visible text nodes and which line they appear on. Scan the
+      // full content so multiline JSX (`<a\n  ...>\n  Get in touch\n</a>`)
+      // still yields its text node.
+      const seen = new Map(); // normalized label -> first line
+      for (const m of content.matchAll(/>([^<>{}]{2,40})</g)) {
+        const text = m[1].trim().toLowerCase().replace(/\s+/g, " ").replace(/[→›»]\s*$/, "").trim();
+        if (text && !seen.has(text)) {
+          const lineNo = content.slice(0, m.index).split("\n").length;
+          seen.set(text, lineNo);
+        }
+      }
+      for (const set of INTENT_SETS) {
+        const found = set.filter((label) => seen.has(label));
+        if (found.length >= 2) {
+          return [{
+            line: seen.get(found[1]),
+            snippet: `"${found[0]}" + "${found[1]}" are the same intent`,
+          }];
         }
       }
       return [];

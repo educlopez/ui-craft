@@ -71,7 +71,15 @@ Center is allowed ONLY with asymmetric supporting elements — center-everything
 
 The hero is modest; evidence is the hero. Numbers large and `tabular-nums`; every claim attributed (name, role, company). Buyers here distrust adjectives and read proof.
 
-## Step 2 — Section grammar (below the hero)
+### Hero discipline (all compositions)
+
+The hero is a single moment, not a feature list. Hard limits:
+
+- **Max 4 text elements:** one eyebrow/badge (or none), headline (≤2 lines desktop), subtext (≤20 words, ≤4 lines), CTAs (1 primary + ≤1 secondary). If the value prop needs more than 20 words of subtext, the value prop is unclear — fix the copy, not the limit.
+- **Plan font scale and asset together.** Headline >6 words with a large hero shot → start at 48-60px, not 72-80px. A 4-line hero headline is always a font-size error.
+- **Nothing else rides the hero:** trust micro-strips, pricing teasers, feature bullets, avatar rows, and the logo wall all live in dedicated sections **below** the fold line. One micro-trust line under the CTAs is the ceiling.
+- **Top padding cap ~96px desktop.** Hero content floating halfway down the viewport reads as a layout bug, not breathing room. Need more presence? Scale the type or the asset, not the padding.
+- **No decorative cues:** no "Scroll to explore", no ↓ arrows, no version badges (BETA, v0.6) unless the brief is literally a launch announcement, no mono-caps decoration strips at the hero foot.
 
 Order, each answering ONE question; spacing 80-160px between majors, varied:
 
@@ -80,7 +88,13 @@ Order, each answering ONE question; spacing 80-160px between majors, varied:
 3. **How it works / depth section** — "is it credible?" 3 steps max, or one technical diagram. Cut it if the product is self-evident.
 4. **Pricing teaser or full pricing** — "can I afford it?" See pricing block below.
 5. **Final CTA** — "ok, how do I start?" Restate the primary action + the micro-trust line. One section, not a wall.
-6. **Footer** — boring on purpose. Sitemap, legal, socials. Footers that try to be clever bury the links people need.
+6. **Footer** — boring on purpose. Sitemap, legal, socials. Footers that try to be clever bury the links people need. No fake version stamps (`v1.4.2`, `Build 0048`) — those are devtool fixtures, not marketing content.
+
+**Layout-family budget.** A layout family (3-column cards, split text+image, full-width quote, bento, marquee) appears **at most once per page**; a page with 8 sections needs ≥4 distinct families. Max 2 consecutive image+text splits — the third consecutive zigzag is a fail; break it with a full-width section, a vertical stack, or a bento. "Selected work" must not look like "What we do".
+
+**Eyebrow budget.** Max 1 uppercase tracked micro-label per 3 sections (hero counts as one). Mechanical check: count `uppercase` + wide-tracking labels above headings; if count > ceil(sections / 3), delete eyebrows until it passes — the headline alone is enough.
+
+**Imagery is not optional.** Marketing pages are visual products; a text-only page is incomplete work, not minimalism. Priority order: (1) real product shots / brand assets, (2) image-generation tool if available in the environment, (3) clearly-labeled placeholder slots plus a list for the user of what's needed — never div-built fake screenshots or hand-drawn decorative SVG scenes. Logo walls use real SVG marks (both themes); invented brands get a simple monogram mark, never styled text wordmarks. Logos only — no industry labels printed under each logo.
 
 **Pricing block rules** (when present): highlight the recommended plan (border/badge/size) without making siblings look irrelevant; sticky column headers on long comparison tables; tooltips on hover for feature jargon; discounts shown as % under $100 and absolute amounts above (perceived size); charm pricing where the brand tolerates it; scarcity only if genuinely true — faked urgency reads instantly and burns trust.
 
@@ -109,7 +123,11 @@ Order, each answering ONE question; spacing 80-160px between majors, varied:
 - [ ] One signature detail, exactly one
 - [ ] Mobile: hero readable without zoom, CTAs thumb-reachable, no horizontal scroll
 - [ ] Craft Read declared; variance and signature bet match the built page
-- [ ] No two adjacent sections share the same layout structure
+- [ ] No two adjacent sections share the same layout structure; no layout family repeats; ≤2 consecutive image+text splits
+- [ ] Hero discipline: ≤4 text elements, subtext ≤20 words, headline ≤2 lines, logo wall below the hero
+- [ ] Eyebrow count ≤ ceil(sections / 3); no numbered section eyebrows; no scroll cues
+- [ ] One CTA label per intent across the page (nav, hero, footer reuse the same words); every CTA fits one line at desktop and passes AA contrast on its own background
+- [ ] Real imagery where the composition calls for it; no div-built fake screenshots; logo wall is real SVG marks
 - [ ] `prefers-reduced-motion` honored; entrances ≤400ms; no scroll-jacking
 
 ## Cross-refs

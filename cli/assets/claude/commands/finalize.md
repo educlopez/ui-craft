@@ -48,6 +48,18 @@ These findings are Major, never Critical — they gate NOT READY, not BLOCKED.
 
 ---
 
+## Step 3c — Copy self-audit + mechanical counts (marketing surfaces only)
+
+Applies to landings, portfolios, and campaign pages — skip for product shells.
+
+1. **Read every visible string** (headlines, eyebrows, buttons, captions, alt text, footer). Grammatically broken copy, unclear referents, forced-clever labels ("Field notes" over testimonials, "Quietly trusted by"), or fake-precise numbers with no source → **Major** per `references/copy.md` Copy Self-Audit.
+2. **Eyebrow count (mechanical).** Count uppercase wide-tracked micro-labels above headings. Count > ceil(sections / 3) → **Major** ("eyebrow flood — delete labels until the count passes").
+3. **Layout-family count (mechanical).** Any layout family used twice, or 3+ consecutive image+text splits → **Major** per `references/recipe-landing.md` layout-family budget.
+4. **CTA intent (mechanical).** Two labels with the same intent ("Get in touch" + "Let's talk") → **Major**; a CTA wrapping to two lines at desktop → **Major**.
+5. **Hero discipline.** More than 4 text elements in the hero, subtext over 20 words, or a logo wall inside the hero → **Major**.
+
+---
+
 ## Step 4 — Finish bar
 
 Load `references/finish-bar.md`. Run all 10 passes in document order. Do not reorder.

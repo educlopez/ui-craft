@@ -141,6 +141,8 @@ Rules agents routinely ignore. Every one is shippable to production the day the 
 - **Action reveals consequence.** "Send invite" tells the user exactly what happens. "Submit form" does not.
 - **One primary per view section** — solid for primary, outline/ghost for secondary.
 - **Disabled states explain why** — not just grayed out, never rely on color alone.
+- **One label per intent, page-wide.** "Get in touch", "Contact us", and "Let's talk" on the same page are one action wearing three names — each variant dilutes the conversion path. Pick one label per intent (contact, signup, view-work) and reuse it in nav, hero, and footer. Same for "Try free" / "Get started" / "Sign up free".
+- **CTA labels fit one line at desktop.** A primary CTA that wraps to two lines is broken — shorten the label (≤3 words for primaries) or widen the button; never constrain a CTA's width artificially.
 
 ---
 
@@ -149,6 +151,20 @@ Rules agents routinely ignore. Every one is shippable to production the day the 
 - Numerals, never spelled out: "245", not "two hundred forty-five" — numerals have distinct shapes and scan faster. Group thousands ("12,400"); huge numbers go hybrid ("1 billion", "2.4M") so nobody counts zeros.
 - Form labels drop possessives: "Email", not "My email" or "Your email" — the possessive adds a word and an ambiguity (whose?).
 - Button labels are verb + noun ("Save post", "Delete message"): readable out of context, which is exactly how screen-reader users jumping between controls hear them.
+- **Fake-precise numbers are a tell.** "92%", "4.1×", "13.4 lb" either come from real data (brief, brand, public metrics), are explicitly labeled as sample data, or get cut. Invented engineering precision the brand never claimed reads as fabricated the moment anyone checks.
+
+---
+
+## Copy Self-Audit (before any surface ships)
+
+Re-read **every visible string** — headlines, eyebrows, button labels, body copy, captions, alt text, footer, error messages. Flag and rewrite anything that is:
+
+- **Grammatically broken** or has an unclear referent ("we plan to stay that way" with no antecedent).
+- **Forced cleverness** — wordplay that doesn't track, mock-poetic labels ("Field notes", "On our desks", "Loose plates" for a testimonials section), performative humility ("Quietly trusted by…"). Use the plain functional label: "Testimonials", "Trusted by", "Latest writing".
+- **Generic step scaffolding** — "Step 1 / Step 2 / Step 3", "Phase 01". The step's verb is the label: "Install", "Configure", "Ship".
+- **Separator flooding** — ration the middle dot to one per metadata line ("foo · bar · baz · qux" is a tell; use line breaks or columns). Avoid the em-dash in UI strings (labels, buttons, captions) — restructure with a period, comma, or colon instead.
+
+If a string might not make sense, replace it with a plain functional sentence. Boring copy beats broken-clever copy every time.
 
 ---
 

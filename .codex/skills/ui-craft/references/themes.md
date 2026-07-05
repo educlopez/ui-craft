@@ -212,3 +212,18 @@ When the brief has no brand color, **rotate one accent family per build** so out
 **Dark mode:** lift accent lightness ~15–20% on dark surfaces (see each preset's dark mapping). Re-verify contrast after swap.
 
 **Marketing vs product:** landings and portfolios may rotate accent **and** theme preset; dashboards and auth rotate accent only unless the user asks for a full re-skin.
+
+## Premium palette families (artisan / luxury / wellness briefs)
+
+"Premium" briefs converge on one palette — warm cream background, brass/clay accent, espresso text — until every generated artisan site is interchangeable. Unless the brief names those colors, rotate through distinct families (one per build, never the same family twice in a row):
+
+| Family | Recipe | Reads as |
+|---|---|---|
+| **Cold luxury** | silver-grey neutrals + chrome + smoke dark | precision, engineering premium |
+| **Forest** | deep green + bone + amber accent | outdoor heritage, built-to-last |
+| **Black & tan** | true off-black + warm tan, hard contrast, no beige | leather-goods, deliberate |
+| **Cobalt + cream** | one saturated blue against a single neutral | confident, modern craft |
+| **Terracotta + slate** | warm rust against cool grey | earthy without the beige wash |
+| **Mono + pop** | off-white + off-black + one bright accent | gallery, editorial-modern |
+
+Warmth can come from typography, imagery, and copy — it doesn't have to live in the background color. Verify AA contrast after picking; dark-mode mapping per the preset rules above.
