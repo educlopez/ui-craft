@@ -668,6 +668,33 @@ When you change a skill or command, update the canonical source under `skills/` 
 
 Every skill's `description` field is the primary trigger mechanism. The `evals/` folder holds query sets for `skill-creator`'s description optimizer (`run_loop.py`), which evaluates and iterates descriptions against realistic should-trigger / should-not-trigger prompts. See `evals/README.md` for the commands and how to add new eval sets.
 
+## Roadmap
+
+Where ui-craft is heading. Not commitments with dates — a public list of the directions we consider worth building, roughly ordered by how much they'd raise output quality. Feedback and PRs on any of these welcome.
+
+**Design-tool integration**
+
+- **Figma spec compliance** — read component specs (spacing, type, color, variants) via Figma's Dev Mode / REST API and score an implementation against them, the same way the detector scores anti-slop today. "Does the built component match the design?" becomes a deterministic gate instead of eyeball review.
+- **Design-token import** — pull a token set from Figma variables / Tokens Studio / a `design-tokens.json` and emit the project's 3-layer spine (`/tokens`) from it, instead of hand-transcribing values.
+
+**Detector**
+
+- **Computed-style checks for URL scans** — the URL engine currently scans rendered markup; the next layer is computed styles via the browser engine: real contrast ratios (not class-name heuristics), effective tap-target sizes, actual font fallback chains.
+- **Screenshot-diff regression** — capture a surface per commit and flag visual regressions (spacing collapses, overflow, font swaps) in CI, complementing the static rules.
+- **More harnesses for edit-time hooks** — `hooks install` covers Claude Code and Cursor today; extend to other agents as their hook mechanisms stabilize.
+
+**Skill & pipeline**
+
+- **Reference-board step** — optional pre-build step that generates or collects visual references (mood board, type specimens, palette candidates) before the Craft Read, for briefs where the direction is genuinely open.
+- **Multi-page consistency** — today's recipes reason about one surface at a time; a site-level pass would enforce shared rhythm, type scale, and CTA vocabulary across pages.
+- **UsabilityScore trend tracking** — persist `/heuristic` and UICraftScore results per commit so quality is a curve you watch, not a snapshot.
+
+**Evals**
+
+- **Automated blind-build harness** — run the `evals/craft-quality/PROMPTS.md` tracks through an agent automatically and score the output, turning today's manual auditor pass into a repeatable regression suite.
+
+Have a strong opinion on priority, or something missing? [Open an issue](https://github.com/educlopez/ui-craft/issues).
+
 ## Contributing
 
 Spotted a new AI-generated pattern that should be in the anti-slop list? Have a craft rule from a product you admire? Want to add a new reference domain? PRs and issues welcome.
