@@ -29,6 +29,11 @@ $ProgressPreference = 'SilentlyContinue'
 $Repo = "educlopez/ui-craft"
 $BinaryName = "ui-craft.exe"
 
+# Undocumented overrides for offline/e2e testing only — not part of the
+# public interface, do not surface these in help text or README.
+$UiCraftBaseUrl = if ($env:UI_CRAFT_BASE_URL) { $env:UI_CRAFT_BASE_URL } else { "https://github.com/$Repo/releases/download" }
+$UiCraftApiUrl = if ($env:UI_CRAFT_API_URL) { $env:UI_CRAFT_API_URL } else { "https://api.github.com/repos/$Repo/releases/latest" }
+
 function Write-Info($Message) {
     Write-Host "[info] $Message" -ForegroundColor Cyan
 }
@@ -62,7 +67,7 @@ switch ($archRaw) {
 if (-not $Version) {
     Write-Info "Looking up the latest release..."
     try {
-        $latest = Invoke-RestMethod -Uri "https://api.github.com/repos/$Repo/releases/latest" -UseBasicParsing
+        $latest = Invoke-RestMethod -Uri $UiCraftApiUrl -UseBasicParsing
     } catch {
         Write-ErrorAndExit "Failed to query the GitHub releases API: $_"
     }
@@ -84,7 +89,7 @@ if ($tag -match "^v") {
 Write-Info "Installing ui-craft $tag (windows/$arch)"
 
 $archiveName = "ui-craft_${archiveVersion}_windows_${arch}.zip"
-$baseUrl = "https://github.com/$Repo/releases/download/$tag"
+$baseUrl = "$UiCraftBaseUrl/$tag"
 
 # --- download ----------------------------------------------------------
 

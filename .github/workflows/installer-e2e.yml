@@ -1,0 +1,98 @@
+name: Installer E2E
+
+# End-to-end tests for scripts/install.sh and scripts/install.ps1 against a
+# local fixture server (hermetic, no network needed) across Linux (Docker
+# matrix), macOS, and Windows. Push to main additionally runs one opt-in
+# real-network install per platform against the actual GitHub Releases API.
+#
+# See e2e/installer/run-tests.sh (bash) and e2e/installer/run-tests.ps1
+# (Windows) for the test suites themselves.
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/install.sh'
+      - 'scripts/install.ps1'
+      - 'e2e/installer/**'
+      - '.github/workflows/installer-e2e.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/install.sh'
+      - 'scripts/install.ps1'
+      - 'e2e/installer/**'
+      - '.github/workflows/installer-e2e.yml'
+  workflow_dispatch:
+
+jobs:
+  linux:
+    name: Linux (${{ matrix.platform.name }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - name: ubuntu
+            dockerfile: Dockerfile.ubuntu
+          - name: fedora
+            dockerfile: Dockerfile.fedora
+          - name: arch
+            dockerfile: Dockerfile.arch
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build installer E2E image
+        run: |
+          docker build \
+            -f e2e/installer/${{ matrix.platform.dockerfile }} \
+            -t ui-craft-installer-e2e-${{ matrix.platform.name }} \
+            .
+
+      - name: Run installer E2E (hermetic)
+        if: github.event_name != 'push'
+        run: docker run --rm ui-craft-installer-e2e-${{ matrix.platform.name }}
+
+      - name: Run installer E2E (hermetic + network)
+        if: github.event_name == 'push'
+        run: docker run --rm -e RUN_NETWORK_TESTS=1 ui-craft-installer-e2e-${{ matrix.platform.name }}
+
+  macos:
+    name: macOS
+    runs-on: macos-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run installer E2E (hermetic)
+        if: github.event_name != 'push'
+        run: bash e2e/installer/run-tests.sh
+
+      - name: Run installer E2E (hermetic + network)
+        if: github.event_name == 'push'
+        run: RUN_NETWORK_TESTS=1 bash e2e/installer/run-tests.sh
+
+  windows:
+    name: Windows
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      # Best-effort static analysis of install.ps1. Non-blocking: some
+      # runner images throttle PSGallery, and this is a lint pass, not a
+      # correctness gate (run-tests.ps1 covers correctness).
+      - name: PSScriptAnalyzer (best-effort)
+        shell: pwsh
+        continue-on-error: true
+        run: |
+          try {
+            Install-Module -Name PSScriptAnalyzer -Force -Scope CurrentUser -ErrorAction Stop
+            Invoke-ScriptAnalyzer -Path scripts/install.ps1 -EnableExit
+          } catch {
+            Write-Host "PSScriptAnalyzer unavailable or failed — skipping (non-blocking): $_"
+          }
+
+      - name: Run installer E2E (PowerShell, hermetic)
+        shell: pwsh
+        run: e2e/installer/run-tests.ps1

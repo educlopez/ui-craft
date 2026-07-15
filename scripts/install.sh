@@ -18,6 +18,20 @@ REPO="educlopez/ui-craft"
 BINARY_NAME="ui-craft"
 VERSION="${UI_CRAFT_VERSION:-}"
 
+# Undocumented overrides for offline/e2e testing only — not part of the
+# public interface, do not surface these in --help or README.
+UI_CRAFT_BASE_URL="${UI_CRAFT_BASE_URL:-https://github.com/${REPO}/releases/download}"
+UI_CRAFT_API_URL="${UI_CRAFT_API_URL:-https://api.github.com/repos/${REPO}/releases/latest}"
+
+# Real GitHub URLs are pinned to https + TLS 1.2. Local fixture servers used
+# by e2e/installer/run-tests.sh serve plain http on 127.0.0.1, so relax the
+# pin only when a base-url override is in effect (test-only path).
+if [ "$UI_CRAFT_BASE_URL" = "https://github.com/${REPO}/releases/download" ]; then
+  curl_tls_opts="--proto =https --tlsv1.2"
+else
+  curl_tls_opts=""
+fi
+
 # --- arg parsing --------------------------------------------------------
 
 while [ "$#" -gt 0 ]; do
@@ -97,7 +111,8 @@ fi
 
 if [ -z "$VERSION" ]; then
   info "Looking up the latest release..."
-  latest_json="$(curl -fsSL --proto '=https' --tlsv1.2 --connect-timeout 10 --max-time 60 "https://api.github.com/repos/${REPO}/releases/latest")" \
+  # shellcheck disable=SC2086 # curl_tls_opts is intentionally unquoted for word-splitting; contains no whitespace-bearing values
+  latest_json="$(curl -fsSL $curl_tls_opts --connect-timeout 10 --max-time 60 "$UI_CRAFT_API_URL")" \
     || fatal "Failed to query the GitHub releases API. This may be a rate limit — skip the lookup by passing --version vX.Y.Z (or setting UI_CRAFT_VERSION)."
   tag="$(printf '%s' "$latest_json" | grep -m1 '"tag_name"' | sed -E 's/.*"tag_name": *"([^"]+)".*/\1/')"
   [ -n "$tag" ] || fatal "Could not parse the latest release tag."
@@ -116,7 +131,7 @@ esac
 info "Installing ui-craft ${tag} (${os}/${arch})"
 
 archive_name="ui-craft_${archive_version}_${os}_${arch}.tar.gz"
-base_url="https://github.com/${REPO}/releases/download/${tag}"
+base_url="${UI_CRAFT_BASE_URL}/${tag}"
 
 # --- download --------------------------------------------------------------
 
@@ -125,11 +140,13 @@ cleanup() { rm -rf "$tmp_dir"; }
 trap cleanup EXIT
 
 info "Downloading ${archive_name}..."
-curl -fsSL --proto '=https' --tlsv1.2 --connect-timeout 10 --max-time 600 -o "${tmp_dir}/${archive_name}" \
+# shellcheck disable=SC2086 # curl_tls_opts is intentionally unquoted for word-splitting; contains no whitespace-bearing values
+curl -fsSL $curl_tls_opts --connect-timeout 10 --max-time 600 -o "${tmp_dir}/${archive_name}" \
   "${base_url}/${archive_name}" \
   || fatal "Download failed. Check that ${tag} has a release asset for ${os}/${arch}."
 
-curl -fsSL --proto '=https' --tlsv1.2 --connect-timeout 10 --max-time 60 -o "${tmp_dir}/checksums.txt" \
+# shellcheck disable=SC2086 # curl_tls_opts is intentionally unquoted for word-splitting; contains no whitespace-bearing values
+curl -fsSL $curl_tls_opts --connect-timeout 10 --max-time 60 -o "${tmp_dir}/checksums.txt" \
   "${base_url}/checksums.txt" \
   || fatal "Failed to download checksums.txt for verification."
 

@@ -1,0 +1,31 @@
+# syntax=docker/dockerfile:1
+# Dockerfile.ubuntu — installer E2E test image (Ubuntu 22.04)
+#
+# This tests scripts/install.sh — a ~200-line curl/tar/sha256 script, not the
+# ui-craft CLI itself — so the image stays intentionally minimal: no Go, no
+# Node, no build step. Tests run as a non-root user so the "not writable
+# /usr/local/bin" fallback branch in the installer is exercised naturally.
+FROM ubuntu:22.04
+
+ARG DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        bash \
+        curl \
+        python3 \
+        ca-certificates \
+        tar \
+        gzip \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN useradd -m -s /bin/bash testuser
+
+WORKDIR /home/testuser/ui-craft
+COPY scripts/ scripts/
+COPY e2e/installer/ e2e/installer/
+RUN chmod +x scripts/install.sh e2e/installer/run-tests.sh && \
+    chown -R testuser:testuser /home/testuser
+
+USER testuser
+
+CMD ["bash", "e2e/installer/run-tests.sh"]

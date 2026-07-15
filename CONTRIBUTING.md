@@ -191,6 +191,7 @@ On push to main:
 - `validate.yml` runs the validator + skill/command mirror drift guard + agent copy drift guard
 - `cli-ci.yml` runs Go tests (path-filtered to `cli/**`)
 - `mcp-test.yml` runs MCP + eval harness (path-filtered)
+- `installer-e2e.yml` runs the installer E2E suite across Linux/macOS/Windows (path-filtered to `scripts/install.sh`, `scripts/install.ps1`, `e2e/installer/**`)
 - `release.yml` creates a tag + GitHub release if VERSIONS.md has a new entry
 
 ## Submitting
