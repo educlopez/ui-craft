@@ -61,6 +61,26 @@ A single static Go binary that detects your AI coding harness and wires skill+co
 
 **macOS / Linux:**
 ```bash
+curl -fsSL https://raw.githubusercontent.com/educlopez/ui-craft/main/scripts/install.sh | bash
+```
+
+**Windows:**
+```powershell
+irm https://raw.githubusercontent.com/educlopez/ui-craft/main/scripts/install.ps1 | iex
+```
+
+The script detects your OS/arch, downloads the latest release, verifies its checksum, and installs the `ui-craft` binary — no brew/scoop required.
+
+**Then run:**
+```bash
+ui-craft install
+```
+
+<details>
+<summary>Alternative installs (Homebrew, Scoop)</summary>
+
+**macOS (Homebrew):**
+```bash
 brew install --cask educlopez/tap/ui-craft
 ```
 
@@ -70,10 +90,7 @@ scoop bucket add educlopez https://github.com/educlopez/scoop-bucket
 scoop install educlopez/ui-craft
 ```
 
-**Then run:**
-```bash
-ui-craft install
-```
+</details>
 
 `ui-craft install` detects Claude Code / Cursor / Codex / Gemini / OpenCode, walks you through à-la-carte component selection (interactive TUI or `--yes` for CI), and writes each chosen component into that harness's native config. All writes are idempotent, backed up before they happen, and rolled back automatically on any failure.
 
@@ -99,11 +116,14 @@ One command installs the skill, all 25 slash commands, the 2 review agents, and 
 
 The plugin bundles a `.mcp.json` (`npx -y ui-craft-mcp`), so the deterministic gates register automatically on install — first launch fetches the package via `npx`. This uses Claude Code's own plugin system, so it's not affected by the global-path issue noted below.
 
-### Agent Skills — alternative (skill + commands, any harness)
+### Agent Skills — alternative (skill + commands only, any harness)
 
 ```bash
 npx skills add educlopez/ui-craft
 ```
+
+> [!warning]
+> This installs the **skill only** — no slash commands beyond the ones mirrored as sub-skills, no review agents, no MCP gates, no hooks. For the full system (MCP quality gates, review agents, design memory), use the [installer above](#cli--recommended-cross-harness-installs-the-whole-system).
 
 Works with any agent that supports the [Agent Skills](https://skills.sh) spec. Each agent gets a pre-built mirror under a dedicated folder (`.codex/`, `.cursor/`, `.gemini/`, `.opencode/`, `.agents/`). The main `ui-craft` skill lands as a peer skill; each slash command is materialized as its own sub-skill in non-Claude harnesses (other agents trigger them by intent: "audit my UI", "polish this page").
 
@@ -124,7 +144,7 @@ git submodule add https://github.com/educlopez/ui-craft.git .skills/ui-craft
 
 ## CLI
 
-The `ui-craft` binary is a single static Go binary (distributed via Homebrew and Scoop). It is the lifecycle and cross-harness wiring core for the system.
+The `ui-craft` binary is a single static Go binary (see [Install](#install) above for the recommended install script, plus Homebrew/Scoop alternatives). It is the lifecycle and cross-harness wiring core for the system.
 
 Run `ui-craft` with no arguments to open the **interactive hub** — a full-screen menu with an async update check that routes into install, upgrade, backups, and uninstall. Every subcommand below also works directly for scripting/CI.
 
