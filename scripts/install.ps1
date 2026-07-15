@@ -43,7 +43,14 @@ function Write-Warn($Message) {
 }
 
 function Write-ErrorAndExit($Message) {
-    Write-Host "[error] $Message" -ForegroundColor Red
+    throw $Message
+}
+
+# Fatals raised before the main try/finally (arch/version validation) land
+# here: print them cleanly and exit non-zero instead of dumping a raw
+# exception. Fatals inside the main block are handled by its own catch.
+trap {
+    Write-Host "[error] $($_.Exception.Message)" -ForegroundColor Red
     exit 1
 }
 
@@ -96,6 +103,7 @@ $baseUrl = "$UiCraftBaseUrl/$tag"
 $tmpDir = Join-Path ([System.IO.Path]::GetTempPath()) ("ui-craft-install-" + [System.Guid]::NewGuid().ToString("N"))
 New-Item -ItemType Directory -Path $tmpDir -Force | Out-Null
 
+$exitCode = 0
 try {
     $archivePath = Join-Path $tmpDir $archiveName
     $checksumsPath = Join-Path $tmpDir "checksums.txt"
@@ -180,6 +188,10 @@ try {
     Write-Host ""
     Write-Info "Run 'ui-craft' for the interactive hub, or 'ui-craft install' to wire your harnesses."
     Write-Info "Updates: 'ui-craft self-update'."
+} catch {
+    Write-Host "[error] $($_.Exception.Message)" -ForegroundColor Red
+    $exitCode = 1
 } finally {
     Remove-Item -Path $tmpDir -Recurse -Force -ErrorAction SilentlyContinue
 }
+exit $exitCode
