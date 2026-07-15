@@ -26,6 +26,7 @@ Any motion work: hover, enter/exit, modals, drawers, page transitions, scroll re
 4. **Respect the user's system** — `prefers-reduced-motion` is not optional. Provide meaningful fallbacks, not just `animation: none`.
 5. **GPU-only properties** — stick to `transform` and `opacity`. Animating `width`, `height`, `top`, `left` causes layout thrashing.
 6. **List properties explicitly** — `transition: all` animates things you didn't intend.
+7. **Degrade before removing.** When an animation is causing jank, the fix ladder is: shrink duration, shrink distance, swap to a cheaper property, reduce the number of animated elements — in that order. Cutting the animation entirely is the last rung, not the first response to a performance complaint.
 
 **Asymmetric enter/exit.** Pressing can be slow when deliberate (hold-to-delete: 2s linear), but release is always snappy (200ms ease-out). Slow where user decides, fast where system responds.
 
@@ -100,6 +101,7 @@ Four tokens cover ~95% of UI easing. System defaults — framework libraries hav
 - **Focus contract** — a focus ring still needs a perceptible transition (fast, no easing drama) so keyboard users see the state change.
 - **Disable interactions on exiting elements** — visually present, logically gone.
 - **Never block interaction while a stagger plays** — decorative motion must not gate input.
+- **Transitions vs. keyframes — pick by interruptibility.** A CSS transition retargets smoothly toward whatever the newest end state is, even mid-flight — interrupt a hover-out with a hover-in and it reverses cleanly from its current position. A keyframe animation restarts from its `0%` frame every time it's re-triggered, discarding wherever it currently was. Interactive state changes (hover, press, toggle, open/close) are transitions for exactly this reason; keyframes are for one-shot choreography that never needs to be interrupted mid-play (a one-time celebration, a loading spinner).
 
 General interaction rules (keyboard timing, touch targets, `overscroll-behavior`, `touch-action`, optimistic UI, destructive confirmations) live in `accessibility.md` — honor them on every animated control.
 
@@ -193,6 +195,40 @@ Springs feel natural because they simulate real physics — no fixed duration, t
 
 ---
 
+## Swapping One Icon for Another In Place
+
+A sun that becomes a moon on theme toggle, a checkmark that replaces a copy icon after a click — same slot, different glyph, no layout shift. Done wrong it either reads as a flicker (plain crossfade, nothing else) or as the icon resizing itself rather than being replaced (entering scale starts too large).
+
+- **Both icons cross-fade opacity together** — outgoing down, incoming up, one shared duration.
+- **The incoming icon grows in from roughly 0.25-0.35 of its full size, not from a near-full scale.** The point isn't the exact number — it's that entering should read as *arriving*, not as *resizing*. Starting closer to 1 makes the icon look like it's stretching into place; starting small enough makes it unambiguous that a new element appeared.
+- **A few pixels of blur clearing to zero** as the incoming icon settles takes the edge off the transition further, so the swap feels like one continuous event rather than a hard cut.
+- **No overshoot.** Springs here want to land and stop — a wobbling checkmark after a save reads as a glitch, not a flourish, because nothing about "your click registered" calls for bounce.
+
+DOM-only fallback when a motion library isn't in play — stack both icons in the same grid cell and toggle a class from parent state:
+
+```css
+.swap-slot {
+  position: relative;
+  display: inline-grid;
+}
+.swap-slot > svg {
+  grid-area: 1 / 1;
+  opacity: 0;
+  transform: scale(0.3);
+  filter: blur(2px);
+  transition: opacity var(--motion-fast) var(--ease-out),
+              transform var(--motion-fast) var(--ease-out),
+              filter var(--motion-fast) var(--ease-out);
+}
+.swap-slot > svg[data-visible="true"] {
+  opacity: 1;
+  transform: scale(1);
+  filter: blur(0);
+}
+```
+
+---
+
 ## Reduced-Motion Contract
 
 `prefers-reduced-motion` is not optional. The system must degrade to zero-motion gracefully — not break, not disappear, not skip states.
@@ -270,6 +306,8 @@ Prefer CSS Scroll Timelines — runs off main thread:
 ```
 
 Prefer `IntersectionObserver` for visibility triggers. Never poll `scrollY` or use `scroll` event listeners for continuous animation — causes layout/paint on every frame.
+
+**A `requestAnimationFrame` loop needs an owner.** Something in the code must be responsible for calling `cancelAnimationFrame` once the element unmounts or the animation reaches its resting state — otherwise the loop just keeps scheduling itself against a target that no longer needs it, spending frame budget for no visible benefit.
 
 ### Layers & Promotion
 

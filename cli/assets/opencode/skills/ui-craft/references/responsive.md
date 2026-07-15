@@ -132,7 +132,15 @@ Use these only when integrating with an existing system. New code should prefer 
 
 ---
 
+## Viewport Units
+
+Use `dvh` instead of `100vh` or Tailwind's `h-screen` for any surface meant to fill the viewport. Mobile browsers change the visible viewport height as the URL bar shows and hides — `100vh` measures the *largest* possible viewport and locks to it, so a full-height hero or modal ends up taller than what's actually visible and the bottom gets clipped behind the browser chrome. `dvh` (dynamic viewport height) tracks the real, current viewport instead.
+
+---
+
 ## Safe Areas
+
+Any fixed or sticky element must respect `env(safe-area-inset-*)` on notched devices — a bottom nav bar or sticky CTA that ignores the inset sits under the home indicator or gets clipped by it.
 
 ```css
 .fixed-bottom {

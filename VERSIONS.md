@@ -1,5 +1,26 @@
 # Versions
 
+## v0.36.0 (2026-07-15) — Evidence-gated reviews, Craft Report receipts, and precision rules
+
+Two structural upgrades to the refine path plus a batch of precision rules that turn abstract guidance into worked recipes.
+
+**Evidence Gate (`review.md`):** every reported finding now needs three parts — the rule/decision it violates (cited), proof the issue reaches the rendered surface (traced through the real render path, not name similarity or grep proximity), and exactly one concrete fix. Candidates that can't produce all three get dropped or investigated, never reported. A falsification pass re-opens the evidence for each candidate before the report is written, findings are ranked by impact × confidence with a signal cap, and a scope-discipline clause keeps review passes from refactoring unrelated code or adding abstractions native semantics already solve.
+
+**Craft Report (`review.md` + refine commands):** every review, polish, audit, or refine run ends with a receipt — Checked / Passed / Changed / Left alone / Verdict. Non-negotiable: a pass that changes nothing still produces the report; "everything checked out" is a finding, and the receipt turns a near-no-op on an already-sound surface into visible validation instead of silence. `/polish`, `/audit`, and `/critique` close by wrapping their existing output in the report; SKILL.md routing rows for reviewing/polishing existing UI declare it.
+
+**New reference:** `metadata.md` — page-metadata correctness when a task touches it: title/description/canonical/og consistency, deterministic metadata (no unstable values breaking SSR or social caches), social-card verification on deployed URLs, noindex on non-production surfaces, structured data that never invents ratings/prices/org facts, favicon coverage. SEO *strategy* stays deferred to an SEO skill — this covers correctness of what's already emitted.
+
+**Precision rules across Tier 2/3 references:**
+
+- `color.md` — Gamut & P3 section (hold chroma as a percentage of each hue's max in multi-hue palettes; sRGB-safe defaults raised inside `@media (color-gamut: p3)`; `@supports` fallback), hue-consistency QA on generated scales, and a lightness-gap contrast heuristic (ΔL ≥ ~0.55; mid-lightness backgrounds flagged as contrast risks).
+- `typography.md` — `font-synthesis: none` so missing weights fail visibly; prefer high-level font properties over raw `font-feature-settings`/`font-variation-settings` (they degrade gracefully with fallback fonts); cap-height trimming with `text-box` for labels that sit low in buttons and pills; `from-font` underline metrics.
+- `motion.md` — degrade-before-removing rung on the jank ladder; transitions-vs-keyframes interruption rule (interactive state gets transitions, keyframes only for one-shot choreography); icon-swap recipe (scale-in ~0.25–0.35 + blur resolve, zero-bounce springs, CSS-only stacked-slot fallback); requestAnimationFrame loops need an owner that cancels them.
+- `layout.md` — concentric radius arithmetic on the token scale (inner 14px + 6px gap → outer 20px, with the >24px-padding exception); optical-alignment recipes (icon-side padding −2px, triangular glyph nudges, viewBox fixes over margin hacks); dark-mode elevation collapses to a single low-alpha light ring.
+- `forms.md` / `accessibility.md` — Input Basics: iOS inputs need ≥16px font-size on small viewports, never `maximum-scale=1` (blocks user zoom, WCAG 1.4.4 failure); paste-blocking rule deduplicated to a single home with cross-references.
+- `responsive.md` — `dvh` over `100vh` for full-height surfaces; fixed/sticky elements respect `env(safe-area-inset-*)`.
+
+All mirrors synced (`check-mirror-copies` clean, `validate.mjs` 105/105). Detector, MCP, and CLI unchanged.
+
 ## v0.35.0 (2026-07-04) — Craft Read, variance, and output personality
 
 Closes the gap between "technically correct" builds and surfaces that feel intentional. Product apps (dashboards, auth, settings) and marketing surfaces (landings, portfolios) are both first-class — not either/or.

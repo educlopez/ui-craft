@@ -80,6 +80,14 @@ Match scale ratio to product type: dense apps want small ratios (1.125-1.2 — m
 }
 ```
 
+**`font-synthesis: none`** on any family missing a weight or style file. Without it, the browser fakes bold by smearing the outline and fakes italic by shearing it — synthesized glyphs that ship silently to production. Setting `font-synthesis: none` makes the gap fail visibly in development (regular weight renders where bold was requested) so it gets caught before ship, instead of shipping fake glyphs users never notice as wrong but perceive as slightly off.
+
+### Feature Control: Properties Over Raw Tags
+
+When a high-level CSS property and a raw OpenType feature tag both produce the same visual result, take the property. **Why it matters more than it looks:** a property degrades gracefully — a fallback font that lacks the matching axis or feature just ignores the property and falls back to its own default rendering, no error, nothing visibly broken. A raw feature tag has no such fallback path; it silently stops applying, and the gap stays invisible until someone diffs the rendered output against the design.
+
+Where this shows up in practice: `font-variant-numeric: tabular-nums slashed-zero` instead of a hand-written feature-tag equivalent, for the tabular figures this skill already asks for anywhere numbers stack in a column; `font-weight` instead of `font-variation-settings: 'wght' 600` on variable fonts; `font-variant-caps` instead of a raw `font-feature-settings` string for small caps.
+
 ### Letter-Spacing by Size
 
 These rules apply to **Latin script, sans-serif and display faces** unless stated otherwise. Do not adjust tracking on CJK, Arabic, Devanagari, or other non-Latin scripts unless you deeply understand their typographic conventions — the font's built-in metrics handle it. Serif faces are designed with tracking already optimized across sizes; tightening them at display sizes damages their rhythm.
@@ -176,6 +184,14 @@ p, li, dd      { text-wrap: pretty; }
 - Layouts handle short, average, AND very long content
 - Handle empty strings without broken UI
 - Locale-aware: `Intl.DateTimeFormat`, `Intl.NumberFormat`
+
+---
+
+## Cap-Height Trimming & Underlines
+
+- **`text-box: trim-both cap alphabetic`** strips out the half-leading a browser adds above and below the glyph outlines — that reserved sliver is what makes a single-line label inside a pill, chip, or button look like it's drifted below true center instead of sitting on it. Until support is universal, the old manual counter-measure still works: nudge the text node with a small negative margin or padding tuned to the font's own metrics.
+- **`text-underline-position: from-font`** and **`text-decoration-thickness: from-font`** pull the underline's offset and weight from the font file's own metrics instead of the browser's generic guess — closer underlines on script-adjacent faces, correctly-weighted underlines on heavier display fonts.
+- **Reserve dotted underlines for "more info" affordances** — glossary terms, `<abbr>`, inline definitions — not for links. A dotted underline reads as "hover for detail," and putting it on a normal link signals the wrong interaction.
 
 ---
 

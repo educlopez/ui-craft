@@ -179,4 +179,4 @@ Every UI you build or review must pass these:
 - **Set `autocomplete` + meaningful `name`**; correct `type` and `inputmode`
 - **Warn on unsaved changes** before navigation
 - **Trim values** to handle trailing whitespace from text expansion
-- **Mobile input font-size ≥ 16px** to prevent iOS zoom
+- **Mobile input font-size ≥ 16px** to prevent iOS zoom-on-focus — canonical rule and the viewport-meta trap to avoid live in `forms.md` (Input Basics)

@@ -54,3 +54,5 @@ If the user declines to provide screenshots, run a code-only pass and clearly ma
 Group findings by priority: **Critical** (blocks usability/a11y) → **High-impact** (immediately noticeable) → **Quick wins** (polish).
 
 Do NOT rewrite code unless asked. Report findings first; wait for approval before editing.
+
+**Close with a Craft Report** (`references/review.md` → Craft Report), wrapping the findings table above — Checked states scope (a11y/perf/responsive, at which viewports), Passed carries anything inspected and found sound, Changed stays empty pre-approval, Verdict names the top priority. Produce it even on a clean audit — a11y/perf/responsive coming back clean is the finding.

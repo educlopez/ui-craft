@@ -137,6 +137,38 @@ Frame as missed opportunities:
 
 ---
 
+## Evidence Gate
+
+A finding only counts once it clears three bars. Anything missing one of these is a **candidate**, not a finding — drop it or keep investigating, but don't write it into the report as-is.
+
+1. **Cite the rule.** Name the specific rule or decision the issue violates — a line from this file, from `brief.md`, from the token spine, from an explicit accessibility requirement. "This feels off" is not a citation.
+2. **Prove it reaches the rendered surface.** Trace the real path — file:line through the actual render, import, or token-resolution chain — that gets you from the code you're pointing at to the pixels the user sees. Two components sharing a name, or a token that merely looks related, is not proof; grep proximity is not proof. If you can't walk the chain, you don't have a finding yet.
+3. **One concrete fix.** Exactly one, specific enough to apply directly — not a menu of options, not "consider revisiting."
+
+**Falsification pass.** Before the report goes out, re-open the evidence for every candidate and actively try to disprove it — check whether the cited rule actually applies in this context, whether the traced path really executes, whether the fix could break something the candidate didn't account for. Only candidates that survive an honest attempt to kill them get written up.
+
+**Signal cap.** Rank surviving findings by impact × confidence and report the ones that matter — roughly the top 3-5, not an exhaustive list. Say explicitly what else was observed and cut, so the reader knows the noise was filtered, not missed. A short, high-confidence report beats an exhaustive, noisy one.
+
+**Scope discipline.** A review or audit pass fixes what it found — it does not refactor unrelated code, swap libraries or frameworks, or add ARIA and abstraction layers where native semantics already solve the problem. The smallest change that resolves the finding is the correct one.
+
+---
+
+## Craft Report
+
+Every review, polish, audit, or refine pass ends with a Craft Report — a receipt of the run. This is non-negotiable: **a pass that changes nothing still produces the report.** "Everything checked out" is a finding, and the most important one to surface — a silent no-op reads as the tool doing nothing, while a receipt turns the same no-op into validation the user can act on.
+
+Sections may be omitted when empty, except **Checked** and **Verdict** — those two always appear, even on a pure pass.
+
+- **Checked** — which dimensions or rule sets actually ran (anti-slop scan, hierarchy, type, color/contrast, motion, a11y, states…) and over what scope (which files or surfaces). Never imply coverage broader than what actually ran.
+- **Passed** — what was inspected and found sound, with a word on the evidence behind it (e.g. "focus states present on all interactive elements in nav + forms," not "looks fine"). This is the payload when little or nothing changed — treat it with the same rigor as a finding, not as filler.
+- **Changed** — each change, one line, with a file reference and the rule or decision it serves. Every entry here already cleared the Evidence Gate above — no changes ship without a citation and a fix.
+- **Left alone** — deliberate non-changes: things that look unusual but are intentional or brand, things technically correct so untouched, things out of scope or that need a user decision. One line each with the why — this is what separates "didn't notice" from "noticed, chose not to touch."
+- **Verdict** — one sentence: overall state, plus the single highest-leverage next step if one exists (or "ship it" if none does).
+
+Keep it honest and short. The report reflects what this run actually inspected — no padding, no invented coverage, no claiming a dimension was checked because it usually is.
+
+---
+
 ## Comprehensive Audit Checklist
 
 ### Animation Audit

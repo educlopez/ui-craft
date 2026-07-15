@@ -188,6 +188,8 @@ Never use arbitrary values (999, 9999). Use elevation to reinforce hierarchy, no
 
 Always layered (ambient + direct light). Higher elevation = larger spread + lower opacity, not just a bigger number.
 
+**Dark mode breaks layered shadows.** A dark shadow cast on a dark surface has nowhere to show up — the layered ambient+direct recipe above effectively disappears. Don't stack darker shadows to compensate; collapse elevation to a single subtle light ring instead — a 1px, low-alpha white inset or outset border (`0 0 0 1px rgba(255,255,255,0.08)`-ish) reads as "raised" against a dark surface the way a shadow does against a light one.
+
 ---
 
 ## Optical Adjustments
@@ -195,6 +197,18 @@ Always layered (ambient + direct light). Higher elevation = larger spread + lowe
 - **±1px nudges** when geometric centering looks visually off-center — common with icons inside buttons, badges, avatars
 - **Nested radii:** child ≤ parent. Use `calc(var(--radius-parent) - var(--padding))` to keep concentric curves
 - **Icon/text lockups:** adjust weight, size, spacing, or color — one lever at a time until they feel unified
+
+### Concentric Radius Arithmetic
+
+The relationship that keeps nested corners visually parallel: **outer radius = inner radius + the gap between the two edges.** Worked example on the token scale — an inner surface using `--radius-xl` (14px) sitting inside 6px of padding needs an outer radius of `14 + 6 = 20px`, which lands exactly on `--radius-2xl`. Skip the arithmetic and the outer curve either pinches tighter than the inner one (looks accidental) or bows out looser (looks sloppy) — concentric only reads as intentional when the two curves share a center point.
+
+**Exception:** past roughly 24px of padding, the two surfaces read far enough apart that concentric math stops mattering — at that distance, treat inner and outer as separate surfaces with independently chosen radii rather than chasing an arithmetic relationship the eye can no longer perceive.
+
+### Optical Alignment Recipes
+
+- **Icon-leading buttons need asymmetric padding** — trim roughly 2px off the icon side of the button's padding. An icon's own whitespace (the space inside its bounding box between the glyph and its edge) reads as extra padding the eye already counts, so equal padding on both sides looks lopsided toward the icon.
+- **Triangular and asymmetric glyphs need a nudge toward their visual mass.** Play icons, carets, and similar shapes have most of their ink weight off-center within their bounding box — a 1-2px nudge in the direction the shape "leans" corrects the optical imbalance a perfectly centered bounding box leaves behind.
+- **When an SVG is persistently off-balance across every context it's used in**, fix the path's `viewBox` centering at the source rather than compensating with margin on every instance. Per-instance margin hacks drift out of sync the next time the icon is resized or reused elsewhere; a corrected `viewBox` fixes it everywhere at once.
 
 ---
 

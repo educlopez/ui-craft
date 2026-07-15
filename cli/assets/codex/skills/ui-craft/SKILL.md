@@ -53,8 +53,8 @@ The rules that make the biggest difference between "AI-generated" and "designed 
 | Pick a ready-made theme (no token system exists) | [themes.md](references/themes.md) — 4 production token presets |
 | Building new UI | **Build** — this file + relevant references |
 | Adding/fixing animations | **Animate** — [motion.md](references/motion.md) |
-| Reviewing existing UI | **Review** — [review.md](references/review.md) |
-| Polishing existing UI | **Polish** — this file + [review.md](references/review.md) Polish Pass |
+| Reviewing existing UI | **Review** — [review.md](references/review.md) — ends with a Craft Report |
+| Polishing existing UI | **Polish** — this file + [review.md](references/review.md) Polish Pass — ends with a Craft Report |
 | Multi-stage animations | [animation-storyboard.md](../../examples/animation-storyboard.md) |
 | Layout / spacing | [layout.md](references/layout.md) |
 | Typography (focused pass: `/typeset`) | [typography.md](references/typography.md) |
@@ -73,6 +73,7 @@ The rules that make the biggest difference between "AI-generated" and "designed 
 | Sound design | [sound.md](references/sound.md) |
 | UX copy / voice / tone / microcopy (focused pass: `/clarify`) | [copy.md](references/copy.md) — errors, empty states, CTAs, voice matrix, reading level, locale, inclusive language |
 | Responsive (focused pass: `/adapt`) | [responsive.md](references/responsive.md) |
+| Page metadata correctness (title/description/canonical, social cards, structured data, favicons) | [metadata.md](references/metadata.md) |
 | Three.js / GSAP / Motion | [stack.md](references/stack.md) — **OPT-IN ONLY — do not load unless user chose Motion/GSAP/Three.js in Discovery Step 2** |
 | Scored critique / PM-ready audit | [heuristics.md](references/heuristics.md) + [personas.md](references/personas.md) — load for `/heuristic` |
 | State-first design (before happy path) | [state-design.md](references/state-design.md) — load for `/unhappy` |
@@ -88,7 +89,7 @@ The rules that make the biggest difference between "AI-generated" and "designed 
 | Parallel design + a11y verify (fresh-context, read-only, run both simultaneously on a diff/file) | Delegate `ui-craft:design-reviewer` + `ui-craft:a11y-auditor` together → [agents.md](references/agents.md). Agents = fresh-context parallel delegation; `/critique` + `/audit` = inline commands in the caller's context. Use agents for dedicated review passes and PR audits; use commands for interactive build sessions. |
 | Ambiguous | Ask which mode |
 
-**Overlap with other skills:** defer marketing copy to a copywriting skill; defer SEO to an SEO skill. UI Craft is the visual and interaction layer.
+**Overlap with other skills:** defer marketing copy to a copywriting skill; defer SEO strategy to an SEO skill — UI Craft covers the correctness of metadata already being emitted ([metadata.md](references/metadata.md)), not keyword or ranking strategy. UI Craft is the visual and interaction layer.
 
 ---
 
@@ -327,6 +328,7 @@ Tiered by signal. Tier 1 is required reading before writing any UI; lower tiers 
 | [motion.md](references/motion.md) | Decision ladder, duration + easing scales with perceptual grounding, interaction rules, motion-gap audit. |
 | [modern-css.md](references/modern-css.md) | View Transitions, scroll timelines, container queries, `@starting-style`. |
 | [responsive.md](references/responsive.md) | Mobile/tablet/desktop, breakpoints, touch zones. |
+| [metadata.md](references/metadata.md) | Title/description/canonical consistency, deterministic metadata, social cards, noindex on staging, structured data honesty, favicons. |
 | [copy.md](references/copy.md) | Voice/tone matrix, reading level (Flesch ≥70), terminology, inclusive language, errors, empty states, CTAs. |
 | [sound.md](references/sound.md) | Web Audio, UI sound, appropriateness matrix. Rare — load when explicitly building audio feedback. |
 

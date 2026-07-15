@@ -10,6 +10,15 @@ Read when building any form longer than 2 fields, any multi-step flow, any form 
 
 ---
 
+## Input Basics
+
+Two rules that belong at the input level, before any validation or layout decision:
+
+- **Never block paste.** Full rule and rationale live in `accessibility.md`.
+- **Mobile input text sits at 16px minimum on small viewports.** Below that, Safari on iOS zooms the whole page in the moment the input gets focus, and getting back to the prior zoom level is on the user, not the page. Set 16px as the floor and size down from `sm:` breakpoints upward, never the reverse. Do not "fix" this by capping zoom in the viewport meta (`maximum-scale=1`, `user-scalable=no`) — most mobile browsers actually honor that cap, so the workaround takes the user's own pinch-to-zoom with it. That swaps a minor iOS quirk for a real WCAG 1.4.4 (Resize Text) failure.
+
+---
+
 ## Validation Timing
 
 The most-botched decision in form UX. Wrong timing feels punitive; right timing feels invisible.
