@@ -10,11 +10,11 @@
     added to the user PATH.
 
 .EXAMPLE
-    irm https://raw.githubusercontent.com/educlopez/ui-craft/main/scripts/install.ps1 | iex
+    irm https://skills.smoothui.dev/install.ps1 | iex
 
 .EXAMPLE
     $env:UI_CRAFT_VERSION = "v0.36.0"
-    irm https://raw.githubusercontent.com/educlopez/ui-craft/main/scripts/install.ps1 | iex
+    irm https://skills.smoothui.dev/install.ps1 | iex
 #>
 
 [CmdletBinding()]

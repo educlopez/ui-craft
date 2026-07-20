@@ -11,7 +11,7 @@ A static Go binary that installs and configures the [UI Craft](https://skills.sm
 ### macOS / Linux — recommended
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/educlopez/ui-craft/main/scripts/install.sh | bash
+curl -fsSL https://skills.smoothui.dev/install | bash
 ```
 
 Detects your OS/arch, downloads the latest release, verifies its sha256 checksum, and installs the `ui-craft` binary.
@@ -19,7 +19,7 @@ Detects your OS/arch, downloads the latest release, verifies its sha256 checksum
 ### Windows — recommended
 
 ```powershell
-irm https://raw.githubusercontent.com/educlopez/ui-craft/main/scripts/install.ps1 | iex
+irm https://skills.smoothui.dev/install.ps1 | iex
 ```
 
 <details>
