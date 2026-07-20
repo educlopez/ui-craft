@@ -232,16 +232,28 @@ class UiCraftFakeBinary {
     # Invoke-Installer: run install.ps1 as a genuinely separate pwsh
     # process so `exit` inside it never touches this test session, and so
     # env-var isolation between tests is exact (child process env only).
+    # Exit code comes from Process.ExitCode via Start-Process -PassThru —
+    # deliberately NOT $LASTEXITCODE, which proved unreliable for this
+    # call-and-capture pattern on the Windows runner. The variable is
+    # named InstallerExitCode so it can never shadow the automatic one.
     # -----------------------------------------------------------------
     $script:LastOutput = ""
-    $script:LastExitCode = 0
+    $script:InstallerExitCode = 0
 
     function Invoke-Installer {
         param([string[]]$InstallerArgs = @())
         $pwshPath = (Get-Process -Id $PID).Path
-        $captured = & $pwshPath -NoProfile -File $InstallScript @InstallerArgs 2>&1 | Out-String
-        $script:LastOutput = $captured
-        $script:LastExitCode = $LASTEXITCODE
+        $stdoutFile = Join-Path $WorkDir "installer-stdout.txt"
+        $stderrFile = Join-Path $WorkDir "installer-stderr.txt"
+        $argList = @("-NoProfile", "-File", $InstallScript) + $InstallerArgs
+        $proc = Start-Process -FilePath $pwshPath -ArgumentList $argList `
+            -Wait -PassThru -NoNewWindow `
+            -RedirectStandardOutput $stdoutFile -RedirectStandardError $stderrFile
+        $out = ""
+        if (Test-Path -LiteralPath $stdoutFile) { $out += (Get-Content -LiteralPath $stdoutFile -Raw -ErrorAction SilentlyContinue) }
+        if (Test-Path -LiteralPath $stderrFile) { $out += (Get-Content -LiteralPath $stderrFile -Raw -ErrorAction SilentlyContinue) }
+        $script:LastOutput = $out
+        $script:InstallerExitCode = $proc.ExitCode
     }
 
     # =====================================================================
@@ -258,7 +270,7 @@ class UiCraftFakeBinary {
     Reset-InstallerEnv
 
     $installedExe1 = Join-Path $localAppData1 "ui-craft\bin\ui-craft.exe"
-    Assert-Eq $LastExitCode 0 "T1: installer exits 0"
+    Assert-Eq $InstallerExitCode 0 "T1: installer exits 0"
     Assert-FileExists $installedExe1 "T1: binary present at install dir"
     if (Test-Path -LiteralPath $installedExe1) {
         $t1Run = & $installedExe1
@@ -281,7 +293,7 @@ class UiCraftFakeBinary {
     Reset-InstallerEnv
 
     $installedExe2a = Join-Path $localAppData2a "ui-craft\bin\ui-craft.exe"
-    Assert-Eq $LastExitCode 0 "T2a: installer exits 0 with -Version"
+    Assert-Eq $InstallerExitCode 0 "T2a: installer exits 0 with -Version"
     Assert-FileExists $installedExe2a "T2a: binary present at install dir"
 
     Write-TestHeader "T2b - pinned version via UI_CRAFT_VERSION env"
@@ -296,7 +308,7 @@ class UiCraftFakeBinary {
     Reset-InstallerEnv
 
     $installedExe2b = Join-Path $localAppData2b "ui-craft\bin\ui-craft.exe"
-    Assert-Eq $LastExitCode 0 "T2b: installer exits 0 with UI_CRAFT_VERSION"
+    Assert-Eq $InstallerExitCode 0 "T2b: installer exits 0 with UI_CRAFT_VERSION"
     Assert-FileExists $installedExe2b "T2b: binary present at install dir"
 
     # =====================================================================
@@ -313,9 +325,9 @@ class UiCraftFakeBinary {
     Invoke-Installer
     Reset-InstallerEnv
 
-    if ($LastExitCode -ne 0) { Write-Pass "T3: installer exits non-zero on checksum mismatch" }
-    else { Write-Fail "T3: installer exits non-zero on checksum mismatch (got 0)" }
-    Assert-Contains $LastOutput "checksum" "T3: error output mentions checksum"
+    if ($InstallerExitCode -ne 0) { Write-Pass "T3: installer exits non-zero on checksum mismatch" }
+    else { Write-Fail "T3: installer exits non-zero on checksum mismatch (got $InstallerExitCode)" }
+    Assert-Contains $LastOutput "mismatch" "T3: error output mentions the checksum mismatch"
     Assert-FileNotExists (Join-Path $localAppData3 "ui-craft\bin\ui-craft.exe") "T3: binary was NOT installed"
 
     # =====================================================================
@@ -333,7 +345,7 @@ class UiCraftFakeBinary {
     Invoke-Installer
     Reset-InstallerEnv
 
-    Assert-Eq $LastExitCode 0 "T7: installer still succeeds"
+    Assert-Eq $InstallerExitCode 0 "T7: installer still succeeds"
     Assert-Contains $LastOutput "your user PATH" "T7: prints the PATH update message"
 
     Remove-Item Env:LOCALAPPDATA -ErrorAction SilentlyContinue
