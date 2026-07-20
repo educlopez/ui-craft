@@ -8,22 +8,39 @@ A static Go binary that installs and configures the [UI Craft](https://skills.sm
 
 ## Install
 
-### macOS
+### macOS / Linux — recommended
 
+```bash
+curl -fsSL https://raw.githubusercontent.com/educlopez/ui-craft/main/scripts/install.sh | bash
+```
+
+Detects your OS/arch, downloads the latest release, verifies its sha256 checksum, and installs the `ui-craft` binary.
+
+### Windows — recommended
+
+```powershell
+irm https://raw.githubusercontent.com/educlopez/ui-craft/main/scripts/install.ps1 | iex
+```
+
+<details>
+<summary>Alternative installs (Homebrew, Scoop, direct download)</summary>
+
+**macOS (Homebrew):**
 ```bash
 brew install --cask educlopez/tap/ui-craft
 ```
 
-### Windows (Scoop)
-
+**Windows (Scoop):**
 ```powershell
 scoop bucket add educlopez https://github.com/educlopez/scoop-bucket
 scoop install educlopez/ui-craft
 ```
 
-### Direct download
+**Direct download:**
 
 Download the binary for your platform from the [GitHub Releases page](https://github.com/educlopez/ui-craft/releases), extract the archive, and place the `ui-craft` binary on your `$PATH`.
+
+</details>
 
 ## Usage
 
