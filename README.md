@@ -61,12 +61,12 @@ A single static Go binary that detects your AI coding harness and wires skill+co
 
 **macOS / Linux:**
 ```bash
-curl -fsSL https://raw.githubusercontent.com/educlopez/ui-craft/main/scripts/install.sh | bash
+curl -fsSL https://skills.smoothui.dev/install | bash
 ```
 
 **Windows:**
 ```powershell
-irm https://raw.githubusercontent.com/educlopez/ui-craft/main/scripts/install.ps1 | iex
+irm https://skills.smoothui.dev/install.ps1 | iex
 ```
 
 The script detects your OS/arch, downloads the latest release, verifies its checksum, and installs the `ui-craft` binary — no brew/scoop required.
