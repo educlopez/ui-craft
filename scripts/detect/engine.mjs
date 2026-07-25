@@ -6,7 +6,7 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 
-import { rules } from "./rules.mjs";
+import { rules, isDisplayedNotApplied } from "./rules.mjs";
 import { VERSION, SCAN_EXTENSIONS, SKIP_DIRS } from "./constants.mjs";
 
 // --- Config loading ------------------------------------------------------
@@ -209,6 +209,11 @@ export function scanFile(filePath, content, config) {
       if (config && config.rules && config.rules[rule.id] === "off") continue;
       const res = rule.match(line, ctx);
       if (!res) continue;
+      // Documentation, config examples and diffs quote these patterns on purpose.
+      // Applies to every line-scope rule: a pattern inside <code> or on a deleted
+      // line is being shown, not shipped.
+      const snip = typeof res === "object" && res.snippet ? res.snippet : null;
+      if (isDisplayedNotApplied(line, snip)) continue;
       const finding = {
         file: filePath,
         line: i + 1,

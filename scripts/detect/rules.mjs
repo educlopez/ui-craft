@@ -21,6 +21,108 @@
 // of findings (line is just the first occurrence for reporting).
 
 /** @type {Rule[]} */
+/**
+ * True when a match is being *displayed* rather than applied.
+ *
+ * Docs pages, changelogs, config examples and before/after diffs all legitimately
+ * contain the exact strings these rules hunt for. Flagging a line that shows what
+ * was removed is worse than a false positive: it penalises the page for
+ * documenting the fix.
+ *
+ * Deliberately conservative — it only skips when the enclosure is positively
+ * identifiable on the same line.
+ */
+/**
+ * Hue in degrees for a CSS colour literal, or null when it cannot be read.
+ *
+ * The class-name rules below only ever saw Tailwind (`from-purple-500`). The same
+ * design decision written as `#a855f7` was invisible, which meant a page could be
+ * built entirely of gradient tells and pass clean. Reading the value closes that.
+ */
+export function cssHue(value) {
+  let v = value.trim().toLowerCase();
+
+  const hsl = v.match(/^hsla?\(\s*([\d.]+)(deg)?/);
+  if (hsl) return Number(hsl[1]) % 360;
+
+  const oklch = v.match(/^oklch\(\s*[\d.%]+\s+[\d.]+\s+([\d.]+)/);
+  if (oklch) return Number(oklch[1]) % 360;
+
+  let r, g, b;
+  const hex = v.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/);
+  if (hex) {
+    const h = hex[1].length === 3 ? hex[1].split("").map((c) => c + c).join("") : hex[1];
+    [r, g, b] = [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16) / 255);
+  } else {
+    const rgb = v.match(/^rgba?\(\s*(\d+)[\s,]+(\d+)[\s,]+(\d+)/);
+    if (!rgb) return null;
+    [r, g, b] = rgb.slice(1, 4).map((n) => Number(n) / 255);
+  }
+
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const d = max - min;
+  // Near-greys have no meaningful hue, and treating them as one produces noise.
+  if (d < 0.12) return null;
+  let h;
+  if (max === r) h = ((g - b) / d) % 6;
+  else if (max === g) h = (b - r) / d + 2;
+  else h = (r - g) / d + 4;
+  h *= 60;
+  return (h + 360) % 360;
+}
+
+/** Colour literals inside a CSS gradient function on this line. */
+export function gradientStops(line) {
+  const fn = line.match(/(?:linear|radial|conic)-gradient\(([^()]*(?:\([^()]*\)[^()]*)*)\)/i);
+  if (!fn) return null;
+  const stops = fn[1].match(/#[0-9a-fA-F]{3,8}|rgba?\([^)]*\)|hsla?\([^)]*\)|oklch\([^)]*\)/g);
+  return stops ? { raw: fn[0], stops } : null;
+}
+
+/** Walk out to the enclosing CSS declaration block, so multi-line blocks are visible. */
+export function enclosingBlock(ctx, maxLines = 40) {
+  if (!ctx || !ctx.lines || typeof ctx.lineIdx !== "number") return "";
+  const { lines, lineIdx } = ctx;
+  let start = lineIdx;
+  for (let i = lineIdx; i >= Math.max(0, lineIdx - maxLines); i--) {
+    start = i;
+    if (lines[i].includes("{")) break;
+  }
+  let end = lineIdx;
+  for (let i = lineIdx; i < Math.min(lines.length, lineIdx + maxLines); i++) {
+    end = i;
+    if (lines[i].includes("}")) break;
+  }
+  return lines.slice(start, end + 1).join("\n");
+}
+
+export function isDisplayedNotApplied(line, snippet) {
+  // A line marked as deleted is showing what a diff took out.
+  if (/<(?:del|s)\b/i.test(line)) return true;
+  if (/class\s*=\s*["'][^"']*\b(?:rem|removed|deleted|diff-del|diff-rem|line-del)\b/i.test(line)) {
+    return true;
+  }
+
+  if (!snippet) return false;
+  const at = line.indexOf(snippet);
+  if (at === -1) return false;
+
+  // Inside <code>/<pre>/<kbd>/<samp>: the pattern is quoted, not in effect.
+  const lower = line.toLowerCase();
+  for (const tag of ["code", "pre", "kbd", "samp"]) {
+    const open = new RegExp(`<${tag}\\b[^>]*>`, "gi");
+    let m;
+    while ((m = open.exec(line))) {
+      const start = m.index + m[0].length;
+      const closeAt = lower.indexOf(`</${tag}>`, start);
+      const end = closeAt === -1 ? line.length : closeAt;
+      if (at >= start && at < end) return true;
+    }
+  }
+  return false;
+}
+
 export const rules = [
   // ===== ORIGINAL 11 RULES (unchanged behavior) =====
   {
@@ -30,7 +132,9 @@ export const rules = [
     fix: "list specific properties (transform, opacity, background-color)",
     scope: "line",
     match(line) {
-      const re = /\btransition:\s*["']?all\b|\btransition-all\b/;
+      // `no-transition-all` (the rule's own name) must not match as a substring:
+      // any page that names the rule would otherwise be unclean.
+      const re = /\btransition:\s*["']?all\b|(?<![\w-])transition-all\b/;
       const m = line.match(re);
       return m ? { snippet: m[0] } : false;
     },
@@ -111,6 +215,18 @@ export const rules = [
       const tw = /bg-gradient-to-[rlbt]{1,2}\s+from-(?:purple|violet|fuchsia|indigo)-\d+(?:\s+via-\S+)?\s+to-(?:cyan|sky|blue|teal)-\d+/;
       let m = line.match(tw);
       if (m) return { snippet: m[0] };
+
+      // Same tell written as raw CSS. Mirrors the utility-class strictness above:
+      // one stop in the purple/violet/indigo band AND one in the cyan/sky/blue band.
+      const grad = gradientStops(line);
+      if (grad) {
+        const hues = grad.stops.map(cssHue).filter((h) => h !== null);
+        const warm = hues.some((h) => h >= 255 && h <= 330);
+        const cool = hues.some((h) => h >= 170 && h < 255);
+        if (warm && cool) {
+          return { snippet: grad.raw.slice(0, 90) };
+        }
+      }
       return false;
     },
   },
@@ -124,12 +240,23 @@ export const rules = [
       const jsx = /<h[1-4]\b[^>]*\b(?:class|className)\s*=\s*["'][^"']*\buppercase\b[^"']*["']/;
       const mJsx = line.match(jsx);
       if (mJsx) {
+        // Same exception in utility-class form: a small, tracked label.
+        const small = /\btext-xs\b|\btext-\[1[0-3]px\]/.test(mJsx[0]);
+        if (small && /\btracking-(?:wide|wider|widest|\[)/.test(mJsx[0])) return false;
         if (/\btext-xs\b/.test(mJsx[0])) return false;
         return { snippet: mJsx[0].slice(0, 80) };
       }
       const css = /h[1-4][^{]*\{[^}]*text-transform:\s*uppercase/;
       const mCss = line.match(css);
-      if (mCss) return { snippet: "text-transform: uppercase" };
+      if (mCss) {
+        // SKILL.md, Quick Start rule 1: "Exception: 11-13px category labels with
+        // wide tracking". A tracked 11px mono label is the documented exception,
+        // not a shouting heading.
+        const size = line.match(/font-size:\s*(\d+(?:\.\d+)?)px/);
+        const tracked = /letter-spacing:\s*[^;}]+/.test(line);
+        if (size && Number(size[1]) <= 13 && tracked) return false;
+        return { snippet: "text-transform: uppercase" };
+      }
       return false;
     },
   },
@@ -139,11 +266,22 @@ export const rules = [
     description: "gradient text on large number",
     fix: "solid color for metrics — gradients fight legibility",
     scope: "line",
-    match(line) {
-      if (!/\bbg-clip-text\b/.test(line)) return false;
-      if (!/\btext-transparent\b/.test(line)) return false;
-      const big = line.match(/\btext-(?:[4-9]xl|[5-9]\dxl|\[[5-9]\d+px\])\b/);
-      if (big) return { snippet: `bg-clip-text text-transparent ${big[0]}` };
+    match(line, ctx) {
+      if (/\bbg-clip-text\b/.test(line) && /\btext-transparent\b/.test(line)) {
+        const big = line.match(/\btext-(?:[4-9]xl|[5-9]\dxl|\[[5-9]\d+px\])\b/);
+        if (big) return { snippet: `bg-clip-text text-transparent ${big[0]}` };
+        return false;
+      }
+
+      // CSS form: clipping a gradient to the glyphs. The declarations are usually
+      // spread over several lines, so judge the whole block rather than one line.
+      if (!/background-clip:\s*text/i.test(line)) return false;
+      const block = enclosingBlock(ctx) || line;
+      const transparent =
+        /(?:-webkit-)?text-fill-color:\s*transparent/i.test(block) ||
+        /\bcolor:\s*transparent/i.test(block);
+      const gradient = /(?:linear|radial|conic)-gradient\(/i.test(block);
+      if (transparent && gradient) return { snippet: "background-clip: text + transparent fill" };
       return false;
     },
   },
@@ -156,7 +294,18 @@ export const rules = [
     match(line) {
       const re = /([\u{1F300}-\u{1FAFF}])\s*<(h[234]|p\b[^>]*font-semibold)/u;
       const m = line.match(re);
-      return m ? { snippet: m[0].slice(0, 60) } : false;
+      if (m) return { snippet: m[0].slice(0, 60) };
+
+      // An emoji that is the entire content of an element is being used as an icon,
+      // whatever markup surrounds it. Emoji inside a sentence is left alone.
+      // Only code points with default *emoji* presentation. `\u2713` (check mark),
+      // arrows and the rest of the dingbat block are typographic glyphs, not emoji,
+      // and flagging a status tick would be wrong.
+      const asIcon = line.match(
+        /<(\w+)[^>]*>\s*([\u{1F300}-\u{1FAFF}\u{2728}\u{26A1}\u{2705}\u{274C}\u{2B50}\u{2757}\u{2764}]{1,3})\s*<\/\1>/u,
+      );
+      if (asIcon) return { snippet: asIcon[0].slice(0, 60) };
+      return false;
     },
   },
   {
@@ -455,24 +604,29 @@ export const rules = [
         // If opening tag already has text after `>` on the same line, use that as the first inner
         const afterOpen = line.slice(line.indexOf(openMatch[0]) + openMatch[0].length);
         let inner = afterOpen.trim();
-        // If inner is a closing tag or empty, look at following non-whitespace line
-        if (inner === "" || /^<\/button>/.test(inner)) {
-          // Find next non-whitespace line within next 2 lines
-          let found = null;
-          for (let j = i + 1; j < Math.min(lines.length, i + 3); j++) {
-            const t = lines[j].trim();
-            if (t === "") continue;
-            found = t;
-            break;
-          }
-          if (!found) continue;
-          inner = found;
+        // Read the whole element, not a fixed window. A pretty-printed multi-path
+        // SVG runs well past two lines, so a two-line lookahead saw only the icon
+        // and reported buttons whose visible label sat further down.
+        let body = afterOpen;
+        let closed = /<\/button>/.test(afterOpen);
+        const MAX_ELEMENT_LINES = 60;
+        for (let j = i + 1; !closed && j < Math.min(lines.length, i + MAX_ELEMENT_LINES); j++) {
+          body += "\n" + lines[j];
+          if (/<\/button>/.test(lines[j])) closed = true;
         }
-        // If inner line contains plain text before tags, it's labelled — skip
-        const stripped = inner.replace(/<[^>]+>/g, "").trim();
-        // If there's meaningful text content (not just whitespace/punctuation), skip
+        body = body.slice(0, body.indexOf("</button>") === -1 ? body.length : body.indexOf("</button>"));
+
+        // A nested aria-label (on a wrapper inside the button) still names it.
+        if (labelRe.test(body)) continue;
+
+        // Any real text content anywhere inside the element is the accessible name.
+        const stripped = body.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
         if (stripped && /[A-Za-z0-9]{2,}/.test(stripped)) continue;
-        if (!iconOnlyRe.test(inner)) continue;
+
+        // Otherwise it is genuinely icon-only. Report against the first inner node.
+        const firstInner = (body.trim().split("\n")[0] || "").trim() || inner;
+        if (!iconOnlyRe.test(firstInner)) continue;
+        inner = firstInner;
         findings.push({ line: i + 1, snippet: `<button> with only ${inner.slice(0, 40)} and no aria-label` });
       }
       return findings;

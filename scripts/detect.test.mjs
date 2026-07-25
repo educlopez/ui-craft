@@ -1956,3 +1956,121 @@ test("integration: CLI URL mode rejects file-oriented flags", async () => {
   assert.equal(result.exitCode, 2);
   assert.match(result.stderr, /not supported for URL scans/);
 });
+
+// ---------------------------------------------------------------------------
+// Regression: five defects found by scoring our own before/after scenes, where
+// three of four "with ui-craft" pages scored WORSE than their slop counterpart.
+// See the issue "detect: 3 of 4 with-scenes score worse than without".
+// ---------------------------------------------------------------------------
+
+async function scanOne(name, contents) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "detect-regression-"));
+  fs.writeFileSync(path.join(dir, name), contents);
+  return scan(dir);
+}
+
+test("transition-all does not match its own rule name (`no-transition-all`)", async () => {
+  const result = await scanOne(
+    "rules.html",
+    `<div class="t-row"><span class="t-rule">no-transition-all</span></div>\n` +
+      `<pre>{ "no-transition-all": "error" }</pre>\n`,
+  );
+  const hits = result.findings.filter((f) => f.rule === "transition-all");
+  assert.equal(hits.length, 0, `naming the rule must not trip it: ${JSON.stringify(hits)}`);
+});
+
+test("line rules skip patterns shown inside <code> or on a deleted diff line", async () => {
+  const result = await scanOne(
+    "docs.html",
+    `<p>Avoid <code class="mono">transition: all</code> in production.</p>\n` +
+      `<div class="diff"><span class="rem">transition: all 300ms ease;</span></div>\n` +
+      `<del>transition: all 200ms;</del>\n`,
+  );
+  const hits = result.findings.filter((f) => f.rule === "transition-all");
+  assert.equal(hits.length, 0, `quoted and removed lines are not usages: ${JSON.stringify(hits)}`);
+});
+
+test("line rules still catch a real usage on an ordinary line", async () => {
+  const result = await scanOne("real.css", `.card { transition: all 200ms ease; }\n`);
+  const hits = result.findings.filter((f) => f.rule === "transition-all");
+  assert.equal(hits.length, 1, "the guard must not swallow genuine findings");
+});
+
+test("icon-only-button reads to </button>, so text after a multi-line SVG counts", async () => {
+  const result = await scanOne(
+    "buttons.html",
+    `<button class="ghost">\n` +
+      `  <svg viewBox="0 0 24 24" aria-hidden="true">\n` +
+      `    <rect x="3" y="5" width="18" height="16" rx="2"/>\n` +
+      `    <path d="M16 3v4M8 3v4M3 10h18"/>\n` +
+      `    <path d="M6 9l6 6 6-6"/>\n` +
+      `  </svg>\n` +
+      `  Last 30 days\n` +
+      `</button>\n`,
+  );
+  const hits = result.findings.filter((f) => f.rule === "a11y/icon-only-button-no-label");
+  assert.equal(hits.length, 0, `button has a visible label: ${JSON.stringify(hits)}`);
+});
+
+test("icon-only-button still flags a button that really is icon-only", async () => {
+  const result = await scanOne(
+    "iconbtn.html",
+    `<button class="close">\n  <svg viewBox="0 0 24 24">\n    <path d="M6 6l12 12M18 6L6 18"/>\n  </svg>\n</button>\n`,
+  );
+  const hits = result.findings.filter((f) => f.rule === "a11y/icon-only-button-no-label");
+  assert.equal(hits.length, 1, "an unlabelled icon button is still a finding");
+});
+
+test("uppercase-heading honours its documented small-tracked-label exception", async () => {
+  const result = await scanOne(
+    "footer.css",
+    `.footer-col h3{ font-size:11px; letter-spacing:0.05em; text-transform:uppercase; }\n`,
+  );
+  const hits = result.findings.filter((f) => f.rule === "uppercase-heading");
+  assert.equal(hits.length, 0, "11px tracked label is the exception in SKILL.md rule 1");
+});
+
+test("uppercase-heading still flags a shouting heading", async () => {
+  const result = await scanOne("hero.css", `h1{ font-size:48px; text-transform:uppercase; }\n`);
+  const hits = result.findings.filter((f) => f.rule === "uppercase-heading");
+  assert.equal(hits.length, 1, "a 48px uppercase h1 is the pattern the rule exists for");
+});
+
+test("purple-cyan-gradient reads CSS colour values, not just Tailwind classes", async () => {
+  const result = await scanOne(
+    "hero.css",
+    `.hero{ background: linear-gradient(135deg, #a855f7 0%, #06b6d4 100%); }\n`,
+  );
+  const hits = result.findings.filter((f) => f.rule === "purple-cyan-gradient");
+  assert.equal(hits.length, 1, "the same tell in hex must be caught");
+});
+
+test("purple-cyan-gradient leaves a neutral gradient alone", async () => {
+  const result = await scanOne(
+    "surface.css",
+    `.surface{ background: linear-gradient(180deg, #fafafa 0%, #eeeeee 100%); }\n`,
+  );
+  const hits = result.findings.filter((f) => f.rule === "purple-cyan-gradient");
+  assert.equal(hits.length, 0, "greys have no hue and must not be flagged");
+});
+
+test("gradient-text-metric catches background-clip: text in raw CSS", async () => {
+  const result = await scanOne(
+    "metric.css",
+    `.metric{\n  background: linear-gradient(90deg, #a855f7, #06b6d4);\n  -webkit-background-clip: text;\n  -webkit-text-fill-color: transparent;\n}\n`,
+  );
+  const hits = result.findings.filter((f) => f.rule === "gradient-text-metric");
+  assert.equal(hits.length, 1, "gradient clipped to glyphs, expressed as CSS");
+});
+
+test("emoji-feature-icon catches an emoji used as an element's whole content", async () => {
+  const result = await scanOne("features.html", `<div class="feature-icon">✨</div>\n`);
+  const hits = result.findings.filter((f) => f.rule === "emoji-feature-icon");
+  assert.equal(hits.length, 1, "an emoji alone in an element is an icon");
+});
+
+test("emoji-feature-icon leaves typographic glyphs like a check mark alone", async () => {
+  const result = await scanOne("status.html", `<span class="ok">✓</span>\n`);
+  const hits = result.findings.filter((f) => f.rule === "emoji-feature-icon");
+  assert.equal(hits.length, 0, "U+2713 is a text-presentation glyph, not an emoji icon");
+});
