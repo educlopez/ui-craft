@@ -17,3 +17,5 @@ Polish the UI at `$ARGUMENTS`. Load the `ui-craft` skill.
 **Output**: edit the code directly (polish is implementation, not critique). After each file, print the Review Format table from SKILL.md showing what changed and why. No full diffs — one row per change.
 
 **Close every run with a Craft Report** (`references/review.md` → Craft Report). The table above is the per-file diff log; the Craft Report is the run's receipt — Checked / Passed / Changed / Left alone / Verdict. Produce it even when the Polish Pass found nothing to change — that is itself the finding.
+
+**Next step:** `/finalize` — the pre-ship gate (rung 3).

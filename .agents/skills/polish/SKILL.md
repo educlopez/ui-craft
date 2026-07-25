@@ -7,7 +7,7 @@ description: "Final craft pass applying the compound details from the polish che
 
 **Context:** this sub-skill is one lens of the broader `ui-craft` skill. If the `ui-craft` skill is also installed, read its SKILL.md first for Discovery + Anti-Slop + Craft Test, then apply the specific lens below.
 
-Polish the UI at the target the user described. Load the `ui-craft` skill.
+Polish the UI at `$ARGUMENTS`. Load the `ui-craft` skill.
 
 **Source of truth:** read `references/review.md` → **Polish Pass (Compound Details)** section. Apply every item on that list to the target. Do not re-derive the list here — `review.md` owns it.
 
@@ -19,3 +19,7 @@ Polish the UI at the target the user described. Load the `ui-craft` skill.
 - `8+` → apply everything + verify/strengthen the signature detail (add one only if the surface has none).
 
 **Output**: edit the code directly (polish is implementation, not critique). After each file, print the Review Format table from SKILL.md showing what changed and why. No full diffs — one row per change.
+
+**Close every run with a Craft Report** (`references/review.md` → Craft Report). The table above is the per-file diff log; the Craft Report is the run's receipt — Checked / Passed / Changed / Left alone / Verdict. Produce it even when the Polish Pass found nothing to change — that is itself the finding.
+
+**Next step:** `/finalize` — the pre-ship gate (rung 3).

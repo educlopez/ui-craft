@@ -36,3 +36,5 @@ Extract reusable pieces from `$ARGUMENTS`. Load the `ui-craft` skill.
 | --- | --- | --- |
 
 3. A one-line delta: "Extracted N components, M tokens. Call-sites updated: X."
+
+**Next step:** `/tokens` — lift the values you just centralized into the token spine (rung 2).

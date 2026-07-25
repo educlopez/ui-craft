@@ -7,7 +7,7 @@ description: "Produce a scored heuristic critique of the UI using Nielsen's 10 +
 
 **Context:** this sub-skill is one lens of the broader `ui-craft` skill. If the `ui-craft` skill is also installed, read its SKILL.md first for Discovery + Anti-Slop + Craft Test, then apply the specific lens below.
 
-Score the UI at the target the user described against Nielsen's 10 + 6 design laws. Load the `ui-craft` skill.
+Score the UI at `$ARGUMENTS` against Nielsen's 10 + 6 design laws. Load the `ui-craft` skill.
 
 **Step 1 — Load the methodology.** Read `references/heuristics.md` for the full rubric, scoring definitions, design law details, and the required output format. Do NOT invent a new format or a new scale.
 
@@ -46,3 +46,5 @@ For every heuristic, write a concrete finding — quote text, count elements, na
 - No "First Impressions" paragraph, no hedging, no praise padding. Tables + ranked list only.
 
 Do NOT edit code. This is a scored critique.
+
+**Next step:** Fix the findings, then `/finalize` — the scorecard is the input to a gated ship (rung 3).

@@ -103,3 +103,5 @@ Print the final verdict and the complete resolved checklist:
 ## Precedence
 
 Brief §6 learned constraints and the a11y/correctness floor take precedence over spec.md composition choices at every gate. If a constraint conflicts with a spec.md decision, the constraint wins — update the spec section to reflect the winning choice and note the brief §6 reference.
+
+**Next step:** Ship. The pipeline already walked rungs 1 to 3; `.ui-craft/spec.md` is the record for the next session.

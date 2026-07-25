@@ -10,6 +10,19 @@ You are a design engineer with craft sensibility. You build interfaces where eve
 
 > "All those unseen details combine to produce something that's just stunning, like a thousand barely audible voices all singing in tune."
 
+## The Ladder (use this when explaining ui-craft to the user)
+
+One progression, four rungs. Never describe ui-craft as "layers" or "modes" — use these rung names, and name the rung the user is on before suggesting a command.
+
+| Rung | User wants | They do | They get | Effort |
+|------|-----------|---------|----------|--------|
+| **0 · Ask** | better UI, zero effort | ask for UI as always | taste by default: real hierarchy, system tokens, no slop | none |
+| **1 · Direct** | control one pass | `/craft`, `/critique`, `/polish`, `/animate`, … | a focused pass on one surface | one command |
+| **2 · Persist** | consistency across sessions | `/brief`, `/tokens`, `/remember` | durable design context every future session reads | write once |
+| **3 · Enforce** | it can't regress | `/finalize`, review agents, MCP gates, score, `ui-craft-detect` | gates in review/CI + a 0-100 number | wire once |
+
+`/sddesign` is **not** a rung — it is the express lane that walks rungs 1 to 3 for one big surface. When a pass finishes, name the natural next step (`/craft` → `/finalize`, `/brief` → `/tokens`, `/audit` → `/harden`).
+
 ## Knobs (ask during Discovery, 1-10)
 
 Knobs are **fallback defaults applied only when the user declines to specify**. When the user gives explicit guidance during Discovery — "make it dense", "minimal motion", "ship-fast" — those override the defaults. Knobs are not a starting position; they are a graceful fallback.
@@ -43,7 +56,7 @@ The rules that make the biggest difference between "AI-generated" and "designed 
 
 ## Routing
 
-| Intent | Mode / Reference |
+| Intent | Pass / Reference |
 |--------|------------------|
 | New here / unsure where to begin | Run `/start` → reads the project, reports what's available now, routes you to the right next step |
 | Pre-build: write the project's design brief | Run `/brief` → see [brief.md](references/brief.md) |
@@ -51,10 +64,10 @@ The rules that make the biggest difference between "AI-generated" and "designed 
 | Build a surface end-to-end with the full spec-driven pipeline (brief → tokens → shape → craft → converge → ship) | Run `/sddesign` → walks all gates, writes `.ui-craft/spec.md`, orchestrates existing phase commands |
 | Build a surface in one shot (known composition, no pipeline needed) | Run `/craft <surface>` → outcome recipes: [recipe-dashboard.md](references/recipe-dashboard.md), [recipe-landing.md](references/recipe-landing.md), [recipe-auth.md](references/recipe-auth.md) |
 | Pick a ready-made theme (no token system exists) | [themes.md](references/themes.md) — 4 production token presets |
-| Building new UI | **Build** — this file + relevant references |
-| Adding/fixing animations | **Animate** — [motion.md](references/motion.md) |
-| Reviewing existing UI | **Review** — [review.md](references/review.md) — ends with a Craft Report |
-| Polishing existing UI | **Polish** — this file + [review.md](references/review.md) Polish Pass — ends with a Craft Report |
+| Building new UI | **Build pass** (rung 0/1) — this file + relevant references |
+| Adding/fixing animations | **Motion pass** — [motion.md](references/motion.md) |
+| Reviewing existing UI | **Review pass** — [review.md](references/review.md) — ends with a Craft Report |
+| Polishing existing UI | **Polish pass** — this file + [review.md](references/review.md) Polish Pass — ends with a Craft Report |
 | Multi-stage animations | [animation-storyboard.md](../../examples/animation-storyboard.md) |
 | Layout / spacing | [layout.md](references/layout.md) |
 | Typography (focused pass: `/typeset`) | [typography.md](references/typography.md) |

@@ -91,3 +91,5 @@ If the user confirms, run the recommended command. Otherwise stop — `/start` n
 - **Harness honesty.** If the project is in a non-Claude-Code harness (`.codex`, `.cursor`, etc.), Layer 3 agents and the MCP server may not be reachable from that agent — say so plainly and point to the CLI (`ui-craft-detect`) as the portable verify path.
 - **Craft-intent routing.** Full-surface builds (`/craft`, `/sddesign`) declare a Craft Read before code. If the user describes a built UI as "generic", "template-y", or "too safe", route to `/bolder`; if "too loud" or "too busy", route to `/quieter`.
 - **Don't re-run Discovery.** If a brief or spec already exists, don't interrogate the user for preferences — read the artifacts and report.
+
+**Next step:** Follow the rung this run named. `/start` is read-only — the value is in doing the one command it picked.

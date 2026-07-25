@@ -103,3 +103,5 @@ Let the user apply. Don't write directly unless they approve.
 - Don't impose Tailwind on a vanilla CSS project. Match the project's existing syntax.
 - Don't impose OKLCH if the project uses sRGB consistently — flag it, suggest migration, don't force it.
 - Respect existing naming conventions — if the project uses `--color-primary` over `--accent-500`, extend that pattern rather than introducing a parallel naming scheme.
+
+**Next step:** `/craft` — build on the spine you just established (rung 1).

@@ -57,3 +57,5 @@ Do not auto-commit. Per project rules, commits require explicit user instruction
 - All five sections are required. If one is genuinely unknown, write it as a dated placeholder with `[TO DEFINE — YYYY-MM-DD]` so the gap is visible.
 - The brief is append-mostly on updates. Never delete past content — mark deprecated with date and reason.
 - No brand names, product examples, or generic SaaS language inside the user's brief. The brief describes their product, not the template.
+
+**Next step:** `/tokens` — the brief decides the intent, the tokens encode it (rung 2).

@@ -7,7 +7,7 @@ description: "Technical UI audit — a11y, performance, responsive. Produces a p
 
 **Context:** this sub-skill is one lens of the broader `ui-craft` skill. If the `ui-craft` skill is also installed, read its SKILL.md first for Discovery + Anti-Slop + Craft Test, then apply the specific lens below.
 
-Run a technical audit of the UI at the target the user described. Load the `ui-craft` skill and apply the audit lens.
+Run a technical audit of the UI at `$ARGUMENTS`. Load the `ui-craft` skill and apply the audit lens.
 
 ## Step 0: Visual capture (mandatory)
 
@@ -58,3 +58,7 @@ If the user declines to provide screenshots, run a code-only pass and clearly ma
 Group findings by priority: **Critical** (blocks usability/a11y) → **High-impact** (immediately noticeable) → **Quick wins** (polish).
 
 Do NOT rewrite code unless asked. Report findings first; wait for approval before editing.
+
+**Close with a Craft Report** (`references/review.md` → Craft Report), wrapping the findings table above — Checked states scope (a11y/perf/responsive, at which viewports), Passed carries anything inspected and found sound, Changed stays empty pre-approval, Verdict names the top priority. Produce it even on a clean audit — a11y/perf/responsive coming back clean is the finding.
+
+**Next step:** `/harden` — turn the findings into real production coverage (rung 1).

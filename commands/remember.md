@@ -32,3 +32,5 @@ If the user signals this should apply to **all** their projects ("in all my proj
 
 Report in one line where it landed and what it changes, e.g.:
 > Anotado en el brief (constraint aprendida): nunca gradientes en hero aquí.
+
+**Next step:** Keep working. The constraint now lives in the brief, so every future session reads it (rung 2).

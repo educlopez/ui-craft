@@ -28,3 +28,5 @@ Clarify the copy in `$ARGUMENTS`. Load the `ui-craft` skill.
 | --- | --- | --- |
 
 Prioritize by impact (errors and destructive actions first, then CTAs, then helper copy). End with a one-paragraph summary of the overall voice shift. If the user says "apply", edit the code and re-print the table with file paths.
+
+**Next step:** `/critique` — copy changes shift hierarchy; re-read the surface after (rung 1).

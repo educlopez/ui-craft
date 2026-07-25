@@ -56,3 +56,5 @@ Group findings by priority: **Critical** (blocks usability/a11y) → **High-impa
 Do NOT rewrite code unless asked. Report findings first; wait for approval before editing.
 
 **Close with a Craft Report** (`references/review.md` → Craft Report), wrapping the findings table above — Checked states scope (a11y/perf/responsive, at which viewports), Passed carries anything inspected and found sound, Changed stays empty pre-approval, Verdict names the top priority. Produce it even on a clean audit — a11y/perf/responsive coming back clean is the finding.
+
+**Next step:** `/harden` — turn the findings into real production coverage (rung 1).

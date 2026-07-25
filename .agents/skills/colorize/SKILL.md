@@ -7,7 +7,7 @@ description: "Color strategy pass — introduces a single accent at 3-5 intentio
 
 **Context:** this sub-skill is one lens of the broader `ui-craft` skill. If the `ui-craft` skill is also installed, read its SKILL.md first for Discovery + Anti-Slop + Craft Test, then apply the specific lens below.
 
-Add color to the UI at the target the user described. Load the `ui-craft` skill.
+Add color to the UI at `$ARGUMENTS`. Load the `ui-craft` skill.
 
 **The rule (from SKILL.md):** 90%+ neutral, one accent, 3-5 placements per viewport. Reinforce this before adding anything. More color is not more design.
 
@@ -45,3 +45,5 @@ If the UI is already shouting with color, this command also removes color.
 **References to read**: `references/color.md` (OKLCH, tokens, dark mode, contrast), `references/accessibility.md` (contrast ratios for AA/AAA).
 
 **Output**: edit code directly. Lift any literal hex into CSS variables (`--color-accent`, `--color-accent-tint`) — respect existing token naming if present. Print the Review Format table. One row per placement, with the ratio check (AA/AAA) on text uses.
+
+**Next step:** `/tokens` — promote the color decisions into the durable token spine so they survive the session (rung 2).

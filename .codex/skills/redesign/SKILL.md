@@ -7,7 +7,7 @@ description: "Redesign an existing site or app without losing what already works
 
 **Context:** this sub-skill is one lens of the broader `ui-craft` skill. If the `ui-craft` skill is also installed, read its SKILL.md first for Discovery + Anti-Slop + Craft Test, then apply the specific lens below.
 
-Redesign `the target the user described`. Load the `ui-craft` skill and read `references/craft-intent.md`. A redesign is not a greenfield build wearing the old content — most of its value is in what you deliberately keep.
+Redesign `$ARGUMENTS`. Load the `ui-craft` skill and read `references/craft-intent.md`. A redesign is not a greenfield build wearing the old content — most of its value is in what you deliberately keep.
 
 **Step 1 — Audit what exists (before any opinion):**
 
@@ -39,3 +39,5 @@ Default to the smallest scope that fixes the stated complaint. For **rebuild**, 
 **Never:** invent a new brand palette over a committed one, drop routes or pages, flatten heading semantics for looks, rewrite copy voice unasked, or ship the redesign with more detector findings than the original had.
 
 **Output:** edit code directly (refresh/reskin) or section map first (rebuild). Print the Review Format table, the detector before/after counts, and end with the Craft Read line.
+
+**Next step:** `/critique` — check the modernized surface against hierarchy and anti-slop before shipping (rung 1).

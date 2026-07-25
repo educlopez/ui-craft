@@ -35,3 +35,5 @@ Default to the smallest scope that fixes the stated complaint. For **rebuild**, 
 **Never:** invent a new brand palette over a committed one, drop routes or pages, flatten heading semantics for looks, rewrite copy voice unasked, or ship the redesign with more detector findings than the original had.
 
 **Output:** edit code directly (refresh/reskin) or section map first (rebuild). Print the Review Format table, the detector before/after counts, and end with the Craft Read line.
+
+**Next step:** `/critique` — check the modernized surface against hierarchy and anti-slop before shipping (rung 1).

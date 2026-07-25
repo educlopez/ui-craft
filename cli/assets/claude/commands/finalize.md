@@ -140,3 +140,5 @@ When explicitly triggered: load `skills/ui-craft/references/loops.md` and run pr
 ## Step 7 — Hard stops
 
 Do not edit any file. Do not propose code changes inline. The verdict is the output. If the user asks for fixes after reading the report, respond to that as a separate request.
+
+**Next step:** Ship. If the gate is red, the findings name the pass to re-run — `/polish`, `/harden` or `/clarify`.

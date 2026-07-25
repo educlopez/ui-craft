@@ -13,7 +13,7 @@ Load `references/brief.md` for the brief format before proceeding.
 
 Check whether `.ui-craft/brief.md` exists. Use Read or ls on `.ui-craft/`.
 
-**If it exists:** load its contents. If the target the user described names a specific update ("update principles", "shift target user", "add out of scope"), focus the session there and skip unchanged sections. Otherwise summarize what's in the brief and ask: "What do you want to change?"
+**If it exists:** load its contents. If `$ARGUMENTS` names a specific update ("update principles", "shift target user", "add out of scope"), focus the session there and skip unchanged sections. Otherwise summarize what's in the brief and ask: "What do you want to change?"
 
 **If it doesn't exist:** proceed to Step 2. Also check the repo root for a `DESIGN.md` or `design-tokens.json` (an ecosystem convention some teams already maintain) — if present, read it and pre-fill the brief's answers from it instead of re-asking; note the source. The brief complements an existing design contract, never contradicts it.
 
@@ -61,3 +61,5 @@ Do not auto-commit. Per project rules, commits require explicit user instruction
 - All five sections are required. If one is genuinely unknown, write it as a dated placeholder with `[TO DEFINE — YYYY-MM-DD]` so the gap is visible.
 - The brief is append-mostly on updates. Never delete past content — mark deprecated with date and reason.
 - No brand names, product examples, or generic SaaS language inside the user's brief. The brief describes their product, not the template.
+
+**Next step:** `/tokens` — the brief decides the intent, the tokens encode it (rung 2).

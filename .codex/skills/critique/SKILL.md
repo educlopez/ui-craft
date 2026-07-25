@@ -7,7 +7,7 @@ description: "Design lens critique covering visual hierarchy, clarity, and anti-
 
 **Context:** this sub-skill is one lens of the broader `ui-craft` skill. If the `ui-craft` skill is also installed, read its SKILL.md first for Discovery + Anti-Slop + Craft Test, then apply the specific lens below.
 
-Critique the UI at the target the user described through a design lens. Load the `ui-craft` skill.
+Critique the UI at `$ARGUMENTS` through a design lens. Load the `ui-craft` skill.
 
 ## Step 0: Visual capture (mandatory)
 
@@ -49,3 +49,7 @@ If the user declines to provide screenshots, run a code-only pass and clearly ma
 Prioritize by impact, not by file order. End with a one-paragraph summary of the **top 3 changes** that would raise this from "AI-generated" to "designed".
 
 Do NOT edit code. This is a critique.
+
+**Close with a Craft Report** (`references/review.md` → Craft Report) as the final wrapper around the findings table and top-3 summary — Checked names the lenses actually run (Anti-Slop, Craft Test, Hierarchy, Clarity, Signature, Inspiration gap) and at what CRAFT_LEVEL bar, Passed carries whatever held up under those lenses, Changed stays empty (critique doesn't edit), Left alone covers anything flagged but out of scope, Verdict is the one-sentence state. Produce it even when the surface passes clean — that's the validation the user is asking for.
+
+**Next step:** `/polish` — apply the fixes this critique named (rung 1).

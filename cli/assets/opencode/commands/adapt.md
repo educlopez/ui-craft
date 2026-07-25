@@ -24,3 +24,5 @@ Adapt the UI at `$ARGUMENTS` across devices. Load the `ui-craft` skill and read 
 10. **Nav pattern** — desktop horizontal → mobile collapses (sheet, drawer, or bottom tabs). Never a hamburger on desktop unless the nav has > 7 top-level items.
 
 **Output**: edit code directly. Print the Review Format table of changes. Flag any responsive bugs you can't fix without more info (missing design for a breakpoint, unclear nav pattern).
+
+**Next step:** `/audit` — verify the responsive pass against a11y, performance and touch targets (rung 1).

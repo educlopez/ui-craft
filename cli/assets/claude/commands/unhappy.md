@@ -42,3 +42,5 @@ If `CRAFT_LEVEL` is unknown, default to 7.
 | generic "Error" toast | inline error with specific cause + retry + support ID | recoverability (heuristic 9) |
 
 One row per state added. No full diffs.
+
+**Next step:** `/harden` — implement the states you just designed (rung 1).

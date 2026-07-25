@@ -21,3 +21,5 @@ Make the UI at `$ARGUMENTS` bolder. Load the `ui-craft` skill and read `referenc
 **Knob gating:** if already at variance ≥9 or MOTION ≥9, strengthen signature and typography instead of pushing further.
 
 **Output:** edit code. Print Review Format table. End with the updated Craft Read line.
+
+**Next step:** `/critique` — confirm the added personality did not cost hierarchy or become slop (rung 1).
