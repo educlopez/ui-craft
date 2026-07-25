@@ -31,7 +31,9 @@
   ],
   "scripts": {
     "detect": "node scripts/detect.mjs",
-    "validate": "node scripts/validate.mjs"
+    "validate": "node scripts/validate.mjs",
+    "sync": "node scripts/sync-mirrors.mjs",
+    "check:mirrors": "node scripts/check-mirror-copies.mjs"
   },
   "engines": {
     "node": ">=18"
