@@ -35,3 +35,5 @@ Distill the UI at `$ARGUMENTS` to its essence. Load the `ui-craft` skill.
 - End with a one-line **delta**: "Before: N sections / M components / X lines. After: …".
 
 **Guardrail**: do not cut accessibility affordances (labels, focus styles, error text, reduced-motion fallbacks) — those always earn their space.
+
+**Next step:** `/polish` — what survived the cut deserves the details (rung 1).

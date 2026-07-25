@@ -53,3 +53,5 @@ Run the recipe's acceptance checklist against the built surface. Fix every unche
 Lead with intent, not a findings dump. Use the Review Format table only for fixes made in this pass.
 
 At CRAFT_LEVEL ≥ 8, finish with the full `/finalize` gate instead of the recipe's minimum passes.
+
+**Next step:** `/finalize` — run the pre-ship gate (rung 3). If this project has no brief yet, `/brief` first (rung 2).

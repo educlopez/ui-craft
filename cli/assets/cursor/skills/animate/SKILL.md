@@ -7,7 +7,7 @@ description: "Motion design pass — adds purposeful animations or removes exces
 
 **Context:** this sub-skill is one lens of the broader `ui-craft` skill. If the `ui-craft` skill is also installed, read its SKILL.md first for Discovery + Anti-Slop + Craft Test, then apply the specific lens below.
 
-Add or fix animations in the target the user described. Load the `ui-craft` skill.
+Add or fix animations in `$ARGUMENTS`. Load the `ui-craft` skill.
 
 **Step 1 — Decision Ladder**: run the Decision Ladder from `references/motion.md` first. Anything that fails it gets removed, not improved.
 
@@ -35,3 +35,5 @@ Exit ≈ 75% of entrance duration (shorter, same `ease-out` — or a flatter tai
 - `MOTION_INTENSITY 8+` → scroll-linked, page transitions, magnetic cursor OK (still honor reduced-motion).
 
 **Output**: edit code directly. After each file, print the Review Format table. Flag any animation you removed and why.
+
+**Next step:** `/polish` — the compound details around the motion you just added (rung 1).

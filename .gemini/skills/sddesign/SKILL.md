@@ -7,7 +7,7 @@ description: "Full spec-driven pipeline — walks brief → tokens → shape (sp
 
 **Context:** this sub-skill is one lens of the broader `ui-craft` skill. If the `ui-craft` skill is also installed, read its SKILL.md first for Discovery + Anti-Slop + Craft Test, then apply the specific lens below.
 
-Run the spec-driven design pipeline for the target the user described. Load the `ui-craft` skill.
+Run the spec-driven design pipeline for `$ARGUMENTS`. Load the `ui-craft` skill.
 
 ---
 
@@ -62,7 +62,7 @@ Check: does a token spine exist? (Look for CSS variables `--color-*`, `--font-*`
 
 **Existing-surface guard:** Before running `/shape`, check if `.ui-craft/spec.md` already contains a `## Surface: <name>` block for this surface. If it does, do NOT re-run shape and blindly append a duplicate section — offer to update the existing section or skip shape (the spec already exists).
 
-Run `/shape` for the surface described in the target the user described. Shape produces its full five-step output (content inventory, ASCII layout, state list, open questions).
+Run `/shape` for the surface described in `$ARGUMENTS`. Shape produces its full five-step output (content inventory, ASCII layout, state list, open questions).
 
 **Persist in pipeline (default):** Inside the `/sddesign` pipeline, shape's Step 6 spec persist is the default — it is auto-confirmed unless the user explicitly opts out of the spec gate. The persist writes `.ui-craft/spec.md` (or appends the surface section). This is the whole point of the pipeline.
 
@@ -71,7 +71,7 @@ Run `/shape` for the surface described in the target the user described. Shape p
 
 ### Gate 4 — Craft (build)
 
-Run `/craft <surface>` where `<surface>` matches the description in the target the user described.
+Run `/craft <surface>` where `<surface>` matches the description in `$ARGUMENTS`.
 
 `/craft` declares the **Craft Read** (`references/craft-intent.md`) before building — surface kind, audience, theme/accent, DESIGN_VARIANCE, and the one **signature bet**. The signature bet is built inside this gate, not deferred to converge or polish. If the spec section names a composition, the Craft Read must be consistent with it.
 
@@ -107,3 +107,5 @@ Print the final verdict and the complete resolved checklist:
 ## Precedence
 
 Brief §6 learned constraints and the a11y/correctness floor take precedence over spec.md composition choices at every gate. If a constraint conflicts with a spec.md decision, the constraint wins — update the spec section to reflect the winning choice and note the brief §6 reference.
+
+**Next step:** Ship. The pipeline already walked rungs 1 to 3; `.ui-craft/spec.md` is the record for the next session.

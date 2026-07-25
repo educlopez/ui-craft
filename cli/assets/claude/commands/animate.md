@@ -31,3 +31,5 @@ Exit ≈ 75% of entrance duration (shorter, same `ease-out` — or a flatter tai
 - `MOTION_INTENSITY 8+` → scroll-linked, page transitions, magnetic cursor OK (still honor reduced-motion).
 
 **Output**: edit code directly. After each file, print the Review Format table. Flag any animation you removed and why.
+
+**Next step:** `/polish` — the compound details around the motion you just added (rung 1).

@@ -28,3 +28,5 @@ Add delight to the UI at `$ARGUMENTS`. Load the `ui-craft` skill.
 **References to read**: `references/motion.md` (Decision Ladder + interaction rules), `references/copy.md` (microcopy voice), `../examples/animation-storyboard.md` (if multi-stage).
 
 **Output**: edit code directly. Print the Review Format table. Flag every candidate you chose not to add and why.
+
+**Next step:** `/finalize` — delight is the last additive pass; gate it before shipping (rung 3).

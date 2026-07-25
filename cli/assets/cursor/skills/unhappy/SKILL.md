@@ -7,7 +7,7 @@ description: "State-first design pass — inventories and implements all non-hap
 
 **Context:** this sub-skill is one lens of the broader `ui-craft` skill. If the `ui-craft` skill is also installed, read its SKILL.md first for Discovery + Anti-Slop + Craft Test, then apply the specific lens below.
 
-Design every non-happy state for the UI at the target the user described. Load the `ui-craft` skill and read `references/state-design.md`.
+Design every non-happy state for the UI at `$ARGUMENTS`. Load the `ui-craft` skill and read `references/state-design.md`.
 
 **Step 1 — Inventory.** List every data source and interactive surface in the target. For each, enumerate its states:
 
@@ -46,3 +46,5 @@ If `CRAFT_LEVEL` is unknown, default to 7.
 | generic "Error" toast | inline error with specific cause + retry + support ID | recoverability (heuristic 9) |
 
 One row per state added. No full diffs.
+
+**Next step:** `/harden` — implement the states you just designed (rung 1).

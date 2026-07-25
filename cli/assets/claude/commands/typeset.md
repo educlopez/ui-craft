@@ -53,3 +53,5 @@ If the UI is technically correct but forgettable, use typography as the weapon. 
 **Pre-check:** if an accent is already overused or hierarchy is already loud, you don't have a tameness problem — you have a noise problem. Route to `/distill` (cut) or `/colorize` (reduce accents) instead.
 
 **Output**: edit code directly. Print the Review Format table. Call out the single highest-impact change (usually: "font choice" or "tracking-tight on hero").
+
+**Next step:** `/polish` — micro-details land best right after the type system is set (rung 1).

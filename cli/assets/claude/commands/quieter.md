@@ -21,3 +21,5 @@ Make the UI at `$ARGUMENTS` quieter. Load the `ui-craft` skill and read `referen
 **Overlap:** for structural cuts (sections, copy), also apply `/distill` logic. For color strategy, see `/colorize`.
 
 **Output:** edit code. Print Review Format table. End with the updated Craft Read line.
+
+**Next step:** `/critique` — confirm restraint did not flatten the hierarchy (rung 1).

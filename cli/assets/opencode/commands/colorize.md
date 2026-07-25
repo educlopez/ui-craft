@@ -41,3 +41,5 @@ If the UI is already shouting with color, this command also removes color.
 **References to read**: `references/color.md` (OKLCH, tokens, dark mode, contrast), `references/accessibility.md` (contrast ratios for AA/AAA).
 
 **Output**: edit code directly. Lift any literal hex into CSS variables (`--color-accent`, `--color-accent-tint`) — respect existing token naming if present. Print the Review Format table. One row per placement, with the ratio check (AA/AAA) on text uses.
+
+**Next step:** `/tokens` — promote the color decisions into the durable token spine so they survive the session (rung 2).

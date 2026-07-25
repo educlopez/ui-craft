@@ -24,17 +24,20 @@ UI Craft gives AI coding agents the design knowledge they're missing. Not templa
 
 Every UI gets tested against a single question: *"Would someone believe AI made this?"* If yes, it starts over.
 
-### Three ways to use it
+### The ladder — four rungs
 
-You don't have to learn any of it to benefit. It grows with you.
+There is one thing to learn, and it's a ladder. Each rung is a real jump in what you get, and each costs a little more than the one below. **You only climb when you want the next thing.**
 
-| Layer | You do | You get |
-|-------|--------|---------|
-| **1 · Just install it** | Nothing — ask for UI the way you always do | The agent designs with taste: real hierarchy, system tokens, no AI slop. Same prompt, shippable result. |
-| **2 · Drive it** | Run `/start` to see your options, then a slash command (`/craft`, `/sddesign`, `/finalize`, …) | Focused passes — build a surface, run a scored critique, gate a ship. 25 commands, one lens each. |
-| **3 · Verify it** | Wire the agents / MCP / CLI into review or CI | Independent design + a11y review, a deterministic 0-100 quality score, an anti-slop gate on every commit. |
+| Rung | You want | You do | You get | Effort |
+|------|----------|--------|---------|--------|
+| **0 · Ask** | Better UI with zero effort | Install, then ask for UI the way you always do | Real hierarchy, your own tokens, no AI slop — same prompt, shippable result | none |
+| **1 · Direct** | Control over one pass | `/craft`, `/critique`, `/polish`, `/animate`, … | A focused pass on one surface, aimed by you | one command |
+| **2 · Persist** | Consistency across sessions | `/brief`, `/tokens`, `/remember` | Durable design context every future session reads | write once |
+| **3 · Enforce** | Proof it cannot regress | `/finalize`, review agents, MCP gates, `ui-craft-detect` | Gates in review and CI, plus a deterministic 0-100 score | wire once |
 
-**Start at Layer 1.** Most people never leave it — that's the point. Layers 2 and 3 are there the day you want them.
+**Start at rung 0.** Most people never leave it — that's the point. Rungs 1 to 3 are there the day you want them, and `/start` will tell you which rung your project is on right now.
+
+`/sddesign` is **not** a fifth rung. It's the express lane that walks rungs 1 to 3 in one guided run, for a single big surface.
 
 **What makes this different:** the only AI design system that produces a **scoreable, defensible critique** — Nielsen's 10 usability heuristics × 6 classic design laws (Fitts, Hick, Doherty, Cleveland-McGill, Miller, Tesler) × 5 persona walkthroughs, with every finding tagged by business impact (`blocks-conversion` / `adds-friction` / `reduces-trust` / `minor-polish`). Paste the scorecard straight into any issue tracker.
 
@@ -220,68 +223,84 @@ For playful and brutalist aesthetics (Clay / Gumroad / Duolingo / Arc-playful, N
 
 ## Slash commands
 
-25 commands total — 23 single-lens passes, plus `/sddesign` (the pipeline that chains them) and `/start` (the front door).
+25 commands. They are **not a flat list** — every one belongs to a rung, and the rung tells you what it costs you before you read what it does.
 
-**Front door:**
-
-| Command | Does |
-|---------|------|
-| `/ui-craft:start` | **Run this first.** Reads the project (framework, tokens, brief, spec, existing UI) and reports what ui-craft can do right now, then routes you to the right next step. Read-only — no code changes. |
-
-**Decision spine & finalize:**
+**Front door — unsure where you are:**
 
 | Command | Does |
 |---------|------|
-| `/ui-craft:brief` | Write or update the project's durable design brief at `.ui-craft/brief.md` — 5 required sections + principles workshop. Run before any net-new project. |
-| `/ui-craft:tokens` | Audit or establish the 3-layer token spine (primitive → semantic → component). Both modes intentionally crafted, not just inverted. |
-| `/ui-craft:finalize` | Pre-ship gate. Runs detector + brief/token check + the 10-pass finish bar + feedback hierarchy filter. Output only — no auto-fix. |
+| `/ui-craft:start` | **Run this first.** Reads the project (framework, tokens, brief, spec, existing UI), reports which rung you are on, and names the one command worth running next. Read-only — no code changes. |
 
-**Review & ship:**
+### Rung 1 · Direct — one focused pass, session-local
 
-| Command | Does |
-|---------|------|
-| `/ui-craft:heuristic` | **Signature move.** Scored critique — Nielsen 10 + 6 design laws + persona walkthroughs. Produces a Markdown scorecard with impact tags. No code changes. |
-| `/ui-craft:audit` | Technical — a11y, performance, responsive. Prioritized findings table. |
-| `/ui-craft:critique` | UX — hierarchy, clarity, anti-slop. No code changes. |
-| `/ui-craft:polish` | Final pass — compound details that turn "done" into "crafted". |
-| `/ui-craft:harden` | Production readiness — loading/empty/error states, i18n, offline, edge cases. |
-| `/ui-craft:unhappy` | State-first pass — design every non-happy state (idle/loading/empty/error/partial/conflict/offline) before the happy path. |
+**Build a surface:**
 
-**Plan & transform:**
+| Command | Does | Next step |
+|---------|------|-----------|
+| `/ui-craft:craft` | **One-shot surface build.** Outcome recipe pipeline — Craft Read + variance + signature bet → named composition → theme → build order → acceptance bar. Surfaces: `dashboard`, `landing`, `auth`; portfolios use the landing recipe at variance 8. | `/finalize` |
+| `/ui-craft:shape` | **Wireframe-first.** ASCII layout + content inventory + state list + open questions before any JSX. Run when starting a new screen. | `/craft` |
+| `/ui-craft:redesign` | **Redesign without regression.** Audits the existing surface first, classifies what to preserve (brand, IA/SEO, content, conversion paths), picks refresh/reskin/rebuild scope, then modernizes. | `/critique` |
 
-| Command | Does |
-|---------|------|
-| `/ui-craft:sddesign` | **Full spec-driven pipeline.** brief → tokens → shape → craft → converge → ship. Writes `.ui-craft/spec.md`. Run when starting a net-new surface. |
-| `/ui-craft:craft` | **One-shot surface build.** Outcome recipe pipeline — Craft Read + variance + signature bet → named composition → theme → build order → acceptance bar. Surfaces: `dashboard`, `landing`, `auth`; portfolios use landing recipe at variance 8. |
-| `/ui-craft:redesign` | **Redesign without regression.** Audits the existing surface first, classifies what to preserve (brand, IA/SEO, content, conversion paths), picks refresh/reskin/rebuild scope, then modernizes. |
-| `/ui-craft:shape` | **Wireframe-first.** ASCII layout + content inventory + state list + open questions before any JSX. Run when starting a new screen. |
-| `/ui-craft:animate` | Add / fix motion. Honors `MOTION_INTENSITY` + chosen stack. |
-| `/ui-craft:adapt` | Responsive pass — mobile, tablet, desktop, touch, safe areas. |
-| `/ui-craft:typeset` | Typography pass — fonts, scale, tracking, micro-typography. |
-| `/ui-craft:colorize` | Introduce color strategically — one accent, 3–5 placements, no decoration. |
-| `/ui-craft:clarify` | UX copy — button labels, error messages, empty states, CTAs. |
-| `/ui-craft:extract` | Pull repeated patterns into shared components and tokens. |
-| `/ui-craft:remember` | Record a learned design constraint into `.ui-craft/brief.md` — corrections that should persist across sessions. |
+**Adjust one dimension:**
 
-**Taste dial:**
+| Command | Does | Next step |
+|---------|------|-----------|
+| `/ui-craft:animate` | Add / fix motion. Honors `MOTION_INTENSITY` + chosen stack. | `/polish` |
+| `/ui-craft:adapt` | Responsive pass — mobile, tablet, desktop, touch, safe areas. | `/audit` |
+| `/ui-craft:typeset` | Typography pass — fonts, scale, tracking, micro-typography. | `/polish` |
+| `/ui-craft:colorize` | Introduce color strategically — one accent, 3–5 placements, no decoration. | `/tokens` |
+| `/ui-craft:clarify` | UX copy — button labels, error messages, empty states, CTAs. | `/critique` |
+| `/ui-craft:extract` | Pull repeated patterns into shared components and tokens. | `/tokens` |
+| `/ui-craft:distill` | Strip to essence. Cut every section that doesn't earn its space. Absorbs visual-weight reduction (softer type, less motion). | `/polish` |
+| `/ui-craft:delight` | Add purposeful micro-interactions — copy first, animation last. | `/finalize` |
+| `/ui-craft:polish` | Final pass — the compound details that turn "done" into "crafted". | `/finalize` |
+| `/ui-craft:bolder` | Raise DESIGN_VARIANCE and motion amplitude — stronger composition, type, and signature without a full rebuild. | `/critique` |
+| `/ui-craft:quieter` | Lower variance and motion — more restrained grids, type, and color. Honors `prefers-reduced-motion`. | `/critique` |
 
-| Command | Does |
-|---------|------|
-| `/ui-craft:bolder` | Raise DESIGN_VARIANCE and motion amplitude — stronger composition, type, and signature without a full rebuild. |
-| `/ui-craft:quieter` | Lower variance and motion — more restrained grids, type, and color. Honors `prefers-reduced-motion`. |
-| `/ui-craft:distill` | Strip to essence. Cut every section that doesn't earn its space. Absorbs visual-weight reduction (softer type, less motion). |
-| `/ui-craft:delight` | Add purposeful micro-interactions — copy first, animation last. |
+**Review a surface:**
 
-## Four modes
+| Command | Does | Next step |
+|---------|------|-----------|
+| `/ui-craft:heuristic` | **Signature move.** Scored critique — Nielsen 10 + 6 design laws + persona walkthroughs. Markdown scorecard with impact tags. No code changes. | fix, then `/finalize` |
+| `/ui-craft:critique` | UX — hierarchy, clarity, anti-slop. No code changes. | `/polish` |
+| `/ui-craft:audit` | Technical — a11y, performance, responsive. Prioritized findings table. | `/harden` |
+| `/ui-craft:unhappy` | State-first pass — design every non-happy state (idle/loading/empty/error/partial/conflict/offline) before the happy path. | `/harden` |
+| `/ui-craft:harden` | Production readiness — loading/empty/error states, i18n, offline, edge cases. | `/finalize` |
 
-The skill detects your intent and routes automatically.
+### Rung 2 · Persist — written once, read by every future session
 
-| Mode | Prompt example | What it does |
-|------|---------------|--------------|
-| **Build** | "Build a pricing page" | Layout, typography, color, spacing, accessibility, responsive — all in one pass |
-| **Animate** | "Add an entrance to this modal" | Picks the right easing, duration, and origin point |
-| **Review** | "Review this component" | Audits for generic AI patterns, accessibility gaps, and missed details |
-| **Polish** | "Polish this dashboard" | Finds the twenty small things that turn "done" into "crafted" |
+| Command | Does | Next step |
+|---------|------|-----------|
+| `/ui-craft:brief` | Write or update the project's durable design brief at `.ui-craft/brief.md` — 5 required sections + principles workshop. Run before any net-new project. | `/tokens` |
+| `/ui-craft:tokens` | Audit or establish the 3-layer token spine (primitive → semantic → component). Light and dark both intentionally crafted, not just inverted. | `/craft` |
+| `/ui-craft:remember` | Record a learned design constraint into `.ui-craft/brief.md` — corrections that should persist across sessions. | keep working |
+
+### Rung 3 · Enforce — wired once into review or CI
+
+| Command | Does | Next step |
+|---------|------|-----------|
+| `/ui-craft:finalize` | Pre-ship gate. Runs the detector + brief/token check + the 10-pass finish bar + feedback hierarchy filter. Output only — no auto-fix. | ship |
+
+The rest of rung 3 is not commands: the two review [agents](#agents), the MCP quality gates, the composite score, and `ui-craft-detect` in CI.
+
+### Express lane
+
+| Command | Does | Next step |
+|---------|------|-----------|
+| `/ui-craft:sddesign` | **Full spec-driven pipeline.** brief → tokens → shape → craft → converge → ship. Writes `.ui-craft/spec.md`. Walks rungs 1 to 3 in one run — reach for it when a surface is big enough to deserve a spec. | ship |
+
+## Rung 0 in practice — you ask, it routes
+
+There is no mode enum to learn. At rung 0 you describe the task and the skill's routing table decides which references to load and which pass to run.
+
+| You say | It runs |
+|---------|---------|
+| "Build a pricing page" | A build pass — layout, typography, color, spacing, a11y and responsive decided together, not one at a time |
+| "Add an entrance to this modal" | A motion pass — the right easing, duration and origin point |
+| "Review this component" | A review pass — generic AI patterns, a11y gaps, missed details |
+| "Polish this dashboard" | A polish pass — the twenty small things that turn "done" into "crafted" |
+
+Climb to rung 1 when you would rather name the pass yourself.
 
 ## 32 domain references
 
@@ -682,7 +701,14 @@ The canonical skill content lives in `skills/` (main skill + variants) and `comm
 - **CLI (`ui-craft install`)** — per-harness assets are hand-authored under `cli/assets/<harness>/` (claude, cursor, codex, gemini, opencode) and compiled into the binary via `go:embed`. Command-capable harnesses (Claude Code, OpenCode) receive real `commands/*.md`; skills-only harnesses (Cursor, Codex, Gemini) receive each lens as a flat depth-1 peer skill. The embedded tree is also the uninstall manifest — cleanup removes exactly what it installed.
 - **`npx skills add` / git submodule** — the repo-root mirror dirs (`.codex/`, `.cursor/`, `.gemini/`, `.opencode/`, `.agents/`) serve those install paths.
 
-When you change a skill or command, update the canonical source under `skills/` + `commands/` and the matching harness copies.
+When you change a skill or command, edit the canonical source under `skills/` + `commands/` and then regenerate every copy:
+
+```bash
+npm run sync            # skills/ + commands/ → cli/assets/ + repo-root mirrors
+npm run check:mirrors   # the drift guard CI runs (fails on any stale mirror)
+```
+
+CI does not regenerate mirrors — `scripts/check-mirror-copies.mjs` only fails the build when one drifts, so run the sync before you push.
 
 ## Tuning skill descriptions
 

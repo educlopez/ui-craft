@@ -7,7 +7,7 @@ description: "Amplify personality — raises layout variance and motion, strengt
 
 **Context:** this sub-skill is one lens of the broader `ui-craft` skill. If the `ui-craft` skill is also installed, read its SKILL.md first for Discovery + Anti-Slop + Craft Test, then apply the specific lens below.
 
-Make the UI at `the target the user described` bolder. Load the `ui-craft` skill and read `references/craft-intent.md`.
+Make the UI at `$ARGUMENTS` bolder. Load the `ui-craft` skill and read `references/craft-intent.md`.
 
 **This is amplitude, not decoration.** Increase editorial confidence while staying anti-slop clean.
 
@@ -25,3 +25,5 @@ Make the UI at `the target the user described` bolder. Load the `ui-craft` skill
 **Knob gating:** if already at variance ≥9 or MOTION ≥9, strengthen signature and typography instead of pushing further.
 
 **Output:** edit code. Print Review Format table. End with the updated Craft Read line.
+
+**Next step:** `/critique` — confirm the added personality did not cost hierarchy or become slop (rung 1).

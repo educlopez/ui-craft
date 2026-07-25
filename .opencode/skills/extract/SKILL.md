@@ -7,7 +7,7 @@ description: "Refactoring pass — extracts repeated Tailwind class combos and m
 
 **Context:** this sub-skill is one lens of the broader `ui-craft` skill. If the `ui-craft` skill is also installed, read its SKILL.md first for Discovery + Anti-Slop + Craft Test, then apply the specific lens below.
 
-Extract reusable pieces from the target the user described. Load the `ui-craft` skill.
+Extract reusable pieces from `$ARGUMENTS`. Load the `ui-craft` skill.
 
 **Step 1 — Scan the target for extraction candidates:**
 
@@ -40,3 +40,5 @@ Extract reusable pieces from the target the user described. Load the `ui-craft` 
 | --- | --- | --- |
 
 3. A one-line delta: "Extracted N components, M tokens. Call-sites updated: X."
+
+**Next step:** `/tokens` — lift the values you just centralized into the token spine (rung 2).

@@ -7,7 +7,7 @@ description: "Responsive layout pass covering breakpoints, touch targets, safe a
 
 **Context:** this sub-skill is one lens of the broader `ui-craft` skill. If the `ui-craft` skill is also installed, read its SKILL.md first for Discovery + Anti-Slop + Craft Test, then apply the specific lens below.
 
-Adapt the UI at the target the user described across devices. Load the `ui-craft` skill and read `references/responsive.md`.
+Adapt the UI at `$ARGUMENTS` across devices. Load the `ui-craft` skill and read `references/responsive.md`.
 
 **Work mobile-first. Don't shrink desktop; grow from mobile.**
 
@@ -28,3 +28,5 @@ Adapt the UI at the target the user described across devices. Load the `ui-craft
 10. **Nav pattern** — desktop horizontal → mobile collapses (sheet, drawer, or bottom tabs). Never a hamburger on desktop unless the nav has > 7 top-level items.
 
 **Output**: edit code directly. Print the Review Format table of changes. Flag any responsive bugs you can't fix without more info (missing design for a breakpoint, unclear nav pattern).
+
+**Next step:** `/audit` — verify the responsive pass against a11y, performance and touch targets (rung 1).

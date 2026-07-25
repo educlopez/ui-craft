@@ -42,3 +42,5 @@ For every heuristic, write a concrete finding — quote text, count elements, na
 - No "First Impressions" paragraph, no hedging, no praise padding. Tables + ranked list only.
 
 Do NOT edit code. This is a scored critique.
+
+**Next step:** Fix the findings, then `/finalize` — the scorecard is the input to a gated ship (rung 3).

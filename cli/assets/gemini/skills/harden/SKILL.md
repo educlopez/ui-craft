@@ -7,7 +7,7 @@ description: "Production-readiness pass — audits and implements the full non-h
 
 **Context:** this sub-skill is one lens of the broader `ui-craft` skill. If the `ui-craft` skill is also installed, read its SKILL.md first for Discovery + Anti-Slop + Craft Test, then apply the specific lens below.
 
-Harden the UI at the target the user described for production. Load the `ui-craft` skill.
+Harden the UI at `$ARGUMENTS` for production. Load the `ui-craft` skill.
 
 **Coverage matrix — check every key surface:**
 
@@ -26,3 +26,5 @@ Harden the UI at the target the user described for production. Load the `ui-craf
 **References to read**: `references/accessibility.md` (keyboard + screen reader paths), `references/copy.md` (error and empty-state voice), `references/motion.md` Rendering Performance section (skeleton motion + reduced-motion).
 
 **Output**: a per-surface checklist marking each of the 9 items as present / missing / partial. Then edit the code to fix what's missing. Print the Review Format table showing fixes. End with a "still at risk" list for anything you couldn't safely auto-fix (requires backend, requires design decision, requires translation files).
+
+**Next step:** `/finalize` — the pre-ship gate (rung 3).

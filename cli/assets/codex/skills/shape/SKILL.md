@@ -7,7 +7,7 @@ description: "Wireframe-first pass — outputs an ASCII layout + state list + co
 
 **Context:** this sub-skill is one lens of the broader `ui-craft` skill. If the `ui-craft` skill is also installed, read its SKILL.md first for Discovery + Anti-Slop + Craft Test, then apply the specific lens below.
 
-Shape the UI for the target the user described before writing code. Load the `ui-craft` skill.
+Shape the UI for `$ARGUMENTS` before writing code. Load the `ui-craft` skill.
 
 This command produces a **shape artifact**, not JSX. The point is to force low-fi thinking — content inventory, layout regions, state coverage, open questions — before any component is written. Skipping this step is how generic AI UIs get built: straight to hi-fi, no discovery, every screen looks the same.
 
@@ -118,3 +118,5 @@ Print-only is the default when `/shape` is run standalone. Step 6 is the offer; 
 - Produce a single Markdown block with all five steps, in order. Step 6 is the optional offer that follows.
 - Do **NOT** write JSX, CSS, or component code in this command.
 - End the output with: _"Ready to build? Review the shape, confirm the open questions, then run `/ui-craft:audit` (or use Build mode) once the code exists."_
+
+**Next step:** `/craft` — build the surface you just wireframed (rung 1).
