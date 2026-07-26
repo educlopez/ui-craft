@@ -213,7 +213,7 @@ export function scanFile(filePath, content, config) {
       // Applies to every line-scope rule: a pattern inside <code> or on a deleted
       // line is being shown, not shipped.
       const snip = typeof res === "object" && res.snippet ? res.snippet : null;
-      if (isDisplayedNotApplied(line, snip)) continue;
+      if (isDisplayedNotApplied(line, snip, ctx)) continue;
       const finding = {
         file: filePath,
         line: i + 1,
