@@ -176,6 +176,217 @@ test("auth/brand-flood-panel does NOT fire on tinted neutral auth panel", async 
 // marketing production tells — eyebrow flood, scroll cue, numbered eyebrows,
 // duplicate CTA intent
 // ---------------------------------------------------------------------------
+test("copy/em-dash-flood counts entity-spelled em dashes", async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "detect-emdash-entity-"));
+  try {
+    // Same glyph, encoded. Without this the rule could be cleared by escaping.
+    fs.writeFileSync(
+      path.join(dir, "page.html"),
+      `<p>one &mdash; two</p>\n<p>three &#8212; four</p>\n<p>five &mdash; six</p>\n`,
+    );
+    // Two is a deliberate pair, not a flood.
+    fs.writeFileSync(
+      path.join(dir, "restrained.html"),
+      `<p>one &mdash; two</p>\n<p>three &mdash; four</p>\n`,
+    );
+    const result = await scan(dir);
+    const hits = result.findings.filter((f) => f.rule === "copy/em-dash-flood");
+    assert.equal(hits.length, 1, "only the flooded file is flagged");
+    assert.ok(hits[0].file.endsWith("page.html"));
+    assert.match(hits[0].snippet, /3 em dashes/);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("the demonstration guard reads the enclosing block's selector", async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "detect-slopblock-"));
+  try {
+    // The declaration sits several lines below the selector, which is how CSS is
+    // normally written and where the single-line version of this guard failed.
+    fs.writeFileSync(
+      path.join(dir, "demo.css"),
+      `.slop-demo-btn {\n  font-weight: 500;\n  color: white;\n  padding: 12px 24px;\n  background: linear-gradient(135deg, #a855f7, #22d3ee);\n}\n`,
+    );
+    fs.writeFileSync(
+      path.join(dir, "real.css"),
+      `.hero-btn {\n  font-weight: 500;\n  color: white;\n  background: linear-gradient(135deg, #a855f7, #22d3ee);\n}\n`,
+    );
+    const result = await scan(dir);
+    const hits = result.findings.filter((f) => f.rule === "purple-cyan-gradient");
+    assert.equal(hits.length, 1, "only the block that does not name itself a demo is flagged");
+    assert.ok(hits[0].file.endsWith("real.css"));
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("a CSS rule that names itself the bad example is a demonstration", async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "detect-slopdemo-"));
+  try {
+    // A page that argues against slop by rendering it must not be penalised for
+    // rendering it. The selector is the signal.
+    fs.writeFileSync(
+      path.join(dir, "demo.css"),
+      `.qhero[data-q="slop"] { background: linear-gradient(135deg, #a855f7, #22d3ee); }\n`,
+    );
+    // The same declaration on a normal selector is still the real thing.
+    fs.writeFileSync(
+      path.join(dir, "real.css"),
+      `.hero { background: linear-gradient(135deg, #a855f7, #22d3ee); }\n`,
+    );
+    const result = await scan(dir);
+    const hits = result.findings.filter((f) => f.rule === "purple-cyan-gradient");
+    assert.equal(hits.length, 1, "only the non-demonstration selector is flagged");
+    assert.ok(hits[0].file.endsWith("real.css"));
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("layout/image-height-from-attribute catches a width-only image rule", async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "detect-imgheight-"));
+  try {
+    // The defect: attributes supply the height, CSS supplies only the width, and
+    // the image renders stretched. This is what `perf/image-no-dimensions` advice
+    // produces if `height: auto` is left off.
+    fs.writeFileSync(
+      path.join(dir, "broken.html"),
+      `<style>.shot img { width: 100%; aspect-ratio: 7 / 6; object-fit: cover; }</style>\n<div class="shot"><img src="a.webp" width="1100" height="1375" alt="a"></div>\n`,
+    );
+    // Sizing both axes is a deliberate crop, not the bug.
+    fs.writeFileSync(
+      path.join(dir, "fine.html"),
+      `<style>.shot img { width: 100%; height: auto; aspect-ratio: 7 / 6; }</style>\n<div class="shot"><img src="a.webp" width="1100" height="1375" alt="a"></div>\n`,
+    );
+    // No height attribute anywhere: nothing for the hint to win with.
+    fs.writeFileSync(
+      path.join(dir, "noattr.html"),
+      `<style>.shot img { width: 100%; aspect-ratio: 7 / 6; }</style>\n<div class="shot"><img src="a.webp" alt="a"></div>\n`,
+    );
+
+    const result = await scan(dir);
+    const hits = result.findings.filter((f) => f.rule === "layout/image-height-from-attribute");
+    assert.equal(hits.length, 1, "only the width-only rule is flagged");
+    assert.ok(hits[0].file.endsWith("broken.html"));
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("type rules measure the ladder, not the palette", async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "detect-type-"));
+  try {
+    // Twelve steps, none of them separated: the shape every one of our own
+    // scenes had before the ladder was measured against real surfaces.
+    const crowded = [10, 10.5, 11, 11.5, 12, 12.5, 13, 13.5, 14, 15, 46, 56]
+      .map((n, i) => `.s${i} { font-size: ${n}px; }`).join("\n");
+    fs.writeFileSync(path.join(dir, "crowded.css"), crowded + "\n");
+
+    // Five steps with a 2.5x jump to display, and the display set medium.
+    fs.writeFileSync(
+      path.join(dir, "ladder.css"),
+      `.a { font-size: 13px; }\n.b { font-size: 16px; }\n.c { font-size: 20px; }\n` +
+      `.d { font-size: 30px; }\n.e { font-size: 76px; font-weight: 500; }\n`,
+    );
+
+    // Responsive restatements of steps that already exist are not new steps.
+    fs.writeFileSync(
+      path.join(dir, "responsive.css"),
+      `.h { font-size: 76px; }\n.b { font-size: 16px; }\n.c { font-size: 30px; }\n` +
+      `@media (max-width: 40rem) {\n  .h { font-size: 44px; }\n  .c { font-size: 24px; }\n}\n`,
+    );
+
+    // Bold display: the size is already the emphasis.
+    fs.writeFileSync(
+      path.join(dir, "bold.css"),
+      `.a { font-size: 13px; }\n.b { font-size: 16px; }\n.c { font-size: 30px; }\n` +
+      `.h1 { font-size: 76px; font-weight: 700; }\n`,
+    );
+
+    const result = await scan(dir);
+    const of = (rule) => result.findings.filter((f) => f.rule === rule);
+
+    const crowdedHits = of("type/crowded-ladder");
+    assert.equal(crowdedHits.length, 1, "only the twelve-step file is crowded");
+    assert.ok(crowdedHits[0].file.endsWith("crowded.css"));
+
+    const gapHits = of("type/display-not-separated");
+    assert.equal(gapHits.length, 1, "56px over 46px is not a display step");
+    assert.ok(gapHits[0].file.endsWith("crowded.css"));
+
+    const boldHits = of("type/bold-display");
+    assert.equal(boldHits.length, 1);
+    assert.ok(boldHits[0].file.endsWith("bold.css"));
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("css/duplicate-declaration catches a property set twice in one block", async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "detect-dupdecl-"));
+  try {
+    // The defect, exactly as it shipped: the pale on-field colour is declared
+    // first, an older dark ink is declared last, and the last one wins — putting
+    // near-black type on a coloured field at 1.6:1. Nothing else catches it,
+    // because the rendered text sits over imagery and cannot be measured.
+    fs.writeFileSync(
+      path.join(dir, "broken.css"),
+      `.wordmark {\n  color: var(--on-field);\n  font-size: 17px;\n  color: var(--ink);\n}\n`,
+    );
+    // A shorthand narrowed by a longhand is normal CSS, not a duplicate.
+    fs.writeFileSync(
+      path.join(dir, "narrowing.css"),
+      `.card {\n  margin: 0;\n  margin-top: 4px;\n}\n`,
+    );
+    // The same value twice is redundant, not a silent override; and custom
+    // properties are redeclared on purpose all the time.
+    fs.writeFileSync(
+      path.join(dir, "same.css"),
+      `:root {\n  --plum: oklch(40% 0.13 300);\n  --plum: oklch(40% 0.13 300);\n}\n.b { color: red; color: red; }\n`,
+    );
+
+    const result = await scan(dir);
+    const hits = result.findings.filter((f) => f.rule === "css/duplicate-declaration");
+    assert.equal(hits.length, 1, "only the conflicting duplicate is flagged");
+    assert.ok(hits[0].file.endsWith("broken.css"));
+    assert.match(hits[0].snippet, /color twice/);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("tables/no-overflow-handling reads a sticky header on an ARIA table", async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "detect-ariatable-"));
+  try {
+    const head = `<div class="t-head" role="row"><span role="columnheader">File</span></div>`;
+    const row = `<div class="t-row" role="row"><span role="cell">Hero.tsx</span></div>`;
+    // Grid table with both affordances, spelled the way an ARIA table has to
+    // spell them: no <thead>, no <th>, sticky applied to the header row's class.
+    fs.writeFileSync(
+      path.join(dir, "compliant.html"),
+      `<style>.wrap { overflow-x: auto; }\n.wrap .t-head { position: sticky; top: 0; }</style>\n<div class="wrap" role="table">${head}${row}</div>\n`,
+    );
+    // Tailwind spelling on the header row itself.
+    fs.writeFileSync(
+      path.join(dir, "tailwind.html"),
+      `<div class="overflow-x-auto" role="table"><div class="sticky top-0" role="row"><span role="columnheader">File</span></div>${row}</div>\n`,
+    );
+    // Same markup with no sticky rule anywhere — the finding must survive.
+    fs.writeFileSync(
+      path.join(dir, "missing.html"),
+      `<style>.wrap { overflow-x: auto; }</style>\n<div class="wrap" role="table">${head}${row}</div>\n`,
+    );
+
+    const result = await scan(dir);
+    const hits = result.findings.filter((f) => f.rule === "tables/no-overflow-handling");
+    assert.equal(hits.length, 1, "only the file with no sticky header is flagged");
+    assert.ok(hits[0].file.endsWith("missing.html"));
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test("layout/eyebrow-flood fires at 4+ uppercase-tracked labels, skips table headers", async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "detect-eyebrow-"));
   try {

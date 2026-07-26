@@ -97,7 +97,26 @@ export function enclosingBlock(ctx, maxLines = 40) {
   return lines.slice(start, end + 1).join("\n");
 }
 
-export function isDisplayedNotApplied(line, snippet) {
+/** A selector that names itself as the counter-example rather than the intent. */
+const DEMO_SELECTOR = /(?:^|[\s.#[="'-])(?:slop|bad|before|dont|do-not|anti-?pattern|worse|naive|unstyled)(?:[\s.#\]="'-]|$)/i;
+
+export function isDisplayedNotApplied(line, snippet, ctx) {
+  // A CSS rule whose selector names itself as the bad example is a demonstration.
+  // Our own landing peels slop off pass by pass with `[data-q="slop"]`, and the
+  // detector flagged the page for rendering what it exists to argue against —
+  // the CSS analogue of flagging a diff for showing the line it removed.
+  //
+  // The declaration is usually not on the selector's line, so walk out to the
+  // enclosing block and read the selector there. Checking only the handed line
+  // caught `.x[data-q="slop"] { … }` on one line and missed every block whose
+  // selector sat above the declaration.
+  if (DEMO_SELECTOR.test(line.split("{")[0])) return true;
+  const block = enclosingBlock(ctx);
+  if (block) {
+    const brace = block.indexOf("{");
+    if (brace !== -1 && DEMO_SELECTOR.test(block.slice(0, brace))) return true;
+  }
+
   // A line marked as deleted is showing what a diff took out.
   if (/<(?:del|s)\b/i.test(line)) return true;
   if (/class\s*=\s*["'][^"']*\b(?:rem|removed|deleted|diff-del|diff-rem|line-del)\b/i.test(line)) {
@@ -121,6 +140,81 @@ export function isDisplayedNotApplied(line, snippet) {
     }
   }
   return false;
+}
+
+/**
+ * Sticky header detection for ARIA tables.
+ *
+ * A grid-based table built with `role="table"` / `role="row"` /
+ * `role="columnheader"` has no `<thead>` or `<th>` for the selector checks above
+ * to find, so a compliant sticky header row read as missing. Resolve the header
+ * row's own class instead, and look for a rule on it that pins the row.
+ *
+ * Both orders matter: `class` may sit either side of `role` on the same tag.
+ */
+/**
+ * Every authored font size in a file, in px, with responsive restatements of the
+ * same step removed.
+ *
+ * Declarations inside `@media` are a second spelling of a step that already
+ * exists, not a new step, so they are dropped before counting — otherwise a
+ * properly responsive file looks like it has twice the ladder it has.
+ */
+export function fontSizeLadder(content) {
+  // Drop media/container query bodies. Non-greedy to the matching close is not
+  // possible with a regex, so this walks braces.
+  let stripped = "";
+  let i = 0;
+  while (i < content.length) {
+    const at = content.slice(i).search(/@(?:media|container|supports)[^{]*\{/);
+    if (at === -1) { stripped += content.slice(i); break; }
+    stripped += content.slice(i, i + at);
+    let j = i + at;
+    while (j < content.length && content[j] !== "{") j++;
+    let depth = 0;
+    for (; j < content.length; j++) {
+      if (content[j] === "{") depth++;
+      else if (content[j] === "}") { depth--; if (depth === 0) { j++; break; } }
+    }
+    i = j;
+  }
+
+  const sizes = new Map();
+  const decl = /font-size\s*:\s*([0-9.]+)(px|rem|em)\b/gi;
+  let m;
+  while ((m = decl.exec(stripped)) !== null) {
+    const n = Number(m[1]);
+    if (!Number.isFinite(n) || n <= 0) continue;
+    // rem/em against the 16px root the scenes and most resets use.
+    const px = m[2].toLowerCase() === "px" ? n : n * 16;
+    const key = Math.round(px * 10) / 10;
+    sizes.set(key, (sizes.get(key) || 0) + 1);
+  }
+  return sizes;
+}
+
+function hasStickyAriaHeaderRow(content) {
+  const headerCell = content.search(/role\s*=\s*["']columnheader["']/);
+  if (headerCell === -1) return false;
+
+  // Nearest opening tag before the first header cell that declares role="row".
+  const before = content.slice(0, headerCell);
+  const rows = [...before.matchAll(/<[a-zA-Z][^>]*role\s*=\s*["']row["'][^>]*>/g)];
+  if (rows.length === 0) return false;
+  const headerRow = rows[rows.length - 1][0];
+
+  const classAttr = headerRow.match(/\bclass(?:Name)?\s*=\s*["']([^"']+)["']/);
+  if (!classAttr) return false;
+
+  // Tailwind spelling needs no CSS lookup.
+  const tokens = classAttr[1].split(/\s+/).filter(Boolean);
+  if (tokens.includes("sticky") && tokens.some((t) => /^top-0$/.test(t))) return true;
+
+  return tokens.some((cls) => {
+    const escaped = cls.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    // A rule whose selector mentions this class and whose body pins the element.
+    return new RegExp(`\\.${escaped}(?![\\w-])[^{}]*\\{[^}]*position:\\s*sticky`).test(content);
+  });
 }
 
 export const rules = [
@@ -861,7 +955,8 @@ export const rules = [
         /<thead\b[^>]*\bclassName\s*=\s*["'][^"']*\bsticky\b[^"']*\btop-0\b/.test(content) ||
         /<thead\b[^>]*\bclassName\s*=\s*["'][^"']*\btop-0\b[^"']*\bsticky\b/.test(content) ||
         /<th\b[^>]*\bclassName\s*=\s*["'][^"']*\bsticky\b[^"']*\btop-0\b/.test(content) ||
-        /<th\b[^>]*\bclassName\s*=\s*["'][^"']*\btop-0\b[^"']*\bsticky\b/.test(content)
+        /<th\b[^>]*\bclassName\s*=\s*["'][^"']*\btop-0\b[^"']*\bsticky\b/.test(content) ||
+        hasStickyAriaHeaderRow(content)
       );
 
       if (hasOverflow && hasStickyHead) return [];
@@ -1068,10 +1163,146 @@ export const rules = [
     },
   },
   {
+    id: "layout/image-height-from-attribute",
+    severity: "major",
+    description: "image sized on one axis, so the height attribute decides the other",
+    fix: "The `width`/`height` attributes are presentational hints, and an author who sets only `width` (or `aspect-ratio`) in CSS leaves the attribute's `height` in force — the image renders stretched. Add `height: auto` to the rule.",
+    scope: "file",
+    matchFile(content, lines, ctx) {
+      if (![".html", ".astro", ".vue", ".svelte", ".css", ".tsx", ".jsx"].includes(ctx.ext)) return [];
+      // Only worth checking when some image actually carries a height attribute.
+      if (!/<img\b[^>]*\bheight\s*=/i.test(content)) return [];
+
+      const findings = [];
+      // A declaration block that targets an image and sizes it horizontally.
+      const block = /([^{}]*(?:img|image|photo|shot|thumb|media|picture|figure)[^{}]*)\{([^}]*)\}/gi;
+      let m;
+      while ((m = block.exec(content)) !== null) {
+        const [selector, body] = [m[1], m[2]];
+        if (/^\s*@/.test(selector)) continue;
+        const sizesWidth = /(?:^|;|\s)width\s*:/.test(body) || /(?:^|;|\s)aspect-ratio\s*:/.test(body);
+        const setsHeight = /(?:^|;|\s)(?:height|max-height|min-height)\s*:/.test(body);
+        if (!sizesWidth || setsHeight) continue;
+        // `object-fit: cover` is the case most often missed, but any sizing counts.
+        findings.push({
+          line: content.slice(0, m.index).split("\n").length,
+          snippet: `${selector.trim().slice(0, 60)} sets width but not height`,
+        });
+      }
+      return findings;
+    },
+  },
+  {
+    id: "type/crowded-ladder",
+    severity: "major",
+    description: "too many distinct font sizes for one surface",
+    fix: "A size nobody can tell from its neighbour is not a distinction, it is indecision — and a page with a dozen of them reads as a dashboard whatever it is. Four to six steps carry any surface: one label size, one body size, one intermediate, one section head, one display. Collapse the rest onto the nearest step, and cut half-pixel neighbours entirely.",
+    scope: "file",
+    matchFile(content, lines, ctx) {
+      if (![".html", ".astro", ".vue", ".svelte", ".css", ".scss"].includes(ctx.ext)) return [];
+      const sizes = fontSizeLadder(content);
+      // Below this there is no ladder to judge.
+      if (sizes.size < 8) return [];
+      const list = [...sizes.keys()].sort((a, b) => a - b);
+      return [{
+        line: 1,
+        snippet: `${sizes.size} distinct font sizes: ${list.join(" · ")}`,
+      }];
+    },
+  },
+  {
+    id: "type/display-not-separated",
+    severity: "minor",
+    description: "the largest size is not separated from the ladder, so nothing reads as display",
+    fix: "Display type is made by the gap, not the size. Measured across surfaces whose typography is the reason people copy them, the largest size sits 2.7 to 4 times the next size down, with nothing in between. A largest size only fractionally above its neighbour reads as slightly bigger text, never as a headline. Either raise it or remove the step below it.",
+    scope: "file",
+    matchFile(content, lines, ctx) {
+      if (![".html", ".astro", ".vue", ".svelte", ".css", ".scss"].includes(ctx.ext)) return [];
+      const sizes = fontSizeLadder(content);
+      if (sizes.size < 4) return [];
+      const list = [...sizes.keys()].sort((a, b) => b - a);
+      const [largest, next] = list;
+      // Only meaningful once something is trying to be display type at all.
+      if (largest < 32) return [];
+      const ratio = largest / next;
+      if (ratio >= 2) return [];
+      return [{
+        line: 1,
+        snippet: `largest ${largest}px is only ${ratio.toFixed(2)}x the next step (${next}px)`,
+      }];
+    },
+  },
+  {
+    id: "type/bold-display",
+    severity: "minor",
+    description: "display type set bold",
+    fix: "At display size the size is already the emphasis, and weight on top of it is what separates a landing page from a poster made in a hurry. The surfaces worth measuring set their largest type at 400 to 510, never 700. Drop the display weight to medium and let the scale do the work.",
+    scope: "file",
+    matchFile(content, lines, ctx) {
+      if (![".html", ".astro", ".vue", ".svelte", ".css", ".scss"].includes(ctx.ext)) return [];
+      const findings = [];
+      const block = /([^{}]+)\{([^{}]*)\}/g;
+      let m;
+      while ((m = block.exec(content)) !== null) {
+        const [selector, body] = [m[1], m[2]];
+        if (/@(media|supports|keyframes|font-face|layer|container)/.test(selector)) continue;
+        const size = /font-size\s*:\s*([0-9.]+)px/i.exec(body);
+        const weight = /font-weight\s*:\s*([0-9]{3})\b/i.exec(body);
+        if (!size || !weight) continue;
+        if (Number(size[1]) < 40 || Number(weight[1]) < 700) continue;
+        findings.push({
+          line: content.slice(0, m.index).split("\n").length,
+          snippet: `${selector.trim().split("\n").pop().trim().slice(0, 40)} sets ${size[1]}px at ${weight[1]}`,
+        });
+      }
+      return findings;
+    },
+  },
+  {
+    id: "css/duplicate-declaration",
+    severity: "major",
+    description: "the same property declared twice in one block, so the later value wins silently",
+    fix: "Two values for one property in one rule means one of them is dead. Delete the one you did not mean — usually the first, since the later declaration wins. This is how light-on-dark text ends up dark: a `color` kept from an earlier version sits below the intended one and quietly overrides it.",
+    scope: "file",
+    matchFile(content, lines, ctx) {
+      if (![".html", ".astro", ".vue", ".svelte", ".css", ".scss"].includes(ctx.ext)) return [];
+
+      const findings = [];
+      const block = /([^{}]+)\{([^{}]*)\}/g;
+      let m;
+      while ((m = block.exec(content)) !== null) {
+        const [selector, body] = [m[1], m[2]];
+        // At-rules wrap other blocks; their body is not a declaration list.
+        if (/@(media|supports|keyframes|font-face|layer|container)/.test(selector)) continue;
+
+        const seen = new Map();
+        for (const decl of body.split(";")) {
+          const at = decl.indexOf(":");
+          if (at === -1) continue;
+          const prop = decl.slice(0, at).trim().toLowerCase();
+          // Custom properties are legitimately redeclared, and a shorthand followed
+          // by a longhand (`margin` then `margin-top`) is a normal narrowing.
+          if (!prop || prop.startsWith("--") || /[^a-z-]/.test(prop)) continue;
+          const value = decl.slice(at + 1).trim();
+          if (!value) continue;
+          const prev = seen.get(prop);
+          if (prev !== undefined && prev !== value) {
+            findings.push({
+              line: content.slice(0, m.index).split("\n").length,
+              snippet: `${selector.trim().split("\n").pop().trim().slice(0, 40)} sets ${prop} twice: ${prev} then ${value}`,
+            });
+          }
+          seen.set(prop, value);
+        }
+      }
+      return findings;
+    },
+  },
+  {
     id: "perf/image-no-dimensions",
     severity: "major",
     description: "<img> without width/height or aspect-ratio",
-    fix: "Images without explicit `width`+`height` or `aspect-ratio` cause CLS (Cumulative Layout Shift) while loading. Set both `width` and `height` (the browser calculates aspect ratio) or use CSS `aspect-ratio: 16 / 9`. Affects Core Web Vitals.",
+    fix: "Images without explicit `width`+`height` or `aspect-ratio` cause CLS (Cumulative Layout Shift) while loading. Set both `width` and `height` — then pair them with `height: auto` in CSS, because the attributes are presentational hints and the `height` one wins over `aspect-ratio` and over an auto height, which stretches the image. Or use CSS `aspect-ratio` with `width` and `height: auto`. Affects Core Web Vitals.",
     scope: "line",
     match(line) {
       // Match each <img …> tag on the line (there may be more than one).
@@ -1268,11 +1499,15 @@ export const rules = [
       if (![".tsx", ".jsx", ".vue", ".svelte", ".html", ".astro"].includes(ctx.ext)) return [];
       // Count em dashes inside visible text nodes only (>text<), so code
       // comments, string keys, and attribute values never contribute.
+      //
+      // Entity spellings count too: `&mdash;` and `&#8212;` render as the same
+      // glyph, so a page could clear this rule by encoding every one of them.
+      const DASH = /—|&mdash;|&#(?:8212|x2014);/gi;
       let count = 0;
       let firstLine = 0;
       let firstSnippet = "";
-      for (const m of content.matchAll(/>([^<>{}]*—[^<>{}]*)</g)) {
-        count += (m[1].match(/—/g) || []).length;
+      for (const m of content.matchAll(/>([^<>{}]*(?:—|&mdash;|&#(?:8212|x2014);)[^<>{}]*)</gi)) {
+        count += (m[1].match(DASH) || []).length;
         if (!firstLine) {
           firstLine = content.slice(0, m.index).split("\n").length;
           firstSnippet = m[1].trim().slice(0, 80);
