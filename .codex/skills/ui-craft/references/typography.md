@@ -35,25 +35,68 @@ Apply these in all standard Latin-script web UI unless a specific context overri
 
 ## Type Hierarchy
 
-Create a clear scale from most important to least. Count distinct sizes/weights — too many creates noise, too few loses hierarchy. Two weights (regular + one of semibold/bold) cover most products; every added weight is another hierarchy level readers must decode. For long-form reading (articles, docs) the body floor is 18px — 14-16px serves UI labels and controls, not sustained reading.
+Create a clear scale from most important to least. Two weights (regular + one of
+semibold/bold) cover most products; every added weight is another hierarchy level readers
+must decode. For long-form reading (articles, docs) the body floor is 18px — 14-16px serves
+UI labels and controls, not sustained reading.
 
-### Scale (Recommended)
+### The ladder is what you use, not what you define
+
+A nine-step scale is a palette. The **ladder** is the four to six steps that actually appear
+in the built page, and it is the ladder a reader sees. Emitting most of a modular scale
+produces a gradient of sizes where every step is 1.2x the last — legible, forgettable, and
+the single loudest tell of a surface built by an agent rather than designed.
+
+Measured on four surfaces whose typography is the reason people copy them (a project tool, a
+deploy platform, a voice API, a commerce framework), at 2120x1143:
+
+| | A | B | C | D |
+|---|---|---|---|---|
+| distinct sizes rendered in the fold | 9 | **4** | 5 | **4** |
+| sizes below 14px | 4 | **0** | 2 | 2 |
+| display size | 64 | 64 | 48 | 64 |
+| next size used below it | 20 | 24 | 16 | 16 |
+| **the jump** | **3.2x** | **2.7x** | **3.0x** | **4.0x** |
+| weight of the display type | 510 | 450-500 | 400 | 500 |
+| distinct weights | 3 | 3 | 3 | **2** |
+
+Three rules fall out of that table, and all three are checkable:
+
+1. **Four to six steps, not nine.** One label size, one body size, one intermediate, one
+   section head, one display. Collapse everything else onto the nearest step. Half-pixel
+   neighbours (13px and 13.5px) are never a distinction — they are indecision.
+   Enforced by `type/crowded-ladder`.
+2. **The display step sits 2.5x to 4x above the step below it, with nothing in between.**
+   Display type is made by the **gap**, not by the size: 56px directly above 44px reads as
+   slightly bigger text, while 76px above 30px reads as a headline. If the jump is small,
+   either raise the display size or delete the step under it.
+   Enforced by `type/display-not-separated`.
+3. **Display type is not bold.** None of the four sets its largest type above 510. Big and
+   bold reads cheap — a poster made in a hurry; big and medium reads like the size was
+   already enough. Reserve 600-700 for 13-16px labels and buttons, where weight is the only
+   emphasis available.
+   Enforced by `type/bold-display`.
+
+Corollary on small type: seven sizes under 14px is how a landing page ends up reading as a
+dashboard. Two is plenty, and one of those should be the mono label size.
+
+### Scale (a palette to choose from, not a set to emit)
 ```css
---text-xs:   0.75rem;   /* 12px - labels, captions */
+--text-xs:   0.75rem;   /* 12px - mono labels, captions */
 --text-sm:   0.875rem;  /* 14px - secondary text */
 --text-base: 1rem;      /* 16px - body text */
---text-lg:   1.125rem;  /* 18px - lead text */
---text-xl:   1.25rem;   /* 20px - section headers */
---text-2xl:  1.5rem;    /* 24px - page headers */
---text-3xl:  1.875rem;  /* 30px - hero subtext */
---text-4xl:  2.25rem;   /* 36px - hero text */
---text-5xl:  3rem;      /* 48px - display */
+--text-lg:   1.25rem;   /* 20px - lead text */
+--text-xl:   1.875rem;  /* 30px - section heads */
+--text-2xl:  2.75rem;   /* 44px - the one big number, on data surfaces */
+--text-3xl:  4.75rem;   /* 76px - display */
 ```
+Pick four to six of these per surface and use nothing else. A dense console legitimately
+sits low on the ladder (11 / 13 / 16 / 22 / 64); a restaurant page legitimately skips the
+middle entirely (12 / 15 / 30 / 88). Both are ladders. Twelve evenly-spaced steps is not.
 
-### Dramatic Scale (Bold Design)
-For impact, use 3-5x size jumps, not 1.5x. Pair weight 900 with 200, not 600 with 400.
-
-Match scale ratio to product type: dense apps want small ratios (1.125-1.2 — many usable levels in limited space); marketing and editorial want large ones (1.333-1.618 — drama). One scale can't serve both surfaces well.
+Match the *floor* to the product type — dense apps start at 11-13px, marketing at 13-16px —
+but the jump to display stays large in both. A console with a 2.9x jump to its one headline
+number is right; a console with twelve steps is not.
 
 ---
 
