@@ -1283,20 +1283,76 @@ export const rules = [
       // Only worth checking when some image actually carries a height attribute.
       if (!/<img\b[^>]*\bheight\s*=/i.test(content)) return [];
 
-      const findings = [];
-      // A declaration block that targets an image and sizes it horizontally.
+      // Which classes are actually on an <img> in this file. The selector heuristic
+      // below matches any name containing "media", "figure" and so on, which caught
+      // wrapper elements: a `<div class="qh-media">` whose whole job is to declare an
+      // aspect ratio was read as an image sized on one axis. A class nothing images
+      // wear cannot be the image.
+      const imgClasses = new Set();
+      for (const tag of content.matchAll(/<img\b[^>]*>/gi)) {
+        const cls = tag[0].match(/\bclass(?:Name)?\s*=\s*["']([^"']*)["']/i);
+        if (cls) for (const c of cls[1].split(/\s+/)) if (c) imgClasses.add(c);
+      }
+      /** Whether a selector plausibly targets the image element itself. */
+      const targetsImage = (selector) => {
+        const key = selector.trim().split(",")[0].trim().split(/\s+|>/).pop() || "";
+        if (/^(?:img|image|picture)\b/i.test(key)) return true;
+        for (const c of key.matchAll(/\.([A-Za-z0-9_-]+)/g)) {
+          if (imgClasses.has(c[1])) return true;
+        }
+        return false;
+      };
+
+      // Read every block first, then judge per selector. A media-query override that
+      // only restates `width` is not a missing height: the base rule's `height: auto`
+      // is still in the cascade, and reading each block in isolation flagged the
+      // override for what the rule above it already said.
+      // The captured "selector" is everything since the previous `}`, so a rule with a
+      // comment above it carries that comment in its key. Two blocks for the same
+      // selector then looked like two different selectors and the cascade lookup below
+      // missed — which is how a media-query override got flagged for a height its own
+      // base rule declares.
+      const key = (selector) =>
+        selector
+          .replace(/\/\*[\s\S]*?\*\//g, "")
+          .replace(/^\s*\/\/.*$/gm, "")
+          .replace(/\s+/g, " ")
+          .trim();
+
+      const blocks = [];
       const block = /([^{}]*(?:img|image|photo|shot|thumb|media|picture|figure)[^{}]*)\{([^}]*)\}/gi;
       let m;
       while ((m = block.exec(content)) !== null) {
         const [selector, body] = [m[1], m[2]];
-        if (/^\s*@/.test(selector)) continue;
-        const sizesWidth = /(?:^|;|\s)width\s*:/.test(body) || /(?:^|;|\s)aspect-ratio\s*:/.test(body);
-        const setsHeight = /(?:^|;|\s)(?:height|max-height|min-height)\s*:/.test(body);
-        if (!sizesWidth || setsHeight) continue;
+        if (/^\s*@/.test(key(selector))) continue;
+        blocks.push({
+          selector: key(selector),
+          body,
+          line: content.slice(0, m.index).split("\n").length,
+        });
+      }
+
+      const heightSomewhere = new Set();
+      for (const b of blocks) {
+        if (/(?:^|;|\s)(?:height|max-height|min-height)\s*:/.test(b.body)) {
+          heightSomewhere.add(b.selector);
+        }
+      }
+
+      const findings = [];
+      const seen = new Set();
+      for (const b of blocks) {
+        if (heightSomewhere.has(b.selector)) continue;
+        if (!targetsImage(b.selector)) continue;
+        const sizesWidth =
+          /(?:^|;|\s)width\s*:/.test(b.body) || /(?:^|;|\s)aspect-ratio\s*:/.test(b.body);
+        if (!sizesWidth) continue;
+        if (seen.has(b.selector)) continue;
+        seen.add(b.selector);
         // `object-fit: cover` is the case most often missed, but any sizing counts.
         findings.push({
-          line: content.slice(0, m.index).split("\n").length,
-          snippet: `${selector.trim().slice(0, 60)} sets width but not height`,
+          line: b.line,
+          snippet: `${b.selector.slice(0, 60)} sets width but not height`,
         });
       }
       return findings;

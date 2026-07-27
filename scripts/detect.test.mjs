@@ -2340,3 +2340,30 @@ test("a pattern inside a quoted string is not treated as a comment", async () =>
   const hits = result.findings.filter((f) => f.rule === "transition-all");
   assert.equal(hits.length, 1, "the class is shipped; only the trailing note is prose");
 });
+
+test("image-height-from-attribute ignores a wrapper that only declares an aspect ratio", async () => {
+  const result = await scanOne(
+    "card.astro",
+    `---\n---\n<div class="shot-frame"><img src="/a.webp" width="1100" height="619" /></div>\n<style>\n  .shot-frame { width: 100%; aspect-ratio: 16 / 9; overflow: hidden; }\n  .shot-frame img { width: 100%; height: 100%; object-fit: cover; }\n</style>\n`,
+  );
+  const hits = result.findings.filter((f) => f.rule === "layout/image-height-from-attribute");
+  assert.equal(hits.length, 0, "a div no image wears is the box, not the image");
+});
+
+test("image-height-from-attribute reads the cascade, not one block", async () => {
+  const result = await scanOne(
+    "pair.astro",
+    `---\n---\n<img class="pane" src="/a.webp" width="1100" height="619" />\n<style>\n  .pane { width: 106%; height: auto; }\n  @media (max-width: 40rem) {\n    .pane { width: 100%; }\n  }\n</style>\n`,
+  );
+  const hits = result.findings.filter((f) => f.rule === "layout/image-height-from-attribute");
+  assert.equal(hits.length, 0, "the override restates width; the base rule set height");
+});
+
+test("image-height-from-attribute still catches an image sized on one axis", async () => {
+  const result = await scanOne(
+    "hero.astro",
+    `---\n---\n<img class="thumb" src="/a.webp" width="900" height="600" />\n<style>\n  .thumb { width: 100%; object-fit: cover; }\n</style>\n`,
+  );
+  const hits = result.findings.filter((f) => f.rule === "layout/image-height-from-attribute");
+  assert.equal(hits.length, 1, "the height attribute is left deciding the other axis");
+});
