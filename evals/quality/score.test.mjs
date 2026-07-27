@@ -1,7 +1,8 @@
 /**
  * score.test.mjs
  * node:test suite for score.mjs and a11y-static.mjs
- * Zero external deps. Run: node --test evals/quality/
+ * Zero external deps. Run: node --test evals/quality/*.test.mjs
+ *   (a bare directory arg stopped working in Node 25 — it resolves it as a module)
  */
 
 import { test, describe } from 'node:test';
@@ -11,7 +12,8 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { scoreUI, _buildResult, WEIGHTS, GRADE_BANDS, EVAL_VERSION } from './score.mjs';
-import { scanA11y } from './a11y-static.mjs';
+import { scanA11y, a11yRules } from './a11y-static.mjs';
+import { rules as detectRules } from '../../scripts/detect/rules.mjs';
 
 const __dir = dirname(fileURLToPath(import.meta.url));
 const FIXTURES = join(__dir, 'fixtures');
@@ -389,5 +391,59 @@ describe('regression — fixtures within baselines.json bands', () => {
       designerMin > slopMax,
       `Separation failed: min designer score (${designerMin}) must be > max slop score (${slopMax})`
     );
+  });
+});
+
+// ─── 6. Published gate counts ─────────────────────────────────────────────────
+
+describe('gate counts the docs site publishes', () => {
+  /**
+   * These numbers are marketing copy: the meta description, the JSON-LD
+   * `featureList`, `llms.txt`, `public/pricing.md` and two blog posts on
+   * skills.smoothui.dev all state them. The site already derives everything it
+   * can from the installed `ui-craft-detect` registry, but the token-discipline
+   * and static-a11y sets live in parts of this repo the tarball does not ship,
+   * so it keeps them in `src/lib/gate-counts.json` — a copy that cannot notice
+   * when a rule lands here.
+   *
+   * This is the other end of that contract. Adding a rule is meant to fail
+   * here, loudly, with the file to go and update: the previous drift published a
+   * wrong breakdown for two releases because nothing did.
+   */
+  const SITE_JSON = 'ui-craft-docs/src/lib/gate-counts.json';
+
+  test(`static a11y checks — ${SITE_JSON} says 5`, () => {
+    assert.equal(
+      a11yRules.length,
+      5,
+      `a11y-static.mjs now has ${a11yRules.length} checks. Update "staticA11y" in ${SITE_JSON}, ` +
+        'then the published total, then this assertion.'
+    );
+  });
+
+  test(`token-discipline rules — ${SITE_JSON} says 4`, () => {
+    // scanTokens() has no exported registry, so count what it can actually emit.
+    const src = readFileSync(join(__dir, '..', '..', 'mcp', 'src', 'tokens-rules.mjs'), 'utf8');
+    const emitted = new Set([...src.matchAll(/rule:\s*'([^']+)'/g)].map(m => m[1]));
+    assert.equal(
+      emitted.size,
+      4,
+      `tokens-rules.mjs can emit ${emitted.size} distinct rules (${[...emitted].join(', ')}). ` +
+        `Update "tokenDiscipline" in ${SITE_JSON}, then the published total, then this assertion.`
+    );
+  });
+
+  test('detector registry is the source the site derives from', () => {
+    const a11y = detectRules.filter(r => String(r.id).startsWith('a11y/'));
+    // Not pinned to a literal: the site imports this registry and counts it, so
+    // it follows a version bump on its own. Asserted only to keep the two halves
+    // of the published breakdown from ever overlapping.
+    assert.equal(
+      a11y.filter(r => a11yRules.some(s => s.id === r.id)).length,
+      0,
+      'The detector and the static a11y pass now share a rule id, so the published ' +
+        'accessibility count double-counts it.'
+    );
+    assert.ok(detectRules.length > a11y.length, 'registry must hold more than its a11y rules');
   });
 });
