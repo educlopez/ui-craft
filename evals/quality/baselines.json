@@ -2,7 +2,7 @@
   "version": "0.30.0",
   "fixtures": {
     "evals/quality/fixtures/slop/purple-gradient.tsx":    { "scoreMin": 38, "scoreMax": 58 },
-    "evals/quality/fixtures/slop/div-onclick-hex.tsx":    { "scoreMin": 30, "scoreMax": 50 },
+    "evals/quality/fixtures/slop/div-onclick-hex.tsx":    { "scoreMin": 46, "scoreMax": 66 },
     "evals/quality/fixtures/slop/animation-no-motion.tsx":{ "scoreMin": 50, "scoreMax": 70 },
     "evals/quality/fixtures/slop/all-violations.tsx":     { "scoreMin": 0,  "scoreMax": 15 },
     "evals/quality/fixtures/slop/auth-brand-flood.tsx":   { "scoreMin": 50, "scoreMax": 70 },
