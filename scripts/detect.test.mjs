@@ -2285,3 +2285,85 @@ test("emoji-feature-icon leaves typographic glyphs like a check mark alone", asy
   const hits = result.findings.filter((f) => f.rule === "emoji-feature-icon");
   assert.equal(hits.length, 0, "U+2713 is a text-presentation glyph, not an emoji icon");
 });
+
+test("a rule does not flag the comment that documents it", async () => {
+  const result = await scanOne(
+    "note.astro",
+    `---\n---\n{/* We avoid transition-all because it animates properties nobody named. */}\n<p>copy</p>\n`,
+  );
+  assert.equal(
+    result.findings.length,
+    0,
+    "prose describing a pattern is not the pattern",
+  );
+});
+
+test("a CSS block comment naming a pattern is not the pattern", async () => {
+  const result = await scanOne(
+    "note.css",
+    `/* Never write transition: all here — name the properties. */\n.a{ transition: opacity 200ms; }\n`,
+  );
+  assert.equal(result.findings.length, 0, "a block comment is documentation");
+});
+
+test("a multi-line comment stays suppressed across its lines", async () => {
+  const result = await scanOne(
+    "note.css",
+    `/*\n  transition: all is the shorthand we reject.\n  So is a purple-to-cyan gradient: linear-gradient(90deg, #a855f7, #06b6d4).\n*/\n.a{ color: #111; }\n`,
+  );
+  assert.equal(result.findings.length, 0, "the span covers every line of the comment");
+});
+
+test("code after a comment on the same line is still read", async () => {
+  const result = await scanOne(
+    "mixed.astro",
+    `---\n---\n<div class="transition-all">x</div>{/* a trailing note */}\n`,
+  );
+  const hits = result.findings.filter((f) => f.rule === "transition-all");
+  assert.equal(hits.length, 1, "only the comment's own columns are exempt");
+});
+
+test("a URL's double slash does not start a comment", async () => {
+  const result = await scanOne(
+    "link.astro",
+    `---\n---\n<a href="https://example.com" class="transition-all">y</a>\n`,
+  );
+  const hits = result.findings.filter((f) => f.rule === "transition-all");
+  assert.equal(hits.length, 1, "`://` is a scheme, not a line comment");
+});
+
+test("a pattern inside a quoted string is not treated as a comment", async () => {
+  const result = await scanOne(
+    "conf.ts",
+    `export const cls = "transition-all duration-200"; // applied by the wrapper\n`,
+  );
+  const hits = result.findings.filter((f) => f.rule === "transition-all");
+  assert.equal(hits.length, 1, "the class is shipped; only the trailing note is prose");
+});
+
+test("image-height-from-attribute ignores a wrapper that only declares an aspect ratio", async () => {
+  const result = await scanOne(
+    "card.astro",
+    `---\n---\n<div class="shot-frame"><img src="/a.webp" width="1100" height="619" /></div>\n<style>\n  .shot-frame { width: 100%; aspect-ratio: 16 / 9; overflow: hidden; }\n  .shot-frame img { width: 100%; height: 100%; object-fit: cover; }\n</style>\n`,
+  );
+  const hits = result.findings.filter((f) => f.rule === "layout/image-height-from-attribute");
+  assert.equal(hits.length, 0, "a div no image wears is the box, not the image");
+});
+
+test("image-height-from-attribute reads the cascade, not one block", async () => {
+  const result = await scanOne(
+    "pair.astro",
+    `---\n---\n<img class="pane" src="/a.webp" width="1100" height="619" />\n<style>\n  .pane { width: 106%; height: auto; }\n  @media (max-width: 40rem) {\n    .pane { width: 100%; }\n  }\n</style>\n`,
+  );
+  const hits = result.findings.filter((f) => f.rule === "layout/image-height-from-attribute");
+  assert.equal(hits.length, 0, "the override restates width; the base rule set height");
+});
+
+test("image-height-from-attribute still catches an image sized on one axis", async () => {
+  const result = await scanOne(
+    "hero.astro",
+    `---\n---\n<img class="thumb" src="/a.webp" width="900" height="600" />\n<style>\n  .thumb { width: 100%; object-fit: cover; }\n</style>\n`,
+  );
+  const hits = result.findings.filter((f) => f.rule === "layout/image-height-from-attribute");
+  assert.equal(hits.length, 1, "the height attribute is left deciding the other axis");
+});

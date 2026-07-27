@@ -1,7 +1,7 @@
 // Shared constants: version, scan targets, color helpers, and CLI enum values.
 // Split out of the former monolithic scripts/detect.mjs — no behavior change.
 
-export const VERSION = "0.11.0";
+export const VERSION = "0.12.0";
 
 export const SCAN_EXTENSIONS = new Set([
   ".css", ".scss", ".sass",

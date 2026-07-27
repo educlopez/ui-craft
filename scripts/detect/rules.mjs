@@ -100,7 +100,117 @@ export function enclosingBlock(ctx, maxLines = 40) {
 /** A selector that names itself as the counter-example rather than the intent. */
 const DEMO_SELECTOR = /(?:^|[\s.#[="'-])(?:slop|bad|before|dont|do-not|anti-?pattern|worse|naive|unstyled)(?:[\s.#\]="'-]|$)/i;
 
+/**
+ * Comment spans in a file, as `[lineIdx, startCol, endCol]`, computed once and cached
+ * on ctx.
+ *
+ * A pattern inside a comment is being described, not shipped, and the rules kept
+ * flagging their own documentation: a note explaining why we avoid `transition-all`
+ * tripped the transition-all rule, and a comment saying an image needs width and
+ * height tripped the image rule. Three separate rules fired on their own prose in one
+ * afternoon.
+ *
+ * Handles the block forms that span lines — `/* … *\/` for CSS and JS, `{/* … *\/}`
+ * for JSX, `<!-- … -->` for markup — and `//` to end of line.
+ */
+function commentSpans(ctx) {
+  if (!ctx || !Array.isArray(ctx.lines)) return [];
+  if (ctx.__commentSpans) return ctx.__commentSpans;
+
+  const spans = [];
+  let open = null; // "block" for /* … */, "html" for <!-- … -->
+
+  for (let i = 0; i < ctx.lines.length; i++) {
+    const line = ctx.lines[i];
+    let j = 0;
+
+    while (j <= line.length) {
+      if (open) {
+        const close = open === "html" ? "-->" : "*/";
+        const at = line.indexOf(close, j);
+        if (at === -1) {
+          spans.push([i, j, line.length]);
+          break;
+        }
+        spans.push([i, j, at + close.length]);
+        j = at + close.length;
+        open = null;
+        continue;
+      }
+
+      const candidates = [
+        [line.indexOf("/*", j), "block"],
+        [line.indexOf("<!--", j), "html"],
+        [lineCommentStart(line, j), "line"],
+      ].filter(([pos]) => pos !== -1);
+      if (!candidates.length) break;
+      candidates.sort((a, b) => a[0] - b[0]);
+
+      const [pos, kind] = candidates[0];
+      if (kind === "line") {
+        spans.push([i, pos, line.length]);
+        break;
+      }
+      open = kind;
+      j = pos;
+    }
+  }
+
+  ctx.__commentSpans = spans;
+  return spans;
+}
+
+/**
+ * Where a `//` comment starts, or -1.
+ *
+ * Deliberately conservative: a `//` preceded by `:` is a URL scheme, and one inside a
+ * quoted string is data. Suppressing a real finding is worse than missing a comment,
+ * so anything ambiguous is treated as code.
+ */
+function lineCommentStart(line, from) {
+  for (let i = from; i < line.length - 1; i++) {
+    if (line[i] !== "/" || line[i + 1] !== "/") continue;
+    if (i > 0 && line[i - 1] === ":") continue;
+    const before = line.slice(0, i);
+    const quotes = (before.match(/["'`]/g) || []).length;
+    if (quotes % 2 === 1) continue; // inside a string
+    return i;
+  }
+  return -1;
+}
+
+/** Whether a column on a line falls inside a comment. */
+function insideComment(ctx, lineIdx, col) {
+  for (const [i, start, end] of commentSpans(ctx)) {
+    if (i === lineIdx && col >= start && col < end) return true;
+  }
+  return false;
+}
+
+/** Whether a line has nothing outside a comment on it. */
+function lineIsAllComment(ctx, lineIdx) {
+  const line = ctx.lines?.[lineIdx];
+  if (typeof line !== "string" || line.trim() === "") return false;
+  let covered = 0;
+  for (const [i, start, end] of commentSpans(ctx)) {
+    if (i === lineIdx) covered += end - start;
+  }
+  if (!covered) return false;
+  // JSX wraps its comments in braces, which sit outside the span.
+  const outside = line.length - covered;
+  return outside <= (line.match(/^\s*/)?.[0].length ?? 0) + 2;
+}
+
 export function isDisplayedNotApplied(line, snippet, ctx) {
+  // A pattern inside a comment is being described, not shipped.
+  if (ctx && Array.isArray(ctx.lines) && typeof ctx.lineIdx === "number") {
+    if (lineIsAllComment(ctx, ctx.lineIdx)) return true;
+    if (snippet) {
+      const at = line.indexOf(snippet);
+      if (at !== -1 && insideComment(ctx, ctx.lineIdx, at)) return true;
+    }
+  }
+
   // A CSS rule whose selector names itself as the bad example is a demonstration.
   // Our own landing peels slop off pass by pass with `[data-q="slop"]`, and the
   // detector flagged the page for rendering what it exists to argue against —
@@ -1173,20 +1283,76 @@ export const rules = [
       // Only worth checking when some image actually carries a height attribute.
       if (!/<img\b[^>]*\bheight\s*=/i.test(content)) return [];
 
-      const findings = [];
-      // A declaration block that targets an image and sizes it horizontally.
+      // Which classes are actually on an <img> in this file. The selector heuristic
+      // below matches any name containing "media", "figure" and so on, which caught
+      // wrapper elements: a `<div class="qh-media">` whose whole job is to declare an
+      // aspect ratio was read as an image sized on one axis. A class nothing images
+      // wear cannot be the image.
+      const imgClasses = new Set();
+      for (const tag of content.matchAll(/<img\b[^>]*>/gi)) {
+        const cls = tag[0].match(/\bclass(?:Name)?\s*=\s*["']([^"']*)["']/i);
+        if (cls) for (const c of cls[1].split(/\s+/)) if (c) imgClasses.add(c);
+      }
+      /** Whether a selector plausibly targets the image element itself. */
+      const targetsImage = (selector) => {
+        const key = selector.trim().split(",")[0].trim().split(/\s+|>/).pop() || "";
+        if (/^(?:img|image|picture)\b/i.test(key)) return true;
+        for (const c of key.matchAll(/\.([A-Za-z0-9_-]+)/g)) {
+          if (imgClasses.has(c[1])) return true;
+        }
+        return false;
+      };
+
+      // Read every block first, then judge per selector. A media-query override that
+      // only restates `width` is not a missing height: the base rule's `height: auto`
+      // is still in the cascade, and reading each block in isolation flagged the
+      // override for what the rule above it already said.
+      // The captured "selector" is everything since the previous `}`, so a rule with a
+      // comment above it carries that comment in its key. Two blocks for the same
+      // selector then looked like two different selectors and the cascade lookup below
+      // missed — which is how a media-query override got flagged for a height its own
+      // base rule declares.
+      const key = (selector) =>
+        selector
+          .replace(/\/\*[\s\S]*?\*\//g, "")
+          .replace(/^\s*\/\/.*$/gm, "")
+          .replace(/\s+/g, " ")
+          .trim();
+
+      const blocks = [];
       const block = /([^{}]*(?:img|image|photo|shot|thumb|media|picture|figure)[^{}]*)\{([^}]*)\}/gi;
       let m;
       while ((m = block.exec(content)) !== null) {
         const [selector, body] = [m[1], m[2]];
-        if (/^\s*@/.test(selector)) continue;
-        const sizesWidth = /(?:^|;|\s)width\s*:/.test(body) || /(?:^|;|\s)aspect-ratio\s*:/.test(body);
-        const setsHeight = /(?:^|;|\s)(?:height|max-height|min-height)\s*:/.test(body);
-        if (!sizesWidth || setsHeight) continue;
+        if (/^\s*@/.test(key(selector))) continue;
+        blocks.push({
+          selector: key(selector),
+          body,
+          line: content.slice(0, m.index).split("\n").length,
+        });
+      }
+
+      const heightSomewhere = new Set();
+      for (const b of blocks) {
+        if (/(?:^|;|\s)(?:height|max-height|min-height)\s*:/.test(b.body)) {
+          heightSomewhere.add(b.selector);
+        }
+      }
+
+      const findings = [];
+      const seen = new Set();
+      for (const b of blocks) {
+        if (heightSomewhere.has(b.selector)) continue;
+        if (!targetsImage(b.selector)) continue;
+        const sizesWidth =
+          /(?:^|;|\s)width\s*:/.test(b.body) || /(?:^|;|\s)aspect-ratio\s*:/.test(b.body);
+        if (!sizesWidth) continue;
+        if (seen.has(b.selector)) continue;
+        seen.add(b.selector);
         // `object-fit: cover` is the case most often missed, but any sizing counts.
         findings.push({
-          line: content.slice(0, m.index).split("\n").length,
-          snippet: `${selector.trim().slice(0, 60)} sets width but not height`,
+          line: b.line,
+          snippet: `${b.selector.slice(0, 60)} sets width but not height`,
         });
       }
       return findings;
