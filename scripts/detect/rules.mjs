@@ -100,7 +100,117 @@ export function enclosingBlock(ctx, maxLines = 40) {
 /** A selector that names itself as the counter-example rather than the intent. */
 const DEMO_SELECTOR = /(?:^|[\s.#[="'-])(?:slop|bad|before|dont|do-not|anti-?pattern|worse|naive|unstyled)(?:[\s.#\]="'-]|$)/i;
 
+/**
+ * Comment spans in a file, as `[lineIdx, startCol, endCol]`, computed once and cached
+ * on ctx.
+ *
+ * A pattern inside a comment is being described, not shipped, and the rules kept
+ * flagging their own documentation: a note explaining why we avoid `transition-all`
+ * tripped the transition-all rule, and a comment saying an image needs width and
+ * height tripped the image rule. Three separate rules fired on their own prose in one
+ * afternoon.
+ *
+ * Handles the block forms that span lines — `/* … *\/` for CSS and JS, `{/* … *\/}`
+ * for JSX, `<!-- … -->` for markup — and `//` to end of line.
+ */
+function commentSpans(ctx) {
+  if (!ctx || !Array.isArray(ctx.lines)) return [];
+  if (ctx.__commentSpans) return ctx.__commentSpans;
+
+  const spans = [];
+  let open = null; // "block" for /* … */, "html" for <!-- … -->
+
+  for (let i = 0; i < ctx.lines.length; i++) {
+    const line = ctx.lines[i];
+    let j = 0;
+
+    while (j <= line.length) {
+      if (open) {
+        const close = open === "html" ? "-->" : "*/";
+        const at = line.indexOf(close, j);
+        if (at === -1) {
+          spans.push([i, j, line.length]);
+          break;
+        }
+        spans.push([i, j, at + close.length]);
+        j = at + close.length;
+        open = null;
+        continue;
+      }
+
+      const candidates = [
+        [line.indexOf("/*", j), "block"],
+        [line.indexOf("<!--", j), "html"],
+        [lineCommentStart(line, j), "line"],
+      ].filter(([pos]) => pos !== -1);
+      if (!candidates.length) break;
+      candidates.sort((a, b) => a[0] - b[0]);
+
+      const [pos, kind] = candidates[0];
+      if (kind === "line") {
+        spans.push([i, pos, line.length]);
+        break;
+      }
+      open = kind;
+      j = pos;
+    }
+  }
+
+  ctx.__commentSpans = spans;
+  return spans;
+}
+
+/**
+ * Where a `//` comment starts, or -1.
+ *
+ * Deliberately conservative: a `//` preceded by `:` is a URL scheme, and one inside a
+ * quoted string is data. Suppressing a real finding is worse than missing a comment,
+ * so anything ambiguous is treated as code.
+ */
+function lineCommentStart(line, from) {
+  for (let i = from; i < line.length - 1; i++) {
+    if (line[i] !== "/" || line[i + 1] !== "/") continue;
+    if (i > 0 && line[i - 1] === ":") continue;
+    const before = line.slice(0, i);
+    const quotes = (before.match(/["'`]/g) || []).length;
+    if (quotes % 2 === 1) continue; // inside a string
+    return i;
+  }
+  return -1;
+}
+
+/** Whether a column on a line falls inside a comment. */
+function insideComment(ctx, lineIdx, col) {
+  for (const [i, start, end] of commentSpans(ctx)) {
+    if (i === lineIdx && col >= start && col < end) return true;
+  }
+  return false;
+}
+
+/** Whether a line has nothing outside a comment on it. */
+function lineIsAllComment(ctx, lineIdx) {
+  const line = ctx.lines?.[lineIdx];
+  if (typeof line !== "string" || line.trim() === "") return false;
+  let covered = 0;
+  for (const [i, start, end] of commentSpans(ctx)) {
+    if (i === lineIdx) covered += end - start;
+  }
+  if (!covered) return false;
+  // JSX wraps its comments in braces, which sit outside the span.
+  const outside = line.length - covered;
+  return outside <= (line.match(/^\s*/)?.[0].length ?? 0) + 2;
+}
+
 export function isDisplayedNotApplied(line, snippet, ctx) {
+  // A pattern inside a comment is being described, not shipped.
+  if (ctx && Array.isArray(ctx.lines) && typeof ctx.lineIdx === "number") {
+    if (lineIsAllComment(ctx, ctx.lineIdx)) return true;
+    if (snippet) {
+      const at = line.indexOf(snippet);
+      if (at !== -1 && insideComment(ctx, ctx.lineIdx, at)) return true;
+    }
+  }
+
   // A CSS rule whose selector names itself as the bad example is a demonstration.
   // Our own landing peels slop off pass by pass with `[data-q="slop"]`, and the
   // detector flagged the page for rendering what it exists to argue against —
