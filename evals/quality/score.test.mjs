@@ -433,6 +433,39 @@ describe('gate counts the docs site publishes', () => {
     );
   });
 
+  test('README states the registry size where it describes the whole registry', () => {
+    /**
+     * The README had "38 rules" in three places while the registry held 43 — one of
+     * them a sentence that enumerates the a11y rules and then undercounts by exactly
+     * those five. Same failure as the site's "49 gates": a number typed once and
+     * never read back.
+     *
+     * Anchored to the three claims rather than sweeping every "<n> rules" in the
+     * file, because 38 is a legitimate count elsewhere (anti-slop without the a11y
+     * rules) — a loose version of this test passed when the old wrong number was
+     * put back, which is worse than no test. The cost is that rewording a sentence
+     * past its anchor makes this stop checking it; the anchors are the distinctive
+     * part of each claim to keep that unlikely.
+     */
+    const readme = readFileSync(join(__dir, '..', '..', 'README.md'), 'utf8');
+    const n = detectRules.length;
+    const claims = [
+      { what: 'the scanner description', re: /anti-patterns — (\d+) rules covering/ },
+      { what: 'the anti_slop score dimension', re: /\| \*\*anti_slop\*\* \| (\d+) rules from/ },
+      { what: 'the check_anti_slop MCP tool', re: /\| `check_anti_slop` \| (\d+)-rule/ },
+    ];
+    for (const { what, re } of claims) {
+      const m = readme.match(re);
+      assert.ok(m, `${what} no longer matches ${re} — reword the test or restore the claim.`);
+      assert.equal(
+        Number(m[1]),
+        n,
+        `${what} says ${m[1]} rules; the registry holds ${n}. All three describe the full ` +
+          'registry, a11y rules included.'
+      );
+    }
+  });
+
   test('detector registry is the source the site derives from', () => {
     const a11y = detectRules.filter(r => String(r.id).startsWith('a11y/'));
     // Not pinned to a literal: the site imports this registry and counts it, so
