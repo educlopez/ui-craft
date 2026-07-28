@@ -573,8 +573,14 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 	skillCheckHarnesses := make(map[string]bool)
 	if len(state.Harnesses) > 0 {
 		for _, hs := range state.Harnesses {
-			if detectedNames[hs.Name] {
-				skillCheckHarnesses[hs.Name] = true
+			if !detectedNames[hs.Name] {
+				continue
+			}
+			for _, installed := range hs.InstalledComponents {
+				if installed == "skill+commands" {
+					skillCheckHarnesses[hs.Name] = true
+					break
+				}
 			}
 		}
 	} else {

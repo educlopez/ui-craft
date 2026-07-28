@@ -168,6 +168,31 @@ func TestRunDoctor_registeredStateLimitsSkillChecks(t *testing.T) {
 	}
 }
 
+func TestRunDoctor_registeredMCPOnlyHarnessSkipsSkillChecks(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	state := &core.InstallState{
+		Version: "test",
+		Harnesses: []core.HarnessState{{
+			Name:                "codex",
+			InstalledComponents: []string{"mcp-gates"},
+			InstalledAt:         "2026-07-28T00:00:00Z",
+		}},
+	}
+	if err := core.SaveState(fsutil.OsFS{}, filepath.Join(home, ".ui-craft"), state); err != nil {
+		t.Fatalf("SaveState: %v", err)
+	}
+
+	out, err := runDoctorCmd(t, detectOnly("codex"), plentyDiskFn)
+	if err != nil {
+		t.Fatalf("doctor checked skills for an MCP-only harness: %v\noutput:\n%s", err, out)
+	}
+	if strings.Contains(out, "skill-presence") || strings.Contains(out, "codex-agents-md") {
+		t.Fatalf("MCP-only harness must not emit skill checks, got:\n%s", out)
+	}
+}
+
 func TestRunDoctor_legacyStateChecksOnlyExistingSkillDirs(t *testing.T) {
 	setupHomeWithHarness(t, "claude")
 
