@@ -6,6 +6,12 @@ The historical entries below describe several independently versioned artifacts.
 
 GitHub CLI archives include GoReleaser SHA-256 checksums and GitHub build-provenance attestations. The MCP publish workflow uses npm trusted publishing plus `--provenance`; the npm package must have this repository/workflow configured as a trusted publisher before dispatch. No long-lived npm token is assumed.
 
+## v1.0.7 (2026-07-28) — Hardened scanners and explicit release contracts
+
+Pins every generated and documented MCP launcher to the published `ui-craft-mcp@0.3.0` package and aligns the CLI with the machine-readable distribution contract introduced in #90.
+
+Scanner filesystem access now stays within the selected workspace, rejects symlink and identity swaps, bounds reads, reports coverage and scan errors explicitly, and writes fixes through verified atomic replacements. Release verification now checks the distribution manifest, generated launchers, package versions, bundled runtime versioning, CI matrices, checksums, and build provenance before shipping.
+
 ## v0.36.0 (2026-07-15) — Evidence-gated reviews, Craft Report receipts, and precision rules
 
 Two structural upgrades to the refine path plus a batch of precision rules that turn abstract guidance into worked recipes.
