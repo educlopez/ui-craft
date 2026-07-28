@@ -13,9 +13,11 @@ package cmd_test
 // install` command (RunE, detect → plan → apply) against a real on-disk file.
 // This file closes exactly that gap: net-new, not a duplicate.
 import (
+	"bytes"
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/educlopez/ui-craft/cli/cmd"
@@ -90,6 +92,125 @@ func TestInstall_malformedMCPJSON_realFS_endToEnd(t *testing.T) {
 	var parsed map[string]any
 	if err := json.Unmarshal(data, &parsed); err != nil {
 		t.Fatalf("MCP config file is not valid JSON after install (corrupted): %v\ncontent: %s", err, data)
+	}
+}
+
+func TestInstallJSONPersistsState(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	restoreDetect := cmd.SetDetectAllFn(func(reg []harness.Harness) []core.DetectedHarness {
+		for _, h := range reg {
+			if h.Name() == "claude" {
+				return []core.DetectedHarness{{
+					Harness: h,
+					Result: harness.DetectResult{
+						Installed:  true,
+						ConfigRoot: h.ConfigRoot(),
+					},
+				}}
+			}
+		}
+		return nil
+	})
+	defer restoreDetect()
+
+	restoreFlags := cmd.SetInstallFlagsForTest(cmd.InstallFlagsForTest{
+		Harness: "claude",
+		Yes:     true,
+		Dir:     home,
+		JSON:    true,
+	})
+	defer restoreFlags()
+
+	var out bytes.Buffer
+	root := &cobra.Command{Use: "ui-craft", SilenceUsage: true}
+	root.AddCommand(cmd.MakeInstallCmd())
+	root.SetOut(&out)
+	root.SetErr(&out)
+	root.SetArgs([]string{"install"})
+
+	if err := root.Execute(); err != nil {
+		t.Fatalf("install --json: %v\noutput: %s", err, out.String())
+	}
+
+	var result map[string]any
+	if err := json.Unmarshal(out.Bytes(), &result); err != nil {
+		t.Fatalf("install --json emitted invalid JSON: %v\noutput: %s", err, out.String())
+	}
+
+	statePath := filepath.Join(home, ".ui-craft", "state.json")
+	data, err := os.ReadFile(statePath)
+	if err != nil {
+		t.Fatalf("install --json did not persist state: %v", err)
+	}
+	var state core.InstallState
+	if err := json.Unmarshal(data, &state); err != nil {
+		t.Fatalf("persisted state is invalid JSON: %v", err)
+	}
+	if len(state.Harnesses) != 1 || state.Harnesses[0].Name != "claude" {
+		t.Fatalf("persisted harnesses = %+v, want only claude", state.Harnesses)
+	}
+	if len(state.Harnesses[0].InstalledComponents) == 0 {
+		t.Fatal("persisted claude state has no installed components")
+	}
+}
+
+func TestInstallJSONStateWarningStaysOnStderr(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	// A regular file at the state-root path makes SaveState fail without
+	// interfering with the selected MCP-only install target.
+	if err := os.WriteFile(filepath.Join(home, ".ui-craft"), []byte("not a directory"), 0o644); err != nil {
+		t.Fatalf("seed invalid state root: %v", err)
+	}
+
+	restoreDetect := cmd.SetDetectAllFn(func(reg []harness.Harness) []core.DetectedHarness {
+		for _, h := range reg {
+			if h.Name() == "claude" {
+				return []core.DetectedHarness{{
+					Harness: h,
+					Result: harness.DetectResult{
+						Installed:  true,
+						ConfigRoot: h.ConfigRoot(),
+					},
+				}}
+			}
+		}
+		return nil
+	})
+	defer restoreDetect()
+
+	restoreFlags := cmd.SetInstallFlagsForTest(cmd.InstallFlagsForTest{
+		Harness:    "claude",
+		Components: []string{"mcp-gates"},
+		Yes:        true,
+		Dir:        home,
+		JSON:       true,
+	})
+	defer restoreFlags()
+
+	var stdout, stderr bytes.Buffer
+	root := &cobra.Command{Use: "ui-craft", SilenceUsage: true}
+	root.AddCommand(cmd.MakeInstallCmd())
+	root.SetOut(&stdout)
+	root.SetErr(&stderr)
+	root.SetArgs([]string{"install"})
+
+	if err := root.Execute(); err != nil {
+		t.Fatalf("install --json: %v\nstdout: %s\nstderr: %s", err, stdout.String(), stderr.String())
+	}
+
+	var result map[string]any
+	if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
+		t.Fatalf("stdout must remain valid JSON: %v\nstdout: %s\nstderr: %s", err, stdout.String(), stderr.String())
+	}
+	if strings.Contains(stdout.String(), "could not save state.json") {
+		t.Fatalf("state warning leaked into JSON stdout: %s", stdout.String())
+	}
+	if !strings.Contains(stderr.String(), "warning: could not save state.json") {
+		t.Fatalf("expected state warning on stderr, got: %s", stderr.String())
 	}
 }
 

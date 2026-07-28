@@ -272,6 +272,36 @@ var installCmd = &cobra.Command{
 			return fmt.Errorf("install: apply failed (all changes rolled back): %w", applyErr)
 		}
 
+		// Persist the harness+component choices before any output mode can
+		// return. In particular, --json returns immediately after encoding its
+		// result, so state must already be durable at that point.
+		stateRoot := filepath.Join(home, ".ui-craft")
+		state, _ := core.LoadState(osfs, stateRoot)
+		state.Version = cmdVersion
+		now := core.Now().UTC().Format("2006-01-02T15:04:05Z07:00")
+		for _, dh := range detected {
+			// Collect components that were actually applied (appear in
+			// result.Changes) for this harness. Using Changes avoids recording
+			// skipped components.
+			seen := map[string]bool{}
+			var installedComps []string
+			for _, ch := range result.Changes {
+				if ch.HarnessName == dh.Harness.Name() && !seen[ch.Component] {
+					seen[ch.Component] = true
+					installedComps = append(installedComps, ch.Component)
+				}
+			}
+			core.UpsertHarnessState(state, core.HarnessState{
+				Name:                dh.Harness.Name(),
+				InstalledComponents: installedComps,
+				InstalledAt:         now,
+			})
+		}
+		if err := core.SaveState(osfs, stateRoot, state); err != nil {
+			// Non-fatal: log but do not fail the command.
+			fmt.Fprintf(cmd.ErrOrStderr(), "warning: could not save state.json: %v\n", err)
+		}
+
 		// Build status for each target from plan + result.Changes.
 		targetStatus := func(t core.ComponentTarget) string {
 			if t.Skip {
@@ -396,37 +426,6 @@ var installCmd = &cobra.Command{
 				}
 				designMemoryReported = true
 			}
-		}
-
-		// --- Save state (Slice 10) ---
-		// Persist the harness+component choices so `ui-craft update` can replay them.
-		// We derive the installed list from result.Changes (components that actually
-		// produced a Change for this harness), so skipped components are never recorded
-		// as installed. A skipped target never produces a Change, so it is absent here.
-		stateRoot := filepath.Join(home, ".ui-craft")
-		state, _ := core.LoadState(osfs, stateRoot)
-		state.Version = cmdVersion
-		now := core.Now().UTC().Format("2006-01-02T15:04:05Z07:00")
-		for _, dh := range detected {
-			// Collect components that were actually applied (appear in result.Changes)
-			// for this harness. Using Changes avoids recording skipped components.
-			seen := map[string]bool{}
-			var installedComps []string
-			for _, ch := range result.Changes {
-				if ch.HarnessName == dh.Harness.Name() && !seen[ch.Component] {
-					seen[ch.Component] = true
-					installedComps = append(installedComps, ch.Component)
-				}
-			}
-			core.UpsertHarnessState(state, core.HarnessState{
-				Name:                dh.Harness.Name(),
-				InstalledComponents: installedComps,
-				InstalledAt:         now,
-			})
-		}
-		if err := core.SaveState(osfs, stateRoot, state); err != nil {
-			// Non-fatal: log but do not fail the command.
-			fmt.Fprintf(out, "\nwarning: could not save state.json: %v\n", err)
 		}
 
 		// --quiet: emit the single final outcome line now that state is saved.

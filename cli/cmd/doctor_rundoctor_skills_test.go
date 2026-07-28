@@ -11,6 +11,7 @@ import (
 	"github.com/educlopez/ui-craft/cli/assets"
 	"github.com/educlopez/ui-craft/cli/cmd"
 	"github.com/educlopez/ui-craft/cli/core"
+	"github.com/educlopez/ui-craft/cli/fsutil"
 	"github.com/educlopez/ui-craft/cli/harness"
 	"github.com/educlopez/ui-craft/cli/internal/filemerge"
 	"github.com/spf13/cobra"
@@ -134,6 +135,79 @@ func detectOnly(names ...string) func([]harness.Harness) []core.DetectedHarness 
 }
 
 func plentyDiskFn(string) (uint64, error) { return 500 << 20, nil }
+
+func saveDoctorState(t *testing.T, home string, harnessNames ...string) {
+	t.Helper()
+	state := &core.InstallState{Version: "test"}
+	for _, name := range harnessNames {
+		state.Harnesses = append(state.Harnesses, core.HarnessState{
+			Name:                name,
+			InstalledComponents: []string{"skill+commands"},
+			InstalledAt:         "2026-07-28T00:00:00Z",
+		})
+	}
+	if err := core.SaveState(fsutil.OsFS{}, filepath.Join(home, ".ui-craft"), state); err != nil {
+		t.Fatalf("SaveState: %v", err)
+	}
+}
+
+func TestRunDoctor_registeredStateLimitsSkillChecks(t *testing.T) {
+	home, _ := setupHomeWithHarness(t, "codex")
+	saveDoctorState(t, home, "codex")
+
+	out, err := runDoctorCmd(
+		t,
+		detectOnly("codex", "claude", "opencode"),
+		plentyDiskFn,
+	)
+	if err != nil {
+		t.Fatalf("doctor checked an unregistered detected harness: %v\noutput:\n%s", err, out)
+	}
+	if !strings.Contains(out, "codex-agents-md") {
+		t.Fatalf("expected registered codex skill checks, got:\n%s", out)
+	}
+}
+
+func TestRunDoctor_registeredMCPOnlyHarnessSkipsSkillChecks(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	state := &core.InstallState{
+		Version: "test",
+		Harnesses: []core.HarnessState{{
+			Name:                "codex",
+			InstalledComponents: []string{"mcp-gates"},
+			InstalledAt:         "2026-07-28T00:00:00Z",
+		}},
+	}
+	if err := core.SaveState(fsutil.OsFS{}, filepath.Join(home, ".ui-craft"), state); err != nil {
+		t.Fatalf("SaveState: %v", err)
+	}
+
+	out, err := runDoctorCmd(t, detectOnly("codex"), plentyDiskFn)
+	if err != nil {
+		t.Fatalf("doctor checked skills for an MCP-only harness: %v\noutput:\n%s", err, out)
+	}
+	if strings.Contains(out, "skill-presence") || strings.Contains(out, "codex-agents-md") {
+		t.Fatalf("MCP-only harness must not emit skill checks, got:\n%s", out)
+	}
+}
+
+func TestRunDoctor_legacyStateChecksOnlyExistingSkillDirs(t *testing.T) {
+	setupHomeWithHarness(t, "claude")
+
+	out, err := runDoctorCmd(
+		t,
+		detectOnly("claude", "opencode"),
+		plentyDiskFn,
+	)
+	if err != nil {
+		t.Fatalf("doctor checked a legacy harness without a skills dir: %v\noutput:\n%s", err, out)
+	}
+	if !strings.Contains(out, "skill-presence") {
+		t.Fatalf("expected existing legacy claude skills dir to be checked, got:\n%s", out)
+	}
+}
 
 // TestRunDoctor_skillChecksOnlyForDetectedHarnesses confirms that skill-layer
 // checks (skill-presence/skill-frontmatter/skill-readable/skill-staleness/
