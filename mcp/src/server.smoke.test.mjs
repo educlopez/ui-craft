@@ -9,6 +9,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { MCP_VERSION } from './version.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 // Defaults to the source server; set UI_CRAFT_MCP_SERVER (e.g. dist/server.mjs)
@@ -22,6 +23,11 @@ test('server boots over stdio and lists the 4 tools', async () => {
   const client = new Client({ name: 'smoke', version: '0.0.0' }, { capabilities: {} });
   await client.connect(transport);
   try {
+    assert.equal(
+      client.getServerVersion()?.version,
+      MCP_VERSION,
+      'server handshake version matches package.json',
+    );
     const { tools } = await client.listTools();
     const names = tools.map((t) => t.name).sort();
     assert.deepStrictEqual(names, ['acceptance_bar', 'check_anti_slop', 'score_ui', 'tokens_lint']);

@@ -4,10 +4,113 @@
 // scripts/detect.mjs — no behavior change.
 
 import { promises as fs } from "node:fs";
+import { constants as fsConstants } from "node:fs";
 import path from "node:path";
 
 import { rules, isDisplayedNotApplied } from "./rules.mjs";
 import { VERSION, SCAN_EXTENSIONS, SKIP_DIRS } from "./constants.mjs";
+
+export const DEFAULT_SCAN_LIMITS = Object.freeze({
+  maxDepth: 32,
+  maxFiles: 10_000,
+  maxFileBytes: 2 * 1024 * 1024,
+  maxTotalBytes: 50 * 1024 * 1024,
+});
+
+function normalizeScanLimits(overrides = {}) {
+  const normalized = {};
+  for (const [name, fallback] of Object.entries(DEFAULT_SCAN_LIMITS)) {
+    const value = overrides?.[name];
+    normalized[name] = Number.isSafeInteger(value) && value > 0 ? value : fallback;
+  }
+  return normalized;
+}
+
+function scanError(filePath, code, message) {
+  return { path: filePath, code, message };
+}
+
+function relativeScanErrors(errors) {
+  const cwd = process.cwd();
+  return errors.map((error) => ({
+    ...error,
+    path: path.relative(cwd, error.path) || ".",
+  }));
+}
+
+function scanPolicy() {
+  return {
+    mode: "fail-closed",
+    clean_requires_complete_coverage: true,
+  };
+}
+
+function isWithinPath(root, candidate) {
+  const relative = path.relative(root, candidate);
+  return relative === ""
+    || (!relative.startsWith(`..${path.sep}`) && relative !== ".." && !path.isAbsolute(relative));
+}
+
+function filesystemError(code, message) {
+  const error = new Error(message);
+  error.scanCode = code;
+  return error;
+}
+
+async function readFileNoFollow(filePath, maxBytes) {
+  const before = await fs.lstat(filePath);
+  if (before.isSymbolicLink()) {
+    throw filesystemError(
+      "symlink_not_allowed",
+      `Symbolic links are not followed during scanning: ${filePath}`,
+    );
+  }
+  if (!before.isFile()) {
+    throw filesystemError("unsupported_path_type", `Path is not a regular file: ${filePath}`);
+  }
+
+  let handle;
+  try {
+    handle = await fs.open(
+      filePath,
+      fsConstants.O_RDONLY | (fsConstants.O_NOFOLLOW ?? 0),
+    );
+    const opened = await handle.stat();
+    if (!opened.isFile() || opened.dev !== before.dev || opened.ino !== before.ino) {
+      throw filesystemError(
+        "file_changed_during_scan",
+        `File changed while it was being opened: ${filePath}`,
+      );
+    }
+    if (opened.size > maxBytes) {
+      throw filesystemError(
+        "max_file_bytes_exceeded",
+        `File size ${opened.size} exceeds the per-file limit of ${maxBytes} bytes`,
+      );
+    }
+    const buffer = await handle.readFile();
+    const after = await handle.stat();
+    if (after.dev !== opened.dev || after.ino !== opened.ino) {
+      throw filesystemError(
+        "file_changed_during_scan",
+        `File changed while it was being read: ${filePath}`,
+      );
+    }
+    if (buffer.byteLength > maxBytes) {
+      throw filesystemError(
+        "max_file_bytes_exceeded",
+        `File size ${buffer.byteLength} exceeds the per-file limit of ${maxBytes} bytes`,
+      );
+    }
+    return buffer;
+  } catch (error) {
+    if (error.scanCode) throw error;
+    const code = error.code === "ELOOP" ? "symlink_not_allowed" : "file_unreadable";
+    throw filesystemError(code, `Could not safely read file: ${error.message}`);
+  } finally {
+    await handle?.close();
+  }
+}
 
 // --- Config loading ------------------------------------------------------
 
@@ -170,24 +273,112 @@ function isFindingIgnored(finding, ignoreInfo) {
 
 // --- Scanning ------------------------------------------------------------
 
-export async function walk(dir, out = []) {
+async function walkDirectory(dir, out, state, depth) {
+  if (state.stopped) return;
+  if (depth > state.limits.maxDepth) {
+    state.filesOmitted++;
+    state.errors.push(
+      scanError(
+        dir,
+        "max_depth_exceeded",
+        `Directory depth exceeds the limit of ${state.limits.maxDepth}`,
+      ),
+    );
+    return;
+  }
+
   let entries;
   try {
     entries = await fs.readdir(dir, { withFileTypes: true });
-  } catch {
-    return out;
+  } catch (error) {
+    state.filesOmitted++;
+    state.errors.push(
+      scanError(dir, "directory_unreadable", `Could not read directory: ${error.message}`),
+    );
+    return;
   }
+
   for (const entry of entries) {
+    if (state.stopped) return;
     if (entry.name.startsWith(".DS_Store")) continue;
     const full = path.join(dir, entry.name);
-    if (entry.isDirectory()) {
+    let entryStat;
+    let canonical;
+    try {
+      entryStat = await fs.lstat(full);
+      if (entryStat.isSymbolicLink()) {
+        state.filesOmitted++;
+        state.errors.push(
+          scanError(
+            full,
+            "symlink_not_allowed",
+            "Symbolic links are not followed during directory traversal",
+          ),
+        );
+        continue;
+      }
+      canonical = await fs.realpath(full);
+      if (!isWithinPath(state.rootDir, canonical)) {
+        state.filesOmitted++;
+        state.errors.push(
+          scanError(full, "workspace_escape", "Entry resolves outside the scan root"),
+        );
+        continue;
+      }
+    } catch (error) {
+      state.filesOmitted++;
+      state.errors.push(
+        scanError(full, "path_unreadable", `Could not inspect entry: ${error.message}`),
+      );
+      continue;
+    }
+
+    if (entryStat.isDirectory()) {
       if (SKIP_DIRS.has(entry.name)) continue;
-      await walk(full, out);
-    } else if (entry.isFile()) {
+      await walkDirectory(canonical, out, state, depth + 1);
+    } else if (entryStat.isFile()) {
       const ext = path.extname(entry.name);
-      if (SCAN_EXTENSIONS.has(ext)) out.push(full);
+      if (!SCAN_EXTENSIONS.has(ext)) continue;
+      if (out.length >= state.limits.maxFiles) {
+        state.filesOmitted++;
+        state.errors.push(
+          scanError(
+            full,
+            "max_files_exceeded",
+            `File count exceeds the limit of ${state.limits.maxFiles}`,
+          ),
+        );
+        state.stopped = true;
+        return;
+      }
+      out.push(canonical);
     }
   }
+}
+
+/**
+ * Collect scannable files with bounded traversal.
+ *
+ * Existing callers can keep using walk(dir): it still resolves to an array.
+ * Callers that need coverage can pass { scanErrors, limits, state }.
+ */
+export async function walk(dir, out = [], options = {}) {
+  const limits = normalizeScanLimits(options.limits);
+  let canonicalRoot;
+  try {
+    canonicalRoot = await fs.realpath(path.resolve(dir));
+  } catch {
+    canonicalRoot = path.resolve(dir);
+  }
+  const state = options.state ?? {
+    errors: options.scanErrors ?? [],
+    filesOmitted: 0,
+    limits,
+    rootDir: canonicalRoot,
+    stopped: false,
+  };
+  state.rootDir ??= canonicalRoot;
+  await walkDirectory(canonicalRoot, out, state, 0);
   return out;
 }
 
@@ -351,52 +542,75 @@ export function makeDiff(before, after) {
 
 // --- SARIF output --------------------------------------------------------
 
-export function toSarif(findings, ruleDefs) {
+export function toSarif(findings, ruleDefs, scanMeta = {}) {
   const usedRules = [...new Set(findings.map((f) => f.rule))];
   const ruleIndex = new Map(usedRules.map((id, i) => [id, i]));
   const cwd = process.cwd();
+  const run = {
+    tool: {
+      driver: {
+        name: "ui-craft-detect",
+        version: VERSION,
+        informationUri: "https://github.com/educlopez/ui-craft",
+        rules: usedRules.map((id) => {
+          const def = ruleDefs.find((r) => r.id === id);
+          return {
+            id,
+            name: id,
+            shortDescription: { text: def ? def.description : id },
+            helpUri: "https://github.com/educlopez/ui-craft",
+            defaultConfiguration: {
+              level: severityToSarifLevel(def ? def.severity : "warn"),
+            },
+          };
+        }),
+      },
+    },
+    results: findings.map((f) => ({
+      ruleId: f.rule,
+      ruleIndex: ruleIndex.get(f.rule),
+      level: severityToSarifLevel(f.severity),
+      message: { text: `${f.description} — ${f.snippet}. Fix: ${f.fix}` },
+      locations: [
+        {
+          physicalLocation: {
+            artifactLocation: {
+              uri: path.relative(cwd, f.file).split(path.sep).join("/"),
+            },
+            region: { startLine: f.line },
+          },
+        },
+      ],
+    })),
+  };
+
+  if (scanMeta.coverage) {
+    run.invocations = [
+      {
+        executionSuccessful: scanMeta.coverage.complete !== false,
+        toolExecutionNotifications: (scanMeta.scan_errors ?? []).map((error) => ({
+          level: "error",
+          message: { text: `${error.code}: ${error.message}` },
+          locations: error.path
+            ? [{
+                physicalLocation: {
+                  artifactLocation: { uri: error.path.split(path.sep).join("/") },
+                },
+              }]
+            : undefined,
+        })),
+        properties: {
+          coverage: scanMeta.coverage,
+          scan_policy: scanMeta.scan_policy,
+        },
+      },
+    ];
+  }
+
   return {
     $schema: "https://json.schemastore.org/sarif-2.1.0.json",
     version: "2.1.0",
-    runs: [
-      {
-        tool: {
-          driver: {
-            name: "ui-craft-detect",
-            version: VERSION,
-            informationUri: "https://github.com/educlopez/ui-craft",
-            rules: usedRules.map((id) => {
-              const def = ruleDefs.find((r) => r.id === id);
-              return {
-                id,
-                name: id,
-                shortDescription: { text: def ? def.description : id },
-                helpUri: "https://github.com/educlopez/ui-craft",
-                defaultConfiguration: {
-                  level: severityToSarifLevel(def ? def.severity : "warn"),
-                },
-              };
-            }),
-          },
-        },
-        results: findings.map((f) => ({
-          ruleId: f.rule,
-          ruleIndex: ruleIndex.get(f.rule),
-          level: severityToSarifLevel(f.severity),
-          message: { text: `${f.description} — ${f.snippet}. Fix: ${f.fix}` },
-          locations: [
-            {
-              physicalLocation: {
-                artifactLocation: {
-                  uri: path.relative(cwd, f.file).split(path.sep).join("/"),
-                },
-                region: { startLine: f.line },
-              },
-            },
-          ],
-        })),
-      },
-    ],
+    runs: [run],
   };
 }
 
@@ -413,25 +627,48 @@ function severityToSarifLevel(sev) {
  * Scan a target path and return findings.
  *
  * @param {string} target - Path to a file or directory to scan. Defaults to ".".
- * @param {{ config?: object }} [opts] - Optional options object.
+ * @param {{ config?: object, limits?: object }} [opts] - Optional options object.
  *   config: a parsed config object (same shape as .uicraftrc.json); overrides
  *           the on-disk config search when provided.
+ *   limits: positive integer overrides for maxDepth, maxFiles, maxFileBytes,
+ *           and maxTotalBytes.
  * @returns {Promise<{ version: string, summary: object, findings: object[] }>}
  *   The same object that `--json` prints to stdout, with file paths relative to cwd.
  */
-export async function scan(target = ".", { config: configOverride } = {}) {
+export async function scan(target = ".", { config: configOverride, limits: limitOverrides } = {}) {
   const resolved = path.resolve(target);
+  const limits = normalizeScanLimits(limitOverrides);
 
   let stat;
   try {
     stat = await fs.stat(resolved);
   } catch (err) {
     // Path does not exist — return a structured error result with zero findings.
+    const scanErrors = [
+      scanError(resolved, "path_unreadable", `Cannot read path "${target}": ${err.message}`),
+    ];
     return {
       version: VERSION,
-      summary: { files_scanned: 0, files_flagged: 0, errors: 0, warnings: 0, auto_fixed: 0 },
+      summary: {
+        files_scanned: 0,
+        files_flagged: 0,
+        files_omitted: 1,
+        errors: 0,
+        warnings: 0,
+        auto_fixed: 0,
+      },
       findings: [],
       error: `cannot read path "${target}": ${err.message}`,
+      scan_errors: relativeScanErrors(scanErrors),
+      coverage: {
+        complete: false,
+        files_discovered: 0,
+        files_scanned: 0,
+        files_omitted: 1,
+        bytes_scanned: 0,
+        limits,
+      },
+      scan_policy: scanPolicy(),
     };
   }
 
@@ -443,8 +680,14 @@ export async function scan(target = ".", { config: configOverride } = {}) {
   }
 
   let files = [];
+  const traversalState = {
+    errors: [],
+    filesOmitted: 0,
+    limits,
+    stopped: false,
+  };
   if (stat.isDirectory()) {
-    files = await walk(resolved);
+    files = await walk(resolved, [], { state: traversalState });
   } else if (stat.isFile()) {
     const ext = path.extname(resolved);
     if (SCAN_EXTENSIONS.has(ext)) files = [resolved];
@@ -458,13 +701,42 @@ export async function scan(target = ".", { config: configOverride } = {}) {
 
   // Run scan.
   const allFindings = [];
-  for (const f of files) {
-    let content;
+  let filesScanned = 0;
+  let filesOmitted = traversalState.filesOmitted;
+  let bytesScanned = 0;
+  const scanErrors = traversalState.errors;
+  for (let index = 0; index < files.length; index++) {
+    const f = files[index];
+    let buffer;
     try {
-      content = await fs.readFile(f, "utf8");
-    } catch {
+      buffer = await readFileNoFollow(f, limits.maxFileBytes);
+    } catch (error) {
+      filesOmitted++;
+      scanErrors.push(
+        scanError(
+          f,
+          error.scanCode ?? "file_unreadable",
+          error.message,
+        ),
+      );
       continue;
     }
+    if (bytesScanned + buffer.byteLength > limits.maxTotalBytes) {
+      const remaining = files.length - index;
+      filesOmitted += remaining;
+      scanErrors.push(
+        scanError(
+          f,
+          "max_total_bytes_exceeded",
+          `Total input exceeds the limit of ${limits.maxTotalBytes} bytes; ${remaining} file(s) omitted`,
+        ),
+      );
+      break;
+    }
+
+    const content = buffer.toString("utf8");
+    filesScanned++;
+    bytesScanned += buffer.byteLength;
     const fileFindings = scanFile(f, content, config);
     allFindings.push(...fileFindings);
   }
@@ -475,15 +747,18 @@ export async function scan(target = ".", { config: configOverride } = {}) {
   const warnings = allFindings.filter((f) => f.severity === "warn").length;
 
   const summary = {
-    files_scanned: files.length,
+    files_scanned: filesScanned,
     files_flagged: flaggedFiles.size,
+    files_omitted: filesOmitted,
     errors,
     warnings: majors + warnings,
     auto_fixed: 0,
   };
 
   const cwd = process.cwd();
-  return {
+  const relativeErrors = relativeScanErrors(scanErrors);
+  const complete = relativeErrors.length === 0;
+  const result = {
     version: VERSION,
     summary,
     findings: allFindings.map((f) => ({
@@ -495,6 +770,19 @@ export async function scan(target = ".", { config: configOverride } = {}) {
       snippet: f.snippet,
       fix: f.fix,
     })),
+    scan_errors: relativeErrors,
+    coverage: {
+      complete,
+      files_discovered: files.length,
+      files_scanned: filesScanned,
+      files_omitted: filesOmitted,
+      bytes_scanned: bytesScanned,
+      limits,
+    },
+    scan_policy: scanPolicy(),
   };
+  if (!complete) {
+    result.error = `scan incomplete: ${relativeErrors.length} filesystem or limit error(s)`;
+  }
+  return result;
 }
-

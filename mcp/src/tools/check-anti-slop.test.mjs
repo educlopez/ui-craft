@@ -5,6 +5,9 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { checkAntiSlop } from './check-anti-slop.mjs';
 
 // Known anti-slop pattern: purple-cyan gradient
@@ -100,4 +103,40 @@ test('check_anti_slop: code: "" (empty string) → 0 findings, no error (fix 4)'
   assert.ok(Array.isArray(result.findings), 'findings should be array');
   assert.equal(result.findings.length, 0, `Expected 0 findings for empty input`);
   assert.equal(result.summary.total, 0);
+});
+
+test('check_anti_slop: confines paths to the configured workspace root', async () => {
+  const parent = fs.mkdtempSync(path.join(os.tmpdir(), 'anti-workspace-'));
+  const workspace = path.join(parent, 'workspace');
+  fs.mkdirSync(workspace);
+  fs.writeFileSync(path.join(parent, 'outside.tsx'), CLEAN_CODE);
+  try {
+    const result = await checkAntiSlop(
+      { path: '../outside.tsx' },
+      { workspaceRoot: workspace },
+    );
+    assert.ok(result.error);
+    assert.equal(result.scan_errors[0].code, 'workspace_escape');
+    assert.equal(result.coverage.complete, false);
+  } finally {
+    fs.rmSync(parent, { recursive: true, force: true });
+  }
+});
+
+test('check_anti_slop: scan limits are fail-closed with explicit coverage', async () => {
+  const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'anti-limits-'));
+  fs.writeFileSync(path.join(workspace, 'large.tsx'), CLEAN_CODE);
+  try {
+    const result = await checkAntiSlop(
+      { path: '.' },
+      { workspaceRoot: workspace, limits: { maxFileBytes: 4 } },
+    );
+    assert.ok(result.error);
+    assert.equal(result.findings.length, 0);
+    assert.equal(result.coverage.complete, false);
+    assert.equal(result.coverage.files_omitted, 1);
+    assert.equal(result.scan_errors[0].code, 'max_file_bytes_exceeded');
+  } finally {
+    fs.rmSync(workspace, { recursive: true, force: true });
+  }
 });

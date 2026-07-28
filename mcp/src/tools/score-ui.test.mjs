@@ -7,6 +7,8 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { join, dirname } from 'node:path';
 import { scoreUiTool } from './score-ui.mjs';
@@ -168,4 +170,39 @@ test('score_ui: nonexistent path → structured error, no crash', async () => {
   assert.ok(result.error, `Expected error field for nonexistent path`);
   assert.ok(typeof result.error === 'string');
   assert.ok(!result.overall, 'should not have overall on error');
+});
+
+test('score_ui: rejects paths outside the configured workspace root', async () => {
+  const parent = fs.mkdtempSync(join(os.tmpdir(), 'score-workspace-'));
+  const workspace = join(parent, 'workspace');
+  fs.mkdirSync(workspace);
+  fs.writeFileSync(join(parent, 'outside.tsx'), CLEAN_CODE);
+  try {
+    const result = await scoreUiTool(
+      { path: '../outside.tsx' },
+      { workspaceRoot: workspace },
+    );
+    assert.ok(result.error);
+    assert.equal(result.scan_errors[0].code, 'workspace_escape');
+    assert.equal(result.coverage.complete, false);
+  } finally {
+    fs.rmSync(parent, { recursive: true, force: true });
+  }
+});
+
+test('score_ui: rejects oversized files without reading them as clean', async () => {
+  const workspace = fs.mkdtempSync(join(os.tmpdir(), 'score-limits-'));
+  fs.writeFileSync(join(workspace, 'large.tsx'), CLEAN_CODE);
+  try {
+    const result = await scoreUiTool(
+      { path: 'large.tsx' },
+      { workspaceRoot: workspace, limits: { maxFileBytes: 4 } },
+    );
+    assert.ok(result.error);
+    assert.equal(result.scan_errors[0].code, 'max_file_bytes_exceeded');
+    assert.equal(result.coverage.files_scanned, 0);
+    assert.equal(result.coverage.files_omitted, 1);
+  } finally {
+    fs.rmSync(workspace, { recursive: true, force: true });
+  }
 });

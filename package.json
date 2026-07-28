@@ -1,6 +1,6 @@
 {
   "name": "ui-craft-detect",
-  "version": "0.12.0",
+  "version": "0.13.0",
   "description": "Static anti-slop detector for UI code. Flags AI-generated design patterns (purple gradients, bounce easing, glassmorphism, generic CTAs, ALL CAPS headings, transition: all). Zero dependencies, works out of the box.",
   "type": "module",
   "bin": {
@@ -33,7 +33,11 @@
     "detect": "node scripts/detect.mjs",
     "validate": "node scripts/validate.mjs",
     "sync": "node scripts/sync-mirrors.mjs",
-    "check:mirrors": "node scripts/check-mirror-copies.mjs"
+    "check:mirrors": "node scripts/check-mirror-copies.mjs",
+    "check:distribution": "node scripts/check-distribution-contract.mjs",
+    "test:verify": "node --test scripts/check-distribution-contract.test.mjs scripts/verify.test.mjs",
+    "verify": "node scripts/verify.mjs",
+    "verify:list": "node scripts/verify.mjs --list"
   },
   "engines": {
     "node": ">=18"

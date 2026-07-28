@@ -72,9 +72,23 @@ function comparePair(label, src, dst) {
 }
 
 function compareTree(label, srcDir, dstDir) {
-  if (!existsSync(srcDir)) return
-  for (const rel of walkFiles(srcDir)) {
+  if (!existsSync(srcDir)) {
+    failures.push(`${label}: canonical source tree missing ${relative(ROOT, srcDir)}`)
+    return
+  }
+  if (!existsSync(dstDir)) {
+    failures.push(`${label}: mirror tree missing ${relative(ROOT, dstDir)}`)
+    return
+  }
+  const sourceFiles = walkFiles(srcDir)
+  const sourceSet = new Set(sourceFiles)
+  for (const rel of sourceFiles) {
     comparePair(label, join(srcDir, rel), join(dstDir, rel))
+  }
+  for (const rel of walkFiles(dstDir)) {
+    if (!sourceSet.has(rel)) {
+      failures.push(`${label}: stale mirror-only file ${relative(ROOT, join(dstDir, rel))}`)
+    }
   }
 }
 
@@ -83,7 +97,6 @@ for (const harness of CLI_HARNESSES) {
   for (const id of SKILL_IDS) {
     const src = join(ROOT, "skills", id)
     const dst = join(ROOT, "cli/assets", harness, "skills", id)
-    if (!existsSync(src)) continue
     compareTree(`cli/${harness}/${id}`, src, dst)
   }
 }
@@ -93,19 +106,59 @@ for (const harness of ROOT_HARNESSES) {
   for (const id of SKILL_IDS) {
     const src = join(ROOT, "skills", id)
     const dst = join(ROOT, harness, "skills", id)
-    if (!existsSync(src)) continue
     compareTree(`${harness}/${id}`, src, dst)
   }
 }
 
 // --- commands ↔ claude + opencode ---
 const cmdDir = join(ROOT, "commands")
-if (existsSync(cmdDir)) {
-  for (const file of readdirSync(cmdDir).filter((f) => f.endsWith(".md"))) {
+if (!existsSync(cmdDir)) {
+  failures.push(`commands: canonical source tree missing ${relative(ROOT, cmdDir)}`)
+} else {
+  const commandFiles = readdirSync(cmdDir).filter((f) => f.endsWith(".md"))
+  const commandSet = new Set(commandFiles)
+  for (const file of commandFiles) {
     const src = join(cmdDir, file)
     for (const harness of COMMAND_HARNESSES) {
       const dst = join(ROOT, "cli/assets", harness, "commands", file)
       comparePair(`commands→${harness}`, src, dst)
+    }
+  }
+  for (const harness of COMMAND_HARNESSES) {
+    const dstDir = join(ROOT, "cli/assets", harness, "commands")
+    if (!existsSync(dstDir)) continue
+    for (const file of readdirSync(dstDir).filter((f) => f.endsWith(".md"))) {
+      if (!commandSet.has(file)) {
+        failures.push(
+          `commands→${harness}: stale mirror-only file ${relative(ROOT, join(dstDir, file))}`,
+        )
+      }
+    }
+  }
+}
+
+// --- review agents ↔ CLI Claude assets ---
+const agentDir = join(ROOT, "agents")
+const agentMirrorDir = join(ROOT, "cli/assets/agents/claude")
+if (!existsSync(agentDir)) {
+  failures.push(`agents: canonical source tree missing ${relative(ROOT, agentDir)}`)
+} else {
+  const agentFiles = readdirSync(agentDir).filter((file) => file.endsWith(".md"))
+  const agentSet = new Set(agentFiles)
+  for (const file of agentFiles) {
+    comparePair(
+      "agents→cli/claude",
+      join(agentDir, file),
+      join(agentMirrorDir, file),
+    )
+  }
+  if (existsSync(agentMirrorDir)) {
+    for (const file of readdirSync(agentMirrorDir).filter((item) => item.endsWith(".md"))) {
+      if (!agentSet.has(file)) {
+        failures.push(
+          `agents→cli/claude: stale mirror-only file ${relative(ROOT, join(agentMirrorDir, file))}`,
+        )
+      }
     }
   }
 }

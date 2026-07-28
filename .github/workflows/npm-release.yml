@@ -1,0 +1,88 @@
+name: Publish npm package
+
+on:
+  workflow_dispatch:
+    inputs:
+      package:
+        description: Package to publish
+        required: true
+        type: choice
+        options:
+          - ui-craft-detect
+          - ui-craft-mcp
+      version:
+        description: Exact package.json version to publish (without v prefix)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: npm-release-${{ inputs.package }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Publish ${{ inputs.package }}@${{ inputs.version }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Setup npm trusted publishing client
+        run: npm install --global npm@11.5.1
+
+      - name: Verify requested package and version
+        env:
+          REQUESTED_PACKAGE: ${{ inputs.package }}
+          REQUESTED_VERSION: ${{ inputs.version }}
+        run: |
+          node <<'NODE'
+          const fs = require("node:fs");
+          const packagePath =
+            process.env.REQUESTED_PACKAGE === "ui-craft-mcp"
+              ? "mcp/package.json"
+              : "package.json";
+          const pkg = JSON.parse(fs.readFileSync(packagePath, "utf8"));
+          if (pkg.name !== process.env.REQUESTED_PACKAGE) {
+            throw new Error(`package mismatch: expected ${process.env.REQUESTED_PACKAGE}, found ${pkg.name}`);
+          }
+          if (pkg.version !== process.env.REQUESTED_VERSION) {
+            throw new Error(`version mismatch: requested ${process.env.REQUESTED_VERSION}, package.json has ${pkg.version}`);
+          }
+          if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(pkg.version)) {
+            throw new Error(`refusing invalid semver: ${pkg.version}`);
+          }
+          NODE
+
+      - name: Test detector package
+        if: inputs.package == 'ui-craft-detect'
+        run: |
+          node --test scripts/detect.test.mjs
+          npm pack --dry-run
+
+      - name: Install and test MCP package
+        if: inputs.package == 'ui-craft-mcp'
+        run: |
+          cd mcp
+          npm ci
+          npm test
+          npm run smoke:dist
+          npm pack --dry-run
+
+      - name: Publish detector
+        if: inputs.package == 'ui-craft-detect'
+        run: npm publish --provenance --access public
+
+      - name: Publish MCP
+        if: inputs.package == 'ui-craft-mcp'
+        working-directory: mcp
+        run: npm publish --provenance --access public

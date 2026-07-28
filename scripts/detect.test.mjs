@@ -691,6 +691,39 @@ test("scan() on nonexistent path returns structured error without throwing", asy
   assert.ok(result.error, "result must have an error field");
   assert.equal(result.findings.length, 0, "findings must be empty on error");
   assert.equal(result.summary.files_scanned, 0, "files_scanned must be 0 on error");
+  assert.equal(result.coverage.complete, false, "coverage must be incomplete on error");
+  assert.equal(result.scan_errors[0].code, "path_unreadable");
+});
+
+test("scan() reports limit omissions and never labels an incomplete scan clean", async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "detect-limits-"));
+  try {
+    fs.writeFileSync(path.join(dir, "clean.tsx"), `export const Clean = () => <main />;\n`);
+    const result = await scan(dir, { limits: { maxFileBytes: 4 } });
+    assert.ok(result.error, "incomplete scan must expose an error");
+    assert.equal(result.findings.length, 0);
+    assert.equal(result.coverage.complete, false);
+    assert.equal(result.summary.files_scanned, 0);
+    assert.equal(result.summary.files_omitted, 1);
+    assert.equal(result.scan_errors[0].code, "max_file_bytes_exceeded");
+    assert.equal(result.scan_policy.mode, "fail-closed");
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("scan() never follows symlinks discovered during directory traversal", async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "detect-symlink-"));
+  try {
+    fs.writeFileSync(path.join(dir, "target.tsx"), `export const Clean = () => <main />;\n`);
+    fs.symlinkSync(path.join(dir, "target.tsx"), path.join(dir, "link.tsx"));
+    const result = await scan(dir);
+    assert.equal(result.coverage.complete, false);
+    assert.equal(result.summary.files_scanned, 1);
+    assert.ok(result.scan_errors.some((error) => error.code === "symlink_not_allowed"));
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 // ---------------------------------------------------------------------------

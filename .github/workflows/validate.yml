@@ -1,7 +1,7 @@
 name: Validate
 
-# Fails the PR if plugin manifests, skill frontmatter, or internal links break.
-# Cheap to run (pure Node, no deps).
+# Canonical repository gate. Runs the complete Node, MCP, and Go verification
+# matrix, including detector URL fixtures that bind to the runner's loopback.
 
 on:
   push:
@@ -13,38 +13,31 @@ on:
 jobs:
   validate:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+          run_install: false
 
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: "20"
+          cache: npm
+          cache-dependency-path: mcp/package-lock.json
 
-      - name: Validate plugin structure + skill metadata + links
-        run: node scripts/validate.mjs
-
-  check-mirror-copies:
-    name: Skill/command mirror drift guard
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - name: Setup Go
+        uses: actions/setup-go@v5
         with:
-          node-version: "20"
+          go-version-file: cli/go.mod
+          cache-dependency-path: cli/go.sum
 
-      - name: Check skills/commands mirror copies
-        run: node scripts/check-mirror-copies.mjs
+      - name: Install MCP dependencies
+        run: npm ci --prefix mcp
 
-  # Drift guard: ensure cli/assets/agents/claude/ stays in sync with agents/.
-  # Runs on every push and PR to main — cheap shell diff, no build required.
-  check-agent-copies:
-    name: Agent copy drift guard
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Check agent copies (agents/ vs cli/assets/agents/claude/)
-        run: make -C cli check-agent-copies
+      - name: Run canonical verification gate
+        run: pnpm verify

@@ -21,12 +21,13 @@ on:
         description: "Tag to release (must exist on the repo)"
         required: true
 
-permissions:
-  contents: write
-
 jobs:
   release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
     steps:
       # ── Step 1: Checkout ──────────────────────────────────────────────────
       - name: Checkout
@@ -67,6 +68,14 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
 
+      - name: Attest release artifacts
+        uses: actions/attest@v4
+        with:
+          subject-path: |
+            ${{ github.workspace }}/dist/*.tar.gz
+            ${{ github.workspace }}/dist/*.zip
+            ${{ github.workspace }}/dist/checksums.txt
+
   # ── Post-release smoke test ───────────────────────────────────────────────
   # This job covers what CI CAN automate. It is not a substitute for the
   # manual Gatekeeper/Apple-Silicon verification in RELEASE_CHECKLIST.md —
@@ -74,6 +83,8 @@ jobs:
   smoke-test:
     needs: release
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Wait for release asset to be available
         run: sleep 30

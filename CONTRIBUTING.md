@@ -97,7 +97,11 @@ node scripts/detect.mjs /path/to/test     # spot-check on synthetic input
 node --test scripts/detect.test.mjs       # detector unit tests
 ```
 
-After adding: bump `package.json` version, add a line to `VERSIONS.md`. The `release.yml` workflow publishes the GitHub release automatically. `npm publish` still manual (requires OTP).
+After adding: bump `package.json` and `scripts/detect/constants.mjs` together, update
+`distribution-manifest.json`, and add a line to `VERSIONS.md`. Publish the detector
+with the manually dispatched `npm-release.yml` workflow; it validates the requested
+version against `package.json`, runs the detector tests, and uses npm trusted
+publishing with provenance.
 
 ### Adding a craft pattern
 

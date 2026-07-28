@@ -117,7 +117,7 @@ One command installs the skill, all 25 slash commands, the 2 review agents, and 
 /plugin install ui-craft
 ```
 
-The plugin bundles a `.mcp.json` (`npx -y ui-craft-mcp`), so the deterministic gates register automatically on install — first launch fetches the package via `npx`. This uses Claude Code's own plugin system, so it's not affected by the global-path issue noted below.
+The plugin bundles a `.mcp.json` (`npx -y ui-craft-mcp@0.3.0`), so the deterministic gates register automatically on install. The exact package version is declared in [`distribution-manifest.json`](distribution-manifest.json), avoiding an implicit upgrade on first launch. This uses Claude Code's own plugin system, so it's not affected by the global-path issue noted below.
 
 ### Agent Skills — alternative (skill + commands only, any harness)
 
@@ -167,6 +167,7 @@ Run `ui-craft` with no arguments to open the **interactive hub** — a full-scre
 | `ui-craft rollback [harness]` | Restore latest backup for a harness. |
 | `ui-craft self-update` | Upgrade binary to latest GitHub release (or prints the correct package-manager command when installed via Homebrew/Scoop). |
 | `ui-craft version` | Print the binary version. |
+| `ui-craft version --json` | Print `{ "version": "…" }`; there is no separate mirror-version field. |
 | `ui-craft version --check-parity` | Verify the Claude Code install matches the expected surface. |
 
 ### Key flags for `install`
@@ -688,8 +689,8 @@ The `ui-craft-mcp` package exposes four deterministic design-quality tools over 
 **Quick start:**
 
 ```bash
-# Wire in your project's .mcp.json:
-{ "mcpServers": { "ui-craft": { "command": "npx", "args": ["ui-craft-mcp"] } } }
+# Wire the manifest-pinned release into your project's .mcp.json:
+{ "mcpServers": { "ui-craft": { "command": "npx", "args": ["-y", "ui-craft-mcp@0.3.0"] } } }
 ```
 
 See [`mcp/README.md`](mcp/README.md) for full install, tool docs, and the `acceptance-data.json` regen note.
@@ -700,6 +701,16 @@ The canonical skill content lives in `skills/` (main skill + variants) and `comm
 
 - **CLI (`ui-craft install`)** — per-harness assets are hand-authored under `cli/assets/<harness>/` (claude, cursor, codex, gemini, opencode) and compiled into the binary via `go:embed`. Command-capable harnesses (Claude Code, OpenCode) receive real `commands/*.md`; skills-only harnesses (Cursor, Codex, Gemini) receive each lens as a flat depth-1 peer skill. The embedded tree is also the uninstall manifest — cleanup removes exactly what it installed.
 - **`npx skills add` / git submodule** — the repo-root mirror dirs (`.codex/`, `.cursor/`, `.gemini/`, `.opencode/`, `.agents/`) serve those install paths.
+
+### Canonical quality gate
+
+Before publishing or opening a PR, install the MCP development dependencies once with `npm ci --prefix mcp`, then run:
+
+```bash
+pnpm verify
+```
+
+This non-fail-fast gate runs distribution-contract checks, plugin/link validation, every mirror drift guard, detector and quality suites, MCP source and bundled smoke tests, plus Go tests, vet, and formatting. `pnpm verify:list` prints the suite IDs; a focused rerun can use `pnpm verify -- --suite=<id>`. Component versions and immutable launch specs live in the machine-readable [`distribution-manifest.json`](distribution-manifest.json).
 
 When you change a skill or command, edit the canonical source under `skills/` + `commands/` and then regenerate every copy:
 

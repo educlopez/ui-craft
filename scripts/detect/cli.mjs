@@ -245,8 +245,9 @@ export async function main() {
   }
 
   let files = [];
+  const discoveryErrors = [];
   if (stat.isDirectory()) {
-    files = await walk(target);
+    files = await walk(target, [], { scanErrors: discoveryErrors });
   } else if (stat.isFile()) {
     const ext = path.extname(target);
     if (SCAN_EXTENSIONS.has(ext)) files = [target];
@@ -271,7 +272,12 @@ export async function main() {
       let original;
       try {
         original = await fs.readFile(f, "utf8");
-      } catch {
+      } catch (error) {
+        discoveryErrors.push({
+          path: f,
+          code: "file_unreadable",
+          message: `Could not read file: ${error.message}`,
+        });
         continue;
       }
       const findingsBefore = scanFile(f, original, config);
@@ -329,6 +335,15 @@ export async function main() {
     process.stdout.write(
       `\n${files.length} files scanned. Auto-fixed: ${totalFixed}. Non-fixable remaining: ${totalNonFixable}.${flags.fixDryRun ? " (dry run — no files written)" : ""}\n`,
     );
+    if (discoveryErrors.length > 0) {
+      process.stderr.write(
+        `error: scan incomplete; ${discoveryErrors.length} filesystem or limit error(s), clean status withheld\n`,
+      );
+      for (const error of discoveryErrors) {
+        process.stderr.write(`  ${error.path}: ${error.message} (${error.code})\n`);
+      }
+      process.exit(2);
+    }
     process.exit(totalNonFixable > 0 ? 1 : 0);
   }
 
@@ -368,6 +383,13 @@ export async function main() {
     errors: errorCount,
     warnings: warningCount,
   };
+  const scanIncomplete = scanResult.coverage?.complete === false;
+  const scanExit = (counts) => scanIncomplete ? 2 : failOnExit(flags.failOn, counts);
+  if (scanIncomplete) {
+    process.stderr.write(
+      `error: ${scanResult.error ?? "scan incomplete"}; clean status withheld by fail-closed policy\n`,
+    );
+  }
 
   if (flags.reviewJson) {
     if (flags.scope !== "changed") {
@@ -383,7 +405,7 @@ export async function main() {
       flags.commitSha ?? tryGit(["rev-parse", "HEAD"], { cwd }) ?? "HEAD";
     const review = renderReviewComments(scopedFindings, commitSha);
     process.stdout.write(JSON.stringify(review, null, 2) + "\n");
-    process.exit(failOnExit(flags.failOn, { errors: errorCount, warnings: warningCount }));
+    process.exit(scanExit({ errors: errorCount, warnings: warningCount }));
   }
 
   // Derive absolute-path findings for SARIF/human by mapping scan() relative
@@ -395,13 +417,20 @@ export async function main() {
 
   if (flags.markdown) {
     process.stdout.write(renderMarkdownReport(absFindings, summary));
-    process.exit(failOnExit(flags.failOn, { errors: errorCount, warnings: warningCount }));
+    if (scanIncomplete) {
+      process.stdout.write(
+        `\n## Scan coverage incomplete\n\n${scanResult.scan_errors
+          .map((error) => `- \`${error.code}\` ${error.path}: ${error.message}`)
+          .join("\n")}\n`,
+      );
+    }
+    process.exit(scanExit({ errors: errorCount, warnings: warningCount }));
   }
 
   if (flags.sarif) {
-    const sarif = toSarif(absFindings, rules);
+    const sarif = toSarif(absFindings, rules, scanResult);
     process.stdout.write(JSON.stringify(sarif, null, 2) + "\n");
-    process.exit(failOnExit(flags.failOn, { errors: errorCount, warnings: warningCount }));
+    process.exit(scanExit({ errors: errorCount, warnings: warningCount }));
   }
 
   if (flags.json) {
@@ -410,9 +439,13 @@ export async function main() {
       summary,
       config: configPath ? { path: configPath, overrides: overrideCount } : null,
       findings: scopedFindings,
+      scan_errors: scanResult.scan_errors,
+      coverage: scanResult.coverage,
+      scan_policy: scanResult.scan_policy,
     };
+    if (scanResult.error) out.error = scanResult.error;
     process.stdout.write(JSON.stringify(out, null, 2) + "\n");
-    process.exit(failOnExit(flags.failOn, { errors: errorCount, warnings: warningCount }));
+    process.exit(scanExit({ errors: errorCount, warnings: warningCount }));
   }
 
   // Human-readable output
@@ -439,8 +472,15 @@ export async function main() {
     }
   }
 
-  if (absFindings.length === 0) {
+  if (absFindings.length === 0 && !scanIncomplete) {
     process.stdout.write(dim("No anti-slop patterns found.\n"));
+  } else if (scanIncomplete) {
+    process.stdout.write(
+      yellow("Scan incomplete — no clean result was produced.\n") +
+        scanResult.scan_errors
+          .map((error) => `  ${error.path}: ${error.message} (${error.code})\n`)
+          .join(""),
+    );
   }
 
   // Summary line
@@ -452,5 +492,5 @@ export async function main() {
   summaryLine += ` Auto-fixed: 0.`;
   process.stdout.write(summaryLine + "\n");
 
-  process.exit(failOnExit(flags.failOn, { errors: errorCount, warnings: warningCount }));
+  process.exit(scanExit({ errors: errorCount, warnings: warningCount }));
 }
