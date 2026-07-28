@@ -95,11 +95,9 @@ jobs:
         run: |
           set -euo pipefail
 
-          # Resolve tag: use the triggering tag or the workflow_dispatch input
-          TAG="${{ github.ref_name }}"
-          if [ -z "$TAG" ] || [ "$TAG" = "refs/heads/main" ]; then
-            TAG="${{ github.event.inputs.tag }}"
-          fi
+          # workflow_dispatch runs from a branch, so its explicit tag input
+          # must take precedence over github.ref_name.
+          TAG="${{ github.event.inputs.tag || github.ref_name }}"
 
           echo "Smoke-testing release: $TAG"
 
@@ -109,8 +107,8 @@ jobs:
             --repo educlopez/ui-craft \
             --pattern "$ASSET_NAME" \
             --output "release.tar.gz" || {
-            echo "WARNING: could not download $ASSET_NAME (may be a pre-release or naming mismatch)"
-            exit 0
+            echo "ERROR: could not download expected release asset $ASSET_NAME"
+            exit 1
           }
 
           tar -xzf release.tar.gz
