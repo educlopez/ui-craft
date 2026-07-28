@@ -9,6 +9,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { readFileSync } from 'node:fs';
 import { MCP_VERSION } from './version.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -19,6 +20,14 @@ const SERVER = process.env.UI_CRAFT_MCP_SERVER
   : join(__dirname, 'server.mjs');
 
 test('server boots over stdio and lists the 4 tools', async () => {
+  if (process.env.UI_CRAFT_MCP_SERVER) {
+    const bundledSource = readFileSync(SERVER, 'utf8');
+    assert.doesNotMatch(
+      bundledSource,
+      /new URL\(['"]\.\.\/package\.json['"]/,
+      'published bundle must not read package.json at runtime',
+    );
+  }
   const transport = new StdioClientTransport({ command: 'node', args: [SERVER] });
   const client = new Client({ name: 'smoke', version: '0.0.0' }, { capabilities: {} });
   await client.connect(transport);

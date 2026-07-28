@@ -49,3 +49,66 @@ test('no-follow reader rejects a symlink even when its target stays in the works
     fs.rmSync(root, { recursive: true, force: true });
   }
 });
+
+test('home-boundary lookup failures are normalized and fail closed', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'workspace-home-failure-'));
+  try {
+    assert.throws(
+      () => getWorkspaceRoot(root, {
+        allowUnsafe: false,
+        homedirFn: () => {
+          throw new Error('home unavailable');
+        },
+      }),
+      (error) => error.code === 'path_unreadable' && /home-directory boundary/.test(error.message),
+    );
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('workspace realpath failures are normalized as path_unreadable', () => {
+  assert.throws(
+    () => getWorkspaceRoot('/project', {
+      allowUnsafe: false,
+      realpathFn: () => {
+        throw new Error('realpath unavailable');
+      },
+    }),
+    (error) => error.code === 'path_unreadable',
+  );
+});
+
+test('bounded reader rejects a statically oversized file before buffering it', async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'workspace-static-limit-'));
+  const file = path.join(root, 'large.tsx');
+  fs.writeFileSync(file, '123456789');
+  try {
+    await assert.rejects(
+      readWorkspaceFileNoFollow(file, { workspaceRoot: root, maxBytes: 8 }),
+      (error) => error.code === 'max_file_bytes_exceeded',
+    );
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('bounded reader detects file growth with a one-byte overflow probe', async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'workspace-growth-limit-'));
+  const file = path.join(root, 'growing.tsx');
+  fs.writeFileSync(file, '1234');
+  try {
+    await assert.rejects(
+      readWorkspaceFileNoFollow(file, {
+        workspaceRoot: root,
+        maxBytes: 4,
+        testHooks: {
+          afterOpen: () => fs.appendFileSync(file, '5'),
+        },
+      }),
+      (error) => error.code === 'max_file_bytes_exceeded',
+    );
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});

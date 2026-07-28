@@ -5,6 +5,7 @@
 
 import { promises as fs } from "node:fs";
 import { constants as fsConstants } from "node:fs";
+import { randomBytes } from "node:crypto";
 import path from "node:path";
 
 import { rules, isDisplayedNotApplied } from "./rules.mjs";
@@ -57,7 +58,36 @@ function filesystemError(code, message) {
   return error;
 }
 
-async function readFileNoFollow(filePath, maxBytes) {
+function sameIdentity(left, right) {
+  return left.dev === right.dev && left.ino === right.ino;
+}
+
+async function readHandleBounded(handle, maxBytes) {
+  const buffer = Buffer.allocUnsafe(maxBytes);
+  let offset = 0;
+  while (offset < maxBytes) {
+    const { bytesRead } = await handle.read(
+      buffer,
+      offset,
+      Math.min(64 * 1024, maxBytes - offset),
+      offset,
+    );
+    if (bytesRead === 0) return buffer.subarray(0, offset);
+    offset += bytesRead;
+  }
+
+  const overflowProbe = Buffer.allocUnsafe(1);
+  const { bytesRead } = await handle.read(overflowProbe, 0, 1, offset);
+  if (bytesRead > 0) {
+    throw filesystemError(
+      "max_file_bytes_exceeded",
+      `File exceeds the per-file limit of ${maxBytes} bytes`,
+    );
+  }
+  return buffer;
+}
+
+export async function readFileSnapshotNoFollow(filePath, maxBytes) {
   const before = await fs.lstat(filePath);
   if (before.isSymbolicLink()) {
     throw filesystemError(
@@ -71,12 +101,14 @@ async function readFileNoFollow(filePath, maxBytes) {
 
   let handle;
   try {
+    // O_NOFOLLOW is not available on every Windows build. The lstat plus
+    // post-open dev/ino identity check remains the required fallback there.
     handle = await fs.open(
       filePath,
       fsConstants.O_RDONLY | (fsConstants.O_NOFOLLOW ?? 0),
     );
     const opened = await handle.stat();
-    if (!opened.isFile() || opened.dev !== before.dev || opened.ino !== before.ino) {
+    if (!opened.isFile() || !sameIdentity(opened, before)) {
       throw filesystemError(
         "file_changed_during_scan",
         `File changed while it was being opened: ${filePath}`,
@@ -88,9 +120,13 @@ async function readFileNoFollow(filePath, maxBytes) {
         `File size ${opened.size} exceeds the per-file limit of ${maxBytes} bytes`,
       );
     }
-    const buffer = await handle.readFile();
+    const buffer = await readHandleBounded(handle, maxBytes);
     const after = await handle.stat();
-    if (after.dev !== opened.dev || after.ino !== opened.ino) {
+    if (
+      !sameIdentity(after, opened)
+      || after.size !== opened.size
+      || after.mtimeMs !== opened.mtimeMs
+    ) {
       throw filesystemError(
         "file_changed_during_scan",
         `File changed while it was being read: ${filePath}`,
@@ -102,13 +138,222 @@ async function readFileNoFollow(filePath, maxBytes) {
         `File size ${buffer.byteLength} exceeds the per-file limit of ${maxBytes} bytes`,
       );
     }
-    return buffer;
+    return {
+      buffer,
+      identity: { dev: opened.dev, ino: opened.ino },
+    };
   } catch (error) {
     if (error.scanCode) throw error;
     const code = error.code === "ELOOP" ? "symlink_not_allowed" : "file_unreadable";
     throw filesystemError(code, `Could not safely read file: ${error.message}`);
   } finally {
     await handle?.close();
+  }
+}
+
+export async function readFileNoFollow(filePath, maxBytes) {
+  return (await readFileSnapshotNoFollow(filePath, maxBytes)).buffer;
+}
+
+async function captureFixBoundary(filePath, rootDir) {
+  const targetPath = path.resolve(filePath);
+  let rootPath = path.resolve(rootDir ?? path.dirname(targetPath));
+  let rootStat = await fs.lstat(rootPath);
+  if (rootStat.isFile()) {
+    rootPath = path.dirname(rootPath);
+    rootStat = await fs.lstat(rootPath);
+  }
+  const parentPath = path.dirname(targetPath);
+  const parentStat = await fs.lstat(parentPath);
+  const targetStat = await fs.lstat(targetPath);
+  if (rootStat.isSymbolicLink() || parentStat.isSymbolicLink() || targetStat.isSymbolicLink()) {
+    throw filesystemError(
+      "symlink_not_allowed",
+      `Fix boundary contains a symbolic link: ${targetPath}`,
+    );
+  }
+  const canonicalRoot = await fs.realpath(rootPath);
+  const canonicalParent = await fs.realpath(parentPath);
+  const canonicalTarget = await fs.realpath(targetPath);
+  if (
+    !isWithinPath(canonicalRoot, canonicalParent)
+    || !isWithinPath(canonicalRoot, canonicalTarget)
+  ) {
+    throw filesystemError("workspace_escape", `Refusing to write outside scan root: ${targetPath}`);
+  }
+  return {
+    rootPath,
+    rootIdentity: { dev: rootStat.dev, ino: rootStat.ino },
+    canonicalRoot,
+    parentPath,
+    parentIdentity: { dev: parentStat.dev, ino: parentStat.ino },
+    canonicalParent,
+    targetPath,
+    targetIdentity: { dev: targetStat.dev, ino: targetStat.ino },
+    canonicalTarget,
+    mode: targetStat.mode & 0o777,
+  };
+}
+
+async function verifyFixDirectories(boundary, phase) {
+  let rootStat;
+  let parentStat;
+  let resolvedRoot;
+  let resolvedParent;
+  try {
+    rootStat = await fs.lstat(boundary.rootPath);
+    parentStat = await fs.lstat(boundary.parentPath);
+    if (rootStat.isSymbolicLink() || parentStat.isSymbolicLink()) {
+      throw new Error("root or parent became a symlink");
+    }
+    resolvedRoot = await fs.realpath(boundary.rootPath);
+    resolvedParent = await fs.realpath(boundary.parentPath);
+  } catch (error) {
+    throw filesystemError(
+      "fix_boundary_changed",
+      `Fix boundary changed ${phase}: ${error.message}`,
+    );
+  }
+  if (
+    resolvedRoot !== boundary.canonicalRoot
+    || resolvedParent !== boundary.canonicalParent
+    || !sameIdentity(rootStat, boundary.rootIdentity)
+    || !sameIdentity(parentStat, boundary.parentIdentity)
+    || !isWithinPath(boundary.canonicalRoot, resolvedParent)
+  ) {
+    throw filesystemError("fix_boundary_changed", `Fix boundary changed ${phase}`);
+  }
+}
+
+async function verifyFixTarget(boundary, original, maxBytes, phase) {
+  await verifyFixDirectories(boundary, phase);
+  const targetStat = await fs.lstat(boundary.targetPath);
+  const resolvedTarget = await fs.realpath(boundary.targetPath);
+  if (
+    targetStat.isSymbolicLink()
+    || resolvedTarget !== boundary.canonicalTarget
+    || !sameIdentity(targetStat, boundary.targetIdentity)
+  ) {
+    throw filesystemError("file_changed_during_scan", `Target changed ${phase}`);
+  }
+  const snapshot = await readFileSnapshotNoFollow(boundary.targetPath, maxBytes);
+  if (
+    !sameIdentity(snapshot.identity, boundary.targetIdentity)
+    || !snapshot.buffer.equals(Buffer.from(original))
+  ) {
+    throw filesystemError("file_changed_during_scan", `Target content changed ${phase}`);
+  }
+}
+
+export async function writeFileNoFollow(
+  filePath,
+  original,
+  nextContent,
+  {
+    rootDir,
+    expectedIdentity,
+    maxBytes = DEFAULT_SCAN_LIMITS.maxFileBytes,
+    operations = {},
+  } = {},
+) {
+  // Node exposes no portable renameat/openat pair. Capturing immutable
+  // canonical paths plus directory/target identities and revalidating them
+  // around rename is the strongest portable fail-closed boundary available.
+  const boundary = await captureFixBoundary(filePath, rootDir);
+  await verifyFixTarget(boundary, original, maxBytes, "before temp creation");
+
+  const next = Buffer.from(nextContent);
+  if (next.byteLength > maxBytes) {
+    throw filesystemError(
+      "max_file_bytes_exceeded",
+      `Fixed file exceeds the per-file limit of ${maxBytes} bytes`,
+    );
+  }
+
+  const originalSnapshot = await readFileSnapshotNoFollow(boundary.targetPath, maxBytes);
+  if (
+    (expectedIdentity && !sameIdentity(originalSnapshot.identity, expectedIdentity))
+    || !sameIdentity(originalSnapshot.identity, boundary.targetIdentity)
+    || !originalSnapshot.buffer.equals(Buffer.from(original))
+  ) {
+    throw filesystemError(
+      "file_changed_during_scan",
+      `File changed during processing: ${filePath}`,
+    );
+  }
+
+  const tempPath = path.join(
+    boundary.parentPath,
+    `.${path.basename(boundary.targetPath)}.ui-craft-${randomBytes(8).toString("hex")}.tmp`,
+  );
+  const openFile = operations.open ?? fs.open.bind(fs);
+  const renameFile = operations.rename ?? fs.rename.bind(fs);
+  const unlinkFile = operations.unlink ?? fs.unlink.bind(fs);
+  const writeTemp = operations.writeTemp ?? (async (handle, buffer) => {
+    let offset = 0;
+    while (offset < buffer.byteLength) {
+      const { bytesWritten } = await handle.write(
+        buffer,
+        offset,
+        buffer.byteLength - offset,
+        offset,
+      );
+      if (bytesWritten === 0) {
+        throw filesystemError("file_unwritable", `Could not finish writing file: ${filePath}`);
+      }
+      offset += bytesWritten;
+    }
+  });
+
+  let tempHandle;
+  let renamed = false;
+  try {
+    tempHandle = await openFile(
+      tempPath,
+      fsConstants.O_WRONLY
+        | fsConstants.O_CREAT
+        | fsConstants.O_EXCL
+        | (fsConstants.O_NOFOLLOW ?? 0),
+      boundary.mode,
+    );
+    await tempHandle.chmod(boundary.mode);
+    await writeTemp(tempHandle, next);
+    await tempHandle.sync();
+    await tempHandle.close();
+    tempHandle = null;
+
+    await verifyFixDirectories(boundary, "after temp creation");
+    const tempStat = await fs.lstat(tempPath);
+    const tempCanonical = await fs.realpath(tempPath);
+    if (
+      tempStat.isSymbolicLink()
+      || path.dirname(tempCanonical) !== boundary.canonicalParent
+    ) {
+      throw filesystemError(
+        "fix_boundary_changed",
+        "Temporary replacement no longer belongs to the captured parent inode",
+      );
+    }
+    await operations.afterTempSync?.({ boundary, tempPath });
+    await verifyFixTarget(boundary, original, maxBytes, "immediately before rename");
+    await renameFile(tempPath, boundary.targetPath);
+    renamed = true;
+    await verifyFixDirectories(boundary, "after rename");
+  } catch (error) {
+    if (error.scanCode) throw error;
+    const code = error.code === "ELOOP" ? "symlink_not_allowed" : "file_unwritable";
+    throw filesystemError(code, `Could not safely write file: ${error.message}`);
+  } finally {
+    await tempHandle?.close().catch(() => {});
+    if (!renamed) {
+      try {
+        await verifyFixDirectories(boundary, "during temp cleanup");
+        await unlinkFile(tempPath);
+      } catch {
+        // Never traverse a boundary that changed; an orphan temp is safer than
+        // unlinking through a swapped parent path.
+      }
+    }
   }
 }
 

@@ -106,6 +106,20 @@ export function marketplaceListingIsValid(manifestListing, marketplace, plugin) 
   )
 }
 
+export function staleMcpCompatibilityPins(manifest) {
+  const expected = manifest.components.mcp.invocation
+  const prefix = `${manifest.components.mcp.package}@`
+  const stale = []
+  for (const entry of manifest.compatibility) {
+    for (const requirement of entry.requires) {
+      if (requirement.startsWith(prefix) && requirement !== expected) {
+        stale.push(`${entry.consumer}: ${requirement}`)
+      }
+    }
+  }
+  return stale
+}
+
 export function checkDistributionContract({ root = ROOT } = {}) {
   const failures = []
   const manifest = readJson(root, "distribution-manifest.json")
@@ -200,6 +214,11 @@ export function checkDistributionContract({ root = ROOT } = {}) {
     if (!declaredRequirements.has(contract)) {
       failures.push(`component contract is absent from compatibility matrix: ${contract}`)
     }
+  }
+  for (const stalePin of staleMcpCompatibilityPins(manifest)) {
+    failures.push(
+      `compatibility matrix has stale MCP pin (expected ${invocation}): ${stalePin}`,
+    )
   }
 
   return { failures, manifest }

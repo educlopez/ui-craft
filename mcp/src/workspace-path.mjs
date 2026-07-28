@@ -60,20 +60,32 @@ export function getWorkspaceRoot(explicitRoot, options = {}) {
     );
   }
 
+  const realpathImplementation = options.realpathFn ?? realpathSync;
   let canonicalRoot;
   try {
-    canonicalRoot = realpathSync(path.resolve(candidateRoot));
+    canonicalRoot = realpathImplementation(path.resolve(candidateRoot));
   } catch (error) {
     throw new WorkspacePathError(
       `Workspace root is not accessible: ${candidateRoot} — ${error?.message ?? String(error)}`,
-      'workspace_root_unreadable',
+      'path_unreadable',
     );
   }
 
   const filesystemRoot = path.parse(canonicalRoot).root;
-  const canonicalHome = realpathSync(homedir());
   const allowUnsafe = options.allowUnsafe === true
     || process.env.UI_CRAFT_ALLOW_UNSAFE_WORKSPACE_ROOT === '1';
+  let canonicalHome = null;
+  if (!allowUnsafe) {
+    try {
+      const homeDirectory = (options.homedirFn ?? homedir)();
+      canonicalHome = realpathImplementation(homeDirectory);
+    } catch (error) {
+      throw new WorkspacePathError(
+        `Could not verify the home-directory boundary: ${error?.message ?? String(error)}`,
+        'path_unreadable',
+      );
+    }
+  }
   if (!allowUnsafe && (canonicalRoot === filesystemRoot || canonicalRoot === canonicalHome)) {
     throw new WorkspacePathError(
       `Refusing unsafe workspace root "${canonicalRoot}". Choose a project directory. ` +
@@ -146,7 +158,15 @@ export async function inspectWorkspaceEntry(filePath, { workspaceRoot } = {}) {
       'symlink_not_allowed',
     );
   }
-  const canonicalPath = await realpath(filePath);
+  let canonicalPath;
+  try {
+    canonicalPath = await realpath(filePath);
+  } catch (error) {
+    throw new WorkspacePathError(
+      `Could not canonicalize path: ${filePath} — ${error?.message ?? String(error)}`,
+      'path_unreadable',
+    );
+  }
   if (!isWithinWorkspace(root, canonicalPath)) {
     throw new WorkspacePathError(
       `Path resolves outside workspace root: ${filePath}`,
@@ -156,7 +176,34 @@ export async function inspectWorkspaceEntry(filePath, { workspaceRoot } = {}) {
   return { path: canonicalPath, stat: entryStat, workspaceRoot: root };
 }
 
-export async function readWorkspaceFileNoFollow(filePath, { workspaceRoot, maxBytes } = {}) {
+async function readHandleBounded(handle, maxBytes) {
+  const buffer = Buffer.allocUnsafe(maxBytes);
+  let offset = 0;
+  while (offset < maxBytes) {
+    const { bytesRead } = await handle.read(
+      buffer,
+      offset,
+      Math.min(64 * 1024, maxBytes - offset),
+      offset,
+    );
+    if (bytesRead === 0) return buffer.subarray(0, offset);
+    offset += bytesRead;
+  }
+  const overflowProbe = Buffer.allocUnsafe(1);
+  const { bytesRead } = await handle.read(overflowProbe, 0, 1, offset);
+  if (bytesRead > 0) {
+    throw new WorkspacePathError(
+      `File exceeds the safe read limit of ${maxBytes} bytes`,
+      'max_file_bytes_exceeded',
+    );
+  }
+  return buffer;
+}
+
+export async function readWorkspaceFileNoFollow(
+  filePath,
+  { workspaceRoot, maxBytes, testHooks } = {},
+) {
   const inspected = await inspectWorkspaceEntry(filePath, { workspaceRoot });
   if (!inspected.stat.isFile()) {
     throw new WorkspacePathError(`Path is not a regular file: ${filePath}`, 'unsupported_path_type');
@@ -164,6 +211,12 @@ export async function readWorkspaceFileNoFollow(filePath, { workspaceRoot, maxBy
 
   let handle;
   try {
+    const safeMaxBytes =
+      Number.isSafeInteger(maxBytes) && maxBytes >= 0
+        ? maxBytes
+        : MCP_SCAN_LIMITS.maxFileBytes;
+    // O_NOFOLLOW may be unavailable on Windows. lstat plus the dev/ino
+    // post-open identity check is the fail-closed fallback on that platform.
     handle = await open(
       inspected.path,
       constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0),
@@ -179,19 +232,14 @@ export async function readWorkspaceFileNoFollow(filePath, { workspaceRoot, maxBy
         'file_changed_during_scan',
       );
     }
-    if (Number.isSafeInteger(maxBytes) && maxBytes >= 0 && openedStat.size > maxBytes) {
+    if (openedStat.size > safeMaxBytes) {
       throw new WorkspacePathError(
-        `File size ${openedStat.size} exceeds the safe read limit of ${maxBytes} bytes`,
+        `File size ${openedStat.size} exceeds the safe read limit of ${safeMaxBytes} bytes`,
         'max_file_bytes_exceeded',
       );
     }
-    const buffer = await handle.readFile();
-    if (Number.isSafeInteger(maxBytes) && maxBytes >= 0 && buffer.byteLength > maxBytes) {
-      throw new WorkspacePathError(
-        `File size ${buffer.byteLength} exceeds the safe read limit of ${maxBytes} bytes`,
-        'max_file_bytes_exceeded',
-      );
-    }
+    await testHooks?.afterOpen?.();
+    const buffer = await readHandleBounded(handle, safeMaxBytes);
     const finalStat = await handle.stat();
     if (finalStat.dev !== openedStat.dev || finalStat.ino !== openedStat.ino) {
       throw new WorkspacePathError(
@@ -217,15 +265,33 @@ export function pathErrorResult(error, requestedPath) {
     ? error.message
     : `Could not access path "${requestedPath}": ${error?.message ?? String(error)}`;
   const code = error instanceof WorkspacePathError ? error.code : 'path_unreadable';
-  return {
+  return failClosedResult({
     error: message,
+    path: requestedPath,
+    code,
+    message,
+  });
+}
+
+export function failClosedResult({
+  error,
+  path: requestedPath = '<input>',
+  code = 'scan_failed',
+  message = error,
+  filesDiscovered = 0,
+  filesOmitted = 1,
+  limits,
+} = {}) {
+  return {
+    error,
     scan_errors: [{ path: requestedPath, code, message }],
     coverage: {
       complete: false,
-      files_discovered: 0,
+      files_discovered: filesDiscovered,
       files_scanned: 0,
-      files_omitted: 1,
+      files_omitted: filesOmitted,
       bytes_scanned: 0,
+      ...(limits ? { limits } : {}),
     },
     scan_policy: {
       mode: 'fail-closed',

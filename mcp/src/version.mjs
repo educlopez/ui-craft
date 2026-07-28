@@ -1,5 +1,7 @@
 import { readFileSync } from 'node:fs';
 
-const packageJson = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+const sourceVersion = JSON.parse(
+  readFileSync(new URL('../package.json', import.meta.url), 'utf8'),
+).version;
 
-export const MCP_VERSION = packageJson.version;
+export const MCP_VERSION = sourceVersion;

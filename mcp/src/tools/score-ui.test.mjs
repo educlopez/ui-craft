@@ -206,3 +206,16 @@ test('score_ui: rejects oversized files without reading them as clean', async ()
     fs.rmSync(workspace, { recursive: true, force: true });
   }
 });
+
+test('score_ui: every error uses the uniform fail-closed envelope', async () => {
+  for (const result of [
+    await scoreUiTool({}),
+    await scoreUiTool({ path: '/nonexistent/score-ui.tsx' }),
+  ]) {
+    assert.ok(result.error);
+    assert.equal(result.coverage.complete, false);
+    assert.equal(result.scan_policy.mode, 'fail-closed');
+    assert.ok(Array.isArray(result.scan_errors));
+    assert.equal(result.scan_errors.length, 1);
+  }
+});

@@ -5,6 +5,7 @@ import {
   checkDistributionContract,
   marketplaceListingIsValid,
   parseLauncher,
+  staleMcpCompatibilityPins,
   validateSchema,
 } from "./check-distribution-contract.mjs"
 
@@ -94,6 +95,15 @@ test("MCP invocation is immutable semver", () => {
     manifest.components.mcp.invocation,
     /^ui-craft-mcp@\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/,
   )
+})
+
+test("compatibility matrix rejects MCP pins stale against components.mcp.invocation", () => {
+  const { manifest } = checkDistributionContract()
+  const stale = structuredClone(manifest)
+  stale.compatibility[0].requires.push("ui-craft-mcp@0.2.0")
+  assert.deepEqual(staleMcpCompatibilityPins(stale), [
+    `${stale.compatibility[0].consumer}: ui-craft-mcp@0.2.0`,
+  ])
 })
 
 test("marketplace CalVer may change without drifting the distribution manifest", () => {

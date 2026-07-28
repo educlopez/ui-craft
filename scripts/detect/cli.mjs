@@ -8,7 +8,19 @@ import path from "node:path";
 
 import { VERSION, SCAN_EXTENSIONS, red, yellow, dim, bold, SCOPE_VALUES, FAIL_ON_VALUES } from "./constants.mjs";
 import { rules } from "./rules.mjs";
-import { scan, scanFile, loadConfig, isIgnoredByConfig, walk, applyFix, makeDiff, toSarif } from "./engine.mjs";
+import {
+  scan,
+  scanFile,
+  loadConfig,
+  isIgnoredByConfig,
+  walk,
+  applyFix,
+  makeDiff,
+  toSarif,
+  readFileSnapshotNoFollow,
+  writeFileNoFollow,
+  DEFAULT_SCAN_LIMITS,
+} from "./engine.mjs";
 import { scanUrl, URL_RE } from "./url.mjs";
 import {
   resolveBaseRef,
@@ -270,44 +282,56 @@ export async function main() {
 
     for (const f of files) {
       let original;
+      let originalIdentity;
       try {
-        original = await fs.readFile(f, "utf8");
+        const snapshot = await readFileSnapshotNoFollow(
+          f,
+          DEFAULT_SCAN_LIMITS.maxFileBytes,
+        );
+        original = snapshot.buffer.toString("utf8");
+        originalIdentity = snapshot.identity;
       } catch (error) {
         discoveryErrors.push({
           path: f,
-          code: "file_unreadable",
+          code: error.scanCode ?? "file_unreadable",
           message: `Could not read file: ${error.message}`,
         });
         continue;
       }
       const findingsBefore = scanFile(f, original, config);
-      totalFindingsBefore += findingsBefore.length;
       const { content: nextContent, fixedByRule } = applyFix(original);
       const totalFixedHere = [...fixedByRule.values()].reduce((a, b) => a + b, 0);
       const findingsAfter = scanFile(f, nextContent, config);
       const nonFixable = findingsAfter.length;
-      totalFixed += totalFixedHere;
-      totalNonFixable += nonFixable;
 
-      if (totalFixedHere === 0 && nextContent === original) continue;
+      if (totalFixedHere === 0 && nextContent === original) {
+        totalFindingsBefore += findingsBefore.length;
+        totalNonFixable += nonFixable;
+        continue;
+      }
 
       if (flags.fixDryRun) {
         const rel = path.relative(process.cwd(), f);
         process.stdout.write(`\n${bold("--- " + rel)}\n${makeDiff(original, nextContent)}\n`);
       } else {
-        // Atomic-ish: re-read just before write to detect concurrent edits.
         try {
-          const recheck = await fs.readFile(f, "utf8");
-          if (recheck !== original) {
-            process.stderr.write(`warning: ${f} changed during processing; skipped\n`);
-            continue;
-          }
-          await fs.writeFile(f, nextContent, "utf8");
+          await writeFileNoFollow(f, original, nextContent, {
+            rootDir: target,
+            expectedIdentity: originalIdentity,
+            maxBytes: DEFAULT_SCAN_LIMITS.maxFileBytes,
+          });
         } catch (err) {
-          process.stderr.write(`warning: could not write ${f}: ${err.message}\n`);
+          discoveryErrors.push({
+            path: f,
+            code: err.scanCode ?? "file_unwritable",
+            message: err.message,
+          });
           continue;
         }
       }
+      totalFindingsBefore += findingsBefore.length;
+      totalFixed += totalFixedHere;
+      totalNonFixable += nonFixable;
       perFile.push({
         file: f,
         fixed: totalFixedHere,

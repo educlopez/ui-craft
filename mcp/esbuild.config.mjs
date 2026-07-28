@@ -15,8 +15,10 @@
 import { build } from 'esbuild';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { readFileSync } from 'node:fs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+const packageJson = JSON.parse(readFileSync(join(__dirname, 'package.json'), 'utf8'));
 
 await build({
   entryPoints: [join(__dirname, 'src', 'server.mjs')],
@@ -28,9 +30,20 @@ await build({
   // Keep the declared runtime deps external; inline all first-party source
   // (detect.mjs, score.mjs, tokens-rules.mjs, a11y-static.mjs, acceptance-data.mjs).
   external: ['@modelcontextprotocol/sdk', 'zod'],
+  plugins: [{
+    name: 'inject-mcp-version',
+    setup(buildContext) {
+      buildContext.onLoad({ filter: /src\/version\.mjs$/ }, () => ({
+        contents: `export const MCP_VERSION = ${JSON.stringify(packageJson.version)};`,
+        loader: 'js',
+      }));
+    },
+  }],
   // Dead-code the inlined CLI entry guards (detect.mjs runs main()+process.exit
   // when its import.meta.url matches argv[1] — true once bundled into the server).
-  define: { 'process.env.UI_CRAFT_BUNDLE': '"1"' },
+  define: {
+    'process.env.UI_CRAFT_BUNDLE': '"1"',
+  },
   // server.mjs already begins with a shebang; esbuild preserves the entry
   // shebang, so the bundled bin stays directly executable.
   legalComments: 'none',
