@@ -562,17 +562,40 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 	}
 
 	// -----------------------------------------------------------------------
-	// (d) Skill layer: per detected harness, verify each installed skill
+	// (d) Skill layer: verify each installed skill
 	//     (SKILL.md under <ConfigRoot>/skills/<skill-id>/) is present,
 	//     readable, well-formed, non-stale, and — for Codex only — that
 	//     AGENTS.md carries a well-formed managed block. Read-only; no
-	//     auto-repair. Harnesses not present in detectedNames get zero
-	//     skill-layer check entries (matches (b)/(c)'s existing skip
-	//     behavior for undetected harnesses).
+	//     auto-repair. Persisted state is authoritative when present. For
+	//     legacy installs without state, only detected harnesses whose skills
+	//     directory actually exists are checked.
 	// -----------------------------------------------------------------------
+	skillCheckHarnesses := make(map[string]bool)
+	if len(state.Harnesses) > 0 {
+		for _, hs := range state.Harnesses {
+			if detectedNames[hs.Name] {
+				skillCheckHarnesses[hs.Name] = true
+			}
+		}
+	} else {
+		for _, h := range harness.All() {
+			name := h.Name()
+			if !detectedNames[name] {
+				continue
+			}
+			skillsDir := h.ConfigPaths().SkillsDir
+			if skillsDir == "" {
+				continue
+			}
+			if _, err := fs.Stat(skillsDir); err == nil {
+				skillCheckHarnesses[name] = true
+			}
+		}
+	}
+
 	for _, h := range harness.All() {
 		name := h.Name()
-		if !detectedNames[name] {
+		if !skillCheckHarnesses[name] {
 			continue
 		}
 
