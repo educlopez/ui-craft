@@ -9,14 +9,20 @@ import { writeFileSync, unlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, basename, resolve } from 'node:path';
 import { randomBytes } from 'node:crypto';
+import {
+  MCP_SCAN_LIMITS,
+  pathErrorResult,
+  resolveWorkspacePath,
+} from '../workspace-path.mjs';
 
 /**
  * Run the anti-slop scanner on code (string) or path.
  *
  * @param {{ code?: string, path?: string }} input
+ * @param {{ workspaceRoot?: string, limits?: object }} options
  * @returns {{ findings: Array, summary: { total: number, errors: number, warnings: number } }}
  */
-export async function checkAntiSlop({ code, path } = {}) {
+export async function checkAntiSlop({ code, path } = {}, options = {}) {
   // Fix 4: use `=== undefined` so empty string code: '' is treated as valid input (0 findings)
   if (code === undefined && !path) {
     return {
@@ -44,12 +50,22 @@ export async function checkAntiSlop({ code, path } = {}) {
     }
     target = tempFile;
   } else {
-    target = path;
+    try {
+      const resolved = await resolveWorkspacePath(path, { workspaceRoot: options.workspaceRoot });
+      target = resolved.path;
+    } catch (error) {
+      const failure = pathErrorResult(error, path);
+      return {
+        ...failure,
+        findings: [],
+        summary: { total: 0, errors: 0, warnings: 0, files_scanned: 0, files_omitted: 1 },
+      };
+    }
   }
 
   let result;
   try {
-    result = await scan(target);
+    result = await scan(target, { limits: { ...MCP_SCAN_LIMITS, ...options.limits } });
   } catch (e) {
     // Fix 10: removed dead unlinkSync here — finally block below always cleans up
     // Fix 9: use e?.message ?? e for non-Error safety
@@ -94,9 +110,20 @@ export async function checkAntiSlop({ code, path } = {}) {
   const errors = findings.filter((f) => f.severity === 'error').length;
   const warnings = findings.filter((f) => f.severity === 'warning').length;
 
-  return {
+  const output = {
     version: result.version,
     findings,
-    summary: { total: findings.length, errors, warnings },
+    summary: {
+      total: findings.length,
+      errors,
+      warnings,
+      files_scanned: result.coverage?.files_scanned ?? 0,
+      files_omitted: result.coverage?.files_omitted ?? 0,
+    },
+    coverage: result.coverage,
+    scan_errors: result.scan_errors ?? [],
+    scan_policy: result.scan_policy,
   };
+  if (result.error) output.error = result.error;
+  return output;
 }

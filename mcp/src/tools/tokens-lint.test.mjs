@@ -5,6 +5,9 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { tokensLint } from './tokens-lint.mjs';
 
 // Code with off-system color and radius
@@ -173,4 +176,97 @@ test('tokens_lint: code: "" (empty string) → 0 findings, no error (fix 4)', as
   assert.ok(Array.isArray(result.findings), 'findings should be array');
   assert.equal(result.findings.length, 0, `Expected 0 findings for empty input`);
   assert.equal(result.summary.total, 0);
+});
+
+test('tokens_lint: rejects .. paths outside the configured workspace', async () => {
+  const parent = fs.mkdtempSync(path.join(os.tmpdir(), 'tokens-workspace-'));
+  const workspace = path.join(parent, 'workspace');
+  const outside = path.join(parent, 'outside.css');
+  fs.mkdirSync(workspace);
+  fs.writeFileSync(outside, '.card { color: #ff0000; }');
+  try {
+    const result = await tokensLint(
+      { path: '../outside.css' },
+      { workspaceRoot: workspace },
+    );
+    assert.equal(result.coverage.complete, false);
+    assert.equal(result.scan_errors[0].code, 'workspace_escape');
+    assert.match(result.error, /escapes workspace root/);
+  } finally {
+    fs.rmSync(parent, { recursive: true, force: true });
+  }
+});
+
+test('tokens_lint: rejects a symlink that resolves outside the workspace', async () => {
+  const parent = fs.mkdtempSync(path.join(os.tmpdir(), 'tokens-symlink-'));
+  const workspace = path.join(parent, 'workspace');
+  const outside = path.join(parent, 'outside.css');
+  fs.mkdirSync(workspace);
+  fs.writeFileSync(outside, '.card { color: #ff0000; }');
+  fs.symlinkSync(outside, path.join(workspace, 'escape.css'));
+  try {
+    const result = await tokensLint(
+      { path: 'escape.css' },
+      { workspaceRoot: workspace },
+    );
+    assert.equal(result.coverage.complete, false);
+    assert.equal(result.scan_errors[0].code, 'symlink_escape');
+  } finally {
+    fs.rmSync(parent, { recursive: true, force: true });
+  }
+});
+
+test('tokens_lint: reports bounded-scan omissions instead of returning clean', async () => {
+  const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'tokens-limits-'));
+  fs.writeFileSync(path.join(workspace, 'large.css'), '.card { color: var(--text); }');
+  try {
+    const result = await tokensLint(
+      { path: '.' },
+      { workspaceRoot: workspace, limits: { maxFileBytes: 4 } },
+    );
+    assert.ok(result.error);
+    assert.equal(result.findings.length, 0);
+    assert.equal(result.coverage.complete, false);
+    assert.equal(result.coverage.files_scanned, 0);
+    assert.equal(result.coverage.files_omitted, 1);
+    assert.equal(result.scan_errors[0].code, 'max_file_bytes_exceeded');
+  } finally {
+    fs.rmSync(workspace, { recursive: true, force: true });
+  }
+});
+
+test('tokens_lint: explicit unsupported file type is incomplete, never clean', async () => {
+  const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'tokens-unsupported-'));
+  fs.writeFileSync(path.join(workspace, 'design.png'), 'not really an image');
+  try {
+    const result = await tokensLint(
+      { path: 'design.png' },
+      { workspaceRoot: workspace },
+    );
+    assert.ok(result.error);
+    assert.equal(result.coverage.complete, false);
+    assert.equal(result.coverage.files_scanned, 0);
+    assert.equal(result.coverage.files_omitted, 1);
+    assert.equal(result.scan_errors[0].code, 'unsupported_file_type');
+  } finally {
+    fs.rmSync(workspace, { recursive: true, force: true });
+  }
+});
+
+test('tokens_lint: directory traversal never follows symlinks', async () => {
+  const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'tokens-no-follow-'));
+  fs.writeFileSync(path.join(workspace, 'target.css'), '.card { color: #ff0000; }');
+  fs.symlinkSync(path.join(workspace, 'target.css'), path.join(workspace, 'link.css'));
+  try {
+    const result = await tokensLint({ path: '.' }, { workspaceRoot: workspace });
+    assert.ok(result.error);
+    assert.equal(result.coverage.complete, false);
+    assert.ok(result.scan_errors.some((error) => error.code === 'symlink_not_allowed'));
+    assert.equal(
+      result.findings.filter((finding) => finding.file.endsWith('target.css')).length > 0,
+      true,
+    );
+  } finally {
+    fs.rmSync(workspace, { recursive: true, force: true });
+  }
 });

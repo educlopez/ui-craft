@@ -1,0 +1,81 @@
+{
+  "$schema": "./schemas/distribution-manifest.schema.json",
+  "schemaVersion": 1,
+  "updated": "2026-07-28",
+  "components": {
+    "detector": {
+      "package": "ui-craft-detect",
+      "version": "0.13.0",
+      "runtime": "node>=18",
+      "contract": "detector-findings-v1"
+    },
+    "mcp": {
+      "package": "ui-craft-mcp",
+      "version": "0.3.0",
+      "invocation": "ui-craft-mcp@0.3.0",
+      "runtime": "node>=18",
+      "contract": "mcp-tools-v1"
+    },
+    "cli": {
+      "binary": "ui-craft",
+      "compatibleReleaseLine": "1.x",
+      "runtime": "go>=1.23",
+      "contract": "harness-assets-v1"
+    },
+    "claudePlugin": {
+      "name": "ui-craft",
+      "version": "1.0.0",
+      "contract": "harness-assets-v1"
+    },
+    "marketplaceListing": {
+      "name": "ui-craft"
+    }
+  },
+  "compatibility": [
+    {
+      "consumer": "ui-craft CLI 1.x",
+      "requires": [
+        "harness-assets-v1",
+        "ui-craft-mcp@0.3.0"
+      ]
+    },
+    {
+      "consumer": "Claude plugin 1.0.0",
+      "requires": [
+        "harness-assets-v1",
+        "ui-craft-mcp@0.3.0"
+      ]
+    },
+    {
+      "consumer": "ui-craft-mcp 0.3.0",
+      "requires": [
+        "detector-findings-v1",
+        "mcp-tools-v1"
+      ]
+    }
+  ],
+  "pinnedLaunchers": [
+    {
+      "path": ".mcp.json",
+      "format": "mcp-json",
+      "server": "ui-craft"
+    },
+    {
+      "path": ".mcp.json.example",
+      "format": "mcp-json",
+      "server": "ui-craft"
+    },
+    {
+      "path": "cli/core/plan.go",
+      "format": "go-mcp-server",
+      "symbol": "mcpServer"
+    }
+  ],
+  "canonicalSources": {
+    "skills": "skills/",
+    "commands": "commands/",
+    "agents": "agents/",
+    "detector": "scripts/detect/",
+    "mcp": "mcp/src/"
+  }
+}

@@ -57,8 +57,8 @@ ui-craft rollback cursor                  # restore latest backup for a harness
 ui-craft update cursor                    # re-apply all installed components for cursor
 ui-craft update cursor --component mcp-gates  # update one component
 ui-craft self-update                      # upgrade binary to latest GitHub release
-ui-craft version                          # print binary + mirror version
-ui-craft version --json                   # emit version+mirror as JSON
+ui-craft version                          # print the build-time binary version
+ui-craft version --json                   # emit {"version":"…"} as JSON
 ui-craft version --check-parity          # verify Claude Code install matches expected surface
 ui-craft doctor                           # health check
 ui-craft doctor --json                    # health check as JSON (ok bool + checks array)
@@ -74,7 +74,7 @@ update cursor                   → re-applies all components recorded in state 
 update cursor --component mcp-gates  → re-applies only mcp-gates for cursor
 ```
 
-If `state.json` is missing or malformed, `update` reports "nothing installed yet — run install first" and exits 0. It never crashes on a missing or corrupt state file.
+If `state.json` is missing, `update` reports "nothing installed yet — run install first" and exits 0. A malformed or unreadable state file is reported as an error rather than silently treated as an empty install.
 
 User edits outside managed blocks are always preserved across updates. The managed-block and JSON-merge writers guarantee that only the ui-craft block is replaced; user content before and after the block is never touched.
 
@@ -108,14 +108,19 @@ The native plugin install and the CLI install are both valid alternative install
 
 ## Versioning
 
-The binary version matches the repo version that generated its embedded harness mirrors. This is the single coordinated version documented in `VERSIONS.md` (ADR-6): one semver tag, three release artifacts — Claude Code plugin, `ui-craft-mcp` npm package, and this binary.
+The binary version is injected at build time. The `version` command intentionally has no separate mirror version: committed assets are checked for drift before release instead.
 
 ```
 ui-craft version
-# ui-craft v0.35.0 (mirror: v0.35.0)
+# ui-craft v1.0.6
+
+ui-craft version --json
+# {
+#   "version": "v1.0.6"
+# }
 ```
 
-Both `version` and `mirror` should match on an official release. If they differ, the binary was built with stale mirrors — run `make gen-mirrors` before rebuilding.
+`--check-parity` is an installation health check, not a version comparison. Release and component compatibility are declared in [`distribution-manifest.json`](../distribution-manifest.json) and enforced by `pnpm verify`.
 
 ## Shell completions
 
@@ -223,4 +228,4 @@ Edit these files freely. The skill reads them as plain markdown — no memory pr
 
 ## Architecture
 
-The binary is an installer only — no AI logic runs in Go. It embeds hand-authored per-harness assets (`go:embed` from `cli/assets/<harness>/`). All design rules stay in JS, served via `npx ui-craft-mcp` (wired into each harness's MCP config on install). See `cli/assets/embed.go` and [CONTRIBUTING.md](../CONTRIBUTING.md) for the asset-tree layout.
+The binary is an installer only — no AI logic runs in Go. It embeds hand-authored per-harness assets (`go:embed` from `cli/assets/<harness>/`). All design rules stay in JS, served via the exact MCP package version declared in [`distribution-manifest.json`](../distribution-manifest.json) (currently `npx -y ui-craft-mcp@0.3.0`, wired into each harness's MCP config on install). See `cli/assets/embed.go` and [CONTRIBUTING.md](../CONTRIBUTING.md) for the asset-tree layout.

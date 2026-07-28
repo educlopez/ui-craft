@@ -26,11 +26,12 @@ import { checkAntiSlop } from './tools/check-anti-slop.mjs';
 import { tokensLint } from './tools/tokens-lint.mjs';
 import { acceptanceBar } from './tools/acceptance-bar.mjs';
 import { scoreUiTool } from './tools/score-ui.mjs';
+import { MCP_VERSION } from './version.mjs';
 
 const server = new McpServer(
   {
     name: 'ui-craft',
-    version: '0.1.0',
+    version: MCP_VERSION,
   },
   {
     capabilities: {

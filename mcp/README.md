@@ -5,9 +5,9 @@ Deterministic design-quality gate exposed as a stdio MCP server. Complements the
 ## Install
 
 ```bash
-npm install -g ui-craft-mcp
+npm install -g ui-craft-mcp@0.3.0
 # or use npx (no install required):
-npx ui-craft-mcp
+npx -y ui-craft-mcp@0.3.0
 ```
 
 ## Wiring
@@ -19,7 +19,7 @@ Copy `.mcp.json.example` from the repo root to `.mcp.json` in your project:
   "mcpServers": {
     "ui-craft": {
       "command": "npx",
-      "args": ["ui-craft-mcp"]
+      "args": ["-y", "ui-craft-mcp@0.3.0"]
     }
   }
 }
@@ -31,7 +31,7 @@ Claude Desktop, Cursor, and other MCP clients read `.mcp.json` automatically.
 
 ### `check_anti_slop`
 
-Scans source code for anti-slop violations using the 38 deterministic rules from `ui-craft-detect`. In-process (no subprocess spawn).
+Scans source code for anti-slop violations using the 43 deterministic rules from `ui-craft-detect`. In-process (no subprocess spawn).
 
 **Input** (one required):
 - `code` — inline source string

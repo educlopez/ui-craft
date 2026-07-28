@@ -23,6 +23,11 @@ import {
   replaceMarkers,
   DEFAULT_GHA_CONFIG,
 } from "./detect.mjs";
+import {
+  readFileNoFollow,
+  readFileSnapshotNoFollow,
+  writeFileNoFollow,
+} from "./detect/engine.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DETECT_MJS = path.join(__dirname, "detect.mjs");
@@ -691,6 +696,201 @@ test("scan() on nonexistent path returns structured error without throwing", asy
   assert.ok(result.error, "result must have an error field");
   assert.equal(result.findings.length, 0, "findings must be empty on error");
   assert.equal(result.summary.files_scanned, 0, "files_scanned must be 0 on error");
+  assert.equal(result.coverage.complete, false, "coverage must be incomplete on error");
+  assert.equal(result.scan_errors[0].code, "path_unreadable");
+});
+
+test("scan() reports limit omissions and never labels an incomplete scan clean", async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "detect-limits-"));
+  try {
+    fs.writeFileSync(path.join(dir, "clean.tsx"), `export const Clean = () => <main />;\n`);
+    const result = await scan(dir, { limits: { maxFileBytes: 4 } });
+    assert.ok(result.error, "incomplete scan must expose an error");
+    assert.equal(result.findings.length, 0);
+    assert.equal(result.coverage.complete, false);
+    assert.equal(result.summary.files_scanned, 0);
+    assert.equal(result.summary.files_omitted, 1);
+    assert.equal(result.scan_errors[0].code, "max_file_bytes_exceeded");
+    assert.equal(result.scan_policy.mode, "fail-closed");
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("scan() never follows symlinks discovered during directory traversal", async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "detect-symlink-"));
+  try {
+    fs.writeFileSync(path.join(dir, "target.tsx"), `export const Clean = () => <main />;\n`);
+    fs.symlinkSync(path.join(dir, "target.tsx"), path.join(dir, "link.tsx"));
+    const result = await scan(dir);
+    assert.equal(result.coverage.complete, false);
+    assert.equal(result.summary.files_scanned, 1);
+    assert.ok(result.scan_errors.some((error) => error.code === "symlink_not_allowed"));
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("readFileNoFollow enforces the byte ceiling while reading", async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "detect-bounded-read-"));
+  const file = path.join(dir, "input.tsx");
+  try {
+    fs.writeFileSync(file, "12345678");
+    assert.equal((await readFileNoFollow(file, 8)).toString(), "12345678");
+    await assert.rejects(
+      readFileNoFollow(file, 7),
+      (error) => error.scanCode === "max_file_bytes_exceeded",
+    );
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("CLI --fix refuses to read or write through a symlink", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "detect-fix-symlink-"));
+  const target = path.join(dir, "target.css");
+  const link = path.join(dir, "link.css");
+  const original = ".card { transition: all 200ms ease; }\n";
+  try {
+    fs.writeFileSync(target, original);
+    fs.symlinkSync(target, link);
+    const result = runDetectCli([link, "--fix"]);
+    assert.equal(result.exitCode, 2);
+    assert.match(result.stderr, /symlink/i);
+    assert.equal(fs.readFileSync(target, "utf8"), original);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("secure fix write rejects inode replacement after the read snapshot", async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "detect-fix-inode-"));
+  const file = path.join(dir, "input.css");
+  try {
+    fs.writeFileSync(file, "original");
+    const snapshot = await readFileSnapshotNoFollow(file, 64);
+    fs.writeFileSync(path.join(dir, "replacement.css"), "original");
+    fs.renameSync(path.join(dir, "replacement.css"), file);
+    await assert.rejects(
+      writeFileNoFollow(file, "original", "fixed", {
+        rootDir: dir,
+        expectedIdentity: snapshot.identity,
+        maxBytes: 64,
+      }),
+      (error) => error.scanCode === "file_changed_during_scan",
+    );
+    assert.equal(fs.readFileSync(file, "utf8"), "original");
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("secure fix write failures keep the original and clean sibling temps", async () => {
+  for (const failure of ["write", "rename"]) {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), `detect-fix-${failure}-`));
+    const file = path.join(dir, "input.css");
+    try {
+      fs.writeFileSync(file, "original", { mode: 0o640 });
+      const snapshot = await readFileSnapshotNoFollow(file, 64);
+      const operations = failure === "write"
+        ? { writeTemp: async () => { throw new Error("simulated write failure"); } }
+        : { rename: async () => { throw new Error("simulated rename failure"); } };
+      await assert.rejects(
+        writeFileNoFollow(file, "original", "fixed", {
+          rootDir: dir,
+          expectedIdentity: snapshot.identity,
+          maxBytes: 64,
+          operations,
+        }),
+        /simulated/,
+      );
+      assert.equal(fs.readFileSync(file, "utf8"), "original");
+      assert.equal(
+        fs.readdirSync(dir).some((name) => name.includes(".ui-craft-")),
+        false,
+      );
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  }
+});
+
+test("secure fix replacement preserves the original file mode", async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "detect-fix-mode-"));
+  const file = path.join(dir, "input.css");
+  try {
+    fs.writeFileSync(file, "original", { mode: 0o640 });
+    const snapshot = await readFileSnapshotNoFollow(file, 64);
+    await writeFileNoFollow(file, "original", "fixed", {
+      rootDir: dir,
+      expectedIdentity: snapshot.identity,
+      maxBytes: 64,
+    });
+    assert.equal(fs.readFileSync(file, "utf8"), "fixed");
+    assert.equal(fs.statSync(file).mode & 0o777, 0o640);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("CLI --fix does not count fixes when replacement creation fails", () => {
+  if (process.platform === "win32") return;
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "detect-fix-summary-"));
+  const file = path.join(dir, "input.css");
+  const original = ".card { transition: all 200ms ease; }\n";
+  try {
+    fs.writeFileSync(file, original);
+    fs.chmodSync(dir, 0o555);
+    const result = runDetectCli([file, "--fix"]);
+    assert.equal(result.exitCode, 2);
+    assert.match(result.stdout, /Auto-fixed: 0/);
+    assert.equal(fs.readFileSync(file, "utf8"), original);
+  } finally {
+    fs.chmodSync(dir, 0o755);
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("secure fix rejects root and parent path swaps without writing outside", async () => {
+  if (process.platform === "win32") return;
+  for (const swapped of ["root", "parent"]) {
+    const base = fs.mkdtempSync(path.join(os.tmpdir(), `detect-boundary-${swapped}-`));
+    const root = path.join(base, "root");
+    const parent = path.join(root, "parent");
+    const outsideRoot = path.join(base, "outside");
+    const outsideParent = path.join(outsideRoot, "parent");
+    fs.mkdirSync(parent, { recursive: true });
+    fs.mkdirSync(outsideParent, { recursive: true });
+    const file = path.join(parent, "input.css");
+    const outsideFile = path.join(outsideParent, "input.css");
+    fs.writeFileSync(file, "original");
+    fs.writeFileSync(outsideFile, "outside");
+    try {
+      const snapshot = await readFileSnapshotNoFollow(file, 64);
+      await assert.rejects(
+        writeFileNoFollow(file, "original", "fixed", {
+          rootDir: root,
+          expectedIdentity: snapshot.identity,
+          maxBytes: 64,
+          operations: {
+            afterTempSync: async () => {
+              if (swapped === "root") {
+                fs.renameSync(root, path.join(base, "moved-root"));
+                fs.symlinkSync(outsideRoot, root);
+              } else {
+                fs.renameSync(parent, path.join(root, "moved-parent"));
+                fs.symlinkSync(outsideParent, parent);
+              }
+            },
+          },
+        }),
+        (error) => error.scanCode === "fix_boundary_changed",
+      );
+      assert.equal(fs.readFileSync(outsideFile, "utf8"), "outside");
+    } finally {
+      fs.rmSync(base, { recursive: true, force: true });
+    }
+  }
 });
 
 // ---------------------------------------------------------------------------

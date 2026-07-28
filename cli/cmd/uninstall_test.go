@@ -39,7 +39,7 @@ func TestUninstall_preservesOpenCodeUserServer(t *testing.T) {
     },
     "ui-craft": {
       "type": "local",
-      "command": ["npx", "-y", "ui-craft-mcp"]
+      "command": ["npx", "-y", "ui-craft-mcp@0.3.0"]
     }
   }
 }
@@ -76,7 +76,7 @@ func TestUninstall_preservesUserMCPServer(t *testing.T) {
     },
     "ui-craft": {
       "command": "npx",
-      "args": ["-y", "ui-craft-mcp"]
+      "args": ["-y", "ui-craft-mcp@0.3.0"]
     }
   }
 }
