@@ -3,6 +3,7 @@ import test from "node:test"
 
 import {
   checkDistributionContract,
+  marketplaceListingIsValid,
   parseLauncher,
   validateSchema,
 } from "./check-distribution-contract.mjs"
@@ -92,5 +93,30 @@ test("MCP invocation is immutable semver", () => {
   assert.match(
     manifest.components.mcp.invocation,
     /^ui-craft-mcp@\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/,
+  )
+})
+
+test("marketplace CalVer may change without drifting the distribution manifest", () => {
+  const manifestListing = { name: "ui-craft" }
+  const plugin = { name: "ui-craft" }
+
+  for (const version of ["2026.7.28.1026", "2026.7.28.2359"]) {
+    assert.equal(
+      marketplaceListingIsValid(
+        manifestListing,
+        { plugins: [{ name: "ui-craft", version }] },
+        plugin,
+      ),
+      true,
+    )
+  }
+
+  assert.equal(
+    marketplaceListingIsValid(
+      manifestListing,
+      { plugins: [{ name: "ui-craft", version: "latest" }] },
+      plugin,
+    ),
+    false,
   )
 })

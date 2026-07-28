@@ -95,6 +95,17 @@ export function parseLauncher(launcher, content) {
   throw new Error(`unsupported launcher format ${launcher.format}`)
 }
 
+export function marketplaceListingIsValid(manifestListing, marketplace, plugin) {
+  const listing = marketplace.plugins?.find((item) => item.name === plugin.name)
+  return (
+    manifestListing.name === plugin.name &&
+    listing?.name === plugin.name &&
+    /^\d{4}\.(?:[1-9]|1[0-2])\.(?:[1-9]|[12]\d|3[01])\.(?:[01]\d|2[0-3])[0-5]\d$/.test(
+      listing.version,
+    )
+  )
+}
+
 export function checkDistributionContract({ root = ROOT } = {}) {
   const failures = []
   const manifest = readJson(root, "distribution-manifest.json")
@@ -131,10 +142,12 @@ export function checkDistributionContract({ root = ROOT } = {}) {
         manifest.components.claudePlugin.version === plugin.version,
     ],
     [
-      "marketplace listing version matches",
-      manifest.components.marketplaceListing.name === plugin.name &&
-        manifest.components.marketplaceListing.version ===
-          marketplace.plugins?.find((item) => item.name === plugin.name)?.version,
+      "marketplace listing metadata is valid",
+      marketplaceListingIsValid(
+        manifest.components.marketplaceListing,
+        marketplace,
+        plugin,
+      ),
     ],
   ]
   for (const [label, ok] of checks) {

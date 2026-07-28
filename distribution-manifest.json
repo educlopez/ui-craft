@@ -28,8 +28,7 @@
       "contract": "harness-assets-v1"
     },
     "marketplaceListing": {
-      "name": "ui-craft",
-      "version": "2026.7.27.1751"
+      "name": "ui-craft"
     }
   },
   "compatibility": [
