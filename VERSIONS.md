@@ -6,6 +6,14 @@ The historical entries below describe several independently versioned artifacts.
 
 GitHub CLI archives include GoReleaser SHA-256 checksums and GitHub build-provenance attestations. The MCP publish workflow uses npm trusted publishing plus `--provenance`; the npm package must have this repository/workflow configured as a trusted publisher before dispatch. No long-lived npm token is assumed.
 
+## v1.0.8 (2026-07-28) — Reliable JSON installs and state-aware Doctor checks
+
+Persists installer state before returning from `install --yes --json`, so subsequent `update`, `uninstall`, and `doctor` commands see the installation just completed. State-write failures remain non-fatal, are reported on stderr, and never corrupt the JSON response on stdout.
+
+Doctor now scopes skill checks to harnesses recorded in state with the `skill+commands` component. Legacy installations without state still fall back to harnesses whose skills directory exists, while MCP-only installs no longer produce false missing-skill failures.
+
+Release smoke validation now honors the explicit workflow-dispatch tag and fails hard when the expected archive is unavailable, so a green smoke test reliably proves it exercised the intended release asset.
+
 ## v1.0.7 (2026-07-28) — Hardened scanners and explicit release contracts
 
 Pins every generated and documented MCP launcher to the published `ui-craft-mcp@0.3.0` package and aligns the CLI with the machine-readable distribution contract introduced in #90.
