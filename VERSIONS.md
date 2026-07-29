@@ -2,9 +2,19 @@
 
 ## Current distribution contract
 
-The historical entries below describe several independently versioned artifacts. Their current compatibility contract is machine-readable in [`distribution-manifest.json`](distribution-manifest.json) and checked by `pnpm verify`. Every generated or documented MCP launcher uses the immutable package spec `ui-craft-mcp@0.4.0`; changing it requires updating the manifest and every launcher in the same change.
+The historical entries below describe several independently versioned artifacts. Their current compatibility contract is machine-readable in [`distribution-manifest.json`](distribution-manifest.json) and checked by `pnpm verify`. Every generated or documented MCP launcher uses the immutable package spec `ui-craft-mcp@0.5.0`; changing it requires updating the manifest and every launcher in the same change.
 
 GitHub CLI archives include GoReleaser SHA-256 checksums and GitHub build-provenance attestations. The MCP publish workflow uses npm trusted publishing plus `--provenance`; the npm package must have this repository/workflow configured as a trusted publisher before dispatch. No long-lived npm token is assumed.
+
+## ui-craft-mcp v0.5.0 (2026-07-29) — Structured tool output
+
+All four tools (`check_anti_slop`, `tokens_lint`, `acceptance_bar`, `score_ui`) now declare an `outputSchema`, so a successful call returns its payload as validated `structuredContent` in addition to the existing pretty-printed JSON text block. Hosts that only render text see no change; hosts that read structured results no longer have to parse a text blob.
+
+Error results are unchanged: they keep the text block, set `isError`, and carry no `structuredContent`.
+
+Scanner plumbing fields (`coverage`, `scan_policy`, `scan_errors`) are declared loosely on purpose, so the scanners can extend their own shapes without breaking output validation.
+
+Every generated and documented MCP launcher is pinned to the immutable `ui-craft-mcp@0.5.0` package.
 
 ## ui-craft-mcp v0.4.0 (2026-07-28) — Patched runtime dependencies
 

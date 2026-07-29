@@ -40,6 +40,44 @@ const server = new McpServer(
   }
 );
 
+// ─── Shared output schemas ───────────────────────────────────────────────────
+// Every tool declares an outputSchema so hosts receive `structuredContent`
+// alongside the JSON text block. Scanner plumbing (coverage, scan_policy) stays
+// loose on purpose: those shapes belong to the scanners and must stay free to
+// grow without breaking output validation.
+
+const findingSchema = z.object({
+  severity: z.string().optional(),
+  rule: z.string().optional(),
+  file: z.string().optional(),
+  line: z.number().nullable().optional(),
+  message: z.string().optional(),
+});
+
+const summarySchema = z.object({
+  total: z.number(),
+  errors: z.number(),
+  warnings: z.number(),
+  files_scanned: z.number().optional(),
+  files_omitted: z.number().optional(),
+});
+
+// check_anti_slop and tokens_lint return the same envelope.
+const scanOutputSchema = {
+  version: z.string().optional(),
+  findings: z.array(findingSchema),
+  summary: summarySchema,
+  coverage: z.unknown().optional(),
+  scan_errors: z.array(z.unknown()).optional(),
+  scan_policy: z.unknown().optional(),
+  error: z.string().optional(),
+};
+
+const dimensionSchema = z.object({
+  score: z.number(),
+  findings: z.array(z.unknown()),
+});
+
 // ─── Tool: check_anti_slop ───────────────────────────────────────────────────
 
 server.registerTool(
@@ -55,6 +93,7 @@ server.registerTool(
       code: z.string().optional().describe('Inline source code to scan (alternative to path)'),
       path: z.string().optional().describe('File or directory path to scan (alternative to code)'),
     },
+    outputSchema: scanOutputSchema,
   },
   async (args) => {
     let result;
@@ -70,6 +109,7 @@ server.registerTool(
     const isError = Boolean(result.error);
     return {
       content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+      ...(isError ? {} : { structuredContent: result }),
       isError,
     };
   }
@@ -90,6 +130,7 @@ server.registerTool(
       code: z.string().optional().describe('Inline source code to lint (alternative to path)'),
       path: z.string().optional().describe('File or directory path to lint (alternative to code)'),
     },
+    outputSchema: scanOutputSchema,
   },
   async (args) => {
     let result;
@@ -105,6 +146,7 @@ server.registerTool(
     const isError = Boolean(result.error);
     return {
       content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+      ...(isError ? {} : { structuredContent: result }),
       isError,
     };
   }
@@ -126,6 +168,17 @@ server.registerTool(
         .enum(['dashboard', 'landing', 'auth', 'generic'])
         .describe('The UI surface to retrieve the acceptance bar for'),
     },
+    outputSchema: {
+      surface: z.string().nullable(),
+      items: z.array(
+        z.object({
+          id: z.string().optional(),
+          description: z.string().optional(),
+          category: z.string().optional(),
+        })
+      ),
+      error: z.string().optional(),
+    },
   },
   (args) => {
     let result;
@@ -141,6 +194,7 @@ server.registerTool(
     const isError = Boolean(result.error);
     return {
       content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+      ...(isError ? {} : { structuredContent: result }),
       isError,
     };
   }
@@ -166,6 +220,22 @@ server.registerTool(
       code: z.string().optional().describe('Inline source code to score (alternative to path)'),
       path: z.string().optional().describe('File path to score (alternative to code)'),
     },
+    outputSchema: {
+      overall: z.object({
+        score: z.number(),
+        grade: z.string(),
+      }),
+      dimensions: z.object({
+        anti_slop: dimensionSchema,
+        token_discipline: dimensionSchema,
+        a11y: dimensionSchema,
+      }),
+      version: z.string().optional(),
+      coverage: z.unknown().optional(),
+      scan_errors: z.array(z.unknown()).optional(),
+      scan_policy: z.unknown().optional(),
+      error: z.string().optional(),
+    },
   },
   async (args) => {
     let result;
@@ -179,6 +249,7 @@ server.registerTool(
     const isError = Boolean(result.error);
     return {
       content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+      ...(isError ? {} : { structuredContent: result }),
       isError,
     };
   }
