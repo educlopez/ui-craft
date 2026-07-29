@@ -9,7 +9,7 @@ import (
 func TestUpsertTOMLTableKey_absent(t *testing.T) {
 	result, err := UpsertTOMLTableKey("", "mcp_servers", "ui-craft", map[string]any{
 		"command": "npx",
-		"args":    []string{"-y", "ui-craft-mcp@0.3.0"},
+		"args":    []string{"-y", "ui-craft-mcp@0.4.0"},
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -37,7 +37,7 @@ args = ["-x"]
 `
 	result, err := UpsertTOMLTableKey(existing, "mcp_servers", "ui-craft", map[string]any{
 		"command": "npx",
-		"args":    []string{"-y", "ui-craft-mcp@0.3.0"},
+		"args":    []string{"-y", "ui-craft-mcp@0.4.0"},
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -65,7 +65,7 @@ args = ["-old"]
 `
 	result, err := UpsertTOMLTableKey(existing, "mcp_servers", "ui-craft", map[string]any{
 		"command": "npx",
-		"args":    []string{"-y", "ui-craft-mcp@0.3.0"},
+		"args":    []string{"-y", "ui-craft-mcp@0.4.0"},
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -102,7 +102,7 @@ enabled = true
 	// First upsert: replaces the existing block.
 	result, err := UpsertTOMLTableKey(existing, "mcp_servers", "ui-craft", map[string]any{
 		"command": "npx",
-		"args":    []string{"-y", "ui-craft-mcp@0.3.0"},
+		"args":    []string{"-y", "ui-craft-mcp@0.4.0"},
 	})
 	if err != nil {
 		t.Fatalf("first upsert: unexpected error: %v", err)
@@ -130,7 +130,7 @@ enabled = true
 	// Second upsert (idempotency): same operation on already-updated content.
 	result2, err := UpsertTOMLTableKey(result, "mcp_servers", "ui-craft", map[string]any{
 		"command": "npx",
-		"args":    []string{"-y", "ui-craft-mcp@0.3.0"},
+		"args":    []string{"-y", "ui-craft-mcp@0.4.0"},
 	})
 	if err != nil {
 		t.Fatalf("second upsert: unexpected error: %v", err)
@@ -153,7 +153,7 @@ enabled = true
 func TestUpsertTOMLTableKey_regularString(t *testing.T) {
 	result, err := UpsertTOMLTableKey("", "mcp_servers", "ui-craft", map[string]any{
 		"command": "npx",
-		"args":    []string{"-y", "ui-craft-mcp@0.3.0"},
+		"args":    []string{"-y", "ui-craft-mcp@0.4.0"},
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
