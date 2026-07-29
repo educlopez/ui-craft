@@ -92,6 +92,17 @@ Corrections the user has made to design output on this project — the brief tea
 
 These are project-scoped design facts, not a general memory store — they live in the brief because they *are* design decisions, just learned rather than stated up front. They rank with the principles (section 3): a learned constraint overrides a skill default but never the accessibility/correctness floor.
 
+### 7. Fold classes used (append-only, written by `/craft`)
+
+Which composition class each landing fold in this project committed to. Append-only; `/craft` reads it to draw a class this project has not spent yet.
+
+```markdown
+- **2026-07-29** — `type-only` — pricing page. Sacrificed any product demonstration above the fold.
+- **2026-07-14** — `product-dominant` — home. Sacrificed narrative; the fold shows, it does not explain.
+```
+
+This section is not documentation, it is the mechanism. Asking a model for variety returns its default every time — ten blind builds of this skill produced the same fold ten times out of ten, across two unrelated products, with the fold prescribed, then permitted, then explicitly forbidden. Nothing written in prose moved it. What moves it is drawing from what is left, and that requires remembering what was taken. Delete this section and the project converges again on the next surface.
+
 ---
 
 ## How the Brief Gets Used
