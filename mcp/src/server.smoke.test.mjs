@@ -19,7 +19,7 @@ const SERVER = process.env.UI_CRAFT_MCP_SERVER
   ? join(process.cwd(), process.env.UI_CRAFT_MCP_SERVER)
   : join(__dirname, 'server.mjs');
 
-test('server boots over stdio and lists the 4 tools', async () => {
+test('server boots over stdio and lists the 6 tools', async () => {
   if (process.env.UI_CRAFT_MCP_SERVER) {
     const bundledSource = readFileSync(SERVER, 'utf8');
     assert.doesNotMatch(
@@ -39,7 +39,14 @@ test('server boots over stdio and lists the 4 tools', async () => {
     );
     const { tools } = await client.listTools();
     const names = tools.map((t) => t.name).sort();
-    assert.deepStrictEqual(names, ['acceptance_bar', 'check_anti_slop', 'score_ui', 'tokens_lint']);
+    assert.deepStrictEqual(names, [
+      'acceptance_bar',
+      'check_anti_slop',
+      'check_fold',
+      'fold_candidates',
+      'score_ui',
+      'tokens_lint',
+    ]);
   } finally {
     await client.close();
   }
@@ -92,6 +99,13 @@ test('every tool advertises an outputSchema and returns structuredContent', asyn
     const bar = await client.callTool({ name: 'acceptance_bar', arguments: { surface: 'dashboard' } });
     assert.equal(bar.structuredContent?.surface, 'dashboard');
     assert.ok(bar.structuredContent.items.length > 0);
+
+    // check_fold needs a browser and is not exercised here; fold_candidates is pure.
+    const drawn = await client.callTool({ name: 'fold_candidates', arguments: { used: ['type-only'] } });
+    const ids = drawn.structuredContent.candidates.map((c) => c.id);
+    assert.equal(ids.length, 3);
+    assert.ok(!ids.includes('type-only'), 'a spent class drops out of the draw');
+    assert.ok(!ids.includes('split'), 'split is never offered first');
   } finally {
     await client.close();
   }

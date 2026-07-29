@@ -36,6 +36,12 @@ export const SUITES = Object.freeze([
     args: ["--test", "scripts/detect.test.mjs"],
   },
   {
+    id: "fold",
+    label: "Fold composition analyser",
+    command: "node",
+    args: ["--test", "scripts/fold/fold.test.mjs"],
+  },
+  {
     id: "quality-unit",
     label: "Quality evaluator unit tests",
     command: "node",
