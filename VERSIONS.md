@@ -2,9 +2,21 @@
 
 ## Current distribution contract
 
-The historical entries below describe several independently versioned artifacts. Their current compatibility contract is machine-readable in [`distribution-manifest.json`](distribution-manifest.json) and checked by `pnpm verify`. Every generated or documented MCP launcher uses the immutable package spec `ui-craft-mcp@0.5.0`; changing it requires updating the manifest and every launcher in the same change.
+The historical entries below describe several independently versioned artifacts. Their current compatibility contract is machine-readable in [`distribution-manifest.json`](distribution-manifest.json) and checked by `pnpm verify`. Every generated or documented MCP launcher uses the immutable package spec `ui-craft-mcp@0.6.0`; changing it requires updating the manifest and every launcher in the same change.
 
 GitHub CLI archives include GoReleaser SHA-256 checksums and GitHub build-provenance attestations. The MCP publish workflow uses npm trusted publishing plus `--provenance`; the npm package must have this repository/workflow configured as a trusted publisher before dispatch. No long-lived npm token is assumed.
+
+## ui-craft-mcp v0.6.0 (2026-07-29) — Fold composition tools
+
+Adds two tools that work on the rendered page rather than on source.
+
+`check_fold` renders a URL, returns a screenshot as an image block, classifies which composition class the fold belongs to, and reports drift from the class that was intended. Three invariants carry a verdict — one primary action, evidence over assertion, and a declared costly detail. Four more (identification, single dominance, deliberate asymmetry, restraint budget) are measured and reported **without a score**, each carrying the reason it is not judged: calibrating them against reference landing pages showed the dominance ratio inverted, passing generated pages and failing the references, because nested wrappers of one full-bleed background count as separate elements.
+
+`fold_candidates` draws composition classes from the ones a project has not spent yet. Ten blind builds showed that asking a model for variety returns its default every time, whatever the prose says, so the variance comes from recorded state instead. `split` is drawn last because it is the fold every generator reaches for unprompted.
+
+`check_fold` needs a browser. Install puppeteer, or set `UI_CRAFT_CHROME` to an existing Chrome to skip the download. Without one it returns a clear error and every other tool is unaffected.
+
+Every generated and documented MCP launcher is pinned to the immutable `ui-craft-mcp@0.6.0` package.
 
 ## ui-craft-mcp v0.5.0 (2026-07-29) — Structured tool output
 
