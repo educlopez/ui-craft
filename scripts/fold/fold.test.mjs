@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert';
-import { summarise, evaluateFold } from './analyze.mjs';
+import { summarise, evaluateFold, extract, foldExtractorSource } from './analyze.mjs';
 import { drawClasses, classifyFold, CLASS_IDS } from './classes.mjs';
 
 const VIEWPORT = { width: 1440, height: 900 };
@@ -170,6 +170,36 @@ test('drawClasses deprioritises spent classes and never opens with split', () =>
 
   const exhausted = drawClasses({ used: CLASS_IDS, count: 3 });
   assert.equal(exhausted.length, 3, 'when every class is spent the draw still returns candidates');
+});
+
+test('the injectable payload is a serialisation of the extractor, not a second copy', () => {
+  const src = foldExtractorSource();
+  // Drift between a node runtime and a browser runtime of the same rules is
+  // invisible until they disagree about a page. This asserts they cannot: the
+  // payload contains the one function, verbatim.
+  assert.ok(src.includes(extract.toString()), 'payload must be derived from extract itself');
+  assert.match(src, /^\(function extract\(\)/, 'payload is a self-invoking function');
+  assert.match(src, /\)\(\)$/);
+});
+
+test('the payload reads colours outside sRGB', () => {
+  // Chrome returns computed colours in their authored space, so a token spine
+  // written in OKLCH never yields rgb(). Reading only rgb() made every filled
+  // control on such a page look transparent — on pages built exactly the way
+  // this project tells you to build them. Verified live: 0 primary actions
+  // became 1 on a fold whose CTA is oklch(0.42 0.16 258).
+  const src = foldExtractorSource();
+  assert.match(src, /okl\(\?:ch\|ab\)|okl\(?:ch\|ab\)|oklch|oklab/, 'payload must parse perceptual colour spaces');
+  assert.match(src, /transparent\s*=/, 'emptiness is decided without needing a luminance');
+});
+
+test('the payload is self-contained — nothing to resolve at injection time', () => {
+  const src = foldExtractorSource();
+  for (const forbidden of ['import ', 'require(', 'export ', 'module.exports']) {
+    assert.ok(!src.includes(forbidden), `payload must not contain "${forbidden}"`);
+  }
+  // Parses standalone: a content script or console paste would accept it.
+  assert.doesNotThrow(() => new Function(`return ${src.replace(/\)\(\)$/, ')')}`));
 });
 
 test('every class carries a stated sacrifice — that is what makes it a class', () => {

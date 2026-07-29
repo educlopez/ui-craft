@@ -42,12 +42,27 @@ export function extract() {
     const v = c / 255;
     return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
   };
-  const lum = (rgb) => {
-    const m = /rgba?\(([^)]+)\)/.exec(rgb);
-    if (!m) return null;
-    const [r, g, b, a] = m[1].split(',').map((n) => parseFloat(n));
-    if (a === 0) return null;
-    return 0.2126 * srgb(r) + 0.7152 * srgb(g) + 0.0722 * srgb(b);
+  // Chrome returns computed colours in the space they were authored in, so a
+  // token spine written in OKLCH never yields rgb(). Reading only rgb() made
+  // every filled control on such a page look transparent — which is every page
+  // built the way this project recommends building one.
+  const transparent = (s) => !s || s === 'transparent' || /rgba?\([^)]*,\s*0\s*\)$/.test(s);
+  const lum = (color) => {
+    if (transparent(color)) return null;
+    const rgb = /rgba?\(([^)]+)\)/.exec(color);
+    if (rgb) {
+      const [r, g, b] = rgb[1].split(',').map((n) => parseFloat(n));
+      return 0.2126 * srgb(r) + 0.7152 * srgb(g) + 0.0722 * srgb(b);
+    }
+    // oklch(L C H) / oklab(L a b) / lch() / lab(): the first component is
+    // perceptual lightness. Y ≈ L³ is an approximation, good enough to rank
+    // contrast, and far better than treating the colour as absent.
+    const perceptual = /(?:okl(?:ch|ab)|l(?:ch|ab))\(\s*([\d.]+)(%?)/.exec(color);
+    if (perceptual) {
+      const l = parseFloat(perceptual[1]) / (perceptual[2] === '%' ? 100 : 1);
+      return Math.min(1, Math.max(0, l)) ** 3;
+    }
+    return null;
   };
   const backdropLum = (el) => {
     let node = el;
@@ -90,7 +105,7 @@ export function extract() {
     const drawnSurface =
       !ownText &&
       visible > 0.08 * foldArea &&
-      (lum(cs.backgroundColor) !== null || parseFloat(cs.borderTopWidth) > 0 || cs.boxShadow !== 'none');
+      (!transparent(cs.backgroundColor) || parseFloat(cs.borderTopWidth) > 0 || cs.boxShadow !== 'none');
     const isVisual = VISUAL.has(tag) || hasBgImage || drawnSurface;
 
     if (!ownText && !isVisual) continue;
@@ -124,7 +139,9 @@ export function extract() {
     if (!inFold(r) || r.width * r.height < 200) continue;
     if (ctl.closest('nav,header,footer')) continue;
     const cs = getComputedStyle(ctl);
-    const filled = lum(cs.backgroundColor) !== null || (cs.backgroundImage && cs.backgroundImage !== 'none');
+    // "Filled" only needs to know a background exists, in any colour space —
+    // no luminance required, so no colour format can silently exclude a control.
+    const filled = !transparent(cs.backgroundColor) || (cs.backgroundImage && cs.backgroundImage !== 'none');
     if (filled) primaryActions++;
   }
 
@@ -146,6 +163,22 @@ export function extract() {
   return { viewport: { width: vw, height: vh }, elements, bandRun, primaryActions };
 }
 /* c8 ignore stop */
+
+/**
+ * The extractor as a standalone snippet, for the transports that cannot import
+ * a module: a content script, a `web_accessible_resources` payload, an
+ * `Runtime.evaluate` over CDP, or a paste into a console.
+ *
+ * Derived from `extract` itself rather than maintained as a second copy. Two
+ * hand-written runtimes of one rule set drift, and the drift is invisible until
+ * the two disagree about a page. Here they cannot disagree: there is one
+ * function, and this is a serialisation of it.
+ *
+ * @returns {string} an IIFE that evaluates to the extraction JSON
+ */
+export function foldExtractorSource() {
+  return `(${extract.toString()})()`;
+}
 
 const union = (boxes) =>
   boxes.length
