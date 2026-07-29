@@ -161,6 +161,49 @@ export function extract() {
     if (sameHeight && horizontal && spans > vw * 0.6) bandRun = Math.max(bandRun, kids.length);
   }
 
+  // The hero is the block that holds the naming statement and the primary
+  // action. Scoping the restraint budget to it — rather than to everything
+  // inside the viewport — is what makes the budget mean anything: every
+  // reference fold measured 90-140 supporting words against a budget of 20,
+  // because a 900px viewport contains far more than the composition.
+  let heroTextElements = 0;
+  let heroWords = 0;
+  {
+    const contentText = [...document.querySelectorAll('body *')].filter((el) => {
+      if (el.closest('nav,header,footer')) return false;
+      const r = el.getBoundingClientRect();
+      if (!inFold(r)) return false;
+      const own = [...el.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent.trim()).join(' ').trim();
+      return own.length > 0;
+    });
+    const naming = contentText
+      .map((el) => ({ el, size: parseFloat(getComputedStyle(el).fontSize) || 0 }))
+      .sort((a, b) => b.size - a.size)[0]?.el;
+    const action = [...document.querySelectorAll('a,button,[role="button"]')].find((c) => {
+      if (c.closest('nav,header,footer')) return false;
+      const r = c.getBoundingClientRect();
+      if (!inFold(r) || r.width * r.height < 200) return false;
+      const cs = getComputedStyle(c);
+      return !transparent(cs.backgroundColor) || (cs.backgroundImage && cs.backgroundImage !== 'none');
+    });
+
+    let hero = naming ?? null;
+    if (naming && action) {
+      const ancestors = new Set();
+      for (let n = naming; n; n = n.parentElement) ancestors.add(n);
+      for (let n = action; n; n = n.parentElement) {
+        if (ancestors.has(n)) { hero = n; break; }
+      }
+    }
+    if (hero) {
+      const inside = contentText.filter((el) => hero.contains(el));
+      heroTextElements = inside.length;
+      heroWords = inside
+        .filter((el) => el !== naming)
+        .reduce((n, el) => n + [...el.childNodes].filter((x) => x.nodeType === 3).map((x) => x.textContent.trim()).join(' ').trim().split(/\s+/).filter(Boolean).length, 0);
+    }
+  }
+
   // Structural boxes carry no text and are not recognised as visuals, but a
   // product mock drawn in CSS is made of hundreds of them. Counting them is how
   // "no visual found" can tell a genuinely type-only fold from one whose visual
@@ -173,7 +216,7 @@ export function extract() {
     if (!own) structural++;
   }
 
-  return { viewport: { width: vw, height: vh }, elements, bandRun, primaryActions, structural };
+  return { viewport: { width: vw, height: vh }, elements, bandRun, primaryActions, structural, heroTextElements, heroWords };
 }
 /* c8 ignore stop */
 
@@ -223,7 +266,28 @@ export function summarise(raw) {
     const base = e.area * Math.min(e.contrast, 21);
     return e.role === 'text' ? base * (1 + e.fontSize / 48) : base;
   };
-  const weighted = elements
+  // A full-bleed background is drawn as a stack of wrappers with near-identical
+  // boxes, so the two heaviest "elements" on a well-composed page were two
+  // copies of its background — which is how the dominance ratio came out
+  // inverted, passing generated pages and failing every reference. Collapse a
+  // nesting chain to its outermost box before ranking anything.
+  const distinct = [];
+  for (const e of [...elements].sort((a, b) => b.area - a.area)) {
+    const duplicate = distinct.some((k) => {
+      const w = Math.max(0, Math.min(k.box.right, e.box.right) - Math.max(k.box.left, e.box.left));
+      const h = Math.max(0, Math.min(k.box.bottom, e.box.bottom) - Math.max(k.box.top, e.box.top));
+      const inter = w * h;
+      return inter / Math.max(k.area, e.area, 1) > 0.9;
+    });
+    if (!duplicate) distinct.push(e);
+  }
+
+  // Dominance is a property of the figure, not the ground. A background is the
+  // largest thing in any fold and it is never what the eye lands on.
+  const ground = (e) => e.role === 'visual' && !e.text && e.area > 0.6 * viewport.width * viewport.height;
+  const figures = distinct.filter((e) => !ground(e));
+
+  const weighted = (figures.length > 1 ? figures : distinct)
     .map((e) => ({ ...e, weight: weigh(e) }))
     .sort((a, b) => b.weight - a.weight);
 
@@ -251,6 +315,14 @@ export function summarise(raw) {
     visual: largestVisual ? largestVisual.box : null,
     bandRun,
     structural,
+    heroTextElements: raw.heroTextElements ?? content.length,
+    heroWords: raw.heroWords ?? 0,
+    // The hero block is found by walking to the common ancestor of the naming
+    // statement and the primary action. When those two sit far apart the
+    // ancestor is most of the page, and the count stops describing a hero —
+    // clerk.com resolved to 80 text elements this way. Say so rather than
+    // report a number that looks like a hero and is not.
+    heroScoped: (raw.heroTextElements ?? 0) > 0 && (raw.heroTextElements ?? 0) <= 12,
     textElements: content.length,
     namingStatement: naming?.text ?? '',
     supportingWords: content
@@ -314,6 +386,22 @@ const SUPERLATIVES = [
 const words = (s) => s.split(/\s+/).filter(Boolean).length;
 
 /**
+ * What reference landing pages actually measure, taken from stripe.com,
+ * linear.app, vercel.com, resend.com, framer.com and clerk.com at 1440x900.
+ *
+ * Recorded because the first thresholds were invented and every one of these
+ * pages failed them. Six samples is not a calibration — it is enough to know
+ * what a good fold looks like to this instrument, and not enough to draw a
+ * line. Anyone adding a judged threshold should widen this corpus first.
+ */
+export const REFERENCE_RANGE = {
+  dominance: '1.12x to 2.69x',
+  symmetry: '23% to 69% mirrored',
+  heroTextElements: '3 to 80',
+  heroWords: '4 to 254',
+};
+
+/**
  * Judge a measurement against the fold invariants.
  * Invariant 7 cannot be measured — it is passed in as a declaration.
  *
@@ -363,12 +451,12 @@ export function evaluateFold(m, declared = {}) {
     {
       id: 2, name: 'Single dominance',
       value: m.dominance === Infinity ? '∞' : `${m.dominance.toFixed(2)}×`,
-      note: 'not judged: nested wrappers of one full-bleed background count as separate elements, which collapses the ratio toward 1 on exactly the pages that are composed best',
+      note: `not judged: reference landing pages measure ${REFERENCE_RANGE.dominance} — the original "≥3×" would fail every one of them, so there is no threshold to apply yet. Wrapper chains and full-bleed backgrounds are now excluded, so the number is at least about the figure`,
     },
     {
       id: 4, name: 'Deliberate asymmetry',
       value: `${(m.symmetry * 100).toFixed(0)}% mirrored`,
-      note: 'measured but unjudged: discriminates plausibly across references, threshold not yet calibrated',
+      note: `not judged: references measure ${REFERENCE_RANGE.symmetry}, so the original "<60%" would fail some of the best folds on the web`,
     },
     {
       id: 6, name: 'Restraint budget',

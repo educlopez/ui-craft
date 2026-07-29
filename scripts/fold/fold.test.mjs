@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert';
-import { summarise, evaluateFold, extract, foldExtractorSource } from './analyze.mjs';
+import { summarise, evaluateFold, extract, foldExtractorSource, REFERENCE_RANGE } from './analyze.mjs';
 import { drawClasses, classifyFold, CLASS_IDS } from './classes.mjs';
 import { findBrowser, noBrowserMessage } from './browser.mjs';
 
@@ -245,6 +245,47 @@ test('classifying a fold with no detected visual admits when it may be blind', (
   const drawn = classifyFold(summarise({ ...base, structural: 120 }));
   assert.equal(drawn.confidence, 'low');
   assert.match(drawn.why, /cannot see|screenshot/);
+});
+
+test('a wrapper chain around one background counts once', () => {
+  // Three nested wrappers of the same full-bleed background used to be the
+  // three heaviest elements in the fold, so dominance compared a background
+  // against copies of itself and came out at 1.00 on every reference page.
+  const bg = (i) => el({ tag: 'div', role: 'visual', box: box(i, i, 1440 - i, 900 - i), text: '' });
+  const m = summarise({
+    viewport: VIEWPORT,
+    bandRun: 0,
+    elements: [bg(0), bg(2), bg(4), el({ box: box(120, 300, 900, 420), fontSize: 64, text: 'Payments for the internet' })],
+  });
+  assert.ok(m.dominance > 1.5, `a headline over one background should dominate, got ${m.dominance.toFixed(2)}×`);
+});
+
+test('a full-bleed background is ground, and ground never wins dominance', () => {
+  const m = summarise({
+    viewport: VIEWPORT,
+    bandRun: 0,
+    elements: [
+      el({ tag: 'div', role: 'visual', box: box(0, 0, 1440, 900), text: '' }),
+      el({ box: box(120, 300, 900, 420), fontSize: 64, text: 'Payments for the internet' }),
+      el({ box: box(120, 460, 700, 500), fontSize: 18, text: 'Millions of businesses.' }),
+    ],
+  });
+  assert.equal(m.elements[0].role, 'text', 'the figure is what the eye lands on, not the backdrop');
+});
+
+test('the hero scope admits when it failed to find a hero', () => {
+  assert.equal(summarise({ viewport: VIEWPORT, bandRun: 0, elements: [], heroTextElements: 4 }).heroScoped, true);
+  // clerk.com resolved to 80 — that is a page, not a hero.
+  assert.equal(summarise({ viewport: VIEWPORT, bandRun: 0, elements: [], heroTextElements: 80 }).heroScoped, false);
+});
+
+test('the reference range is recorded so the next threshold is not invented', () => {
+  for (const key of ['dominance', 'symmetry', 'heroTextElements', 'heroWords']) {
+    assert.ok(REFERENCE_RANGE[key], `${key} needs a measured reference range`);
+  }
+  // The first thresholds were guesses and every reference page failed them.
+  const note = evaluateFold(splitFold()).observations.find((o) => o.id === 2).note;
+  assert.ok(note.includes(REFERENCE_RANGE.dominance), 'the note must carry the measured range');
 });
 
 test('every class carries a stated sacrifice — that is what makes it a class', () => {
