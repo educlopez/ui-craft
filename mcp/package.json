@@ -3,6 +3,16 @@
   "version": "0.5.0",
   "description": "ui-craft MCP server — deterministic design-quality gate (anti-slop, tokens, acceptance-bar, score)",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/educlopez/ui-craft.git",
+    "directory": "mcp"
+  },
+  "homepage": "https://skills.smoothui.dev",
+  "bugs": {
+    "url": "https://github.com/educlopez/ui-craft/issues"
+  },
+  "license": "MIT",
   "bin": {
     "ui-craft-mcp": "dist/server.mjs"
   },
