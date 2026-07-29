@@ -13,6 +13,7 @@
 
 import { classifyFold } from './classes.mjs';
 import { findBrowser, withPage, noBrowserMessage } from './browser.mjs';
+import { deviationProfile, SEPARATION } from './population.mjs';
 
 // ─── Browser ────────────────────────────────────────────────────────────────
 
@@ -492,8 +493,17 @@ export function evaluateFold(m, declared = {}) {
   ];
 
   const composition = classifyFold(m);
+  const population = deviationProfile(m);
+  observations.push({
+    id: 8,
+    name: 'Deviation from the reference population',
+    value: `${population.maxDeviation}x the population spread at its strongest axis`,
+    note: `${population.reading}. Never judged: at a cut of ${SEPARATION.cut} this catches ${SEPARATION.caughtGenerated} generated folds but also flags ${SEPARATION.falsePositives}`,
+  });
+
   return {
     composition,
+    population,
     checks,
     observations,
     passed: checks.filter((c) => c.pass).length,
