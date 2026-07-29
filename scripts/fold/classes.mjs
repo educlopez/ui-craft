@@ -39,8 +39,8 @@ export const COMPOSITION_CLASSES = [
     id: 'split',
     name: 'Split',
     structure: 'Text on one side, a visual on the other, side by side, neither overlapping.',
-    demands: 'Almost nothing. This is the default every generator reaches for.',
-    sacrifices: 'Distinctiveness. Choosing it means the composition will read as generic unless something else carries the page.',
+    demands: 'Almost nothing. This is the default every generator reaches for — ten blind builds produced it ten times, across two unrelated briefs.',
+    sacrifices: 'Distinctiveness. Only 3 of 18 reference landing pages use a split fold, so choosing it means the composition reads as generic unless something else carries the page.',
   },
   {
     id: 'stacked',

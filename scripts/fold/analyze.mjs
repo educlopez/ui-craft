@@ -386,19 +386,24 @@ const SUPERLATIVES = [
 const words = (s) => s.split(/\s+/).filter(Boolean).length;
 
 /**
- * What reference landing pages actually measure, taken from stripe.com,
- * linear.app, vercel.com, resend.com, framer.com and clerk.com at 1440x900.
+ * What reference landing pages actually measure: 18 of them at 1440x900,
+ * recorded in evals/fold/reference-corpus.json and re-measurable with
+ * scripts/fold/corpus.mjs.
  *
  * Recorded because the first thresholds were invented and every one of these
- * pages failed them. Six samples is not a calibration — it is enough to know
- * what a good fold looks like to this instrument, and not enough to draw a
- * line. Anyone adding a judged threshold should widen this corpus first.
+ * pages failed them. This is still only the positive half of a corpus — no
+ * folds labelled generic — so it says what good looks like to this instrument
+ * and cannot yet say where the line falls.
  */
 export const REFERENCE_RANGE = {
-  dominance: '1.12x to 2.69x',
-  symmetry: '23% to 69% mirrored',
-  heroTextElements: '3 to 80',
-  heroWords: '4 to 254',
+  n: 18,
+  dominance: 'median 1.73x, quartiles 1.31-2.69x, range 1.10-6.47x',
+  symmetry: 'median 49% mirrored, quartiles 33-58%, range 17-70%',
+  heroTextElements: 'median 18, quartiles 5-36',
+  heroWords: 'median 62, quartiles 20-122',
+  // 3 of 18 — the fold a generator reaches for unprompted is the one the best
+  // landing pages use least.
+  splitShare: '17% of reference folds are a split',
 };
 
 /**
