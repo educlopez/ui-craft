@@ -2,13 +2,27 @@
 
 ## Current distribution contract
 
-The historical entries below describe several independently versioned artifacts. Their current compatibility contract is machine-readable in [`distribution-manifest.json`](distribution-manifest.json) and checked by `pnpm verify`. Every generated or documented MCP launcher uses the immutable package spec `ui-craft-mcp@0.6.0`; changing it requires updating the manifest and every launcher in the same change.
+The historical entries below describe several independently versioned artifacts. Their current compatibility contract is machine-readable in [`distribution-manifest.json`](distribution-manifest.json) and checked by `pnpm verify`. Every generated or documented MCP launcher uses the immutable package spec `ui-craft-mcp@0.6.1`; changing it requires updating the manifest and every launcher in the same change.
 
 GitHub CLI archives include GoReleaser SHA-256 checksums and GitHub build-provenance attestations. The MCP publish workflow uses npm trusted publishing plus `--provenance`; the npm package must have this repository/workflow configured as a trusted publisher before dispatch. No long-lived npm token is assumed.
 
 ## v1.0.9 (2026-07-29) — Current MCP pin
 
 Propagates the MCP releases published since v1.0.8. Installers and generated launchers now write the immutable package spec `ui-craft-mcp@0.6.0`, which carries structured tool output on all tools plus the two fold composition tools. No CLI behaviour changes; a binary built before this release pins `ui-craft-mcp@0.4.0`.
+
+## v1.0.10 (2026-07-29) — Current MCP pin
+
+Installers and generated launchers now write \`ui-craft-mcp@0.6.1\`. No CLI behaviour changes.
+
+## ui-craft-mcp v0.6.1 (2026-07-29) — check_fold runs on the browser you already have
+
+\`check_fold\` no longer needs puppeteer. It finds an installed Chrome, Chromium, Edge or Brave and drives it over the DevTools Protocol with no dependencies at all — Node has had a global WebSocket for years, and a browser is already on the machine. Set \`UI_CRAFT_CHROME\` to choose a specific one. An existing puppeteer install is still used when no browser is found, so nobody who already set it up has to change anything.
+
+A failed navigation is now an error rather than a measurement. Chrome renders its own error page when it cannot reach a URL, and that page measures perfectly well: a few text nodes, no visual, high confidence, entirely wrong. \`localhost\` also resolves to 127.0.0.1 explicitly, because Chrome tries ::1 first while most dev servers bind only to IPv4 — the single most common way a fold measurement silently described an error page.
+
+Computed colours outside sRGB are read correctly. Chrome returns colours in the space they were authored in, so a token spine written in OKLCH never yields \`rgb()\`; every filled control on such a page previously read as transparent.
+
+A fold with no detected visual but a crowd of textless structural boxes is now reported at low confidence, since a product mock drawn in CSS is invisible to the visual detector.
 
 ## ui-craft-mcp v0.6.0 (2026-07-29) — Fold composition tools
 
