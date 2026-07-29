@@ -1,0 +1,150 @@
+{
+  "measuredAt": null,
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "rows": [
+    {
+      "url": "ceramic-2",
+      "ok": true,
+      "composition": "band",
+      "dominance": 1.01,
+      "symmetry": 0.29,
+      "heroTextElements": 7,
+      "heroWords": 48,
+      "heroScoped": true,
+      "textElements": 9,
+      "primaryActions": 1,
+      "structural": 11,
+      "namingStatement": "Each piece leaves the wheel . Then it’s gone."
+    },
+    {
+      "url": "control-ceramic",
+      "ok": true,
+      "composition": "split",
+      "dominance": 1.51,
+      "symmetry": 0.29,
+      "heroTextElements": 6,
+      "heroWords": 45,
+      "heroScoped": true,
+      "textElements": 8,
+      "primaryActions": 1,
+      "structural": 9,
+      "namingStatement": "A glaze the flame decides — so no two pieces match."
+    },
+    {
+      "url": "control-dev",
+      "ok": true,
+      "composition": "split",
+      "dominance": 1.02,
+      "symmetry": 0.23,
+      "heroTextElements": 6,
+      "heroWords": 41,
+      "heroScoped": true,
+      "textElements": 48,
+      "primaryActions": 1,
+      "structural": 43,
+      "namingStatement": "Catch every webhook. Never chase a missed one again."
+    },
+    {
+      "url": "prohibition-ceramic",
+      "ok": true,
+      "composition": "band",
+      "dominance": 2.03,
+      "symmetry": 0.37,
+      "heroTextElements": 5,
+      "heroWords": 35,
+      "heroScoped": true,
+      "textElements": 18,
+      "primaryActions": 1,
+      "structural": 16,
+      "namingStatement": "One-of-one ceramics, thrown and wood-fired by hand."
+    },
+    {
+      "url": "prohibition-dev",
+      "ok": true,
+      "composition": "band",
+      "dominance": 1.45,
+      "symmetry": 0.44,
+      "heroTextElements": 6,
+      "heroWords": 36,
+      "heroScoped": true,
+      "textElements": 28,
+      "primaryActions": 1,
+      "structural": 24,
+      "namingStatement": "Webhooks, synced in real time. Nothing gets lost."
+    },
+    {
+      "url": "treatment-ceramic",
+      "ok": true,
+      "composition": "band",
+      "dominance": 1.32,
+      "symmetry": 0.42,
+      "heroTextElements": 5,
+      "heroWords": 34,
+      "heroScoped": true,
+      "textElements": 14,
+      "primaryActions": 1,
+      "structural": 17,
+      "namingStatement": "One kiln. One potter. No two pieces alike."
+    },
+    {
+      "url": "treatment-dev",
+      "ok": true,
+      "composition": "band",
+      "dominance": 1.19,
+      "symmetry": 0.4,
+      "heroTextElements": 5,
+      "heroWords": 32,
+      "heroScoped": true,
+      "textElements": 16,
+      "primaryActions": 1,
+      "structural": 19,
+      "namingStatement": "Every webhook, delivered in order — every time."
+    }
+  ],
+  "summary": {
+    "measured": 7,
+    "failed": 0,
+    "classes": {
+      "band": 5,
+      "split": 2
+    },
+    "dominance": {
+      "n": 7,
+      "min": 1.01,
+      "p25": 1.19,
+      "median": 1.32,
+      "p75": 1.51,
+      "max": 2.03
+    },
+    "symmetry": {
+      "n": 7,
+      "min": 0.23,
+      "p25": 0.29,
+      "median": 0.37,
+      "p75": 0.42,
+      "max": 0.44
+    },
+    "heroTextElements": {
+      "n": 7,
+      "min": 5,
+      "p25": 5,
+      "median": 6,
+      "p75": 6,
+      "max": 7
+    },
+    "heroWords": {
+      "n": 7,
+      "min": 32,
+      "p25": 35,
+      "median": 36,
+      "p75": 45,
+      "max": 48
+    },
+    "heroScopedShare": 1
+  },
+  "label": "ai-generated",
+  "provenance": "Seven landing pages built by coding agents from a one-line brief, across two unrelated products and three skill versions. Labelled by provenance, not by taste."
+}

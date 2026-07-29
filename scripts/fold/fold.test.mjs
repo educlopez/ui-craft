@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert';
-import { summarise, evaluateFold, extract, foldExtractorSource, REFERENCE_RANGE } from './analyze.mjs';
+import { summarise, evaluateFold, extract, foldExtractorSource, REFERENCE_RANGE, CORPUS_FINDING } from './analyze.mjs';
 import { drawClasses, classifyFold, CLASS_IDS } from './classes.mjs';
 import { findBrowser, noBrowserMessage } from './browser.mjs';
 
@@ -105,22 +105,31 @@ test('classifyFold separates stacked from split by vertical band, not by column 
   assert.equal(classifyFold(stacked).id, 'stacked');
 });
 
-test('the uncalibrated invariants are measured but never judged', () => {
-  // Calibration against reference landing pages inverted the dominance ratio —
-  // it passed generated pages and failed the references. Until that is rebuilt,
-  // these four report a value and no verdict, so nothing downstream can treat
-  // them as a gate.
+test('only the invariants that survived two corpora carry a verdict', () => {
+  // Every geometric invariant has now been checked against 18 reference folds
+  // and 7 AI-generated ones, and every one of them was inverted: dominance
+  // passed the generated pages, asymmetry would fail framer.com, and "exactly
+  // one primary action" passed 7 of 7 generated folds against 4 of 18
+  // references. What is left is the text and the declaration.
   const v = evaluateFold(splitFold());
   const judged = v.checks.map((c) => c.id).sort();
-  assert.deepStrictEqual(judged, [3, 5, 7], 'only the three trustworthy invariants carry a verdict');
+  assert.deepStrictEqual(judged, [5, 7], 'nothing geometric is judged until a corpus says where the line is');
 
   const observed = v.observations.map((o) => o.id).sort();
-  assert.deepStrictEqual(observed, [1, 2, 4, 6]);
+  assert.deepStrictEqual(observed, [1, 2, 3, 4, 6]);
   for (const o of v.observations) {
     assert.equal('pass' in o, false, `${o.name} must not expose a verdict`);
     assert.ok(o.note.length > 20, `${o.name} must say why it is not judged`);
   }
-  assert.equal(v.total, 3, 'the summary counts judged checks only');
+  assert.equal(v.total, 2, 'the summary counts judged checks only');
+});
+
+test('the two-corpus finding is recorded: generic is variance, not value', () => {
+  // No metric separates the groups by value — every generated range sits
+  // inside the reference range. The difference is spread.
+  assert.equal(CORPUS_FINDING.separatingMetric, null);
+  assert.ok(CORPUS_FINDING.cv.primaryActions.generated < CORPUS_FINDING.cv.primaryActions.reference);
+  assert.ok(CORPUS_FINDING.cv.heroTextElements.generated < CORPUS_FINDING.cv.heroTextElements.reference);
 });
 
 test('identification is reported with the statement it found, unjudged', () => {
