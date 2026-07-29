@@ -3,6 +3,7 @@ import assert from 'node:assert';
 import { summarise, evaluateFold, extract, foldExtractorSource, REFERENCE_RANGE, CORPUS_FINDING } from './analyze.mjs';
 import { drawClasses, classifyFold, CLASS_IDS } from './classes.mjs';
 import { findBrowser, noBrowserMessage } from './browser.mjs';
+import { deviationProfile, POPULATION, SEPARATION } from './population.mjs';
 
 const VIEWPORT = { width: 1440, height: 900 };
 const box = (left, top, right, bottom) => ({ left, top, right, bottom });
@@ -116,7 +117,7 @@ test('only the invariants that survived two corpora carry a verdict', () => {
   assert.deepStrictEqual(judged, [5, 7], 'nothing geometric is judged until a corpus says where the line is');
 
   const observed = v.observations.map((o) => o.id).sort();
-  assert.deepStrictEqual(observed, [1, 2, 3, 4, 6]);
+  assert.deepStrictEqual(observed, [1, 2, 3, 4, 6, 8]);
   for (const o of v.observations) {
     assert.equal('pass' in o, false, `${o.name} must not expose a verdict`);
     assert.ok(o.note.length > 20, `${o.name} must say why it is not judged`);
@@ -295,6 +296,34 @@ test('the reference range is recorded so the next threshold is not invented', ()
   // The first thresholds were guesses and every reference page failed them.
   const note = evaluateFold(splitFold()).observations.find((o) => o.id === 2).note;
   assert.ok(note.includes(REFERENCE_RANGE.dominance), 'the note must carry the measured range');
+});
+
+test('a fold at the population median is reported as standing out nowhere', () => {
+  const median = Object.fromEntries(Object.entries(POPULATION.axes).map(([k, v]) => [k, v.median]));
+  const p = deviationProfile(median);
+  assert.ok(p.maxDeviation < 0.01, 'the median fold deviates from the median by nothing');
+  assert.match(p.reading, /sits near the reference median/);
+  // The reading must carry the error rate, because at any useful cut this
+  // also flags well-crafted folds — stripe.com and linear.app among them.
+  assert.match(p.reading, /prompt to look, not a fault/);
+});
+
+test('a fold that commits hard names the axis it committed on', () => {
+  const p = deviationProfile({ ...Object.fromEntries(Object.entries(POPULATION.axes).map(([k, v]) => [k, v.median])), dominance: 6.47 });
+  assert.equal(p.strongest.axis, 'dominance');
+  assert.ok(p.maxDeviation > 5);
+  assert.match(p.reading, /commits hardest on dominance/);
+});
+
+test('the population signal is reported, never enforced', () => {
+  const v = evaluateFold(splitFold());
+  const observation = v.observations.find((o) => o.id === 8);
+  assert.ok(observation, 'the population reading is an observation');
+  assert.equal('pass' in observation, false);
+  // Its own false-positive rate travels with it. A signal that catches 6 of 7
+  // generated folds and also flags 7 of 18 references is a nudge, not a gate.
+  assert.ok(observation.note.includes(SEPARATION.falsePositives));
+  assert.ok(observation.note.includes(SEPARATION.caughtGenerated));
 });
 
 test('every class carries a stated sacrifice — that is what makes it a class', () => {
