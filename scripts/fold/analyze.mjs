@@ -12,6 +12,7 @@
  */
 
 import { classifyFold } from './classes.mjs';
+import { findBrowser, withPage, noBrowserMessage } from './browser.mjs';
 
 // ─── Browser ────────────────────────────────────────────────────────────────
 
@@ -160,7 +161,19 @@ export function extract() {
     if (sameHeight && horizontal && spans > vw * 0.6) bandRun = Math.max(bandRun, kids.length);
   }
 
-  return { viewport: { width: vw, height: vh }, elements, bandRun, primaryActions };
+  // Structural boxes carry no text and are not recognised as visuals, but a
+  // product mock drawn in CSS is made of hundreds of them. Counting them is how
+  // "no visual found" can tell a genuinely type-only fold from one whose visual
+  // this extractor simply cannot see.
+  let structural = 0;
+  for (const el of document.querySelectorAll('div,section,article,figure,span')) {
+    const r = el.getBoundingClientRect();
+    if (!inFold(r) || r.width * r.height < 200) continue;
+    const own = [...el.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent.trim()).join('');
+    if (!own) structural++;
+  }
+
+  return { viewport: { width: vw, height: vh }, elements, bandRun, primaryActions, structural };
 }
 /* c8 ignore stop */
 
@@ -197,6 +210,7 @@ const union = (boxes) =>
  */
 export function summarise(raw) {
   const { viewport, elements, bandRun } = raw;
+  const structural = raw.structural ?? 0;
   const texts = elements.filter((e) => e.role === 'text' && e.text);
   const visuals = elements.filter((e) => e.role === 'visual');
   // The restraint budget is about the composition, not the page furniture.
@@ -236,6 +250,7 @@ export function summarise(raw) {
     text: union(texts.map((t) => t.box)),
     visual: largestVisual ? largestVisual.box : null,
     bandRun,
+    structural,
     textElements: content.length,
     namingStatement: naming?.text ?? '',
     supportingWords: content
@@ -258,21 +273,28 @@ export function summarise(raw) {
  * @param {{ width?: number, height?: number, timeoutMs?: number, executablePath?: string }} [opts]
  */
 export async function measureFold(url, opts = {}) {
-  const puppeteer = await loadPuppeteer();
-  if (!puppeteer) {
-    throw new Error(
-      'measureFold needs a browser. Install puppeteer, or point UI_CRAFT_CHROME at an existing Chrome to skip the download.',
-    );
+  // Prefer the browser already on the machine over anything that needs
+  // installing. Only fall back to puppeteer for people who already have it.
+  const exe = opts.executablePath ?? findBrowser();
+  if (exe) {
+    return withPage(url, { ...opts, executablePath: exe }, async (page) => {
+      const raw = await page.evaluate(foldExtractorSource());
+      const screenshot = await page.screenshot();
+      return { ...summarise(raw), url, screenshot, engine: 'cdp' };
+    });
   }
-  const executablePath = opts.executablePath ?? process.env.UI_CRAFT_CHROME ?? undefined;
-  const browser = await puppeteer.launch({ headless: true, ...(executablePath ? { executablePath } : {}) });
+
+  const puppeteer = await loadPuppeteer();
+  if (!puppeteer) throw new Error(noBrowserMessage());
+
+  const browser = await puppeteer.launch({ headless: true });
   try {
     const page = await browser.newPage();
     await page.setViewport({ width: opts.width ?? 1440, height: opts.height ?? 900 });
     await page.goto(url, { waitUntil: 'networkidle2', timeout: opts.timeoutMs ?? 30000 });
     const raw = await page.evaluate(extract);
     const screenshot = await page.screenshot({ encoding: 'base64' });
-    return { ...summarise(raw), url, screenshot };
+    return { ...summarise(raw), url, screenshot, engine: 'puppeteer' };
   } finally {
     await browser.close();
   }

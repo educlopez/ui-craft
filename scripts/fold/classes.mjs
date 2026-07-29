@@ -113,7 +113,18 @@ export function classifyFold(m) {
   const visWidth = vis ? (vis.right - vis.left) / m.viewport.width : 0;
 
   if (!vis || visArea < 0.08) {
-    return { id: 'type-only', confidence: visArea < 0.03 ? 'high' : 'low', why: `no visual above 8% of the fold (largest: ${(visArea * 100).toFixed(0)}%)` };
+    // A product mock drawn in CSS is invisible to the visual detector but shows
+    // up as a crowd of textless structural boxes. Claiming "type-only" with
+    // confidence on such a fold is the confident-wrong failure this whole tool
+    // exists to avoid, so say so instead.
+    const dense = (m.structural ?? 0) >= 40;
+    return {
+      id: 'type-only',
+      confidence: dense || visArea >= 0.03 ? 'low' : 'high',
+      why: dense
+        ? `no visual detected, but ${m.structural} textless structural boxes sit in the fold — a CSS-drawn visual this extractor cannot see is likely; check the screenshot`
+        : `no visual above 8% of the fold (largest: ${(visArea * 100).toFixed(0)}%)`,
+    };
   }
   if (m.bandRun >= 3) {
     return { id: 'band', confidence: 'high', why: `${m.bandRun} equal-height siblings run across the fold` };

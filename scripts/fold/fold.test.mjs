@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert';
 import { summarise, evaluateFold, extract, foldExtractorSource } from './analyze.mjs';
 import { drawClasses, classifyFold, CLASS_IDS } from './classes.mjs';
+import { findBrowser, noBrowserMessage } from './browser.mjs';
 
 const VIEWPORT = { width: 1440, height: 900 };
 const box = (left, top, right, bottom) => ({ left, top, right, bottom });
@@ -200,6 +201,50 @@ test('the payload is self-contained — nothing to resolve at injection time', (
   }
   // Parses standalone: a content script or console paste would accept it.
   assert.doesNotThrow(() => new Function(`return ${src.replace(/\)\(\)$/, ')')}`));
+});
+
+test('the browser is found among the ones people already have', () => {
+  const mac = (p) => p === '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
+  assert.match(findBrowser({ env: {}, exists: mac, os: 'darwin' }), /Google Chrome$/);
+
+  // Chromium, Edge and Brave all speak CDP — nobody should have to install
+  // a second browser to measure a page.
+  const brave = (p) => p.includes('Brave');
+  assert.match(findBrowser({ env: {}, exists: brave, os: 'darwin' }), /Brave/);
+
+  assert.equal(findBrowser({ env: {}, exists: () => false, os: 'darwin' }), null);
+});
+
+test('UI_CRAFT_CHROME wins, and is not silently ignored when wrong', () => {
+  const env = { UI_CRAFT_CHROME: '/opt/my/chrome' };
+  assert.equal(findBrowser({ env, exists: (p) => p === '/opt/my/chrome', os: 'linux' }), '/opt/my/chrome');
+  // Falling back to a different browser than the one that was named would hide
+  // a typo behind results measured somewhere else.
+  assert.equal(findBrowser({ env, exists: (p) => p === '/usr/bin/google-chrome', os: 'linux' }), null);
+});
+
+test('the no-browser message names every way out', () => {
+  const msg = noBrowserMessage();
+  for (const hint of ['Chrome', 'Chromium', 'Edge', 'Brave', 'UI_CRAFT_CHROME', 'puppeteer']) {
+    assert.ok(msg.includes(hint), `message should mention ${hint}`);
+  }
+});
+
+test('classifying a fold with no detected visual admits when it may be blind', () => {
+  const base = {
+    viewport: VIEWPORT,
+    bandRun: 0,
+    elements: [el({ box: box(80, 200, 900, 320), fontSize: 56, text: 'One kiln, one potter' })],
+  };
+  const plain = classifyFold(summarise(base));
+  assert.equal(plain.confidence, 'high', 'a genuinely bare fold is type-only and we can say so');
+
+  // A CSS-drawn product mock is invisible to the visual detector but leaves a
+  // crowd of textless boxes behind. Claiming type-only there is the
+  // confident-wrong failure this tool exists to avoid.
+  const drawn = classifyFold(summarise({ ...base, structural: 120 }));
+  assert.equal(drawn.confidence, 'low');
+  assert.match(drawn.why, /cannot see|screenshot/);
 });
 
 test('every class carries a stated sacrifice — that is what makes it a class', () => {
