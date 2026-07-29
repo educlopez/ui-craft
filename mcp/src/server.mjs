@@ -26,6 +26,7 @@ import { checkAntiSlop } from './tools/check-anti-slop.mjs';
 import { tokensLint } from './tools/tokens-lint.mjs';
 import { acceptanceBar } from './tools/acceptance-bar.mjs';
 import { scoreUiTool } from './tools/score-ui.mjs';
+import { checkFold, foldCandidates } from './tools/fold.mjs';
 import { MCP_VERSION } from './version.mjs';
 
 const server = new McpServer(
@@ -250,6 +251,124 @@ server.registerTool(
     return {
       content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
       ...(isError ? {} : { structuredContent: result }),
+      isError,
+    };
+  }
+);
+
+// ─── Tool: fold_candidates ───────────────────────────────────────────────────
+
+const compositionClassSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  structure: z.string(),
+  demands: z.string(),
+  sacrifices: z.string(),
+  spent: z.boolean(),
+});
+
+server.registerTool(
+  'fold_candidates',
+  {
+    title: 'Fold Candidates',
+    description:
+      'Draws composition classes for a landing fold, preferring ones this project has not spent yet. ' +
+      'Variety cannot be requested in prose — asking a model to "be different" returns its default every time — ' +
+      'so the class is drawn from recorded state instead. Pass the classes already used in this project as `used`. ' +
+      'Classes: type-only, full-bleed-overlay, split, stacked, product-dominant, band. ' +
+      '`split` is drawn last on purpose: it is the fold every generator reaches for unprompted. ' +
+      'Returns each class with what it demands and what it sacrifices — the sacrifice is what makes a composition distinct.',
+    inputSchema: {
+      used: z
+        .array(z.string())
+        .optional()
+        .describe('Composition class ids already used in this project (deprioritised in the draw)'),
+      count: z.number().int().min(1).max(6).optional().describe('How many candidates to draw (default 3)'),
+    },
+    outputSchema: {
+      candidates: z.array(compositionClassSchema),
+      used: z.array(z.string()).optional(),
+      instruction: z.string().optional(),
+      error: z.string().optional(),
+    },
+  },
+  (args) => {
+    let result;
+    try {
+      result = foldCandidates(args);
+    } catch (e) {
+      result = { error: `Unexpected error: ${e?.message ?? String(e)}`, candidates: [] };
+    }
+    const isError = Boolean(result.error);
+    return {
+      content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+      ...(isError ? {} : { structuredContent: result }),
+      isError,
+    };
+  }
+);
+
+// ─── Tool: check_fold ────────────────────────────────────────────────────────
+
+server.registerTool(
+  'check_fold',
+  {
+    title: 'Check Fold',
+    description:
+      'Renders a URL and reports what its fold actually is: a screenshot, the composition class it belongs to, ' +
+      'drift from the class you set out to build, three judged invariants, and four measurements reported ' +
+      'WITHOUT a verdict. The unjudged four (identification, single dominance, asymmetry, restraint budget) are ' +
+      'measured but not scored: calibration against reference landing pages showed those thresholds do not yet ' +
+      'discriminate, so they are yours to interpret. Treat the screenshot as the primary output — look at it. ' +
+      'Invariant 7 (a costly detail) is unmeasurable by construction: pass what you committed to as ' +
+      '`costly_detail`, or it fails. Needs a browser: install puppeteer, or set UI_CRAFT_CHROME to an existing ' +
+      'Chrome to skip the download.',
+    inputSchema: {
+      url: z.string().describe('URL of the rendered page — a local dev server URL is fine'),
+      costly_detail: z
+        .string()
+        .optional()
+        .describe('The one element of this fold that could not have come from a template, and what it cost'),
+      expected_class: z
+        .string()
+        .optional()
+        .describe('The composition class you set out to build, to detect drift'),
+      width: z.number().int().optional().describe('Viewport width (default 1440)'),
+      height: z.number().int().optional().describe('Viewport height (default 900)'),
+    },
+    outputSchema: {
+      url: z.string().optional(),
+      composition: z.object({ id: z.string(), confidence: z.string(), why: z.string() }).optional(),
+      expected_class: z.string().nullable().optional(),
+      drift: z.string().nullable().optional(),
+      checks: z.array(
+        z.object({ id: z.number(), name: z.string(), pass: z.boolean(), detail: z.string() })
+      ),
+      observations: z
+        .array(z.object({ id: z.number(), name: z.string(), value: z.string(), note: z.string() }))
+        .optional(),
+      summary: z.object({ passed: z.number(), total: z.number(), ok: z.boolean() }).optional(),
+      measured: z.unknown().optional(),
+      error: z.string().optional(),
+    },
+  },
+  async (args) => {
+    let result;
+    try {
+      result = await checkFold(args);
+    } catch (e) {
+      result = { error: `Unexpected error: ${e?.message ?? String(e)}`, checks: [] };
+    }
+    const isError = Boolean(result.error);
+    // The screenshot rides in the content blocks, never in structuredContent —
+    // base64 of a viewport would swamp the structured payload.
+    const { screenshot, ...structured } = result;
+    return {
+      content: [
+        { type: 'text', text: JSON.stringify(structured, null, 2) },
+        ...(screenshot ? [{ type: 'image', data: screenshot, mimeType: 'image/png' }] : []),
+      ],
+      ...(isError ? {} : { structuredContent: structured }),
       isError,
     };
   }
