@@ -2,7 +2,7 @@
 
 ## Current distribution contract
 
-The historical entries below describe several independently versioned artifacts. Their current compatibility contract is machine-readable in [`distribution-manifest.json`](distribution-manifest.json) and checked by `pnpm verify`. Every generated or documented MCP launcher uses the immutable package spec `ui-craft-mcp@0.6.1`; changing it requires updating the manifest and every launcher in the same change.
+The historical entries below describe several independently versioned artifacts. Their current compatibility contract is machine-readable in [`distribution-manifest.json`](distribution-manifest.json) and checked by `pnpm verify`. Every generated or documented MCP launcher uses the immutable package spec `ui-craft-mcp@0.7.0`; changing it requires updating the manifest and every launcher in the same change.
 
 GitHub CLI archives include GoReleaser SHA-256 checksums and GitHub build-provenance attestations. The MCP publish workflow uses npm trusted publishing plus `--provenance`; the npm package must have this repository/workflow configured as a trusted publisher before dispatch. No long-lived npm token is assumed.
 
@@ -13,6 +13,22 @@ Propagates the MCP releases published since v1.0.8. Installers and generated lau
 ## v1.0.10 (2026-07-29) — Current MCP pin
 
 Installers and generated launchers now write \`ui-craft-mcp@0.6.1\`. No CLI behaviour changes.
+
+## v1.0.11 (2026-07-29) — Current MCP pin
+
+Installers and generated launchers write `ui-craft-mcp@0.7.0`. No CLI behaviour changes.
+
+## ui-craft-mcp v0.7.0 (2026-07-29) — The fold is drawn, not chosen
+
+`/craft` now draws a composition class for a landing fold instead of picking one, and records it in the brief so the next surface in that project draws something else.
+
+The evidence for why: ten blind builds produced the same fold ten times out of ten, across two unrelated briefs, with the hero prescribed, then replaced by form-free invariants, then explicitly forbidden. Four runs against the draw produced none, and different briefs drew different classes.
+
+Measurement moved with it. `check_fold` reads colours outside sRGB, so an OKLCH token spine no longer makes every filled control read as transparent. Dominance collapses wrapper chains and excludes full-bleed backgrounds, having previously been inverted — it passed generated pages and failed every reference. A failed navigation is now an error rather than a measurement, because Chrome renders its own error page and that page measures perfectly well and entirely wrongly.
+
+Two corpora ship with it: 18 reference landing pages and 7 AI-generated ones. Nothing separates the two by value — every generated range sits inside the reference range — and what differs is spread. Generic is the absence of deviation, not a value on an axis. A new observation reports how far a fold sits from that population and carries its own false-positive rate, because at any useful cut it also flags well-crafted pages.
+
+Only two invariants carry a verdict, and neither is geometric. Every geometric one tested against the corpora turned out inverted, including "exactly one primary action", which passed 7 of 7 generated folds against 4 of 18 references.
 
 ## ui-craft-mcp v0.6.1 (2026-07-29) — check_fold runs on the browser you already have
 
