@@ -1,7 +1,7 @@
 {
   "$schema": "./schemas/distribution-manifest.schema.json",
   "schemaVersion": 1,
-  "updated": "2026-07-28",
+  "updated": "2026-07-29",
   "components": {
     "detector": {
       "package": "ui-craft-detect",
@@ -11,8 +11,8 @@
     },
     "mcp": {
       "package": "ui-craft-mcp",
-      "version": "0.4.0",
-      "invocation": "ui-craft-mcp@0.4.0",
+      "version": "0.5.0",
+      "invocation": "ui-craft-mcp@0.5.0",
       "runtime": "node>=20",
       "contract": "mcp-tools-v1"
     },
@@ -36,18 +36,18 @@
       "consumer": "ui-craft CLI 1.x",
       "requires": [
         "harness-assets-v1",
-        "ui-craft-mcp@0.4.0"
+        "ui-craft-mcp@0.5.0"
       ]
     },
     {
       "consumer": "Claude plugin 1.0.0",
       "requires": [
         "harness-assets-v1",
-        "ui-craft-mcp@0.4.0"
+        "ui-craft-mcp@0.5.0"
       ]
     },
     {
-      "consumer": "ui-craft-mcp 0.4.0",
+      "consumer": "ui-craft-mcp 0.5.0",
       "requires": [
         "detector-findings-v1",
         "mcp-tools-v1"

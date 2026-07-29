@@ -7,9 +7,9 @@ Deterministic design-quality gate exposed as a stdio MCP server. Complements the
 Requires Node.js 20 or newer.
 
 ```bash
-npm install -g ui-craft-mcp@0.4.0
+npm install -g ui-craft-mcp@0.5.0
 # or use npx (no install required):
-npx -y ui-craft-mcp@0.4.0
+npx -y ui-craft-mcp@0.5.0
 ```
 
 ## Wiring
@@ -21,7 +21,7 @@ Copy `.mcp.json.example` from the repo root to `.mcp.json` in your project:
   "mcpServers": {
     "ui-craft": {
       "command": "npx",
-      "args": ["-y", "ui-craft-mcp@0.4.0"]
+      "args": ["-y", "ui-craft-mcp@0.5.0"]
     }
   }
 }
@@ -30,6 +30,11 @@ Copy `.mcp.json.example` from the repo root to `.mcp.json` in your project:
 Claude Desktop, Cursor, and other MCP clients read `.mcp.json` automatically.
 
 ## Tools
+
+Every tool declares an `outputSchema`, so a successful call returns the payload twice: as
+`structuredContent` (machine-readable, validated against the schema) and as a pretty-printed JSON
+text block (unchanged, for hosts that only render text). Error results keep the text block, set
+`isError`, and omit `structuredContent`.
 
 ### `check_anti_slop`
 

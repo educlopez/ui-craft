@@ -62,3 +62,51 @@ test('check_anti_slop + score_ui return content over stdio', async () => {
     await client.close();
   }
 });
+
+test('every tool advertises an outputSchema and returns structuredContent', async () => {
+  const transport = new StdioClientTransport({ command: 'node', args: [SERVER] });
+  const client = new Client({ name: 'smoke', version: '0.0.0' }, { capabilities: {} });
+  await client.connect(transport);
+  try {
+    const { tools } = await client.listTools();
+    for (const tool of tools) {
+      assert.ok(tool.outputSchema, `${tool.name} advertises an outputSchema`);
+    }
+
+    const slop = 'export default () => <div className="bg-gradient-to-r from-purple-500 to-cyan-500"><img src="/x.png"/></div>;';
+
+    // A failing outputSchema validation surfaces as an MCP error, so reaching
+    // these assertions already proves the declared schemas match reality.
+    const anti = await client.callTool({ name: 'check_anti_slop', arguments: { code: slop } });
+    assert.equal(typeof anti.structuredContent?.summary?.total, 'number');
+    assert.ok(Array.isArray(anti.structuredContent.findings));
+
+    const tokens = await client.callTool({ name: 'tokens_lint', arguments: { code: slop } });
+    assert.equal(typeof tokens.structuredContent?.summary?.total, 'number');
+
+    const score = await client.callTool({ name: 'score_ui', arguments: { code: slop } });
+    assert.equal(typeof score.structuredContent?.overall?.score, 'number');
+    assert.equal(typeof score.structuredContent.overall.grade, 'string');
+    assert.equal(typeof score.structuredContent.dimensions.a11y.score, 'number');
+
+    const bar = await client.callTool({ name: 'acceptance_bar', arguments: { surface: 'dashboard' } });
+    assert.equal(bar.structuredContent?.surface, 'dashboard');
+    assert.ok(bar.structuredContent.items.length > 0);
+  } finally {
+    await client.close();
+  }
+});
+
+test('an errored tool call still returns text and no structuredContent', async () => {
+  const transport = new StdioClientTransport({ command: 'node', args: [SERVER] });
+  const client = new Client({ name: 'smoke', version: '0.0.0' }, { capabilities: {} });
+  await client.connect(transport);
+  try {
+    const bad = await client.callTool({ name: 'check_anti_slop', arguments: {} });
+    assert.equal(bad.isError, true, 'missing input is an error result');
+    assert.ok(bad.content?.[0]?.text, 'error results keep the text block');
+    assert.equal(bad.structuredContent, undefined, 'error results carry no structuredContent');
+  } finally {
+    await client.close();
+  }
+});
