@@ -407,6 +407,27 @@ export const REFERENCE_RANGE = {
 };
 
 /**
+ * What separates a well-crafted fold from a generated one, measured across
+ * 18 references and 7 AI-generated pages (evals/fold/*-corpus.json).
+ *
+ * Nothing, on any single axis. Every generated range sits inside the
+ * reference range. What differs is spread: coefficient of variation for hero
+ * text elements is 1.00 across references and 0.12 across generated folds;
+ * for primary actions it is 0.71 against 0.00 — all seven generated pages
+ * have exactly one.
+ *
+ * Generic is not a value. It is the absence of deviation. A fold cannot be
+ * called bland by measuring that fold; it can only be called bland relative
+ * to the population it came from. Any future "is this generic" check has to
+ * compare against a corpus, not against a threshold.
+ */
+export const CORPUS_FINDING = {
+  separatingMetric: null,
+  signal: 'variance, not value',
+  cv: { heroTextElements: { reference: 1.0, generated: 0.12 }, primaryActions: { reference: 0.71, generated: 0.0 } },
+};
+
+/**
  * Judge a measurement against the fold invariants.
  * Invariant 7 cannot be measured — it is passed in as a declaration.
  *
@@ -427,11 +448,6 @@ export function evaluateFold(m, declared = {}) {
   // A confident wrong number is worse than no number.
   const checks = [
     {
-      id: 3, name: 'One primary action',
-      pass: m.primaryActions === 1,
-      detail: `${m.primaryActions} filled actions in the fold, outside nav and footer`,
-    },
-    {
       id: 5, name: 'Evidence over assertion',
       pass: (hasNumber || hasVisualProof) && !superlative,
       detail: superlative
@@ -446,6 +462,11 @@ export function evaluateFold(m, declared = {}) {
   ];
 
   const observations = [
+    {
+      id: 3, name: 'One primary action',
+      value: `${m.primaryActions} filled actions in the fold, outside nav and footer`,
+      note: `not judged, and withdrawn as a verdict: only 4 of 18 reference folds have exactly one, while 7 of 7 AI-generated folds do. The rule rewarded the thing it was written to prevent. References run a median of 3, range 0-10`,
+    },
     {
       id: 1, name: 'Identification',
       value: m.namingStatement ? `"${m.namingStatement}" (${words(m.namingStatement)} words)` : 'none found',
