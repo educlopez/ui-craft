@@ -142,7 +142,7 @@ func (h OpenCodeHarness) Supports(c component.Component) bool {
 // OpenCode uses JSONC for its config (~/.config/opencode/opencode.json).
 // The ui-craft server entry is merged under the top-level "mcp" key:
 //
-//	"mcp": { "<name>": { "type": "local", "command": ["npx","-y","ui-craft-mcp@0.6.1"] } }
+//	"mcp": { "<name>": { "type": "local", "command": ["npx","-y","ui-craft-mcp@0.7.0"] } }
 //
 // Comments and trailing commas in the existing config are stripped before
 // parse (JSONC support) and the file is rewritten as clean JSON.
