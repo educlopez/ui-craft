@@ -1,0 +1,3 @@
+**Craft Read:** B2B ops console for operators (Command composition — work queue is the product), product language, Graphite theme + teal accent, variance 4, signature bet: nav active indicator (left accent bar, system-wide).
+
+**Decisions locked before coding:** Command/operator composition per recipe-dashboard.md (compact metric strip + filter row + dominant work-queue table, not a chart-heavy Overview layout) since the brief states the primary user needs "what needs action now."

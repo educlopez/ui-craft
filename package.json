@@ -30,12 +30,14 @@
     "code-quality"
   ],
   "scripts": {
-    "detect": "node scripts/detect.mjs",
-    "validate": "node scripts/validate.mjs",
-    "sync": "node scripts/sync-mirrors.mjs",
-    "check:mirrors": "node scripts/check-mirror-copies.mjs",
     "check:distribution": "node scripts/check-distribution-contract.mjs",
+    "check:mirrors": "node scripts/check-mirror-copies.mjs",
+    "detect": "node scripts/detect.mjs",
+    "eval:build": "node scripts/eval-build.mjs",
+    "sync": "node scripts/sync-mirrors.mjs",
+    "test:evals": "node --test scripts/eval-build.test.mjs",
     "test:verify": "node --test scripts/check-distribution-contract.test.mjs scripts/verify.test.mjs",
+    "validate": "node scripts/validate.mjs",
     "verify": "node scripts/verify.mjs",
     "verify:list": "node scripts/verify.mjs --list"
   },

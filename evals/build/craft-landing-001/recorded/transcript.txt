@@ -1,0 +1,5 @@
+Building a marketing landing page for a fictional dev-tool product, "Hookline" — a webhook sync/delivery service. No existing project tokens to inherit, so I'm establishing a minimal token set inline.
+
+- Style: Dark Premium, developer-tool register — deep zinc neutrals, one accent.
+- DESIGN_VARIANCE ~7 (landing default): asymmetric hero, asymmetric feature rows.
+- Signature detail: a live "delivery timeline" mini-visualization instead of a generic icon+text feature card.
