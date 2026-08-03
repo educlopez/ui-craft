@@ -6,17 +6,21 @@ The historical entries below describe several independently versioned artifacts.
 
 GitHub CLI archives include GoReleaser SHA-256 checksums and GitHub build-provenance attestations. The MCP publish workflow uses npm trusted publishing plus `--provenance`; the npm package must have this repository/workflow configured as a trusted publisher before dispatch. No long-lived npm token is assumed.
 
-## v1.0.9 (2026-07-29) — Current MCP pin
+## v1.0.12 (2026-08-03) — Current MCP pin
 
-Propagates the MCP releases published since v1.0.8. Installers and generated launchers now write the immutable package spec `ui-craft-mcp@0.6.0`, which carries structured tool output on all tools plus the two fold composition tools. No CLI behaviour changes; a binary built before this release pins `ui-craft-mcp@0.4.0`.
+Installers and generated launchers write `ui-craft-mcp@0.8.0`, which carries `route_task`. No CLI behaviour changes.
+
+## v1.0.11 (2026-07-29) — Current MCP pin
+
+Installers and generated launchers write `ui-craft-mcp@0.7.0`. No CLI behaviour changes.
 
 ## v1.0.10 (2026-07-29) — Current MCP pin
 
 Installers and generated launchers now write \`ui-craft-mcp@0.6.1\`. No CLI behaviour changes.
 
-## v1.0.11 (2026-07-29) — Current MCP pin
+## v1.0.9 (2026-07-29) — Current MCP pin
 
-Installers and generated launchers write `ui-craft-mcp@0.7.0`. No CLI behaviour changes.
+Propagates the MCP releases published since v1.0.8. Installers and generated launchers now write the immutable package spec `ui-craft-mcp@0.6.0`, which carries structured tool output on all tools plus the two fold composition tools. No CLI behaviour changes; a binary built before this release pins `ui-craft-mcp@0.4.0`.
 
 ## ui-craft-mcp v0.8.0 (2026-08-03) — Routing by meaning, not by filename
 
