@@ -208,6 +208,31 @@ Patterns: hold-to-delete (2s linear on `:active`), tab transitions, image reveal
 | `content-visibility: auto` | Lazy-render off-screen content |
 | `color-scheme: dark` | Native dark mode for scrollbars/forms |
 | `accent-color` | Style form controls (checkboxes, radios) |
+| `scrollbar-gutter: stable` | Reserve the scrollbar track so content never shifts when it appears |
+
+---
+
+## Edge Fades: `mask-image`, Never a Gradient Overlay
+
+A fade to the edge of a scroll area or an image is a **transparency** effect, not a color effect. Build it with `mask-image`, never with a `linear-gradient` overlay from `transparent` to the background color.
+
+```css
+/* Wrong — a gradient overlay hardcodes the background */
+.fade { background: linear-gradient(to bottom, transparent, var(--bg)); }
+
+/* Right — the mask fades the element itself */
+.fade {
+  mask-image: linear-gradient(to bottom, black 60%, transparent);
+}
+```
+
+**Why:** the overlay is painted in one specific color, so it only reads correctly on that exact background. It breaks the moment the element sits on a tinted surface, inside a card, in dark mode, or over an image — a visible band appears where the fake background meets the real one. A mask removes pixels instead of painting over them, so it is correct on every background by construction. It also survives a theme flip with no dark-mode override.
+
+### Rules
+
+- **Never fade over a scroll area's leading edge.** A mask at the bottom of a list hides exactly the content the user is scrolling toward. Fade the trailing edge only, or drop the effect.
+- **Ease the stops on any fade over ~200px.** A two-stop gradient bands on wide surfaces; add intermediate stops (`black 60%, rgba(0,0,0,0.6) 80%, transparent`) so the ramp reads smooth.
+- **Prefer masks for image edges and text truncation too** — same reasoning: independent of the surface below.
 
 ---
 
