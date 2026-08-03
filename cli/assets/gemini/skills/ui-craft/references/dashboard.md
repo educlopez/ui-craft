@@ -69,6 +69,8 @@ Tables are the workhorse of dashboards. Make them earn their space.
 - **Row hover**: subtle background highlight (`background: #f9fafb` / Tailwind: `hover:bg-gray-50`).
 - **Headers**: sentence case, `font-weight: 500`, secondary color. **Never uppercase table headers.** **Why:** uppercase removes the lowercase letterforms that aid scan-pattern recognition; readers process uppercase ~13-20% slower than sentence case (Tinker 1969). Uppercase also reads as decorative-template, not data-functional.
 - **Alignment**: text left, numbers right, status center.
+- **Virtualize past 200 rows.** **Why:** every row is DOM the browser lays out, styles, and paints on each scroll frame — a 2,000-row table blows the 16ms budget before any of your CSS is at fault, and the fix is never "optimize the row component". Render a window (TanStack Virtual, `react-window`) or paginate. **When it breaks:** the table must be Cmd+F-searchable or printable in full — then paginate instead of virtualizing, since a virtual window hides rows from find-in-page.
+- **`scrollbar-gutter: stable` on every scroll container.** **Why:** on overlay-scrollbar platforms the track appears only on scroll, and the content reflows by its width at that moment — column edges jump the instant the user touches the wheel. Reserving the gutter costs nothing and removes the shift.
 
 ## Filter & Toolbar Patterns
 

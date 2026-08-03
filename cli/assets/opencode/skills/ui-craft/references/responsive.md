@@ -59,7 +59,7 @@ Use these only when integrating with an existing system. New code should prefer 
 
 ### Interaction
 - Touch targets **44x44px minimum**
-- Swipe gestures where appropriate
+- Swipe gestures only for reversible, spatially-implied actions — dismiss a sheet, page a carousel, reveal a row action. **Why:** a swipe leaves no visible affordance, so anything discovered only by swiping is undiscoverable to a first-time user, and anything destructive behind it is irreversible-by-accident. Every swipe needs a visible equivalent: a button, a menu item, or a drag handle.
 - Bottom sheets instead of dropdowns
 - **Thumbs-first design** — primary and navigational actions inside the bottom-center thumb zone; destructive or cancel actions deliberately OUTSIDE easy reach. **Why:** the thumb zone optimizes for the action you want repeated; placing "Delete" there optimizes for accidents.
 - More spacing between interactive elements
