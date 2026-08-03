@@ -7,6 +7,7 @@
  * API: McpServer.registerTool() + StdioServerTransport
  *
  * Tools:
+ *   route_task       — routes a natural-language prompt to the references/commands that cover it
  *   check_anti_slop  — flags anti-slop patterns via scripts/detect.mjs scan()
  *   tokens_lint      — flags off-system token values (color, radius, spacing, z-index)
  *   acceptance_bar   — returns acceptance checklist for a UI surface
@@ -27,6 +28,7 @@ import { tokensLint } from './tools/tokens-lint.mjs';
 import { acceptanceBar } from './tools/acceptance-bar.mjs';
 import { scoreUiTool } from './tools/score-ui.mjs';
 import { checkFold, foldCandidates } from './tools/fold.mjs';
+import { routeTask } from './tools/route-task.mjs';
 import { MCP_VERSION } from './version.mjs';
 
 const server = new McpServer(
@@ -78,6 +80,73 @@ const dimensionSchema = z.object({
   score: z.number(),
   findings: z.array(z.unknown()),
 });
+
+// ─── Tool: route_task ────────────────────────────────────────────────────────
+
+const routeHitSchema = z.object({
+  name: z.string(),
+  kind: z.string(),
+  path: z.string(),
+  summary: z.string(),
+  score: z.number(),
+  matched: z.array(z.string()),
+  tier: z.number().optional(),
+});
+
+server.registerTool(
+  'route_task',
+  {
+    title: 'Route Task',
+    description:
+      'Call this FIRST on any UI request, before reading reference files. Takes the task in natural ' +
+      'language and returns the references, commands and MCP tools that cover it, ranked, plus the ' +
+      'single first move to make. Deterministic lexical ranking over a synonym map, so a prompt ' +
+      'reaches the right entry even when its words do not match our filenames — "analytics panel" ' +
+      'finds recipe-dashboard.md, which never says analytics. Recipes are also indexed by what they ' +
+      'contain, so "pricing block" finds recipe-landing.md. ' +
+      'Returns POINTERS only: every design rule stays in the files it points at. ' +
+      'An unmatched prompt is reported as unmatched, not routed to a guess.',
+    inputSchema: {
+      prompt: z
+        .string()
+        .describe('The task in natural language — e.g. "analytics panel with KPIs"'),
+      limit: z.number().int().optional().describe('Max hits per kind (default 5, clamped to 12)'),
+    },
+    outputSchema: {
+      prompt: z.string().nullable(),
+      concepts: z.array(z.string()),
+      first_move: z.string().nullable(),
+      intent: z.enum(['build', 'repair']).optional(),
+      results: z.object({
+        commands: z.array(routeHitSchema),
+        references: z.array(routeHitSchema),
+        mcp_tools: z.array(routeHitSchema),
+      }),
+      instruction: z.string().optional(),
+      error: z.string().optional(),
+    },
+  },
+  (args) => {
+    let result;
+    try {
+      result = routeTask(args);
+    } catch (e) {
+      result = {
+        error: `Unexpected error: ${e?.message ?? String(e)}`,
+        prompt: args?.prompt ?? null,
+        concepts: [],
+        first_move: null,
+        results: { commands: [], references: [], mcp_tools: [] },
+      };
+    }
+    const isError = Boolean(result.error);
+    return {
+      content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+      ...(isError ? {} : { structuredContent: result }),
+      isError,
+    };
+  }
+);
 
 // ─── Tool: check_anti_slop ───────────────────────────────────────────────────
 

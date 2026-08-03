@@ -84,7 +84,7 @@
     "should_trigger": true
   },
   {
-    "query": "hazme un dashboard de métricas para la app. que quede muy bien de serie, que no se note que lo hizo una IA",
+    "query": "make me a metrics dashboard for the app. want it to look great out of the box, and i don't want anyone to be able to tell an AI built it",
     "should_trigger": true
   },
   {

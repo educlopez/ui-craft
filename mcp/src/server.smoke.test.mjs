@@ -19,7 +19,7 @@ const SERVER = process.env.UI_CRAFT_MCP_SERVER
   ? join(process.cwd(), process.env.UI_CRAFT_MCP_SERVER)
   : join(__dirname, 'server.mjs');
 
-test('server boots over stdio and lists the 6 tools', async () => {
+test('server boots over stdio and lists the 7 tools', async () => {
   if (process.env.UI_CRAFT_MCP_SERVER) {
     const bundledSource = readFileSync(SERVER, 'utf8');
     assert.doesNotMatch(
@@ -44,6 +44,7 @@ test('server boots over stdio and lists the 6 tools', async () => {
       'check_anti_slop',
       'check_fold',
       'fold_candidates',
+      'route_task',
       'score_ui',
       'tokens_lint',
     ]);
@@ -106,6 +107,16 @@ test('every tool advertises an outputSchema and returns structuredContent', asyn
     assert.equal(ids.length, 3);
     assert.ok(!ids.includes('type-only'), 'a spent class drops out of the draw');
     assert.ok(!ids.includes('split'), 'split is never offered first');
+
+    // Worth smoking over stdio because it exercises stopwords and the synonym map in one
+    // call, against a filename that contains none of the words asked for.
+    const routed = await client.callTool({
+      name: 'route_task',
+      arguments: { prompt: 'build me an analytics panel with KPIs' },
+    });
+    const routedNames = routed.structuredContent.results.references.map((r) => r.name);
+    assert.ok(routedNames.includes('recipe-dashboard'), `expected recipe-dashboard, got ${routedNames.join(', ')}`);
+    assert.equal(typeof routed.structuredContent.first_move, 'string');
   } finally {
     await client.close();
   }

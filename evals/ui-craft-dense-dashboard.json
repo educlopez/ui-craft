@@ -64,7 +64,7 @@
     "should_trigger": true
   },
   {
-    "query": "construye un panel de auditoría interno para revisar logs de transacciones — tabla densa con filtros, exportación csv, estado de cada registro. react + tailwind, pensado para operadores",
+    "query": "build an internal audit panel for reviewing transaction logs — dense table with filters, csv export, per-record status. react + tailwind, built for operators",
     "should_trigger": true
   },
   {

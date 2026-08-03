@@ -64,7 +64,7 @@
     "should_trigger": true
   },
   {
-    "query": "quiero una página de inicio que se vea como linear o vercel — mucho espacio en blanco, tipografía apretada, sin sombras ni gradientes. nextjs 15, tailwind v4",
+    "query": "i want a home page that looks like linear or vercel — lots of whitespace, tight type, no shadows or gradients. nextjs 15, tailwind v4",
     "should_trigger": true
   },
   {

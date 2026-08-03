@@ -64,7 +64,7 @@
     "should_trigger": true
   },
   {
-    "query": "quiero que la página de artículos se vea como una revista — titulares en serif, columna de lectura ancha, citas destacadas, ritmo vertical limpio. app/articulos/[slug]/page.tsx",
+    "query": "i want the articles page to read like a magazine — serif headlines, wide reading column, pull quotes, clean vertical rhythm. app/articles/[slug]/page.tsx",
     "should_trigger": true
   },
   {

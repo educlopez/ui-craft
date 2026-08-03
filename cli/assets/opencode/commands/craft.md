@@ -1,5 +1,5 @@
 ---
-description: One-shot build pipeline for a complete surface from an outcome recipe — inputs (or defaults) → composition → theme → build order → acceptance bar. Use when the user asks for a whole surface ("build me a dashboard", "hazme un dashboard") and expects a shippable result, not component-level help.
+description: One-shot build pipeline for a complete surface from an outcome recipe — inputs (or defaults) → composition → theme → build order → acceptance bar. Use when the user asks for a whole surface ("build me a dashboard", "I need a landing page") and expects a shippable result, not component-level help.
 argument-hint: "[surface: dashboard] [optional: persona, theme preset, density]"
 ---
 

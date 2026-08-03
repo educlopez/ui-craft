@@ -54,6 +54,8 @@ The rules that make the biggest difference between "AI-generated" and "designed 
 
 ## Routing
 
+**If the ui-craft MCP server is connected, call `route_task` with the user's own words before reading anything below.** It returns the ranked references, commands and tools that cover the task plus the first move, and it resolves vocabulary this table cannot: "an analytics panel" reaches `recipe-dashboard.md`, "pricing block" reaches `recipe-landing.md`. **Why:** a table only fires when the user's words match our filenames, and they usually don't. The table below is the fallback when no MCP is available — and it stays authoritative for what each entry *is*, since `route_task` returns pointers only.
+
 | Intent | Pass / Reference |
 |--------|------------------|
 | New here / unsure where to begin | Run `/start` → reads the project, reports what's available now, routes you to the right next step |
@@ -240,7 +242,7 @@ Commands can iterate until their quality gate passes rather than producing a sin
 
 ### Self-Correction
 
-When the user corrects design output — "no así", "no me gusta", "always do X here", "never Z", or a reversal that reads as a standing preference — record it as a **learned constraint** in the brief (section 6; run `/remember`). Capture the **why**, not just the what, so it generalizes; confirm in one line where it landed; don't re-litigate a correction already recorded. Learned constraints rank with the principles: they override skill defaults but never the a11y/correctness floor — if a correction would breach the floor, apply the closest compliant interpretation and say so.
+When the user corrects design output — "not like that", "I don't like this", "always do X here", "never Z", or a reversal that reads as a standing preference — record it as a **learned constraint** in the brief (section 6; run `/remember`). Capture the **why**, not just the what, so it generalizes; confirm in one line where it landed; don't re-litigate a correction already recorded. Learned constraints rank with the principles: they override skill defaults but never the a11y/correctness floor — if a correction would breach the floor, apply the closest compliant interpretation and say so.
 
 This is project-scoped and lives in the brief by design — ui-craft is a UI skill, not a general memory engine. Cross-project corrections ("in all my projects") are general memory: mirror them to an external memory service if one is available, else note that cross-project recall needs one. Full behavior → [brief.md](references/brief.md) (Self-Correction).
 

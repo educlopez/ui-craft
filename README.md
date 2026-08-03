@@ -675,16 +675,21 @@ It is **judged, not deterministic** — computed by the host agent from the rubr
 
 [![npm version](https://img.shields.io/npm/v/ui-craft-mcp?style=flat-square&label=ui-craft-mcp)](https://www.npmjs.com/package/ui-craft-mcp)
 
-The `ui-craft-mcp` package exposes four deterministic design-quality tools over the [Model Context Protocol](https://modelcontextprotocol.io/) (stdio transport). Works with Claude Desktop, Cursor, and any MCP-compatible client.
+The `ui-craft-mcp` package exposes seven deterministic tools over the [Model Context Protocol](https://modelcontextprotocol.io/) (stdio transport). Works with Claude Desktop, Cursor, and any MCP-compatible client.
 
 **Boundary:** the MCP server is the **checks layer** — deterministic, rule-based, identical output for identical input. The `SKILL.md` is the **taste layer** — judgment, aesthetics, architectural decisions. These never overlap.
 
 | Tool | What it does |
 |------|-------------|
+| `route_task` | Routes a natural-language prompt to the references, commands and tools that cover it, plus the first move — pointers only, never rules |
 | `check_anti_slop` | 43-rule anti-slop scanner via `scan()` from `ui-craft-detect` — in-process, no subprocess |
 | `tokens_lint` | Off-system token detector: raw hex colors, non-scale radius/spacing px, magic z-index |
 | `acceptance_bar` | Acceptance checklist for a UI surface (`dashboard`, `landing`, `auth`, `generic`) — data only, no scoring |
 | `score_ui` | Composite UICraftScore (0-100 + grade + per-dim subscores) via `evals/quality/score.mjs` — all three dimensions in one call |
+| `fold_candidates` | Draws landing-fold composition classes, preferring ones the project has not spent |
+| `check_fold` | Renders a URL and reports what its fold actually is — screenshot, class, drift, invariants |
+
+**Why `route_task` exists:** the routing table in `SKILL.md` only fires when your words match our filenames. Ask for "an analytics panel" and nothing points at `recipe-dashboard.md`, because that file never says analytics. A synonym map fixes a vocabulary mismatch a table cannot, and recipes are indexed by what they *contain*, so "pricing block" reaches the landing recipe.
 
 **Quick start:**
 
