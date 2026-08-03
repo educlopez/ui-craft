@@ -2,7 +2,7 @@
 
 ## Current distribution contract
 
-The historical entries below describe several independently versioned artifacts. Their current compatibility contract is machine-readable in [`distribution-manifest.json`](distribution-manifest.json) and checked by `pnpm verify`. Every generated or documented MCP launcher uses the immutable package spec `ui-craft-mcp@0.7.0`; changing it requires updating the manifest and every launcher in the same change.
+The historical entries below describe several independently versioned artifacts. Their current compatibility contract is machine-readable in [`distribution-manifest.json`](distribution-manifest.json) and checked by `pnpm verify`. Every generated or documented MCP launcher uses the immutable package spec `ui-craft-mcp@0.8.0`; changing it requires updating the manifest and every launcher in the same change.
 
 GitHub CLI archives include GoReleaser SHA-256 checksums and GitHub build-provenance attestations. The MCP publish workflow uses npm trusted publishing plus `--provenance`; the npm package must have this repository/workflow configured as a trusted publisher before dispatch. No long-lived npm token is assumed.
 
@@ -17,6 +17,20 @@ Installers and generated launchers now write \`ui-craft-mcp@0.6.1\`. No CLI beha
 ## v1.0.11 (2026-07-29) — Current MCP pin
 
 Installers and generated launchers write `ui-craft-mcp@0.7.0`. No CLI behaviour changes.
+
+## ui-craft-mcp v0.8.0 (2026-08-03) — Routing by meaning, not by filename
+
+`route_task` takes a UI task in natural language and returns the references, commands and tools that cover it, ranked, plus the single first move to make. Deterministic lexical ranking: no model call, no embeddings, no network, and the same prompt always returns the same routing.
+
+The routing table in `SKILL.md` only ever fired when the user's words matched our filenames. Ask for an analytics panel and nothing pointed at `recipe-dashboard.md`, because that file never says analytics. A table cannot close a vocabulary gap. Three mechanisms do: a synonym map that reaches `dashboard` from analytics, KPI, metrics, panel and backoffice while stripping task filler that would otherwise match every candidate equally; a constituents index, so entries carry the names of the parts they are built from and "pricing block" reaches the landing recipe; and repair intent, where words meaning "this already exists and is wrong" suppress the constructive moves, because you do not build a new surface to fix an existing one. When only a build move is on offer for a repair, the tool returns no move and names the reference to read — a wrong first move is worse than none.
+
+Score is an entry's strongest signal plus a coverage bonus. Averaging the signals looked fairer and was wrong: it made covering a second concept lower a score, which handed "review keyboard accessibility" to `/critique` instead of `/audit`. Neither term is a multiplier, so a verbose prompt is never scaled down for the words that missed.
+
+Four lexical collisions surfaced while building it, each now pinned by a test. `states` stemmed onto `stats` and sent every dashboard prompt to the unhappy-path command. `onboarding` stemmed onto `/start`'s `onboard` and sent every signup prompt to the CLI front door. `web`, as a landing alias, reached `sound.md` through its `web-audio` constituent. And an inspection tool won the first move on a build prompt through an alphabetical tie-break.
+
+The index lives in `mcp/src/route-data.mjs` rather than across 33 reference frontmatters: the published package ships `files: ["dist"]` and cannot read `skills/` at a user's install, so it has to be bundled either way, and one place cannot drift from itself.
+
+The skill also loses the Spanish trigger phrases and eval queries that had accumulated in shipped content. ui-craft ships worldwide; picking one additional language is arbitrary whichever it is, and turns a hand-maintained index into an N-locale maintenance surface.
 
 ## ui-craft-mcp v0.7.0 (2026-07-29) — The fold is drawn, not chosen
 

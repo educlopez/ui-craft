@@ -117,7 +117,7 @@ One command installs the skill, all 25 slash commands, the 2 review agents, and 
 /plugin install ui-craft
 ```
 
-The plugin bundles a `.mcp.json` (`npx -y ui-craft-mcp@0.7.0`), so the deterministic gates register automatically on install. The exact package version is declared in [`distribution-manifest.json`](distribution-manifest.json), avoiding an implicit upgrade on first launch. This uses Claude Code's own plugin system, so it's not affected by the global-path issue noted below.
+The plugin bundles a `.mcp.json` (`npx -y ui-craft-mcp@0.8.0`), so the deterministic gates register automatically on install. The exact package version is declared in [`distribution-manifest.json`](distribution-manifest.json), avoiding an implicit upgrade on first launch. This uses Claude Code's own plugin system, so it's not affected by the global-path issue noted below.
 
 ### Agent Skills — alternative (skill + commands only, any harness)
 
@@ -695,7 +695,7 @@ The `ui-craft-mcp` package exposes seven deterministic tools over the [Model Con
 
 ```bash
 # Wire the manifest-pinned release into your project's .mcp.json:
-{ "mcpServers": { "ui-craft": { "command": "npx", "args": ["-y", "ui-craft-mcp@0.7.0"] } } }
+{ "mcpServers": { "ui-craft": { "command": "npx", "args": ["-y", "ui-craft-mcp@0.8.0"] } } }
 ```
 
 See [`mcp/README.md`](mcp/README.md) for full install, tool docs, and the `acceptance-data.json` regen note.
