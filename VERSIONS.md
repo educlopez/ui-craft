@@ -2,9 +2,21 @@
 
 ## Current distribution contract
 
-The historical entries below describe several independently versioned artifacts. Their current compatibility contract is machine-readable in [`distribution-manifest.json`](distribution-manifest.json) and checked by `pnpm verify`. Every generated or documented MCP launcher uses the immutable package spec `ui-craft-mcp@0.8.0`; changing it requires updating the manifest and every launcher in the same change.
+The historical entries below describe several independently versioned artifacts. Their current compatibility contract is machine-readable in [`distribution-manifest.json`](distribution-manifest.json) and checked by `pnpm verify`. Every generated or documented MCP launcher uses the immutable package spec `ui-craft-mcp@0.8.1`; changing it requires updating the manifest and every launcher in the same change.
 
 GitHub CLI archives include GoReleaser SHA-256 checksums and GitHub build-provenance attestations. The MCP publish workflow uses npm trusted publishing plus `--provenance`; the npm package must have this repository/workflow configured as a trusted publisher before dispatch. No long-lived npm token is assumed.
+
+## ui-craft-mcp v0.8.1 (2026-08-03) — The form travels with the instruction
+
+Three findings from the first blind-build audit run against v0.8.0, each a different kind of miss.
+
+`SKILL.md` told the agent to output the Craft Read and kept the template in `craft-intent.md`. Loaded, that works; unloaded, the agent produces the right elements in an improvised shape — a planning paragraph instead of the one line the user can react to. Two builds, two shapes. The template now sits next to the instruction that demands it, because a pointer to a form is not the form.
+
+The recipe for a surface is now loaded before code, not after. Every numeric limit that keeps a surface from reading as a template lives in its recipe — hero subtext ≤20 words, the eyebrow budget, form column width, the acceptance bar — and skipping the recipe does not soften those limits, it removes them. A landing build breached the 20-word limit by 12 words without ever seeing it. `route_task` names the recipe when the MCP is connected; the skill no longer relies on that.
+
+Tables get the rule the detector already enforced and the skill never taught: wrapped in `overflow-x: auto`, and `position: sticky; top: 0` on `thead` past ~15 rows. A table is the one layout that cannot reflow, and a scrolled-away header turns every cell below it into an unlabelled string.
+
+`route_task` also indexes tables by `overflow-x` and `sticky-header`, so asking about either reaches `dashboard.md`.
 
 ## v1.0.12 (2026-08-03) — Current MCP pin
 
