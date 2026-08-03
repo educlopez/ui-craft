@@ -159,7 +159,15 @@ The project's own code becomes the source of truth — no external config file. 
 
 ### Craft Read (full surfaces)
 
-When building a complete surface (dashboard, landing, auth, settings shell, portfolio page) — including `/craft` — output the **Craft Read** from [craft-intent.md](references/craft-intent.md) before writing code. Pick **DESIGN_VARIANCE** and a **signature bet** in that line. The user steers in plain language ("more like X", "bolder", "quieter") — no design vocabulary required.
+When building a complete surface (dashboard, landing, auth, settings shell, portfolio page) — including `/craft` — output the **Craft Read** before writing code, in exactly this form:
+
+> **Craft Read:** *[surface kind] for [audience], [product | marketing] language, [theme/accent hint], variance [N], signature bet: [choice].*
+
+The template is here rather than only in [craft-intent.md](references/craft-intent.md) on purpose. **Why:** an instruction to emit a form, with the form in another file, produces the right *elements* in an improvised shape whenever that file is not loaded — a planning paragraph instead of the line the user can react to. A pointer to a form is not the form.
+
+Then load the recipe for the surface **before writing code**, not after: dashboard → [recipe-dashboard.md](references/recipe-dashboard.md), landing → [recipe-landing.md](references/recipe-landing.md), auth → [recipe-auth.md](references/recipe-auth.md). **Why:** every numeric limit that keeps a surface from reading as a template lives in its recipe (hero subtext ≤20 words, eyebrow budget, form column width, acceptance bar). Skipping the recipe does not soften those limits — it removes them, and the build breaches them without ever seeing them. If the MCP server is connected, `route_task` names the recipe for you.
+
+Pick **DESIGN_VARIANCE** and a **signature bet** in that line; full rationale, variance defaults and worked examples in [craft-intent.md](references/craft-intent.md). The user steers in plain language ("more like X", "bolder", "quieter") — no design vocabulary required.
 
 ---
 

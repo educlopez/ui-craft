@@ -398,7 +398,8 @@ export const CORPUS = [
     id: 'ref-dashboard', kind: 'reference', name: 'dashboard', path: 'references/dashboard.md', tier: 2,
     summary: 'Dashboard patterns — metric cards, charts, tables, sidebar, filters, density, signal-to-noise tiers.',
     keywords: ['dashboard', 'tables'],
-    contains: ['metric-cards', 'status-dots', 'proportion-bars', 'virtualization', 'scrollbar-gutter', 'density'],
+    contains: ['metric-cards', 'status-dots', 'proportion-bars', 'virtualization', 'scrollbar-gutter',
+      'density', 'overflow-x', 'sticky-header'],
     first_move: '/craft dashboard',
   },
   {
