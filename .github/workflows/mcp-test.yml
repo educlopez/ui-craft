@@ -11,6 +11,10 @@ on:
       # eval harness — also triggers when eval sources change
       - 'evals/quality/**'
       - 'scripts/eval.mjs'
+      # build-eval harness — scorers, recorded fixtures and the runner
+      - 'evals/build/**'
+      - 'scripts/eval-build.mjs'
+      - 'scripts/eval-build.test.mjs'
   pull_request:
     paths:
       - 'mcp/**'
@@ -19,6 +23,10 @@ on:
       - 'scripts/detect.test.mjs'
       - 'evals/quality/**'
       - 'scripts/eval.mjs'
+      # build-eval harness — scorers, recorded fixtures and the runner
+      - 'evals/build/**'
+      - 'scripts/eval-build.mjs'
+      - 'scripts/eval-build.test.mjs'
 
 jobs:
   mcp-test:
@@ -49,3 +57,8 @@ jobs:
         run: node --test evals/quality/*.test.mjs
       - name: Run baseline regression gate
         run: node scripts/eval.mjs --baseline
+      # Build-eval scorers, against recorded workspaces only — no agent runs, no API keys,
+      # no cost. The live arms are opt-in from a developer machine; what CI protects is that
+      # the scorers still catch the misses the recorded fixtures were frozen for.
+      - name: Run build-eval scorer tests
+        run: npm run test:evals
