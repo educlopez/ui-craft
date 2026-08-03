@@ -18,6 +18,10 @@ Tables get the rule the detector already enforced and the skill never taught: wr
 
 `route_task` also indexes tables by `overflow-x` and `sticky-header`, so asking about either reaches `dashboard.md`.
 
+## v1.0.13 (2026-08-03) — Current MCP pin
+
+Installers and generated launchers write `ui-craft-mcp@0.8.1`. The binary also carries the skill fixes from that release, which do not travel through npm: the Craft Read template now sits beside the instruction that demands it, a surface's recipe is loaded before code so its numeric limits are actually in context, and tables carry `overflow-x` plus a sticky header. No CLI behaviour changes.
+
 ## v1.0.12 (2026-08-03) — Current MCP pin
 
 Installers and generated launchers write `ui-craft-mcp@0.8.0`, which carries `route_task`. No CLI behaviour changes.
