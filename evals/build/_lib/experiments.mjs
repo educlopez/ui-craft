@@ -19,6 +19,7 @@
  */
 
 import { spawn } from 'node:child_process';
+import { createWriteStream } from 'node:fs';
 
 const DRIVER = 'claude';
 
@@ -32,7 +33,7 @@ const BUILD_TOOLS = ['Write', 'Edit', 'Read', 'Glob', 'Grep', 'Bash', 'TodoWrite
  * The transcript is the return value, not a side effect: half of what a build eval scores
  * (did the Craft Read appear, in the prescribed shape, before the code) exists only here.
  */
-function runClaude({ prompt, workspace, allowSkill, model, timeoutMs }) {
+function runClaude({ prompt, workspace, allowSkill, model, timeoutMs, streamTo }) {
   // stream-json, not text. `--output-format text` emits only the FINAL message, and the
   // Craft Read is emitted mid-run, before the first file is written — so a text run scores
   // an empty transcript and fails every transcript check for the wrong reason. The stream
@@ -59,7 +60,14 @@ function runClaude({ prompt, workspace, allowSkill, model, timeoutMs }) {
 
     let raw = '';
     let err = '';
+    // Mirror the stream to disk as it arrives, not at the end. A run killed mid-flight —
+    // by a timeout, a stopped background job, a laptop lid — left a fully built workspace
+    // and no record of anything the agent said, so the half of the eval that lives in the
+    // transcript was unrecoverable while the expensive half survived. Appending costs
+    // nothing and makes a partial run still worth scoring.
+    const sink = streamTo ? createWriteStream(streamTo, { flags: 'a' }) : null;
     const finish = (extra) => {
+      sink?.end();
       const parsed = parseStream(raw);
       resolve({ ...parsed, raw, stderr: err + (extra ?? ''), ...(extra ? { timedOut: true } : {}) });
     };
@@ -69,7 +77,10 @@ function runClaude({ prompt, workspace, allowSkill, model, timeoutMs }) {
       finish('\n[harness] timed out');
     }, timeoutMs);
 
-    child.stdout.on('data', (d) => (raw += d));
+    child.stdout.on('data', (d) => {
+      raw += d;
+      sink?.write(d);
+    });
     child.stderr.on('data', (d) => (err += d));
     child.on('error', (e) => {
       clearTimeout(timer);
@@ -78,6 +89,7 @@ function runClaude({ prompt, workspace, allowSkill, model, timeoutMs }) {
     });
     child.on('close', (code) => {
       clearTimeout(timer);
+      sink?.end();
       const out = parseStream(raw);
       resolve({ ...out, raw, stderr: err, code });
     });

@@ -81,6 +81,32 @@ name and description from the system prompt, which the harness injects for disco
 measures "instructions unavailable", not "skill absent". A true absent arm needs an isolated
 `HOME`, which breaks CLI auth — not worth it for the signal.
 
+## First measured contrast
+
+`craft-dashboard-001`, one run per arm (n=1 each — a single sample, not a claim about the
+distribution):
+
+| | `skill` | `no-skill` |
+|---|---|---|
+| Craft Read emitted, with all elements | ✓ | ✗ |
+| Sidebar tinted rather than full dark | ✓ `bg-nav` | ✗ `bg-ink-900` |
+| Table header sticky | ✓ | ✗ |
+| Metric cards differentiate a hero | ✓ | ✓ |
+| Table wrapped in `overflow-x` | ✓ | ✓ |
+| No purple gradient, no emoji icons | ✓ | ✓ |
+| Worst-file UICraftScore | 84 (B) | 88 (B) |
+| **Total** | **14/14** | **7/14** |
+
+Read it in both directions. The skill's measurable contribution here is the Craft Read — a
+process artifact that does not exist without it — plus two craft details. But the control arm
+already got the metric hierarchy, the overflow wrapper and the anti-slop floor right on its
+own, and scored *higher* on the worst file. Much of what the skill asserts is already the
+model's default in this setup, and only running the arm tells you which parts.
+
+Caveat that cuts the other way: `no-skill` still sees the skill's description in the system
+prompt, so even the control is nudged. The gap is a lower bound on the difference, not a
+measurement of it.
+
 ## Cost
 
 Every live pair is a full agent build: minutes, and real tokens. Select narrowly (`--eval` +

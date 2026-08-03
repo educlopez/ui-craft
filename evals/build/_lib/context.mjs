@@ -138,6 +138,18 @@ export async function makeContext({ workspace, transcript = '', preCode = null, 
       const mean = Math.round(results.reduce((s, r) => s + r.score, 0) / results.length);
       return { min: results[0].score, mean, worst: results[0], files: results };
     },
+    /**
+     * Source of the component playing a role, found by filename alias.
+     *
+     * Looking up `KpiCard.jsx` by exact name fails the moment a build calls its cards
+     * `StatTile` or `MetricTile` — a vocabulary miss reported as a craft failure, which is
+     * the worst kind of false negative because it looks like a finding.
+     */
+    component: (aliases) => {
+      const re = new RegExp(`(${aliases.join('|')})[^/]*\\.(jsx|tsx)$`, 'i');
+      for (const [p, src] of contents) if (re.test(p)) return { file: path.relative(workspace, p), src };
+      return null;
+    },
     /** Anti-slop findings over the produced files. */
     detect: () => scan(workspace),
     /** Record a named result. `pass` false is a finding, not an exception. */

@@ -223,6 +223,25 @@ test('scorers reject a Craft Read that is only a mid-sentence reference', async 
   assert.equal(named(r, 'Craft Read line emitted').pass, false);
 });
 
+test('sticky check ignores a comment that merely says "sticky"', async () => {
+  const { promises: fsp } = await import('node:fs');
+  const os = await import('node:os');
+  const tmp = await fsp.mkdtemp(path.join(os.tmpdir(), 'uicraft-sticky-'));
+  await fsp.writeFile(
+    path.join(tmp, 'QueueTable.jsx'),
+    `export default function QueueTable() {
+      // A sticky header would help here one day.
+      return <div className="overflow-x-auto"><table><thead><tr className="bg-white"><th>x</th></tr></thead></table></div>;
+    }`
+  );
+  const { default: scorer } = await import(path.join(BUILD_DIR, 'craft-dashboard-001', 'EVAL.mjs'));
+  const r = await runScorer(scorer, await makeContext({ workspace: tmp }));
+  const check = named(r, 'table header is sticky');
+
+  assert.equal(check.pass, false, 'a comment is not a style');
+  assert.match(check.evidence, /never in a className/);
+});
+
 // ─── Corpus integrity ────────────────────────────────────────────────────────
 
 test('every build eval has a prompt, a scorer and a recorded fixture', async () => {

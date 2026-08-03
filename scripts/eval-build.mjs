@@ -31,7 +31,7 @@ import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 
 import { makeContext, runScorer } from '../evals/build/_lib/context.mjs';
-import { EXPERIMENTS, resolveExperiments } from '../evals/build/_lib/experiments.mjs';
+import { EXPERIMENTS, resolveExperiments, parseStream } from '../evals/build/_lib/experiments.mjs';
 
 const REPO_ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const EVALS_DIR = path.join(REPO_ROOT, 'evals', 'build');
@@ -158,9 +158,21 @@ async function main() {
       process.exit(2);
     }
     const e = selected[0];
-    const transcript = flags.transcript ? await fs.readFile(flags.transcript, 'utf8') : '';
+    // A .ndjson transcript is a raw stream — from a completed run or a killed one — and is
+    // folded the same way live runs fold it, so a rescued partial scores identically.
+    let transcript = '';
+    let preCode = null;
+    let toolUses = [];
+    if (flags.transcript) {
+      const rawT = await fs.readFile(flags.transcript, 'utf8');
+      if (flags.transcript.endsWith('.ndjson') || rawT.trimStart().startsWith('{')) {
+        ({ transcript, preCode, toolUses } = parseStream(rawT));
+      } else {
+        transcript = rawT;
+      }
+    }
     const { default: scorer } = await import(e.scorerPath);
-    const ctx = await makeContext({ workspace: path.resolve(flags.record), transcript });
+    const ctx = await makeContext({ workspace: path.resolve(flags.record), transcript, preCode, toolUses });
     const result = await runScorer(scorer, ctx);
     if (flags.json) process.stdout.write(`${JSON.stringify({ eval: e.id, experiment: 'recorded', ...result }, null, 2)}\n`);
     else {
@@ -189,11 +201,14 @@ async function main() {
       const workspace = await fs.mkdtemp(path.join(os.tmpdir(), `uicraft-eval-${e.id}-${x.name}-`));
       process.stdout.write(`${dim('→')} ${bold(e.id)} ${dim('×')} ${cyan(x.name)} ${dim(workspace)}\n`);
 
+      const streamPath = path.join(RESULTS_DIR, `${e.id}__${x.name}.stream.ndjson`);
+      await fs.rm(streamPath, { force: true });
       const run = await x.run({
         prompt: e.prompt,
         workspace,
         model: flags.model,
         timeoutMs: flags.timeout ?? DEFAULT_TIMEOUT_MS,
+        streamTo: streamPath,
       });
 
       if (run.code !== 0 && !run.transcript) {

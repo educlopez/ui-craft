@@ -56,13 +56,28 @@ export default async function score(ctx) {
   // ── Workspace: the sidebar ────────────────────────────────────────────────
   //
   // dashboard.md: "Sidebar: subtle bg tint, NOT full dark (common AI pattern)."
-  const sidebar = ctx.file('Sidebar.jsx') ?? ctx.file('Sidebar.tsx') ?? ctx.file('sidebar.tsx');
-  ctx.check('sidebar component exists', Boolean(sidebar), sidebar ? 'found' : 'no Sidebar component in the workspace');
+  const sidebarHit = ctx.component(['sidebar', 'sidenav', 'side-nav', 'navrail']);
+  const sidebar = sidebarHit?.src ?? null;
+  ctx.check(
+    'sidebar component exists',
+    Boolean(sidebar),
+    sidebar ? `found ${sidebarHit.file}` : 'no sidebar component in the workspace'
+  );
 
   if (sidebar) {
-    const root = sidebar.match(/<(?:aside|nav|div)[^>]*className=(?:"([^"]*)"|\{`([^`]*)`\})/);
-    const cls = root?.[1] ?? root?.[2] ?? '';
-    const fullDark = /\bbg-(?:black|gray-9\d{2}|zinc-9\d{2}|slate-9\d{2}|neutral-9\d{2}|gray-950)\b/.test(cls);
+    // The <aside> if there is one, else the element carrying a width AND a column layout.
+    // Taking the first element in the file grabbed a mobile backdrop overlay and scored
+    // THAT as the sidebar — a check can only be trusted if it is looking at the right node.
+    const aside = sidebar.match(/<aside[^>]*className=(?:"([^"]*)"|\{`([^`]*)`\})/);
+    const railed = [...sidebar.matchAll(/className=(?:"([^"]*)"|\{`([^`]*)`\})/g)]
+      .map((m) => m[1] ?? m[2] ?? '')
+      .find((c) => /\bw-(\d|\[)/.test(c) && /flex-col/.test(c));
+    const cls = aside?.[1] ?? aside?.[2] ?? railed ?? '';
+    // Any scale's 900+ step, not just Tailwind's default palette names. A build that
+    // defines its own ramp and reaches for `bg-ink-900` is exactly as dark as `bg-zinc-900`,
+    // and the first version of this check passed it — flattering the result by measuring
+    // vocabulary instead of colour.
+    const fullDark = /\bbg-(?:black|[a-z]+-9\d{2})\b/.test(cls);
     ctx.check(
       'sidebar is tinted, not full dark',
       !fullDark && /\bbg-/.test(cls),
@@ -74,15 +89,16 @@ export default async function score(ctx) {
   //
   // dashboard.md: "Metric cards: primary gets accent tint; others neutral."
   // SKILL.md anti-slop: "NEVER identical colored top borders" / equal-weight KPI grids.
-  const kpi = ctx.file('KpiCard.jsx') ?? ctx.file('MetricCard.jsx') ?? ctx.file('KPICard.jsx');
+  const kpiHit = ctx.component(['kpi', 'metric', 'stat', 'summarycard', 'tile']);
+  const kpi = kpiHit?.src ?? null;
   const sizes = [...(kpi ?? '').matchAll(/text-\[(\d+)px\]|text-(\d?xl|3xl|4xl|5xl)/g)].map((m) => m[0]);
   const distinctSizes = new Set(sizes).size;
   ctx.check(
     'metric cards differentiate a hero from the rest',
     Boolean(kpi) && (distinctSizes >= 2 || /primary\s*\?/.test(kpi)),
     kpi
-      ? `${distinctSizes} distinct value sizes${/primary\s*\?/.test(kpi) ? ' + a primary/secondary branch' : ''}`
-      : 'no metric-card component found'
+      ? `${kpiHit.file}: ${distinctSizes} distinct value sizes${/primary\s*\?/.test(kpi) ? ' + a primary/secondary branch' : ''}`
+      : 'no metric-card component found under any of: kpi, metric, stat, summarycard, tile'
   );
 
   // ── Workspace: the table rules ────────────────────────────────────────────
@@ -104,11 +120,19 @@ export default async function score(ctx) {
           ? `only ${anyOverflow[0]} — horizontal overflow is the one that keeps a table from clipping at 320px`
           : 'no overflow class anywhere near the table'
     );
-    const sticky = tableSrc.match(/sticky[^"'`]*/);
+    // Matched inside a className, not anywhere in the file. A bare /sticky/ passed on a
+    // code COMMENT that merely mentioned the word — the same failure as matching a rule's
+    // own text: the evidence has to come from the thing that decides the behaviour.
+    const sticky = tableSrc.match(/className=(?:"[^"]*\bsticky\b[^"]*"|\{`[^`]*\bsticky\b[^`]*`\})/);
+    const mentionOnly = !sticky && /\bsticky\b/.test(tableSrc);
     ctx.check(
       'table header is sticky',
       Boolean(sticky),
-      sticky ? `found ${sticky[0].slice(0, 60)}` : 'thead has no sticky positioning'
+      sticky
+        ? `found ${sticky[0].slice(0, 80)}`
+        : mentionOnly
+          ? 'the word "sticky" appears, but never in a className — a comment is not a style'
+          : 'thead has no sticky positioning'
     );
   }
 
