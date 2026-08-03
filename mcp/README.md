@@ -36,6 +36,55 @@ Every tool declares an `outputSchema`, so a successful call returns the payload 
 text block (unchanged, for hosts that only render text). Error results keep the text block, set
 `isError`, and omit `structuredContent`.
 
+### `route_task`
+
+Call this first on any UI request, before reading reference files. Takes the task in natural language and returns the references, commands and MCP tools that cover it, ranked, plus the single first move to make.
+
+Deterministic lexical ranking — no model call, no embeddings, no network. Same prompt always returns the same routing.
+
+**Why it exists:** the routing table in `SKILL.md` only fires when the user's words match our filenames. "An analytics panel" points at nothing, because `recipe-dashboard.md` never says analytics. `route_task` closes that gap three ways:
+
+- **Synonym map.** `analytics`, `KPI`, `metrics`, `panel`, `backoffice` all reach `dashboard`. Task filler (`build`, `make`, `need`, `please`) is stripped as stopwords — left in, it matches every candidate equally and flattens the ranking instead of sharpening it.
+- **Constituents index.** Entries carry the names of the parts they are built from, so "pricing block" reaches `recipe-landing.md` and "KPI grid" reaches `recipe-dashboard.md`.
+- **A recommendation, not a list.** `first_move` is a command when one applies, because a command is something the agent can *do*; a reference is only ever reading.
+
+**Repair vs build (`intent`).** Words meaning "this already exists and is wrong" — `broken`, `slow`, `janky`, `jumps`, `misaligned`, `wrong` — set `intent: "repair"`. That suppresses constructive moves (`/craft`, `/sddesign`, `/shape`) and prefers a pass over a reference's build-time default: "this 3000-row table is slow" answers `/audit`, not `/animate` (which `motion.md` carries) and not `/craft dashboard`. When only a build move is on offer, `first_move` is `null` and the instruction names the reference to read — a wrong first move is worse than none.
+
+Signal ladder: exact name (100) → exact keyword (60) → constituent (45) → fuzzy name (40, edit distance ≤2) → fuzzy keyword (25) → summary word (12). A summary-only hit needs two matched concepts to count, so an entry never surfaces because its description mentions a word once.
+
+Score is the entry's **strongest** signal plus a coverage bonus for how much of the prompt it accounts for. Not the mean of its signals: averaging made covering a second concept *lower* an entry's score, which handed "review keyboard accessibility" to `/critique` instead of `/audit`. Neither term is a multiplier, so a wordy prompt is never scaled down for the words that missed.
+
+**Input**:
+- `prompt` — the task in natural language
+- `limit` — max hits per kind (default 5, clamped to 12)
+
+**Output**:
+```json
+{
+  "prompt": "build me an analytics panel with KPIs",
+  "concepts": ["analytics"],
+  "first_move": "/craft dashboard",
+  "intent": "build",
+  "results": {
+    "commands": [{ "name": "craft", "kind": "command", "path": "commands/craft.md", "score": 70, "matched": ["analytics"] }],
+    "references": [
+      { "name": "dashboard", "kind": "reference", "path": "references/dashboard.md", "tier": 2, "score": 125, "matched": ["analytics"] },
+      { "name": "recipe-dashboard", "kind": "reference", "path": "references/recipe-dashboard.md", "tier": 2, "score": 85, "matched": ["analytics"] }
+    ],
+    "mcp_tools": []
+  },
+  "instruction": "Start with /craft dashboard. …"
+}
+```
+
+Note `concepts` is one entry, not three: `analytics`, `panel` and `KPIs` all resolve to the same concept, so they collapse instead of tripling the weight of a single idea. `build` and `me` are stopwords and never become concepts at all.
+
+An unmatched prompt is reported as unmatched (`first_move: "/start"`) rather than routed to a guess.
+
+**Boundary:** returns pointers only. Every design rule stays in the files it points at — this tool does not summarise, judge, or decide anything about the UI.
+
+**Index source:** `src/route-data.mjs`, hand-maintained (v1 — no generator). Add references and commands there in the same commit that adds them to `skills/`; `route-task.test.mjs` fails if an entry is malformed or names an MCP tool the server does not register.
+
 ### `check_anti_slop`
 
 Scans source code for anti-slop violations using the 43 deterministic rules from `ui-craft-detect`. In-process (no subprocess spawn).

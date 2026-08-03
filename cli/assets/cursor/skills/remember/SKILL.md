@@ -28,13 +28,13 @@ Create the brief (run `/brief`) or the section 6 heading if absent. If the new c
 
 ## Step 3: Cross-project reach (optional)
 
-If the user signals this should apply to **all** their projects ("in all my projects", "siempre que trabajes conmigo"), that's general memory, outside the brief's project scope:
+If the user signals this should apply to **all** their projects ("in all my projects", "whenever you work with me"), that's general memory, outside the brief's project scope:
 - If an external memory service is available to the agent, mirror the constraint there so other projects inherit it.
 - If not, record it in this brief and note that cross-project recall would need such a service.
 
 ## Step 4: Confirm
 
 Report in one line where it landed and what it changes, e.g.:
-> Anotado en el brief (constraint aprendida): nunca gradientes en hero aquí.
+> Recorded in the brief (learned constraint): never gradients on a hero here.
 
 **Next step:** Keep working. The constraint now lives in the brief, so every future session reads it (rung 2).

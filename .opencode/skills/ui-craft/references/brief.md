@@ -159,7 +159,7 @@ The brief is append-mostly. The team should be able to trace why a principle cha
 
 ## Self-Correction
 
-When the user corrects design output — "no así", "no me gusta", "always do X here", "never Z", or reverses a non-default choice in a way that reads as a standing preference — append it to section 6 (run `/remember`). Capture the **why**, not just the what; phrase it so a future build can apply it without this conversation's context; confirm in one line where it landed. Don't re-litigate a correction already recorded. If a correction would breach the accessibility/correctness floor, apply the closest compliant interpretation and say so — never store an unsafe rule.
+When the user corrects design output — "not like that", "I don't like this", "always do X here", "never Z", or reverses a non-default choice in a way that reads as a standing preference — append it to section 6 (run `/remember`). Capture the **why**, not just the what; phrase it so a future build can apply it without this conversation's context; confirm in one line where it landed. Don't re-litigate a correction already recorded. If a correction would breach the accessibility/correctness floor, apply the closest compliant interpretation and say so — never store an unsafe rule.
 
 This is project-scoped, and it lives in the brief by design — ui-craft is a UI skill, not a general memory engine.
 
