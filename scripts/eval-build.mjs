@@ -163,16 +163,17 @@ async function main() {
     let transcript = '';
     let preCode = null;
     let toolUses = [];
+    let refsRead = [];
     if (flags.transcript) {
       const rawT = await fs.readFile(flags.transcript, 'utf8');
       if (flags.transcript.endsWith('.ndjson') || rawT.trimStart().startsWith('{')) {
-        ({ transcript, preCode, toolUses } = parseStream(rawT));
+        ({ transcript, preCode, toolUses, refsRead } = parseStream(rawT));
       } else {
         transcript = rawT;
       }
     }
     const { default: scorer } = await import(e.scorerPath);
-    const ctx = await makeContext({ workspace: path.resolve(flags.record), transcript, preCode, toolUses });
+    const ctx = await makeContext({ workspace: path.resolve(flags.record), transcript, preCode, toolUses, refsRead });
     const result = await runScorer(scorer, ctx);
     if (flags.json) process.stdout.write(`${JSON.stringify({ eval: e.id, experiment: 'recorded', ...result }, null, 2)}\n`);
     else {
@@ -221,6 +222,7 @@ async function main() {
         transcript: run.transcript ?? '',
         preCode: run.preCode ?? null,
         toolUses: run.toolUses ?? [],
+        refsRead: run.refsRead ?? [],
       });
       const result = await runScorer(scorer, ctx);
 
@@ -241,6 +243,7 @@ async function main() {
             // not a skill run, and reading it as one would misattribute the whole result.
             usedSkill: Boolean(run.usedSkill),
             toolUses: run.toolUses ?? [],
+            refsRead: run.refsRead ?? [],
             ...result,
           },
           null,

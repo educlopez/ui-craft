@@ -311,26 +311,41 @@ Full easing curves, spring configs, stagger rules, and interaction rules → [mo
 
 Tiered by signal. Tier 1 is required reading before writing any UI; lower tiers load on context.
 
-### Tier 1 — Required before writing UI
+### Tier 1 — Always load before writing UI
+
+Two entries, because two is what a build actually loads. This list used to hold seven; build evals showed a passing dashboard opened one of them and a passing landing opened two, while both reached for the surface recipe that was filed a tier below. A required list that nobody reads is not a standard, it is a wish — so the list now names what carries the build, and everything else below states the trigger that pulls it in.
 
 | Reference | When to Read |
 |-----------|--------------|
-| [brief.md](references/brief.md) | Durable design brief at `.ui-craft/brief.md` — read first, anchors every decision. Run `/brief` if absent. |
-| [craft-intent.md](references/craft-intent.md) | Craft Read, DESIGN_VARIANCE, signature bets, product + marketing build patterns. **Load before `/craft` or any full-surface build.** |
-| [tokens.md](references/tokens.md) | 3-layer token spine (primitive → semantic → component). Both modes intentional. Run `/tokens` to audit or establish. |
-| [inspiration.md](references/inspiration.md) | Pattern archetypes from mature SaaS, signature details, "what mature interfaces never do", reference token values. **Read first** — highest signal in the skill. |
-| [accessibility.md](references/accessibility.md) | WCAG, keyboard, focus, forms, ARIA, checklist. **Required before forms or interactive components.** |
-| [color.md](references/color.md) | Strategy, palettes, dark mode, tokens, accent budget. |
-| [layout.md](references/layout.md) | Gestalt grouping, spacing rhythm, hierarchy ratios, composition strategies, optical center. |
+| [craft-intent.md](references/craft-intent.md) | Craft Read, DESIGN_VARIANCE, signature bets, product + marketing build patterns. The one reference every full-surface build needs. |
+| **The surface recipe** | [recipe-dashboard.md](references/recipe-dashboard.md) · [recipe-landing.md](references/recipe-landing.md) · [recipe-auth.md](references/recipe-auth.md) — whichever matches what you are building. Every numeric limit that keeps a surface off template grammar lives here (hero subtext ≤20 words, eyebrow budget, form column width, acceptance bar). Skipping it does not soften those limits, it removes them. |
+
+### Tier 1b — Load on trigger
+
+Same references as before, same weight when their trigger fires. Only the claim changed: these are conditional, and pretending otherwise made the whole Tier-1 label unreliable — including for the two above.
+
+| Reference | Trigger |
+|-----------|---------|
+| [brief.md](references/brief.md) | `.ui-craft/brief.md` exists — then read it first, it anchors every decision and its learned constraints override skill defaults. Absent: run `/brief` or proceed from Discovery. |
+| [tokens.md](references/tokens.md) | The project has a token system to respect or extend, or you are establishing one. With neither, [themes.md](references/themes.md) gives a production preset in one step. |
+| [accessibility.md](references/accessibility.md) | Any form, any custom interactive control, any focus or keyboard work. The a11y floor in Core Rules is the minimum; this is the detail. |
+| [color.md](references/color.md) | Choosing or changing a palette, building dark mode, or auditing accent budget. Not needed to apply a preset. |
+| [layout.md](references/layout.md) | Composing a surface from scratch, or a spacing/hierarchy pass. Not needed when a recipe already prescribes the composition. |
+| [inspiration.md](references/inspiration.md) | Highest-signal reference in the skill. Read it when the build needs an archetype or a signature detail, and whenever the result feels generic. |
+
+> **What this measured, and what it did not.** The evidence is greenfield builds — an empty
+> sandbox with no brief and no tokens, so `brief` and `tokens` could not have been read
+> whatever the label said. It shows the label was not causing loads. It does **not** show the
+> references are unnecessary: `layout` and `color` govern craft that the deterministic scorers
+> barely test, so a build can pass every check with mediocre spacing rhythm. Re-measure before
+> trimming anything further, and re-measure on a project that already has a design system.
 
 ### Tier 2 — Surface-specific (read when building this surface)
 
 | Reference | When to Read |
 |-----------|--------------|
 | [spec.md](references/spec.md) | Durable composition spec at `.ui-craft/spec.md` — the "what". Written by `/shape` Step 6, walked by `/sddesign`. Read after `brief.md` when a spec exists for the surface being built. |
-| [recipe-dashboard.md](references/recipe-dashboard.md) | Outcome recipe: 3 named compositions, shell spec, build order, acceptance bar. Load on `/craft dashboard` or any "build me a dashboard" request. |
-| [recipe-landing.md](references/recipe-landing.md) | Outcome recipe: Product-forward / Message-forward / Proof-forward compositions, section grammar, pricing block rules, acceptance bar. Load on `/craft landing` or any "build me a landing" request. |
-| [recipe-auth.md](references/recipe-auth.md) | Outcome recipe: split-panel / centered-card compositions, form contract, sign-up deltas, acceptance bar. Load on `/craft auth` or any sign-in/sign-up build. |
+| **Outcome recipes** | Promoted to Tier 1 — see *Always load*. Listed there and not here so the recipe has one home; two descriptions of the same requirement is how one of them goes stale. |
 | [themes.md](references/themes.md) | 4 named production token presets (Graphite, Porcelain, Carbon, Signal). Load when no token system exists. |
 | [dashboard.md](references/dashboard.md) | Dashboards, metric cards, charts, tables, sidebar, filters. |
 | [forms.md](references/forms.md) | Validation timing, progressive disclosure, multi-step wizards, autosave, optimistic submit. |

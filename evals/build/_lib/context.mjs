@@ -69,7 +69,7 @@ export function wordCount(text) {
  *
  * @param {{ workspace: string, transcript: string }} input
  */
-export async function makeContext({ workspace, transcript = '', preCode = null, toolUses = [] }) {
+export async function makeContext({ workspace, transcript = '', preCode = null, toolUses = [], refsRead = [] }) {
   const files = await walk(workspace);
   const contents = new Map();
   for (const f of files) {
@@ -98,6 +98,8 @@ export async function makeContext({ workspace, transcript = '', preCode = null, 
     preCode: preCode ?? transcript,
     /** Tool names in call order — `toolUses.includes('Skill')` is how an arm proves itself. */
     toolUses,
+    /** Reference files opened before the first write, in order. */
+    refsRead,
     /** Absolute paths of every source file the agent produced. */
     files: () => [...contents.keys()],
     /** Paths relative to the workspace — what a report should show. */
