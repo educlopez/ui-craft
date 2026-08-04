@@ -107,6 +107,32 @@ Caveat that cuts the other way: `no-skill` still sees the skill's description in
 prompt, so even the control is nudged. The gap is a lower bound on the difference, not a
 measurement of it.
 
+## Read the evidence, not the symbol
+
+Four bugs in this harness have been found by using it, and **none** was found by reviewing
+code. All four came from reading a check's evidence string and noticing it did not match its
+verdict.
+
+| What the check said | What was actually happening |
+|---|---|
+| ✓ Craft Read emitted | Matched `SKILL.md`'s own instruction to emit one, quoted in a tool result |
+| ✓ table header is sticky | Matched a code **comment** that mentioned the word |
+| ✓ sidebar is tinted | `bg-ink-900` passed, because the check knew only Tailwind's default palette |
+| ✗ could not read the sidebar classes | The sidebar was fine; the regex could not parse `className={[...].join(' ')}` |
+
+The first three are false passes and the fourth is a false failure. The false failure is the
+most expensive: acted on without diagnosis, it sends someone to fix code that is already
+correct.
+
+So the working rule when a build eval reports anything: **open the evidence and check that it
+is the thing that decided the behaviour.** A ✓ whose evidence quotes a comment, a rule file, or
+prose is not a pass. A ✗ whose evidence says "could not read" is a bug in the scorer until
+proven otherwise. `ctx.check()` refuses an empty evidence string precisely so this is always
+possible.
+
+The corollary for authors: a check earns its place only if its evidence would let a stranger
+disagree with it.
+
 ## Cost
 
 Every live pair is a full agent build: minutes, and real tokens. Select narrowly (`--eval` +
