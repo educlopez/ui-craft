@@ -18,6 +18,16 @@ Tables get the rule the detector already enforced and the skill never taught: wr
 
 `route_task` also indexes tables by `overflow-x` and `sticky-header`, so asking about either reaches `dashboard.md`.
 
+## v1.0.14 (2026-08-04) — Tier 1 describes what a build loads
+
+Two skill changes, both decided by measurement rather than judgement, and neither able to reach a `brew` install any other way — the npm package carries the server, not the skill.
+
+Tier 1 no longer claims seven references are required before writing UI. Build evals showed a passing dashboard opened one of the seven and a passing landing opened two, while both reached for the surface recipe filed a tier below. The always-load list is now `craft-intent` plus the surface recipe, measured 2/2; the other five keep their weight and state the trigger that pulls them in. Nothing was deleted, and the skill records what the evidence does not cover: greenfield builds cannot speak for `brief` or `tokens`, and the scorers barely test the craft that `layout` and `color` govern.
+
+The table rule is now two rules. One line joining an overflow wrapper and a sticky header with "and" produced three different behaviours across three samples — no wrapper, sticky only, sticky plus `overflow-y`. Split, with the observed wrong answer named explicitly (horizontal, not `overflow-y`, not `overflow-hidden`), both halves landed in the same build.
+
+Installers and generated launchers still write `ui-craft-mcp@0.8.1`. No CLI behaviour changes.
+
 ## v1.0.13 (2026-08-03) — Current MCP pin
 
 Installers and generated launchers write `ui-craft-mcp@0.8.1`. The binary also carries the skill fixes from that release, which do not travel through npm: the Craft Read template now sits beside the instruction that demands it, a surface's recipe is loaded before code so its numeric limits are actually in context, and tables carry `overflow-x` plus a sticky header. No CLI behaviour changes.
