@@ -110,6 +110,10 @@ export function parseStream(raw) {
   const texts = [];
   const preTexts = [];
   const toolUses = [];
+  // Which reference files the build actually opened, in order. The skill labels seven refs
+  // "required before writing UI", and whether a passing build reads all seven is an
+  // empirical question the harness can answer instead of a judgement call about tiering.
+  const refsRead = [];
   let sawWrite = false;
 
   for (const line of String(raw).split('\n')) {
@@ -136,6 +140,14 @@ export function parseStream(raw) {
         if (!sawWrite) preTexts.push(b.text);
       } else if (b?.type === 'tool_use') {
         toolUses.push(b.name);
+        // A ref counts as read only if it was opened BEFORE the first write. Opening
+        // layout.md to check something after the components exist is not "required reading
+        // before writing UI" — it is a lookup, and counting it would inflate the answer.
+        if (b.name === 'Read' && !sawWrite) {
+          const f = String(b.input?.file_path ?? '');
+          const m = f.match(/references\/([a-z0-9-]+)\.md$/i);
+          if (m && !refsRead.includes(m[1])) refsRead.push(m[1]);
+        }
         if (/^(Write|Edit|NotebookEdit|MultiEdit)$/.test(b.name)) sawWrite = true;
       }
     }
@@ -145,6 +157,7 @@ export function parseStream(raw) {
     transcript: texts.join('\n'),
     preCode: preTexts.join('\n'),
     toolUses,
+    refsRead,
     usedSkill: toolUses.includes('Skill'),
   };
 }
