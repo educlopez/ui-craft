@@ -242,6 +242,46 @@ test('sticky check ignores a comment that merely says "sticky"', async () => {
   assert.match(check.evidence, /never in a className/);
 });
 
+test('classes() reads className however React writes it', async () => {
+  const ctx = await makeContext({ workspace: path.join(BUILD_DIR, 'craft-landing-001', 'recorded', 'workspace') });
+
+  assert.equal(ctx.classes('<nav className="w-60 bg-nav">', /nav/), 'w-60 bg-nav');
+  assert.equal(ctx.classes('<nav className={`w-60 ${x} bg-nav`}>', /nav/), 'w-60 bg-nav');
+  // The array-join form is what real components use, and the regex that only understood
+  // quoted strings reported "could not read the classes" on a perfectly fine sidebar —
+  // a false failure, which accuses the build of something it did not do.
+  const arrayJoin = `<nav
+      aria-label="Main navigation"
+      className={[
+        'fixed inset-y-0 flex w-60 flex-col bg-surface-2',
+        open ? 'translate-x-0' : '-translate-x-full',
+      ].join(' ')}
+    >`;
+  const cls = ctx.classes(arrayJoin, /nav/);
+  assert.match(cls, /bg-surface-2/, `expected the tint class, got: ${cls}`);
+  assert.match(cls, /w-60/);
+});
+
+test('a tinted sidebar written as an array-join is not reported as full dark', async () => {
+  const { promises: fsp } = await import('node:fs');
+  const os = await import('node:os');
+  const tmp = await fsp.mkdtemp(path.join(os.tmpdir(), 'uicraft-sidebar-'));
+  await fsp.writeFile(
+    path.join(tmp, 'Sidebar.tsx'),
+    `export default function Sidebar({ open }) {
+      return (<nav className={['flex w-60 flex-col bg-surface-2', open ? 'x' : 'y'].join(' ')}>
+        <div className="bg-black/60" />
+      </nav>);
+    }`
+  );
+  const { default: scorer } = await import(path.join(BUILD_DIR, 'craft-dashboard-001', 'EVAL.mjs'));
+  const r = await runScorer(scorer, await makeContext({ workspace: tmp }));
+  const check = named(r, 'sidebar is tinted');
+
+  assert.equal(check.pass, true, `should pass: ${check.evidence}`);
+  assert.match(check.evidence, /bg-surface-2/);
+});
+
 // ─── Corpus integrity ────────────────────────────────────────────────────────
 
 test('every build eval has a prompt, a scorer and a recorded fixture', async () => {
