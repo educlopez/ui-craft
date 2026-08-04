@@ -68,11 +68,13 @@ export default async function score(ctx) {
     // The <aside> if there is one, else the element carrying a width AND a column layout.
     // Taking the first element in the file grabbed a mobile backdrop overlay and scored
     // THAT as the sidebar — a check can only be trusted if it is looking at the right node.
-    const aside = sidebar.match(/<aside[^>]*className=(?:"([^"]*)"|\{`([^`]*)`\})/);
-    const railed = [...sidebar.matchAll(/className=(?:"([^"]*)"|\{`([^`]*)`\})/g)]
-      .map((m) => m[1] ?? m[2] ?? '')
-      .find((c) => /\bw-(\d|\[)/.test(c) && /flex-col/.test(c));
-    const cls = aside?.[1] ?? aside?.[2] ?? railed ?? '';
+    const cls =
+      ctx.classes(sidebar, /aside/) ||
+      ctx.classes(sidebar, /nav/) ||
+      [...sidebar.matchAll(/className\s*=\s*(?:"([^"]*)")/g)]
+        .map((m) => m[1])
+        .find((c) => /\bw-(\d|\[)/.test(c) && /flex-col/.test(c)) ||
+      '';
     // Any scale's 900+ step, not just Tailwind's default palette names. A build that
     // defines its own ramp and reaches for `bg-ink-900` is exactly as dark as `bg-zinc-900`,
     // and the first version of this check passed it — flattering the result by measuring

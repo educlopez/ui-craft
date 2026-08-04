@@ -141,6 +141,35 @@ export async function makeContext({ workspace, transcript = '', preCode = null, 
       return { min: results[0].score, mean, worst: results[0], files: results };
     },
     /**
+     * Every class name on the first element matching `tagRe`, however className is written.
+     *
+     * Real React does not hand you `className="..."`. It hands you `className={[...].join(' ')}`,
+     * `clsx(...)`, template literals, or a ternary — and a regex that only understands quoted
+     * strings reports "could not read the classes" on a perfectly fine component. That is a
+     * false failure, which is worse than a miss: it accuses the build of something the build
+     * did not do. So this collects every string literal inside the className expression and
+     * concatenates them, which is what the browser effectively sees.
+     */
+    classes: (src, tagRe) => {
+      const el = String(src ?? '').match(new RegExp(`<${tagRe.source ?? tagRe}\\b[\\s\\S]{0,1200}?>`, 'i'));
+      if (!el) return '';
+      const attr = el[0].match(/className\s*=\s*(?:"([^"]*)"|'([^']*)'|\{([\s\S]*)\})/);
+      if (!attr) return '';
+      if (attr[1] ?? attr[2]) return (attr[1] ?? attr[2]).trim();
+      // An expression. Two passes, because the forms nest: template literals carry literal
+      // text with `${...}` holes in it, and those holes often contain a ternary whose
+      // branches are themselves class strings. Collecting only one form loses the other.
+      const expr = attr[3];
+      const out = [];
+      // Backtick text, with interpolations removed — a `${x}` is not a class name, and
+      // leaving it in risks matching a class that only appears inside an expression.
+      for (const m of expr.matchAll(/`([^`]*)`/g)) out.push(m[1].replace(/\$\{[^}]*\}/g, ' '));
+      // Every quoted literal anywhere in the expression: array-join entries, clsx arguments,
+      // and both branches of a ternary. Either branch can be the class the user sees.
+      for (const m of expr.matchAll(/(?:"([^"]*)"|'([^']*)')/g)) out.push(m[1] ?? m[2]);
+      return out.join(' ').replace(/\s+/g, ' ').trim();
+    },
+    /**
      * Source of the component playing a role, found by filename alias.
      *
      * Looking up `KpiCard.jsx` by exact name fails the moment a build calls its cards
