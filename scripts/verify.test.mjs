@@ -6,6 +6,7 @@ import { SUITES } from "./verify.mjs"
 test("canonical verify gate covers every distribution surface", () => {
   const ids = new Set(SUITES.map((suite) => suite.id))
   for (const required of [
+    "versions",
     "contracts",
     "validate",
     "mirrors",
@@ -71,5 +72,35 @@ test(`MCP tools registered — ${SITE_COUNTS} says 7`, async () => {
     7,
     `server.mjs registers ${registered.length} tools (${registered.join(", ")}). ` +
       `Update "mcpTools" in ${SITE_COUNTS}, then this assertion.`,
+  )
+})
+
+/**
+ * The docs site documents an install snippet with an immutable spec — `npx -y
+ * ui-craft-mcp@X.Y.Z` — because an unpinned `npx` resolves to whatever is newest at first
+ * run, so two installs of "the same" instructions can behave differently.
+ *
+ * The pin has a cost: it has to move on every MCP release, and the site cannot derive it
+ * (this repo is not a dependency of it). So the site records the expected spec in
+ * `gate-counts.json` and its own guard checks the prose against that; this is the other end,
+ * and it is why bumping the manifest fails here until the docs are bumped too.
+ *
+ * Deliberately noisy. A silently stale pin points users at a version that predates the tool
+ * they are reading about — which is exactly what happened with route_task, documented on a
+ * page whose snippet still installed a server without it.
+ */
+test("MCP pin — ui-craft-docs/src/lib/gate-counts.json says 0.8.2", async () => {
+  const { readFileSync } = await import("node:fs")
+  const { fileURLToPath } = await import("node:url")
+  const manifest = JSON.parse(
+    readFileSync(fileURLToPath(new URL("../distribution-manifest.json", import.meta.url)), "utf8"),
+  )
+
+  assert.equal(
+    manifest.components.mcp.version,
+    "0.8.2",
+    `The manifest pins ui-craft-mcp@${manifest.components.mcp.version}. Update "mcpPin" in ` +
+      "ui-craft-docs/src/lib/gate-counts.json and the snippet in its mcp.md, then this assertion. " +
+      "A stale documented pin installs a server older than the page describing it.",
   )
 })

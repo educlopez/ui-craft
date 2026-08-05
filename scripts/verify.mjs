@@ -8,6 +8,12 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..")
 
 export const SUITES = Object.freeze([
   {
+    id: "versions",
+    label: "VERSIONS.md release hazards",
+    command: "node",
+    args: ["scripts/check-versions-md.mjs"],
+  },
+  {
     id: "contracts",
     label: "Distribution contract",
     command: "node",
