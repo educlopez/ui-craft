@@ -36,7 +36,7 @@ test("MCP JSON launcher is parsed structurally, not by substring", () => {
     parseLauncher(
       launcher,
       JSON.stringify({
-        comment: "ui-craft-mcp@0.8.1",
+        comment: "ui-craft-mcp@0.8.2",
         mcpServers: {
           "ui-craft": { command: "npx", args: ["-y", "ui-craft-mcp@0.1.0"] },
         },
@@ -45,7 +45,7 @@ test("MCP JSON launcher is parsed structurally, not by substring", () => {
     { command: "npx", args: ["-y", "ui-craft-mcp@0.1.0"] },
   )
   assert.throws(
-    () => parseLauncher(launcher, '{"comment":"ui-craft-mcp@0.8.1"}'),
+    () => parseLauncher(launcher, '{"comment":"ui-craft-mcp@0.8.2"}'),
     /missing mcpServers/,
   )
 })
@@ -61,7 +61,7 @@ test("Go launcher ignores a pin that appears only in a comment", () => {
         launcher,
         `// var mcpServer = harness.MCPServer{
 //   Command: "npx",
-//   Args: []string{"-y", "ui-craft-mcp@0.8.1"},
+//   Args: []string{"-y", "ui-craft-mcp@0.8.2"},
 // }`,
       ),
     /missing harness\.MCPServer/,
@@ -81,11 +81,11 @@ test("Go launcher parses the Args slice structurally across formatting", () => {
   Command: "npx",
   Args: []string{
     "-y",
-    "ui-craft-mcp@0.8.1",
+    "ui-craft-mcp@0.8.2",
   },
 }`,
     ),
-    { command: "npx", args: ["-y", "ui-craft-mcp@0.8.1"] },
+    { command: "npx", args: ["-y", "ui-craft-mcp@0.8.2"] },
   )
 })
 

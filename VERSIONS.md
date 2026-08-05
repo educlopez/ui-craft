@@ -2,9 +2,17 @@
 
 ## Current distribution contract
 
-The historical entries below describe several independently versioned artifacts. Their current compatibility contract is machine-readable in [`distribution-manifest.json`](distribution-manifest.json) and checked by `pnpm verify`. Every generated or documented MCP launcher uses the immutable package spec `ui-craft-mcp@0.8.1`; changing it requires updating the manifest and every launcher in the same change.
+The historical entries below describe several independently versioned artifacts. Their current compatibility contract is machine-readable in [`distribution-manifest.json`](distribution-manifest.json) and checked by `pnpm verify`. Every generated or documented MCP launcher uses the immutable package spec `ui-craft-mcp@0.8.2`; changing it requires updating the manifest and every launcher in the same change.
 
 GitHub CLI archives include GoReleaser SHA-256 checksums and GitHub build-provenance attestations. The MCP publish workflow uses npm trusted publishing plus `--provenance`; the npm package must have this repository/workflow configured as a trusted publisher before dispatch. No long-lived npm token is assumed.
+
+## ui-craft-mcp v0.8.2 (2026-08-05) — The tool description says 43
+
+`check_anti_slop` advertised 38 deterministic rules. The detector has 43, and has for some time. No behaviour changes.
+
+Small, and published on its own rather than waited out, because that string is not marketing copy: it is what a model reads when deciding whether the tool covers what it needs. An undercount argues against calling a check that would have caught something.
+
+Found by cross-checking the published package against the docs site, which carried three numbers for one fact across three surfaces — 33 on one page, 43 on another, 38 in the server. All three now agree, and the counts the docs site cannot derive are pinned by a test here, so the next drift fails a test instead of reaching a release.
 
 ## ui-craft-mcp v0.8.1 (2026-08-03) — The form travels with the instruction
 
