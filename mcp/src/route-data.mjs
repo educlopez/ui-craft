@@ -511,7 +511,7 @@ export const CORPUS = [
   // ── MCP tools ─────────────────────────────────────────────────────────────
   {
     id: 'mcp-check-anti-slop', kind: 'mcp_tool', name: 'check_anti_slop', path: 'mcp:check_anti_slop',
-    summary: 'Scans source for anti-slop violations — 38 deterministic rules, no taste.',
+    summary: 'Scans source for anti-slop violations — 43 deterministic rules, no taste.',
     keywords: ['variance', 'review'], contains: ['detector', 'lint'], first_move: 'check_anti_slop',
   },
   {
