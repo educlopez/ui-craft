@@ -266,22 +266,24 @@ func DetectInstallMethod(exePath string) string {
 // ─── Archive name ─────────────────────────────────────────────────────────────
 
 // ArchiveNameForPlatform returns the expected archive filename for the current
-// GOOS/GOARCH, matching goreleaser's default naming convention.
+// GOOS/GOARCH, matching the name_template in .goreleaser.yaml:
+//
+//	{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+//
+// It used to build goreleaser's *legacy default* instead — title-cased OS, no version, and
+// amd64 rewritten to x86_64 — producing "ui-craft_Darwin_arm64.tar.gz" against a release
+// that publishes "ui-craft_1.0.14_darwin_arm64.tar.gz". Nothing matched, so `self-update`
+// failed on every platform for every user, and the tests did not catch it because they
+// asserted the same wrong name the code produced. Reported in #124.
+//
+// tag is the release tag ("v1.0.14"); the template wants it without the leading "v".
 func ArchiveNameForPlatform(tag string) string {
-	_ = tag // reserved for future per-tag naming variations
-	osName := runtime.GOOS
-	arch := runtime.GOARCH
-	switch arch {
-	case "amd64":
-		arch = "x86_64"
-	case "386":
-		arch = "i386"
+	version := strings.TrimPrefix(tag, "v")
+	ext := "tar.gz"
+	if runtime.GOOS == "windows" {
+		ext = "zip"
 	}
-	osTitle := selfUpdateTitleCase(osName)
-	if osName == "windows" {
-		return fmt.Sprintf("ui-craft_%s_%s.zip", osTitle, arch)
-	}
-	return fmt.Sprintf("ui-craft_%s_%s.tar.gz", osTitle, arch)
+	return fmt.Sprintf("ui-craft_%s_%s_%s.%s", version, runtime.GOOS, runtime.GOARCH, ext)
 }
 
 // ─── Checksum verification ────────────────────────────────────────────────────
@@ -380,13 +382,6 @@ func selfUpdateAssetNames(assets []SelfUpdateAsset) string {
 		names = append(names, a.Name)
 	}
 	return strings.Join(names, ", ")
-}
-
-func selfUpdateTitleCase(s string) string {
-	if s == "" {
-		return s
-	}
-	return strings.ToUpper(s[:1]) + s[1:]
 }
 
 // ─── io helpers (avoid bytes import cycle with tests) ─────────────────────────

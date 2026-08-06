@@ -126,7 +126,7 @@ func TestDetectPackageManager_none(t *testing.T) {
 
 func TestVerifyChecksum_match(t *testing.T) {
 	data := []byte("fake binary content")
-	archiveName := "ui-craft_Darwin_arm64.tar.gz"
+	archiveName := "ui-craft_1.0.0_darwin_arm64.tar.gz"
 	cs := checksumsTxt(archiveName, data)
 	if err := cmd.VerifyChecksum(data, cs, archiveName); err != nil {
 		t.Errorf("VerifyChecksum: expected no error, got %v", err)
@@ -136,7 +136,7 @@ func TestVerifyChecksum_match(t *testing.T) {
 func TestVerifyChecksum_mismatch(t *testing.T) {
 	data := []byte("real binary")
 	badData := []byte("different binary")
-	archiveName := "ui-craft_Darwin_arm64.tar.gz"
+	archiveName := "ui-craft_1.0.0_darwin_arm64.tar.gz"
 	// Checksum for badData, but we verify data — should fail.
 	cs := checksumsTxt(archiveName, badData)
 	err := cmd.VerifyChecksum(data, cs, archiveName)
@@ -151,7 +151,7 @@ func TestVerifyChecksum_mismatch(t *testing.T) {
 func TestVerifyChecksum_missingEntry(t *testing.T) {
 	data := []byte("binary")
 	cs := []byte("aabbcc  other_archive.tar.gz\n")
-	err := cmd.VerifyChecksum(data, cs, "ui-craft_Darwin_arm64.tar.gz")
+	err := cmd.VerifyChecksum(data, cs, "ui-craft_1.0.0_darwin_arm64.tar.gz")
 	if err == nil {
 		t.Error("VerifyChecksum: expected error when entry missing, got nil")
 	}
@@ -162,7 +162,7 @@ func TestVerifyChecksum_missingEntry(t *testing.T) {
 func TestExtractBinaryFromArchive_tarGz(t *testing.T) {
 	want := []byte("fake ui-craft binary v99")
 	archive := buildFakeTarGz(t, want)
-	archiveName := "ui-craft_Darwin_arm64.tar.gz"
+	archiveName := "ui-craft_1.0.0_darwin_arm64.tar.gz"
 	got, err := cmd.ExtractBinaryFromArchive(archive, archiveName)
 	if err != nil {
 		t.Fatalf("ExtractBinaryFromArchive: %v", err)
