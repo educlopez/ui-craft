@@ -26,6 +26,18 @@ Tables get the rule the detector already enforced and the skill never taught: wr
 
 `route_task` also indexes tables by `overflow-x` and `sticky-header`, so asking about either reaches `dashboard.md`.
 
+## v1.0.15 (2026-08-06) — Two user-reported bugs
+
+`self-update` looked for an archive no release has ever published. It built goreleaser's legacy default naming — title-cased OS, no version, `amd64` rewritten to `x86_64` — producing `ui-craft_Darwin_arm64.tar.gz` against a release that ships `ui-craft_1.0.15_darwin_arm64.tar.gz`. Nothing matched on any platform, for any user, since the explicit `name_template` was introduced. Homebrew and the install script take a different path, which is why it went unreported.
+
+Anyone already on a broken binary cannot self-update into this fix — the download is the thing that was broken. One reinstall (`curl -fsSL https://skills.smoothui.dev/install | bash`, or `brew upgrade --cask ui-craft`) and it works from here on.
+
+Fifteen skills could not be parsed by Codex. Their mirrored `SKILL.md` frontmatter carried a double-quoted description containing unescaped quotes, and a double-quoted YAML scalar ends at the first one — so everything after it was a syntax error and the skill was skipped outright. 117 files corrected. The canonical sources were always valid; only the mirrors were broken, and mirror frontmatter is preserved by design, so nothing was going to fix it on its own. A sixteenth, `commands/harden.md`, carried `": "` in a plain scalar and was broken everywhere rather than just in Codex.
+
+Both were caught by users rather than by our own gates, and for the same reason: the tests and the validator asserted what the code produced instead of what the user receives. `validate.mjs` read the canonical sources and never the mirrors people install; the self-update tests pinned the same wrong filename the function generated. Both now take their expectation from elsewhere — the mirrors are parsed directly, and the archive name is rendered from the `name_template` in `.goreleaser.yaml`.
+
+Installers and generated launchers still write `ui-craft-mcp@0.8.2`. No other CLI behaviour changes.
+
 ## v1.0.14 (2026-08-04) — Tier 1 describes what a build loads
 
 Two skill changes, both decided by measurement rather than judgement, and neither able to reach a `brew` install any other way — the npm package carries the server, not the skill.
