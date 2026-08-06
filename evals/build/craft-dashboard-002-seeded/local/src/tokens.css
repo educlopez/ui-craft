@@ -1,0 +1,12 @@
+:root {
+  --gray-0: #ffffff; --gray-1: #f7f8f8; --gray-2: #eceef0; --gray-3: #dfe2e6;
+  --gray-6: #8a9199; --gray-9: #1c2024; --teal-6: #0d8f82; --teal-1: #e6f4f2;
+
+  --bg: var(--gray-0); --surface: var(--gray-1); --line: var(--gray-3);
+  --text: var(--gray-9); --text-muted: var(--gray-6);
+  --accent: var(--teal-6); --accent-tint: var(--teal-1);
+
+  --radius-input: 6px; --radius-card: 10px; --radius-modal: 14px;
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-6: 32px;
+  --shadow-card: 0 1px 2px rgb(28 32 36 / 0.06);
+}

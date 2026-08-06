@@ -1,0 +1,85 @@
+@import "tailwindcss";
+
+@theme {
+  /* Neutrals — cool, green-tinted paper. Never pure black or white. */
+  --color-paper: #fafaf8;
+  --color-surface: #f1f1ec;
+  --color-line: #e3e3dc;
+  --color-line-strong: #cfcfc6;
+  --color-ink: #1b1e1c;
+  --color-ink-secondary: #585f5a;
+  --color-ink-tertiary: #8b928c;
+
+  /* One accent: forest */
+  --color-accent: #1e6a50;
+  --color-accent-strong: #175540;
+  --color-accent-soft: #e8f0eb;
+
+  --font-sans: "Archivo", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  --shadow-card: 0 1px 2px rgb(27 30 28 / 0.05), 0 4px 12px rgb(27 30 28 / 0.05);
+  --shadow-card-hover: 0 2px 4px rgb(27 30 28 / 0.06), 0 12px 28px rgb(27 30 28 / 0.09);
+
+  --animate-rise: rise 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(14px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: var(--color-accent-soft);
+  color: var(--color-accent-strong);
+}
+
+/* Scroll reveal — one per section, once */
+.reveal {
+  opacity: 0;
+  translate: 0 18px;
+  transition:
+    opacity 0.6s cubic-bezier(0.22, 1, 0.36, 1),
+    translate 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.reveal.is-visible {
+  opacity: 1;
+  translate: 0 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  .reveal {
+    opacity: 1;
+    translate: 0 0;
+    transition: none;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
