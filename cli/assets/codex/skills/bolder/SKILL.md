@@ -1,6 +1,6 @@
 ---
 name: bolder
-description: "Amplify personality — raises layout variance and motion, strengthens typography and one signature detail, without slop. Use when the UI works but feels safe, flat, or "template-y", or when the user says "bolder", "more personality", "more creative", or "make it pop" (still professional). Invoke when the user asks for bolder on their UI, or mentions 'bolder' alongside design / UI / frontend work."
+description: "Amplify personality — raises layout variance and motion, strengthens typography and one signature detail, without slop. Use when the UI works but feels safe, flat, or \"template-y\", or when the user says \"bolder\", \"more personality\", \"more creative\", or \"make it pop\" (still professional). Invoke when the user asks for bolder on their UI, or mentions 'bolder' alongside design / UI / frontend work."
 ---
 
 <!-- HARNESS MIRROR — do not edit here. Canonical source: commands/bolder.md. After editing source, copy into cli/assets/<harness>/ and repo-root harness mirrors. -->

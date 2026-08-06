@@ -1,6 +1,6 @@
 ---
 name: quieter
-description: "Tone down visual noise — lowers variance and motion, simplifies layout and color weight, keeps hierarchy clear. Use when the UI feels loud, busy, or over-designed, or when the user says "quieter", "more restrained", "simpler", or "tone it down". Invoke when the user asks for quieter on their UI, or mentions 'quieter' alongside design / UI / frontend work."
+description: "Tone down visual noise — lowers variance and motion, simplifies layout and color weight, keeps hierarchy clear. Use when the UI feels loud, busy, or over-designed, or when the user says \"quieter\", \"more restrained\", \"simpler\", or \"tone it down\". Invoke when the user asks for quieter on their UI, or mentions 'quieter' alongside design / UI / frontend work."
 ---
 
 <!-- HARNESS MIRROR — do not edit here. Canonical source: commands/quieter.md. After editing source, copy into cli/assets/<harness>/ and repo-root harness mirrors. -->

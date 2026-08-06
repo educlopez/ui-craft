@@ -1,6 +1,6 @@
 ---
 name: animate
-description: "Motion design pass — adds purposeful animations or removes excessive ones, respecting MOTION_INTENSITY and the project's animation stack. Use when the user asks to add animation, "make it feel smoother", fix janky transitions, or trim motion that's distracting. Invoke when the user asks for animate on their UI, or mentions 'animate' alongside design / UI / frontend work."
+description: "Motion design pass — adds purposeful animations or removes excessive ones, respecting MOTION_INTENSITY and the project's animation stack. Use when the user asks to add animation, \"make it feel smoother\", fix janky transitions, or trim motion that's distracting. Invoke when the user asks for animate on their UI, or mentions 'animate' alongside design / UI / frontend work."
 ---
 
 <!-- HARNESS MIRROR — do not edit here. Canonical source: skills/ or commands/. After editing source, copy into cli/assets/<harness>/ and repo-root harness mirrors. -->
