@@ -1,6 +1,6 @@
 ---
 name: craft
-description: "One-shot build pipeline for a complete surface from an outcome recipe — inputs (or defaults) → composition → theme → build order → acceptance bar. Use when the user asks for a whole surface ("build me a dashboard", "hazme un dashboard") and expects a shippable result, not component-level help. Invoke when the user asks for craft on their UI, or mentions 'craft' alongside design / UI / frontend work."
+description: "One-shot build pipeline for a complete surface from an outcome recipe — inputs (or defaults) → composition → theme → build order → acceptance bar. Use when the user asks for a whole surface (\"build me a dashboard\", \"hazme un dashboard\") and expects a shippable result, not component-level help. Invoke when the user asks for craft on their UI, or mentions 'craft' alongside design / UI / frontend work."
 ---
 
 <!-- HARNESS MIRROR — do not edit here. Canonical source: skills/ or commands/. After editing source, copy into cli/assets/<harness>/ and repo-root harness mirrors. -->

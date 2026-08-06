@@ -51,6 +51,20 @@ function readJson(path) {
   }
 }
 
+/**
+ * Parse frontmatter, and reject what a real YAML parser would reject.
+ *
+ * The previous version stripped outer quotes and accepted whatever was inside, so it
+ * reported "frontmatter parses" for 75 shipped files whose descriptions carried unescaped
+ * inner quotes — a double-quoted scalar ends at the first one, and everything after it is a
+ * syntax error. Codex skipped all 15 affected skills and nothing here noticed, because the
+ * check was written to extract values rather than to validate syntax. Reported by a user
+ * (#122), not by this script.
+ *
+ * Two rejections, both of which that class of bug trips:
+ *   - a double-quoted scalar that ends before the end of the line
+ *   - a plain (unquoted) scalar containing ": ", which YAML reads as a nested mapping
+ */
 function parseFrontmatter(md) {
   const m = md.match(/^---\n([\s\S]*?)\n---/)
   if (!m) return null
@@ -58,9 +72,20 @@ function parseFrontmatter(md) {
   for (const line of m[1].split("\n")) {
     const kv = line.match(/^([a-zA-Z_-]+):\s*(.*)$/)
     if (!kv) continue
-    let value = kv[2].trim()
-    if (value.startsWith('"') && value.endsWith('"')) value = value.slice(1, -1)
-    fm[kv[1]] = value
+    const raw = kv[2].trim()
+    if (raw.startsWith('"')) {
+      // Where does the quoted scalar actually end? First unescaped quote after the opener.
+      const body = raw.slice(1)
+      const end = body.search(/(?<!\\)"/)
+      if (end === -1) return null // never closed
+      if (end !== body.length - 1) return null // closed early — the rest is a syntax error
+      fm[kv[1]] = body.slice(0, end).replace(/\\"/g, '"')
+      continue
+    }
+    if (!raw.startsWith("'") && !raw.startsWith("[") && !raw.startsWith("{") && /:\s/.test(raw)) {
+      return null // a plain scalar with ": " is a mapping to YAML, not a string
+    }
+    fm[kv[1]] = raw
   }
   return fm
 }
@@ -164,6 +189,42 @@ if (existsSync(commandsDir)) {
     }
   }
 }
+
+// --- 4b. Harness mirror frontmatter ---------------------------------------
+//
+// The canonical sources were always valid; the MIRRORS were not, and the mirrors are what
+// users install. 75 shipped files carried a double-quoted description with unescaped inner
+// quotes, so Codex skipped 15 skills outright — and this script passed the whole time,
+// because it only ever read `skills/` and `commands/`. Validating the source of a copy is
+// not validating the copy. Reported by a user (#122).
+
+const MIRROR_ROOTS = [
+  ".agents", ".claude", ".codex", ".cursor", ".gemini", ".opencode",
+  ...(existsSync(resolve(ROOT, "cli/assets"))
+    ? readdirSync(resolve(ROOT, "cli/assets")).map((h) => `cli/assets/${h}`)
+    : []),
+]
+
+let mirrorFiles = 0
+let mirrorBad = 0
+for (const root of MIRROR_ROOTS) {
+  const dir = resolve(ROOT, root, "skills")
+  if (!existsSync(dir)) continue
+  for (const slug of readdirSync(dir)) {
+    const md = resolve(dir, slug, "SKILL.md")
+    if (!existsSync(md)) continue
+    mirrorFiles++
+    const fm = parseFrontmatter(readFileSync(md, "utf8"))
+    if (fm === null || !fm.description) {
+      mirrorBad++
+      check(`${root}/skills/${slug}/SKILL.md frontmatter parses`, false)
+    }
+  }
+}
+check(
+  `harness mirrors: ${mirrorFiles} SKILL.md frontmatters parse`,
+  mirrorBad === 0,
+)
 
 // --- 5. Internal links inside every SKILL.md + references/*.md ------------
 

@@ -1,6 +1,6 @@
 ---
 name: distill
-description: "Reduction pass — cuts content, structure, visuals, and dead code that doesn't answer a user question or drive an action, respecting CRAFT_LEVEL. Use when the UI feels cluttered, has too many CTAs, walls of text, or decorative noise, or when the user says "simplify this" / "it feels too busy". Invoke when the user asks for distill on their UI, or mentions 'distill' alongside design / UI / frontend work."
+description: "Reduction pass — cuts content, structure, visuals, and dead code that doesn't answer a user question or drive an action, respecting CRAFT_LEVEL. Use when the UI feels cluttered, has too many CTAs, walls of text, or decorative noise, or when the user says \"simplify this\" / \"it feels too busy\". Invoke when the user asks for distill on their UI, or mentions 'distill' alongside design / UI / frontend work."
 ---
 
 <!-- HARNESS MIRROR — do not edit here. Canonical source: skills/ or commands/. After editing source, copy into cli/assets/<harness>/ and repo-root harness mirrors. -->

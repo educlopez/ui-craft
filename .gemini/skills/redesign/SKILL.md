@@ -1,6 +1,6 @@
 ---
 name: redesign
-description: "Redesign an existing site or app without losing what already works — audits the current surface first, classifies what to preserve (brand, IA, SEO, content), picks a refresh/reskin/rebuild scope, then modernizes deliberately. Use when the user says "redesign", "modernize this site", "refresh the UI", "make this look current", or points at an existing page/URL they want improved rather than rebuilt from scratch. Invoke when the user asks for redesign on their UI, or mentions 'redesign' alongside design / UI / frontend work."
+description: "Redesign an existing site or app without losing what already works — audits the current surface first, classifies what to preserve (brand, IA, SEO, content), picks a refresh/reskin/rebuild scope, then modernizes deliberately. Use when the user says \"redesign\", \"modernize this site\", \"refresh the UI\", \"make this look current\", or points at an existing page/URL they want improved rather than rebuilt from scratch. Invoke when the user asks for redesign on their UI, or mentions 'redesign' alongside design / UI / frontend work."
 ---
 
 <!-- HARNESS MIRROR — do not edit here. Canonical source: commands/redesign.md. After editing source, copy into cli/assets/<harness>/ and repo-root harness mirrors. -->

@@ -1,6 +1,6 @@
 ---
 name: clarify
-description: "UX copy review across buttons, errors, empty states, and form hints — critiques by default, applies only on request. Use when copy feels vague, generic, or AI-sounding, or when the user says "fix the labels", "improve error messages", or "review the copy". Invoke when the user asks for clarify on their UI, or mentions 'clarify' alongside design / UI / frontend work."
+description: "UX copy review across buttons, errors, empty states, and form hints — critiques by default, applies only on request. Use when copy feels vague, generic, or AI-sounding, or when the user says \"fix the labels\", \"improve error messages\", or \"review the copy\". Invoke when the user asks for clarify on their UI, or mentions 'clarify' alongside design / UI / frontend work."
 ---
 
 <!-- HARNESS MIRROR — do not edit here. Canonical source: skills/ or commands/. After editing source, copy into cli/assets/<harness>/ and repo-root harness mirrors. -->

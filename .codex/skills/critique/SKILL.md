@@ -1,6 +1,6 @@
 ---
 name: critique
-description: "Design lens critique covering visual hierarchy, clarity, and anti-slop patterns — produces a findings table, no code edits unless asked. Use when the user wants a design review, says "what's wrong with this UI", or needs a second opinion before a handoff or presentation. Invoke when the user asks for critique on their UI, or mentions 'critique' alongside design / UI / frontend work."
+description: "Design lens critique covering visual hierarchy, clarity, and anti-slop patterns — produces a findings table, no code edits unless asked. Use when the user wants a design review, says \"what's wrong with this UI\", or needs a second opinion before a handoff or presentation. Invoke when the user asks for critique on their UI, or mentions 'critique' alongside design / UI / frontend work."
 ---
 
 <!-- HARNESS MIRROR — do not edit here. Canonical source: skills/ or commands/. After editing source, copy into cli/assets/<harness>/ and repo-root harness mirrors. -->

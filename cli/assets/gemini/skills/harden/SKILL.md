@@ -1,6 +1,6 @@
 ---
 name: harden
-description: "Production-readiness pass — audits and implements the full non-happy-path matrix: loading skeletons, empty states, error messages, partial data, i18n, offline, permissions, and first-run guidance. Use when preparing a surface for production or when the user says "it crashes on empty data" / "there's no loading state" / "harden this". Invoke when the user asks for harden on their UI, or mentions 'harden' alongside design / UI / frontend work."
+description: "Production-readiness pass — audits and implements the full non-happy-path matrix: loading skeletons, empty states, error messages, partial data, i18n, offline, permissions, and first-run guidance. Use when preparing a surface for production or when the user says \"it crashes on empty data\" / \"there's no loading state\" / \"harden this\". Invoke when the user asks for harden on their UI, or mentions 'harden' alongside design / UI / frontend work."
 ---
 
 <!-- HARNESS MIRROR — do not edit here. Canonical source: skills/ or commands/. After editing source, copy into cli/assets/<harness>/ and repo-root harness mirrors. -->
