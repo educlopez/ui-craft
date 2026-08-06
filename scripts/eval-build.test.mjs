@@ -22,11 +22,39 @@ import { EXPERIMENTS, resolveExperiments, parseStream } from '../evals/build/_li
 const REPO_ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const BUILD_DIR = path.join(REPO_ROOT, 'evals', 'build');
 
+/**
+ * Score a recorded fixture.
+ *
+ * A transcript is either a raw `.ndjson` stream or a plain `.txt`. The stream form is
+ * preferred and folded exactly as a live run folds it, because only it carries tool order —
+ * without that, "did the Craft Read come before the code" degrades to "does it appear at
+ * all", which is a different and weaker question.
+ */
 async function scoreRecorded(id) {
   const dir = path.join(BUILD_DIR, id);
+  const rec = path.join(dir, 'recorded');
   const { default: scorer } = await import(path.join(dir, 'EVAL.mjs'));
-  const transcript = await fs.readFile(path.join(dir, 'recorded', 'transcript.txt'), 'utf8');
-  const ctx = await makeContext({ workspace: path.join(dir, 'recorded', 'workspace'), transcript });
+
+  let transcript = '';
+  let preCode = null;
+  let toolUses = [];
+  let refsRead = [];
+  const ndjson = path.join(rec, 'transcript.ndjson');
+  const txt = path.join(rec, 'transcript.txt');
+  if (await fs.access(ndjson).then(() => true, () => false)) {
+    ({ transcript, preCode, toolUses, refsRead } = parseStream(await fs.readFile(ndjson, 'utf8')));
+  } else {
+    transcript = await fs.readFile(txt, 'utf8');
+  }
+
+  const ctx = await makeContext({
+    workspace: path.join(rec, 'workspace'),
+    transcript,
+    preCode,
+    toolUses,
+    refsRead,
+    seedDir: path.join(dir, 'local'),
+  });
   return runScorer(scorer, ctx);
 }
 
@@ -291,9 +319,13 @@ test('every build eval has a prompt, a scorer and a recorded fixture', async () 
 
   assert.ok(dirs.length > 0, 'there must be at least one build eval');
   for (const id of dirs) {
-    for (const rel of ['PROMPT.md', 'EVAL.mjs', 'recorded/workspace', 'recorded/transcript.txt', 'recorded/README.md']) {
+    for (const rel of ['PROMPT.md', 'EVAL.mjs', 'recorded/workspace', 'recorded/README.md']) {
       await fs.access(path.join(BUILD_DIR, id, rel));
     }
+    const hasTranscript = await Promise.any(
+      ['transcript.ndjson', 'transcript.txt'].map((f) => fs.access(path.join(BUILD_DIR, id, 'recorded', f)))
+    ).then(() => true, () => false);
+    assert.ok(hasTranscript, `${id}: recorded/ needs a transcript.ndjson or transcript.txt`);
     const raw = await fs.readFile(path.join(BUILD_DIR, id, 'PROMPT.md'), 'utf8');
     assert.match(raw, /^---\n[\s\S]*?\nsuite:\s*\w+/, `${id}: PROMPT.md needs frontmatter with a suite`);
     assert.match(raw, /\n---\n[\s\S]*\S/, `${id}: PROMPT.md needs a task body after the frontmatter`);

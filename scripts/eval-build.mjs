@@ -105,6 +105,30 @@ async function loadEvals() {
   return out.sort((a, b) => a.id.localeCompare(b.id));
 }
 
+/** Copy an eval's `local/` starting state into the sandbox. Returns how many files landed. */
+async function copySeed(from, to) {
+  try {
+    await fs.access(from);
+  } catch {
+    return 0;
+  }
+  let n = 0;
+  const walk = async (src, dst) => {
+    await fs.mkdir(dst, { recursive: true });
+    for (const e of await fs.readdir(src, { withFileTypes: true })) {
+      const s = path.join(src, e.name);
+      const d = path.join(dst, e.name);
+      if (e.isDirectory()) await walk(s, d);
+      else {
+        await fs.copyFile(s, d);
+        n++;
+      }
+    }
+  };
+  await walk(from, to);
+  return n;
+}
+
 function printChecks(result) {
   for (const ch of result.checks) {
     const mark = ch.pass ? green('  ✓') : red('  ✗');
@@ -173,7 +197,14 @@ async function main() {
       }
     }
     const { default: scorer } = await import(e.scorerPath);
-    const ctx = await makeContext({ workspace: path.resolve(flags.record), transcript, preCode, toolUses, refsRead });
+    const ctx = await makeContext({
+      workspace: path.resolve(flags.record),
+      transcript,
+      preCode,
+      toolUses,
+      refsRead,
+      seedDir: path.join(e.dir, 'local'),
+    });
     const result = await runScorer(scorer, ctx);
     if (flags.json) process.stdout.write(`${JSON.stringify({ eval: e.id, experiment: 'recorded', ...result }, null, 2)}\n`);
     else {
@@ -200,7 +231,15 @@ async function main() {
   for (const e of selected) {
     for (const x of experiments) {
       const workspace = await fs.mkdtemp(path.join(os.tmpdir(), `uicraft-eval-${e.id}-${x.name}-`));
-      process.stdout.write(`${dim('→')} ${bold(e.id)} ${dim('×')} ${cyan(x.name)} ${dim(workspace)}\n`);
+      // A seed, when the eval has one. Greenfield cannot answer every question: a redesign
+      // needs something to redesign, and whether the skill reads a project's brief and tokens
+      // is unanswerable in an empty directory — the files it would read do not exist, so their
+      // absence from the read log says nothing. `local/` is that starting state.
+      const seeded = await copySeed(path.join(e.dir, 'local'), workspace);
+      process.stdout.write(
+        `${dim('→')} ${bold(e.id)} ${dim('×')} ${cyan(x.name)} ${dim(workspace)}` +
+          `${seeded ? dim(` (seeded: ${seeded} file${seeded === 1 ? '' : 's'})`) : ''}\n`
+      );
 
       const streamPath = path.join(RESULTS_DIR, `${e.id}__${x.name}.stream.ndjson`);
       await fs.rm(streamPath, { force: true });
@@ -223,6 +262,7 @@ async function main() {
         preCode: run.preCode ?? null,
         toolUses: run.toolUses ?? [],
         refsRead: run.refsRead ?? [],
+        seedDir: path.join(e.dir, 'local'),
       });
       const result = await runScorer(scorer, ctx);
 

@@ -50,6 +50,22 @@ async function walk(dir, out = []) {
   return out;
 }
 
+/** Every file, whatever its extension — used for seeds, where markdown is the payload. */
+async function walkAll(dir, out = []) {
+  let entries;
+  try {
+    entries = await fs.readdir(dir, { withFileTypes: true });
+  } catch {
+    return out;
+  }
+  for (const e of entries) {
+    if (e.isDirectory()) {
+      if (!SKIP_DIR.has(e.name)) await walkAll(path.join(dir, e.name), out);
+    } else out.push(path.join(dir, e.name));
+  }
+  return out;
+}
+
 /** Strip JSX tags and expressions so word counts measure prose, not markup. */
 export function visibleText(jsxSnippet) {
   return String(jsxSnippet)
@@ -69,12 +85,43 @@ export function wordCount(text) {
  *
  * @param {{ workspace: string, transcript: string }} input
  */
-export async function makeContext({ workspace, transcript = '', preCode = null, toolUses = [], refsRead = [] }) {
+export async function makeContext({
+  workspace,
+  transcript = '',
+  preCode = null,
+  toolUses = [],
+  refsRead = [],
+  seedDir = null,
+}) {
   const files = await walk(workspace);
   const contents = new Map();
   for (const f of files) {
     contents.set(f, await fs.readFile(f, 'utf8').catch(() => ''));
   }
+
+  // What the harness provisioned, so a scorer can credit the agent only for its own deltas.
+  // Without this a redesign eval scores the seed it was handed: the dated page it was asked
+  // to modernise already contains the headings and CTAs the checklist wants preserved.
+  // Walked WITHOUT the source-extension filter. The first version reused it and so could not
+  // see `.ui-craft/brief.md` or `tokens.md` — the two files a seeded project exists to
+  // provide. It reported one seed file out of three and the eval read as under-provisioned
+  // when the provisioning was fine.
+  const seed = new Map();
+  if (seedDir) {
+    for (const f of await walkAll(seedDir)) {
+      seed.set(path.relative(seedDir, f), await fs.readFile(f, 'utf8').catch(() => ''));
+    }
+  }
+  // "Provisioned" means UNTOUCHED, not "started as seed". A redesign edits the seed in
+  // place, so excluding every seeded path left that scorer reading an empty workspace and
+  // reporting that headings, routes and pricing tiers had all been dropped — from a build
+  // that preserved every one. The agent's work is the new files plus the changed ones.
+  const seedAbs = new Set(
+    [...seed]
+      .map(([rel, original]) => [path.join(workspace, rel), original])
+      .filter(([abs, original]) => contents.has(abs) && contents.get(abs) === original)
+      .map(([abs]) => abs)
+  );
 
   const checks = [];
   const record = (name, pass, evidence, opts = {}) => {
@@ -100,8 +147,17 @@ export async function makeContext({ workspace, transcript = '', preCode = null, 
     toolUses,
     /** Reference files opened before the first write, in order. */
     refsRead,
-    /** Absolute paths of every source file the agent produced. */
+    /** Absolute paths of every source file in the workspace, seed included. */
     files: () => [...contents.keys()],
+    /** The starting state, as [relPath, source] pairs — empty when the eval has no seed. */
+    seedFiles: () => [...seed],
+    /** A seeded file's ORIGINAL content, for before/after comparisons. */
+    seedOf: (suffix) => {
+      for (const [p, src] of seed) if (p.endsWith(suffix)) return src;
+      return null;
+    },
+    /** True when the agent created this file rather than being handed it. */
+    isNew: (relPath) => seed.size > 0 && !seed.has(relPath),
     /** Paths relative to the workspace — what a report should show. */
     rel: (p) => path.relative(workspace, p),
     /** Source of one file, matched by path suffix (e.g. "components/Hero.jsx"). */
@@ -111,11 +167,23 @@ export async function makeContext({ workspace, transcript = '', preCode = null, 
     },
     /** Every file whose path matches, as [relPath, source] pairs. */
     match: (re) => [...contents].filter(([p]) => re.test(p)).map(([p, src]) => [path.relative(workspace, p), src]),
-    /** All produced source concatenated — for "does this appear anywhere" questions. */
-    all: () => [...contents.values()].join('\n'),
-    /** First regex hit across the workspace, with the file it came from. */
-    find: (re) => {
+    /** Produced source concatenated, seed excluded — for "does this appear anywhere". */
+    all: ({ includeSeed = false } = {}) =>
+      [...contents]
+        .filter(([p]) => includeSeed || !seedAbs.has(p))
+        .map(([, src]) => src)
+        .join('\n'),
+    /**
+     * First regex hit across the workspace, with the file it came from.
+     *
+     * Skips seeded files. Scoring what the harness provisioned is the failure this whole
+     * seed mechanism was supposed to prevent, and the first seeded eval walked straight into
+     * it: the raw-hex check flagged `#ffffff` in the token spine the harness handed over.
+     * Pass `{ includeSeed: true }` when a check is deliberately about the starting state.
+     */
+    find: (re, { includeSeed = false } = {}) => {
       for (const [p, src] of contents) {
+        if (!includeSeed && seedAbs.has(p)) continue;
         const m = src.match(re);
         if (m) return { file: path.relative(workspace, p), match: m[0], groups: m.slice(1) };
       }
