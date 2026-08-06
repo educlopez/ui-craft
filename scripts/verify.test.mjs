@@ -7,6 +7,7 @@ test("canonical verify gate covers every distribution surface", () => {
   const ids = new Set(SUITES.map((suite) => suite.id))
   for (const required of [
     "versions",
+    "frontmatter",
     "contracts",
     "validate",
     "mirrors",

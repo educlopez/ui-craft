@@ -1,0 +1,49 @@
+name: Verify published release
+
+# Checks a release AFTER it exists, against what the shipped binary will ask for.
+#
+# Everything else in CI verifies the repo. This verifies the artifact — the gap that let
+# #124 ship: `self-update` requested an archive name no release has ever published, and no
+# gate compared the two because no gate looked at a release at all.
+#
+# Runs on publish, and on demand for any tag, because a release published while GitHub
+# Actions is degraded may need checking after the fact.
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to verify (defaults to the newest release)"
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  assets:
+    name: Release assets match self-update
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Check every platform in the build matrix is published
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag || github.event.release.tag_name }}
+        run: node scripts/check-release-assets.mjs $TAG
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+
+      # The other half of the same contract: the name the code builds must match the
+      # template the release is built from. Cheap, and it is the link that actually broke.
+      - name: Archive name matches the release template
+        run: cd cli && go test ./core/... -run ArchiveName -v

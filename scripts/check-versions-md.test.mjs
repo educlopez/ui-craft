@@ -42,12 +42,21 @@ test("passes on the real file", () => {
 })
 
 test("hazard 1: ascending CLI entries would tag the wrong release", () => {
+  // Derived from the file, not hardcoded. The first version of this test named v1.0.14 and
+  // v1.0.12 explicitly and broke the moment a release added an entry above them — a test
+  // that needs editing on every release is a test people delete.
   const { code, out } = withMutation((s) => {
-    const [, block] = s.match(/(## v1\.0\.14 [\s\S]*?)(?=\n## )/)
-    return s.replace(block, "").replace("## v1.0.12", `${block}\n## v1.0.12`)
+    const entries = [...s.matchAll(/^## v(\d+\.\d+\.\d+) /gm)].map((m) => m[1])
+    const [newest, second] = entries
+    const block = s.match(new RegExp(`(## v${newest.replace(/\./g, "\\.")} [\\s\\S]*?)(?=\\n## )`))[1]
+    // Drop the newest entry and reinsert it below the second — now the first heading is older.
+    const without = s.replace(block, "")
+    const anchorRe = new RegExp(`(## v${second.replace(/\./g, "\\.")} [\\s\\S]*?)(?=\\n## )`)
+    const anchor = without.match(anchorRe)[1]
+    return without.replace(anchor, `${anchor}\n${block}`)
   })
   assert.equal(code, 1)
-  assert.match(out, /would tag v1\.0\.13.*but v1\.0\.14.*is newer/s)
+  assert.match(out, /would tag v.*but v.*is newer/s)
 })
 
 test("hazard 2: an MCP entry between CLI entries swallows itself into the notes", () => {
