@@ -106,6 +106,27 @@ scoop install educlopez/ui-craft
 | Review agents (`design-reviewer`, `a11y-auditor`) | Claude Code + OpenCode | ✅ | — |
 | Design memory (`.ui-craft/`) | ✅ (component opt-in) | — | — |
 
+### Platform support
+
+Six binaries ship on every release. They are not equally exercised, and the difference is worth knowing before you rely on one.
+
+| Platform | Binary | Go suite in CI | Installer end-to-end | Gatekeeper / fresh install |
+|---|:--:|:--:|:--:|:--:|
+| macOS Apple Silicon · `darwin/arm64` | ✅ | ✅ | ✅ | ✅ by hand, every release |
+| macOS Intel · `darwin/amd64` | ✅ | — | — | — |
+| Linux x86-64 · `linux/amd64` | ✅ | ✅ | ✅ Ubuntu · Fedora · Arch | n/a |
+| Linux arm64 · `linux/arm64` | ✅ | — | — | n/a |
+| Windows x86-64 · `windows/amd64` | ✅ | ✅ | ✅ | n/a |
+| Windows arm64 · `windows/arm64` | ✅ | — | — | n/a |
+
+A dash means the binary is built and published but nothing runs on it. Those rows are honest gaps, not oversights we have quietly closed.
+
+**Windows** has only been covered since v1.0.16. Before that the suite had never been green there, and five Windows-only bugs shipped as a result — one of them deleting files during rollback that it existed to protect. The suite now gates every pull request that touches the CLI.
+
+**macOS on Intel** is the largest remaining gap: built and shipped, never tested, and not covered by the manual Gatekeeper check either — that one is Apple-Silicon-only.
+
+Two conditions are untested on every platform: installing with the disk nearly full, and two `ui-craft install` runs racing against the same machine. See [`RELEASE_CHECKLIST.md`](RELEASE_CHECKLIST.md) for what each release actually verifies, and what a completed checklist does not promise.
+
 **Full reference docs:** [skills.smoothui.dev/docs](https://skills.smoothui.dev/docs).
 
 ### Claude Code plugin — alternative (skill + commands + agents + MCP, no CLI needed)

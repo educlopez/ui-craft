@@ -20,6 +20,12 @@ export const SUITES = Object.freeze([
     args: ["scripts/check-versions-md.mjs"],
   },
   {
+    id: "version-mentions",
+    label: "Every stated MCP pin matches the manifest",
+    command: "node",
+    args: ["scripts/check-version-mentions.mjs"],
+  },
+  {
     id: "frontmatter",
     label: "Shipped frontmatter (independent YAML parser)",
     command: "node",
