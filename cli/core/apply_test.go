@@ -100,16 +100,7 @@ func fixedClock(t time.Time) backup.Clock {
 }
 
 // fakeHome is the synthetic home used so MemFS paths pass Restore validation.
-//
-// It must be absolute on the running platform, not just on POSIX. A leading separator makes
-// a path absolute on Unix but only drive-relative on Windows, where resolveCandidate then
-// walks up to the drive root and rewrites the path against it — Restore wrote to
-// C:\home\user\... while the test kept reading \home\user\..., and the rollback looked
-// like it had silently dropped the user's file. On POSIX the value is unchanged.
-var fakeHome = func() string {
-	wd, _ := os.Getwd()
-	return filepath.Join(filepath.VolumeName(wd)+string(filepath.Separator), "home", "user")
-}()
+const fakeHome = "/home/user"
 
 func fakeHomeResolver() (string, error) { return fakeHome, nil }
 
