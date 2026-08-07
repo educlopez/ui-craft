@@ -31,9 +31,6 @@ import (
 //go:embed templates
 var templatesFS embed.FS
 
-//go:embed art
-var artFS embed.FS
-
 // agentsEmbedFS holds the review agent definition files. Unlike mirrors/, this
 // directory is committed (not CI-generated) because agent definitions originate
 // from the canonical agents/ directory at the repo root. Drift between
