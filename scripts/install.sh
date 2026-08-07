@@ -123,7 +123,11 @@ if [ -z "$VERSION" ]; then
   fi
   # shellcheck disable=SC2086 # curl_tls_opts is intentionally unquoted for word-splitting; contains no whitespace-bearing values
   if [ -n "$auth_header" ]; then
-    latest_json="$(curl -fsSL $curl_tls_opts --connect-timeout 10 --max-time 60 -H "$auth_header" "$UI_CRAFT_API_URL")" || latest_json=""
+    # The header goes in over stdin (-H @-) rather than as an argument. A process's argv is
+    # world-readable on Linux and visible to `ps` on macOS, so passing the token on the
+    # command line exposes it to every other user on the machine for as long as the request
+    # runs — and installers get run on shared boxes and build agents.
+    latest_json="$(printf '%s\n' "$auth_header" | curl -fsSL $curl_tls_opts --connect-timeout 10 --max-time 60 -H @- "$UI_CRAFT_API_URL")" || latest_json=""
   else
     latest_json="$(curl -fsSL $curl_tls_opts --connect-timeout 10 --max-time 60 "$UI_CRAFT_API_URL")" || latest_json=""
   fi

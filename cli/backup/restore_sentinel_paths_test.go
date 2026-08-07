@@ -2,7 +2,10 @@ package backup_test
 
 import (
 	"encoding/json"
+	"errors"
+	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -103,5 +106,59 @@ func TestRestore_keepsUserFilesWhenSentinelPathIsSpelledDifferently(t *testing.T
 	}
 	if _, err := mem.Stat(installed); err == nil {
 		t.Error("rollback kept the install-added agent; the cleanup did not run at all")
+	}
+}
+
+// lockedTempRemoveFS refuses to delete our atomic-write temp files, as Windows does when
+// another process holds the handle.
+type lockedTempRemoveFS struct {
+	*fsutil.MemFS
+}
+
+func (f lockedTempRemoveFS) Remove(name string) error {
+	if strings.HasPrefix(filepath.Base(name), fsutil.TempPrefix) {
+		return &os.PathError{Op: "remove", Path: name, Err: errors.New("used by another process")}
+	}
+	return f.MemFS.Remove(name)
+}
+
+// TestRestore_leftoverTempDoesNotFailRollback closes the gap left by teaching Snapshot to skip
+// temp files: because they are no longer in the snapshot, the sentinel cleanup sees them as
+// install-added and deletes them. A temp another process still holds open cannot be deleted on
+// Windows, and that error would fail the rollback — the one operation that must not fail,
+// since it runs when something has already gone wrong.
+func TestRestore_leftoverTempDoesNotFailRollback(t *testing.T) {
+	base := t.TempDir()
+	root := filepath.Join(base, "backups")
+	agentsDir := filepath.Join(base, ".claude", "agents")
+
+	mem := fsutil.NewMemFS()
+	_ = mem.MkdirAll(root, 0o750)
+	userAgent := filepath.Join(agentsDir, "user-custom-agent.md")
+	seed(mem, userAgent, "# the user's own agent")
+
+	store := backup.NewStoreWithHome(
+		root, lockedTempRemoveFS{MemFS: mem},
+		fixedClock(time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)),
+		func() (string, error) { return base, nil },
+	)
+
+	id, err := store.Snapshot(
+		[]backup.SnapshotTarget{{Harness: "claude", OrigPath: agentsDir}},
+		"v1", backup.SourceInstall,
+	)
+	if err != nil {
+		t.Fatalf("Snapshot: %v", err)
+	}
+
+	// A write was interrupted partway through the install, leaving its temp behind, and the
+	// scanner still has it open.
+	seed(mem, filepath.Join(agentsDir, fsutil.TempPrefix+"1060469423"), "half-written")
+
+	if err := store.Restore(id); err != nil {
+		t.Fatalf("rollback failed over an undeletable temp file: %v", err)
+	}
+	if _, err := mem.ReadFile(userAgent); err != nil {
+		t.Errorf("rollback lost the user's agent: %v", err)
 	}
 }

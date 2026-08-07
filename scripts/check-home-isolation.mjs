@@ -54,26 +54,29 @@ const problems = [];
 for (const file of testFiles) {
   const lines = readFileSync(file, 'utf8').split('\n');
   let fnName = '(file scope)';
-  let fnStart = 0;
-  let home = null;
+  // Every pending setter, not just the newest. Tracking one meant a second
+  // t.Setenv("HOME", ...) overwrote the first: if only the second was paired, the guard
+  // passed and the code between the two setters still ran against the real Windows profile.
+  let pending = [];
   const flush = () => {
-    if (home) problems.push({ file, line: home.line, fn: fnName, value: home.value });
-    home = null;
+    for (const h of pending) problems.push({ file, line: h.line, fn: h.fn, value: h.value });
+    pending = [];
   };
   lines.forEach((line, i) => {
     const fn = line.match(/^func (\w+)\(/);
     if (fn) {
       flush();
       fnName = fn[1];
-      fnStart = i;
     }
     const setHome = line.match(/t\.Setenv\("HOME",\s*([^)]+)\)/);
-    if (setHome) home = { line: i + 1, value: setHome[1].trim() };
+    if (setHome) pending.push({ line: i + 1, value: setHome[1].trim(), fn: fnName });
     const setProfile = line.match(/t\.Setenv\("USERPROFILE",\s*([^)]+)\)/);
-    if (setProfile && home && setProfile[1].trim() === home.value) home = null;
+    if (setProfile) {
+      const v = setProfile[1].trim();
+      pending = pending.filter((h) => h.value !== v);
+    }
   });
   flush();
-  void fnStart;
 }
 
 if (problems.length) {

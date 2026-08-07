@@ -121,7 +121,12 @@ func (m *MemFS) MkdirAll(path string, _ fs.FileMode) error {
 	built := vol
 	for _, p := range strings.Split(key[len(vol):], string(filepath.Separator)) {
 		if p == "" {
+			// The root itself is a directory. Skipping it left ReadDir("/") — and
+			// ReadDir("C:\\") — reporting ErrNotExist after MkdirAll had just claimed to
+			// create the whole chain, so the round-trip property held for every ancestor
+			// except the one every path shares.
 			built = vol + string(filepath.Separator)
+			m.dirs[built] = struct{}{}
 			continue
 		}
 		built = filepath.Join(built, p)

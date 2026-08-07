@@ -33,9 +33,8 @@ func TestMemFS_MkdirAllRoundTripsOnPlatformPaths(t *testing.T) {
 		if _, err := mem.ReadDir(p); err != nil {
 			t.Errorf("ReadDir(%q) after MkdirAll(%q): %v", p, dir, err)
 		}
-		parent := filepath.Dir(p)
-		if parent == p || parent == filepath.VolumeName(p)+string(filepath.Separator) {
-			break
+		if parent := filepath.Dir(p); parent == p {
+			break // reached the root, which was checked on this pass
 		}
 	}
 }

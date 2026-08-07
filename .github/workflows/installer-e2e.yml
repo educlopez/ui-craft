@@ -24,6 +24,13 @@ on:
       - '.github/workflows/installer-e2e.yml'
   workflow_dispatch:
 
+# Least privilege. Every job here only reads the repository and queries public releases;
+# none creates a release, uploads an artifact, or writes to the API. The jobs pass
+# github.token to the installer purely to raise the anonymous rate limit on the releases
+# endpoint, so a read-only token is all that token needs to be.
+permissions:
+  contents: read
+
 jobs:
   linux:
     name: Linux (${{ matrix.platform.name }})

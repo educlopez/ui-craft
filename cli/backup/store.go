@@ -609,6 +609,16 @@ func (s *Store) deleteInstallAddedFiles(dirPath string, snapshotted map[string]s
 				}
 				continue
 			}
+			// The snapshot deliberately skips our atomic-write temp files, which means they
+			// are never in snapshotted and this loop would delete them as install-added.
+			// Two problems with that. A pre-existing file whose name happens to start with
+			// the prefix is not ours to delete. And a temp another process still holds open
+			// cannot be removed on Windows, so a leftover from an interrupted write would
+			// fail the rollback — the one operation that must not fail. Sweep best-effort.
+			if strings.HasPrefix(child.Name(), fsutil.TempPrefix) {
+				_ = s.fs.Remove(childPath)
+				continue
+			}
 			if _, keep := snapshotted[pathKey(childPath)]; !keep {
 				// File was not in the snapshot — it was created by the install. Remove it.
 				if err := s.fs.Remove(childPath); err != nil && !errors.Is(err, fs.ErrNotExist) {
