@@ -1,0 +1,13 @@
+{
+  "count": 8,
+  "functions": [
+    "backup/store_test.go:689:6: unreachable func: buildTamperedManifest",
+    "cmd/export_test.go:125:6: unreachable func: MakeUninstallCmd",
+    "cmd/export_test.go:133:6: unreachable func: NewBackupStoreForTest",
+    "cmd/export_test.go:37:6: unreachable func: SetUpdateDetectAllFn",
+    "cmd/export_test.go:45:6: unreachable func: SetNativePluginDetectFn",
+    "cmd/export_test.go:54:6: unreachable func: SetFlags",
+    "core/apply_test.go:439:6: unreachable func: homeRelPath",
+    "fsutil/fs.go:66:13: unreachable func: OsFS.realDisk"
+  ]
+}

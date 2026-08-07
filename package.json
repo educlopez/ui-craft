@@ -30,6 +30,8 @@
     "code-quality"
   ],
   "scripts": {
+    "check:action-pins": "node scripts/check-action-pins.mjs",
+    "check:deadcode": "node scripts/check-deadcode.mjs",
     "check:distribution": "node scripts/check-distribution-contract.mjs",
     "check:frontmatter": "node scripts/check-frontmatter-strict.mjs",
     "check:mirrors": "node scripts/check-mirror-copies.mjs",

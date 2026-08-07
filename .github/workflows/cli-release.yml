@@ -31,7 +31,7 @@ jobs:
     steps:
       # ── Step 1: Checkout ──────────────────────────────────────────────────
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
         with:
           fetch-depth: 0
           # On workflow_dispatch, check out the requested tag (not the dispatch
@@ -51,14 +51,14 @@ jobs:
 
       # ── Step 2: Setup Go ──────────────────────────────────────────────────
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff  # v5.6.0
         with:
           go-version: "1.23"
           cache-dependency-path: cli/go.sum
 
       # ── Step 3: goreleaser release ────────────────────────────────────────
       - name: Run goreleaser
-        uses: goreleaser/goreleaser-action@v6
+        uses: goreleaser/goreleaser-action@e435ccd777264be153ace6237001ef4d979d3a7a  # v6.4.0
         with:
           distribution: goreleaser
           version: "~> v2"
@@ -69,7 +69,7 @@ jobs:
           HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
 
       - name: Attest release artifacts
-        uses: actions/attest@v4
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6  # v4.2.2
         with:
           subject-path: |
             ${{ github.workspace }}/dist/*.tar.gz

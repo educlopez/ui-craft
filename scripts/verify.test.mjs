@@ -6,6 +6,7 @@ import { SUITES } from "./verify.mjs"
 test("canonical verify gate covers every distribution surface", () => {
   const ids = new Set(SUITES.map((suite) => suite.id))
   for (const required of [
+    "action-pins",
     "versions",
     "frontmatter",
     "contracts",

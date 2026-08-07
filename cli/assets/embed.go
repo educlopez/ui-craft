@@ -62,15 +62,6 @@ func TemplateFS() fs.FS {
 	return sub
 }
 
-// ArtFS returns the embedded FS rooted at "art/".
-func ArtFS() fs.FS {
-	sub, err := fs.Sub(artFS, "art")
-	if err != nil {
-		panic("assets: cannot sub artFS: " + err.Error())
-	}
-	return sub
-}
-
 // Agents returns the embedded sub-filesystem containing the review agent
 // definitions for the named harness (e.g. "claude", "opencode"). The returned
 // fs.FS is rooted at agents/<harness>/ so callers can walk it directly and write
@@ -125,23 +116,6 @@ func SkillsFS(harnessName string) fs.FS {
 // or when the commands directory does not exist.
 func CommandsFS(harnessName string) fs.FS {
 	path := harnessName + "/commands"
-	if _, err := fs.Stat(harnessFS, path); err != nil {
-		return nil
-	}
-	sub, err := fs.Sub(harnessFS, path)
-	if err != nil {
-		return nil
-	}
-	return sub
-}
-
-// HarnessAgentsFS returns the embedded sub-filesystem for the agent definitions
-// under the new per-harness tree (cli/assets/<harness>/agents/). This is
-// distinct from the legacy Agents() function which reads from cli/assets/agents/.
-//
-// Returns nil when the harness has no agents directory.
-func HarnessAgentsFS(harnessName string) fs.FS {
-	path := harnessName + "/agents"
 	if _, err := fs.Stat(harnessFS, path); err != nil {
 		return nil
 	}
