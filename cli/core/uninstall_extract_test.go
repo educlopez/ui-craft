@@ -42,7 +42,7 @@ func populateMemFS(t *testing.T, mem *fsutil.MemFS, paths map[string][]byte) {
 // ui-craft skill directory for a targeted harness from the MemFS.
 func TestUninstall_removesOwnedSkillDir(t *testing.T) {
 	mem := fsutil.NewMemFS()
-	homeDir := "/home/testuser"
+	homeDir := absRoot(t, "home", "testuser")
 	skillsDir := homeDir + "/.claude/skills"
 	uiCraftSkillDir := skillsDir + "/ui-craft"
 	userSkillDir := skillsDir + "/my-skill"
@@ -80,10 +80,11 @@ func TestUninstall_removesOwnedSkillDir(t *testing.T) {
 // project-level directory is NOT removed unless RemoveDesignMemory is set.
 func TestUninstall_preservesDesignMemoryByDefault(t *testing.T) {
 	mem := fsutil.NewMemFS()
-	homeDir := "/home/testuser"
+	homeDir := absRoot(t, "home", "testuser")
 	skillsDir := homeDir + "/.claude/skills"
 	uiCraftSkillDir := skillsDir + "/ui-craft"
-	designMemDir := "/projects/myapp/.ui-craft"
+	projectDir := absRoot(t, "projects", "myapp")
+	designMemDir := filepath.Join(projectDir, ".ui-craft")
 
 	populateMemFS(t, mem, map[string][]byte{
 		uiCraftSkillDir + "/SKILL.md": []byte("# skill"),
@@ -93,7 +94,7 @@ func TestUninstall_preservesDesignMemoryByDefault(t *testing.T) {
 	opts := core.UninstallOpts{
 		HomeDir:            homeDir,
 		SkillsDir:          skillsDir,
-		ProjectDir:         "/projects/myapp",
+		ProjectDir:         projectDir,
 		RemoveDesignMemory: false,
 		SnapshotFn:         func() (string, error) { return "snap-002", nil },
 		Output:             discardWriter{},
@@ -113,10 +114,11 @@ func TestUninstall_preservesDesignMemoryByDefault(t *testing.T) {
 // RemoveDesignMemory is true the .ui-craft/ dir is deleted.
 func TestUninstall_removesDesignMemoryWhenRequested(t *testing.T) {
 	mem := fsutil.NewMemFS()
-	homeDir := "/home/testuser"
+	homeDir := absRoot(t, "home", "testuser")
 	skillsDir := homeDir + "/.claude/skills"
 	uiCraftSkillDir := skillsDir + "/ui-craft"
-	designMemDir := "/projects/myapp/.ui-craft"
+	projectDir := absRoot(t, "projects", "myapp")
+	designMemDir := filepath.Join(projectDir, ".ui-craft")
 
 	populateMemFS(t, mem, map[string][]byte{
 		uiCraftSkillDir + "/SKILL.md": []byte("# skill"),
@@ -126,7 +128,7 @@ func TestUninstall_removesDesignMemoryWhenRequested(t *testing.T) {
 	opts := core.UninstallOpts{
 		HomeDir:            homeDir,
 		SkillsDir:          skillsDir,
-		ProjectDir:         "/projects/myapp",
+		ProjectDir:         projectDir,
 		RemoveDesignMemory: true,
 		SnapshotFn:         func() (string, error) { return "snap-003", nil },
 		Output:             discardWriter{},
@@ -146,7 +148,7 @@ func TestUninstall_removesDesignMemoryWhenRequested(t *testing.T) {
 // UninstallReport carries the snapshot ID from SnapshotFn.
 func TestUninstall_reportContainsSnapshotID(t *testing.T) {
 	mem := fsutil.NewMemFS()
-	homeDir := "/home/testuser"
+	homeDir := absRoot(t, "home", "testuser")
 	skillsDir := homeDir + "/.claude/skills"
 	uiCraftSkillDir := skillsDir + "/ui-craft"
 
@@ -174,3 +176,16 @@ func TestUninstall_reportContainsSnapshotID(t *testing.T) {
 type discardWriter struct{}
 
 func (discardWriter) Write(p []byte) (int, error) { return len(p), nil }
+
+// absRoot returns an absolute path on every platform.
+//
+// A leading separator makes a path absolute on POSIX but only drive-relative on Windows:
+// filepath.IsAbs(`\home\testuser`) is false there. core.Uninstall guards its removals with
+// IsAbs — correctly, since it is about to delete a tree — so with a hardcoded "/home/..."
+// fake home the guard skipped every removal and the tests reported that Uninstall had left
+// the directories behind. In production the path comes from the real home and is absolute,
+// so the guard was never the problem; the fake root was.
+func absRoot(t *testing.T, parts ...string) string {
+	t.Helper()
+	return filepath.Join(append([]string{t.TempDir()}, parts...)...)
+}

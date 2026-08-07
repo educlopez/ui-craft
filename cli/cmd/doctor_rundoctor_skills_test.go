@@ -76,7 +76,13 @@ func writeCurrentMirror(t *testing.T, harnessName, skillsDir string) {
 func setupHomeWithHarness(t *testing.T, harnessName string) (home, skillsDir string) {
 	t.Helper()
 	home = t.TempDir()
+	// os.UserHomeDir reads %USERPROFILE% on Windows and $HOME everywhere else, so
+	// setting only HOME leaves Windows pointed at the real user profile — these tests
+	// were reading and writing the actual ui-craft install there.
 	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
+	t.Setenv("APPDATA", filepath.Join(home, "AppData", "Roaming"))
+	t.Setenv("LOCALAPPDATA", filepath.Join(home, "AppData", "Local"))
 
 	var h harness.Harness
 	for _, cand := range harness.All() {
@@ -171,6 +177,9 @@ func TestRunDoctor_registeredStateLimitsSkillChecks(t *testing.T) {
 func TestRunDoctor_registeredMCPOnlyHarnessSkipsSkillChecks(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
+	t.Setenv("APPDATA", filepath.Join(home, "AppData", "Roaming"))
+	t.Setenv("LOCALAPPDATA", filepath.Join(home, "AppData", "Local"))
 
 	state := &core.InstallState{
 		Version: "test",

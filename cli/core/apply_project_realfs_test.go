@@ -36,7 +36,13 @@ func TestApplyProject_allHarnesses_realFS(t *testing.T) {
 	// be touched by this test, and setting HOME here also lets us assert
 	// nothing landed there).
 	fakeHomeDir := t.TempDir()
+	// os.UserHomeDir reads %USERPROFILE% on Windows and $HOME everywhere else, so
+	// setting only HOME leaves Windows pointed at the real user profile — these tests
+	// were reading and writing the actual ui-craft install there.
 	t.Setenv("HOME", fakeHomeDir)
+	t.Setenv("USERPROFILE", fakeHomeDir)
+	t.Setenv("APPDATA", filepath.Join(fakeHomeDir, "AppData", "Roaming"))
+	t.Setenv("LOCALAPPDATA", filepath.Join(fakeHomeDir, "AppData", "Local"))
 
 	fs := fsutil.OsFS{}
 

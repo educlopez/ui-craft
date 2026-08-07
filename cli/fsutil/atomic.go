@@ -70,7 +70,7 @@ func writeAtomicOS(path string, data []byte, perm fs.FileMode) (WriteResult, err
 	dir := filepath.Dir(path)
 
 	// Create temp file in the same directory so rename stays on the same volume.
-	tmp, err := os.CreateTemp(dir, ".ui-craft-tmp-*")
+	tmp, err := os.CreateTemp(dir, TempPrefix+"*")
 	if err != nil {
 		return WriteResult{}, fmt.Errorf("fsutil: create temp in %s: %w", dir, err)
 	}
@@ -105,8 +105,10 @@ func writeAtomicOS(path string, data []byte, perm fs.FileMode) (WriteResult, err
 		return WriteResult{}, syncErr
 	}
 
-	// Atomic rename into place.
-	if err = os.Rename(tmpName, path); err != nil {
+	// Atomic rename into place. Retried on Windows: the file was closed above, but a
+	// virus scanner or indexer routinely still holds a handle to a just-written file,
+	// and Windows refuses to rename over one.
+	if err = renameRetry(tmpName, path); err != nil {
 		return WriteResult{}, fmt.Errorf("fsutil: rename %s → %s: %w", tmpName, path, err)
 	}
 

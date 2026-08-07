@@ -23,6 +23,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 	"sync"
@@ -286,7 +287,7 @@ func (s *Store) Restore(id SnapshotID) error {
 				dirPath:     fm.OrigPath,
 				snapshotted: make(map[string]struct{}),
 			})
-			sentinelIdx[fm.OrigPath] = idx
+			sentinelIdx[pathKey(fm.OrigPath)] = idx
 		}
 	}
 
@@ -331,10 +332,17 @@ func (s *Store) Restore(id SnapshotID) error {
 		}
 
 		// Track this file as part of its sentinel directory (if any).
-		for dirPath, idx := range sentinelIdx {
-			dirPrefix := dirPath + string(filepath.Separator)
-			if strings.HasPrefix(fm.OrigPath, dirPrefix) {
-				sentinels[idx].snapshotted[fm.OrigPath] = struct{}{}
+		//
+		// Both sides must be normalised before they are compared. The sentinel's path is
+		// whatever the caller passed, while this one was rebuilt with filepath.Join during
+		// the snapshot walk, so on Windows one arrives with forward slashes and the other
+		// with backslashes. The raw comparison never matched there, the user's pre-existing
+		// files were left out of this set, and pass 3 deleted them as install-added. That is
+		// data loss, not a stale file, so the comparison is deliberately conservative.
+		origKey := pathKey(fm.OrigPath)
+		for dirKey, idx := range sentinelIdx {
+			if strings.HasPrefix(origKey, dirKey+string(filepath.Separator)) {
+				sentinels[idx].snapshotted[origKey] = struct{}{}
 				break
 			}
 		}
@@ -517,6 +525,14 @@ func (s *Store) snapshotDir(harness, dirPath string) ([]archiveEntry, error) {
 		}
 		for _, child := range children {
 			childPath := filepath.Join(dir, child.Name())
+			// Our own atomic-write temp files sit beside their destination, so a walk of a
+			// skill directory finds them. They are never user content — capturing one stores
+			// a half-written file under a name nothing will restore to. Worse on Windows,
+			// where reading a temp another process still holds open fails outright and took
+			// the whole snapshot with it, aborting the install that had asked for it.
+			if strings.HasPrefix(child.Name(), fsutil.TempPrefix) {
+				continue
+			}
 			// Symlink handling: a directory symlink — e.g. a
 			// skill another tool installed as ~/.claude/skills/foo -> /elsewhere —
 			// must be skipped so the walk never follows it into an external tree.
@@ -593,7 +609,17 @@ func (s *Store) deleteInstallAddedFiles(dirPath string, snapshotted map[string]s
 				}
 				continue
 			}
-			if _, keep := snapshotted[childPath]; !keep {
+			// The snapshot deliberately skips our atomic-write temp files, which means they
+			// are never in snapshotted and this loop would delete them as install-added.
+			// Two problems with that. A pre-existing file whose name happens to start with
+			// the prefix is not ours to delete. And a temp another process still holds open
+			// cannot be removed on Windows, so a leftover from an interrupted write would
+			// fail the rollback — the one operation that must not fail. Sweep best-effort.
+			if strings.HasPrefix(child.Name(), fsutil.TempPrefix) {
+				_ = s.fs.Remove(childPath)
+				continue
+			}
+			if _, keep := snapshotted[pathKey(childPath)]; !keep {
 				// File was not in the snapshot — it was created by the install. Remove it.
 				if err := s.fs.Remove(childPath); err != nil && !errors.Is(err, fs.ErrNotExist) {
 					return fmt.Errorf("backup: remove install-added file %s: %w", childPath, err)
@@ -877,7 +903,15 @@ func validateUnderHome(path, homeDir string) error {
 		resolved = filepath.Clean(path)
 	}
 
-	if !strings.HasPrefix(resolved, resolvedHome+string(filepath.Separator)) && resolved != resolvedHome {
+	// filepath.Rel, not a string prefix. Rel answers containment under the platform's own
+	// path rules: it compares case-insensitively on Windows and case-sensitively elsewhere,
+	// and it fails outright across volumes. A byte-wise prefix gets both wrong on Windows,
+	// where HOME comes from the environment and the resolved path comes from the filesystem —
+	// the two disagree on letter case routinely, and the check would deny the user their own
+	// files. Rel also removes the trailing-separator subtlety that keeps a sibling directory
+	// sharing home's prefix (…/user-evil vs …/user) from reading as inside it.
+	rel, relErr := filepath.Rel(resolvedHome, resolved)
+	if relErr != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
 		return fmt.Errorf("path %q escapes home directory %q", path, homeDir)
 	}
 	return nil
@@ -921,4 +955,21 @@ func validateUnderRoot(savedPath, root string) error {
 // isNotExist returns true for os.ErrNotExist wrapped by path errors.
 func isNotExist(err error) bool {
 	return errors.Is(err, os.ErrNotExist)
+}
+
+// pathKey normalises a path for use as a map key when deciding whether a file was present at
+// snapshot time. Two spellings of one path must not read as two different files: that answer
+// decides whether the file is deleted, so a mismatch destroys the user's data rather than
+// merely leaving something behind.
+//
+// Clean reconciles separators, which is what broke on Windows — a manifest path recorded one
+// way compared against a directory listing built another. Windows filesystems are also
+// case-insensitive, and the recorded path and the live listing have no reason to agree on
+// case, so fold it there too.
+func pathKey(p string) string {
+	cleaned := filepath.Clean(p)
+	if runtime.GOOS == "windows" {
+		return strings.ToLower(cleaned)
+	}
+	return cleaned
 }

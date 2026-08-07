@@ -642,6 +642,20 @@ func TestReviewAgents_rollbackPreservesUserAgent(t *testing.T) {
 	// Invariant 1: user's pre-existing agent must survive with original content.
 	got, err := mem.ReadFile(userAgentPath)
 	if err != nil {
+		// This fails on Windows and nowhere else, and "file does not exist" does not say
+		// whether rollback deleted the file or restored it under a different spelling. MemFS
+		// keys are exact strings, so a path that Clean renders differently is a different
+		// file. Print what is actually in the filesystem before giving up.
+		t.Logf("userAgentPath = %q", userAgentPath)
+		t.Logf("agentsDir     = %q", agentsDir)
+		t.Logf("fakeHome      = %q", fakeHome)
+		if entries, dirErr := mem.ReadDir(agentsDir); dirErr == nil {
+			for _, e := range entries {
+				t.Logf("  present in agentsDir: %q", e.Name())
+			}
+		} else {
+			t.Logf("  agentsDir unreadable: %v", dirErr)
+		}
 		t.Fatalf("user agent not readable after rollback: %v", err)
 	}
 	if string(got) != string(userContent) {

@@ -21,6 +21,7 @@ func TestArchiveNameMatchesGoreleaserTemplate(t *testing.T) {
 		t.Fatalf("cannot read .goreleaser.yaml: %v", err)
 	}
 
+	raw = []byte(strings.ReplaceAll(string(raw), "\r\n", "\n"))
 	m := regexp.MustCompile(`name_template:\s*"([^"]*\{\{[^"]*)"`).FindSubmatch(raw)
 	if m == nil {
 		t.Fatal("no archive name_template found in .goreleaser.yaml")
@@ -89,6 +90,10 @@ func TestArchiveNameForEveryBuiltPlatform(t *testing.T) {
 	if err != nil {
 		t.Fatalf("cannot read .goreleaser.yaml: %v", err)
 	}
+	// A Windows checkout rewrites this file to CRLF, and every pattern below anchors on \n.
+	// Without this the matrix parses as empty and the test reports "could not parse" — which
+	// it did, on the first run of the Windows suite, against a file that was perfectly fine.
+	raw = []byte(strings.ReplaceAll(string(raw), "\r\n", "\n"))
 
 	builds := regexp.MustCompile(`(?ms)^builds:.*?^archives:`).Find(raw)
 	if builds == nil {

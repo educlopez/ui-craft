@@ -469,6 +469,13 @@ if [ "${RUN_NETWORK_TESTS:-0}" = "1" ]; then
   run_install
   reset_env
 
+  # A network test that cannot say why it failed is half a test. This one failed on a CI
+  # runner in 0.2s — far too fast to be a download — and the log said only "exits 1", which
+  # cost a local reproduction to identify as an API rate limit.
+  if [ "$LAST_RC" != "0" ]; then
+    printf '[diag]  installer output follows (rc=%s):\n' "$LAST_RC"
+    printf '%s\n' "${LAST_OUTPUT:-（no output captured）}" | sed 's/^/[diag]    /'
+  fi
   assert_eq "$LAST_RC" "0" "T8: real installer exits 0"
   assert_file_exists "$install_dir_t8/ui-craft" "T8: real binary present at install dir"
   if [ -x "$install_dir_t8/ui-craft" ]; then
