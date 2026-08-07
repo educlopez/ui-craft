@@ -8,6 +8,12 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..")
 
 export const SUITES = Object.freeze([
   {
+    id: "action-pins",
+    label: "GitHub Actions pinned to SHAs",
+    command: "node",
+    args: ["scripts/check-action-pins.mjs"],
+  },
+  {
     id: "versions",
     label: "VERSIONS.md release hazards",
     command: "node",

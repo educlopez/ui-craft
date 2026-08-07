@@ -40,7 +40,7 @@ jobs:
           - name: arch
             dockerfile: Dockerfile.arch
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
 
       - name: Build installer E2E image
         run: |
@@ -62,7 +62,7 @@ jobs:
     runs-on: macos-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
 
       - name: Run installer E2E (hermetic)
         if: github.event_name != 'push'
@@ -77,7 +77,7 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
 
       # Best-effort static analysis of install.ps1. Non-blocking: some
       # runner images throttle PSGallery, and this is a lint pass, not a
