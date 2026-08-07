@@ -2,8 +2,9 @@
 /**
  * Every stated `ui-craft-mcp@X.Y.Z` in the repository must be the version the manifest pins.
  *
- * `check-distribution-contract.mjs` already enforces this — for the three launchers listed in
- * the manifest's `pinnedLaunchers`. That is an allowlist, and an allowlist answers "are the
+ * `check-distribution-contract.mjs` (the `contracts` suite in `verify.mjs`) enforces this — for the
+ * three launchers listed in
+ * manifest's `pinnedLaunchers`. That is an allowlist, and an allowlist answers "are the
  * files we remembered correct?" rather than "is anything wrong?". Thirty-nine places state the
  * pin. Three were checked. The other thirty-six included the install snippet in the README
  * that users copy by hand, the same snippet in `cli/README.md` and `mcp/README.md`, and the
@@ -46,11 +47,11 @@ const dim = (s) => c('2', s);
 
 const PIN = /ui-craft-mcp@(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)/g;
 
-/** Text formats a pin can be written in. Binary and lockfiles are not authored by hand. */
-const SCAN_EXT = new Set([
-  '.go', '.json', '.jsonc', '.md', '.mdx', '.mjs', '.js', '.ts', '.tsx', '.sh', '.ps1',
-  '.yaml', '.yml', '.toml', '.txt', '.example',
-]);
+// No extension allowlist. An allowlist here would repeat the mistake this check exists to
+// fix — Dockerfiles, Makefiles and .env carry no suffix, and e2e/installer has three
+// Dockerfiles that install the CLI. Every tracked file is read, and binary content is
+// skipped by looking for a NUL byte rather than by guessing from the name.
+const MAX_BYTES = 4 << 20;
 
 const EXEMPT = [
   {
@@ -87,7 +88,7 @@ let files;
 try {
   files = execFileSync('git', ['ls-files', '-z'], { cwd: ROOT, encoding: 'utf8', maxBuffer: 32 << 20 })
     .split('\0')
-    .filter((rel) => rel && SCAN_EXT.has(path.extname(rel)))
+    .filter(Boolean)
     .map((rel) => path.join(ROOT, rel));
 } catch (e) {
   process.stderr.write(
@@ -105,17 +106,27 @@ if (!files.length) {
 const problems = [];
 const exemptSeen = new Map(EXEMPT.map((e) => [e.why, 0]));
 let checked = 0;
-let carriers = 0;
+
+let skippedBinary = 0;
 
 for (const file of files) {
   const rel = path.relative(ROOT, file);
   const exemption = EXEMPT.find((e) => e.match(rel));
-  const lines = readFileSync(file, 'utf8').split('\n');
-  let fileHasPin = false;
+
+  let raw;
+  try {
+    raw = readFileSync(file);
+  } catch {
+    continue; // deleted or unreadable since git listed it
+  }
+  if (raw.length > MAX_BYTES || raw.includes(0)) {
+    skippedBinary++;
+    continue;
+  }
+  const lines = raw.toString('utf8').split('\n');
 
   lines.forEach((line, i) => {
     for (const m of line.matchAll(PIN)) {
-      fileHasPin = true;
       if (exemption) {
         exemptSeen.set(exemption.why, exemptSeen.get(exemption.why) + 1);
         continue;
@@ -126,7 +137,6 @@ for (const file of files) {
       }
     }
   });
-  if (fileHasPin) carriers++;
 }
 
 // An exemption that protects nothing is an exemption nobody will notice widening.
@@ -149,12 +159,19 @@ if (problems.length) {
   process.exit(1);
 }
 
+const exemptTotal = [...exemptSeen.values()].reduce((a, b) => a + b, 0);
 process.stdout.write(
-  `✓ check-version-mentions: ${checked} mention(s) of ui-craft-mcp across ${carriers} file(s) all state ${expected}\n`
+  `✓ check-version-mentions: ${checked} non-exempt mention(s) of ui-craft-mcp state ${expected}, ` +
+    `across ${files.length - skippedBinary} tracked text file(s)\n`
 );
 for (const e of EXEMPT) {
   const n = exemptSeen.get(e.why);
   if (n > 0) process.stdout.write(dim(`  ${n} exempt — ${e.why}\n`));
+}
+if (exemptTotal) {
+  process.stdout.write(
+    dim(`  ${exemptTotal} exempt mention(s) were NOT compared; they may legitimately differ.\n`)
+  );
 }
 if (stale.length) {
   process.stdout.write(

@@ -32,8 +32,21 @@ export const SUITES = Object.freeze([
     args: ["scripts/check-frontmatter-strict.mjs"],
   },
   {
+    // Runs the checker, not only its tests. Nothing invoked check-distribution-contract.mjs
+    // before: the suite below runs its test file, and no workflow called `pnpm
+    // check:distribution`. Launcher drift was still caught — "distribution manifest matches
+    // package and launcher sources" in verify.test.mjs asserts the real files — but through a
+    // test that reimplements one of the checker's rules rather than through the checker,
+    // which also validates launcher shape (npx, exact args) and the compatibility rows.
+    // Those went unenforced.
     id: "contracts",
     label: "Distribution contract",
+    command: "node",
+    args: ["scripts/check-distribution-contract.mjs"],
+  },
+  {
+    id: "contracts-unit",
+    label: "Distribution contract unit tests",
     command: "node",
     args: [
       "--test",
