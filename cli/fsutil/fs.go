@@ -75,9 +75,9 @@ func (OsFS) WriteFile(name string, data []byte, perm fs.FileMode) error {
 
 func (OsFS) MkdirAll(path string, perm fs.FileMode) error { return os.MkdirAll(path, perm) }
 
-func (OsFS) Rename(oldpath, newpath string) error { return os.Rename(oldpath, newpath) }
+func (OsFS) Rename(oldpath, newpath string) error { return renameRetry(oldpath, newpath) }
 
-func (OsFS) Remove(name string) error { return os.Remove(name) }
+func (OsFS) Remove(name string) error { return removeRetry(name) }
 
 func (OsFS) RemoveAll(path string) error { return os.RemoveAll(path) }
 

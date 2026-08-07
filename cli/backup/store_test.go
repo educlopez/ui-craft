@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
+	"strings"
 	"testing"
 	"time"
 
@@ -352,31 +354,35 @@ func TestRestore_rejectsPathEscape(t *testing.T) {
 	manifestPath := filepath.Join(snapDir, "manifest.json")
 	data, _ := mem.ReadFile(manifestPath)
 
-	// Inject an escape path into the manifest JSON.
-	escaped := string(data)
-	escaped = replaceFirst(escaped, legitFile, "/etc/passwd")
-	_ = mem.WriteFile(manifestPath, []byte(escaped), 0o640)
+	// Tamper through the JSON encoder, not a raw string replace. A raw replace looks for
+	// the path as Go spells it, while the manifest holds it as JSON spells it — identical
+	// on POSIX, different on Windows, where every separator is a doubled backslash. The
+	// replace silently matched nothing there, the manifest stayed legitimate, and the test
+	// failed accusing Restore of not rejecting a path that had never been injected.
+	var manifest map[string]any
+	if err := json.Unmarshal(data, &manifest); err != nil {
+		t.Fatalf("unmarshal manifest: %v", err)
+	}
+	files, ok := manifest["files"].([]any)
+	if !ok || len(files) == 0 {
+		t.Fatalf("manifest has no files to tamper: %s", data)
+	}
+	entry, ok := files[0].(map[string]any)
+	if !ok {
+		t.Fatalf("unexpected manifest file entry: %#v", files[0])
+	}
+	entry["origPath"] = escapingPath()
+	tampered, err := json.Marshal(manifest)
+	if err != nil {
+		t.Fatalf("marshal manifest: %v", err)
+	}
+	_ = mem.WriteFile(manifestPath, tampered, 0o640)
 
 	// Restore must reject the tampered path.
 	err = store.Restore(id)
 	if err == nil {
 		t.Error("Restore should have returned an error for path escaping home dir")
 	}
-}
-
-// replaceFirst replaces the first occurrence of old with new in s.
-func replaceFirst(s, old, newStr string) string {
-	idx := len(s)
-	for i := 0; i <= len(s)-len(old); i++ {
-		if s[i:i+len(old)] == old {
-			idx = i
-			break
-		}
-	}
-	if idx == len(s) {
-		return s
-	}
-	return s[:idx] + newStr + s[idx+len(old):]
 }
 
 // TestList_sortedNewestFirst verifies List() returns snapshots newest-first.
@@ -612,8 +618,11 @@ func TestSecurity_validateUnderHome_rejectsSymlinkOutside(t *testing.T) {
 		t.Skip("EvalSymlinks failed")
 	}
 
-	// Create a temp directory outside HOME to be the symlink target.
-	outsideDir := t.TempDir()
+	// A target genuinely outside HOME. t.TempDir() is that on POSIX, and is NOT on Windows,
+	// where TEMP lives under the user profile (C:\Users\x\AppData\Local\Temp) — so the
+	// "outside" file sat inside HOME, validateUnderHome correctly accepted it, and the test
+	// failed accusing the security check of letting an escape through.
+	outsideDir := outsideHomeDir(t, resolvedHome)
 	outsideFile := filepath.Join(outsideDir, "secret.txt")
 	if err := os.WriteFile(outsideFile, []byte("secret"), 0o644); err != nil {
 		t.Fatalf("write outside file: %v", err)
@@ -781,4 +790,31 @@ func TestSnapshot_directoryRollback(t *testing.T) {
 		t.Errorf("other-skill/keep.md content changed after rollback:\nwant: %q\ngot:  %q",
 			"# other skill — must not be touched\n", gotKeep)
 	}
+}
+
+// escapingPath returns an absolute path that is outside any plausible home directory on
+// the current platform.
+func escapingPath() string {
+	if runtime.GOOS == "windows" {
+		return `C:\Windows\System32\drivers\etc\hosts`
+	}
+	return "/etc/passwd"
+}
+
+// outsideHomeDir returns a writable directory that is genuinely not under home, skipping
+// the test when the platform offers nowhere to put one.
+func outsideHomeDir(t *testing.T, home string) string {
+	t.Helper()
+	candidate := t.TempDir()
+	if rel, err := filepath.Rel(home, candidate); err != nil || strings.HasPrefix(rel, "..") {
+		return candidate // already outside home
+	}
+	// TEMP is inside HOME (Windows). Fall back to a directory off the volume root.
+	root := filepath.VolumeName(candidate) + string(filepath.Separator)
+	dir, err := os.MkdirTemp(root, "ui-craft-outside-")
+	if err != nil {
+		t.Skipf("no writable location outside home on this platform: %v", err)
+	}
+	t.Cleanup(func() { os.RemoveAll(dir) })
+	return dir
 }

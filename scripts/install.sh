@@ -111,9 +111,24 @@ fi
 
 if [ -z "$VERSION" ]; then
   info "Looking up the latest release..."
+  # The releases API allows 60 unauthenticated requests per hour per IP. That is generous
+  # for one person and nothing at all behind shared egress — corporate NAT, a VPN, or a CI
+  # runner — where the quota is spent by strangers and the install fails in under a second
+  # with a 403. A token, when one is already in the environment, lifts it to 5000.
+  auth_header=""
+  if [ -n "${GITHUB_TOKEN:-}" ]; then
+    auth_header="Authorization: Bearer ${GITHUB_TOKEN}"
+  elif [ -n "${GH_TOKEN:-}" ]; then
+    auth_header="Authorization: Bearer ${GH_TOKEN}"
+  fi
   # shellcheck disable=SC2086 # curl_tls_opts is intentionally unquoted for word-splitting; contains no whitespace-bearing values
-  latest_json="$(curl -fsSL $curl_tls_opts --connect-timeout 10 --max-time 60 "$UI_CRAFT_API_URL")" \
-    || fatal "Failed to query the GitHub releases API. This may be a rate limit — skip the lookup by passing --version vX.Y.Z (or setting UI_CRAFT_VERSION)."
+  if [ -n "$auth_header" ]; then
+    latest_json="$(curl -fsSL $curl_tls_opts --connect-timeout 10 --max-time 60 -H "$auth_header" "$UI_CRAFT_API_URL")" || latest_json=""
+  else
+    latest_json="$(curl -fsSL $curl_tls_opts --connect-timeout 10 --max-time 60 "$UI_CRAFT_API_URL")" || latest_json=""
+  fi
+  [ -n "$latest_json" ] \
+    || fatal "Failed to query the GitHub releases API. This is usually a rate limit (60/hour per IP, shared on corporate networks and CI). Set GITHUB_TOKEN to raise it, or skip the lookup entirely with --version vX.Y.Z (or UI_CRAFT_VERSION)."
   tag="$(printf '%s' "$latest_json" | grep -m1 '"tag_name"' | sed -E 's/.*"tag_name": *"([^"]+)".*/\1/')"
   [ -n "$tag" ] || fatal "Could not parse the latest release tag."
 else

@@ -877,7 +877,15 @@ func validateUnderHome(path, homeDir string) error {
 		resolved = filepath.Clean(path)
 	}
 
-	if !strings.HasPrefix(resolved, resolvedHome+string(filepath.Separator)) && resolved != resolvedHome {
+	// filepath.Rel, not a string prefix. Rel answers containment under the platform's own
+	// path rules: it compares case-insensitively on Windows and case-sensitively elsewhere,
+	// and it fails outright across volumes. A byte-wise prefix gets both wrong on Windows,
+	// where HOME comes from the environment and the resolved path comes from the filesystem —
+	// the two disagree on letter case routinely, and the check would deny the user their own
+	// files. Rel also removes the trailing-separator subtlety that keeps a sibling directory
+	// sharing home's prefix (…/user-evil vs …/user) from reading as inside it.
+	rel, relErr := filepath.Rel(resolvedHome, resolved)
+	if relErr != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
 		return fmt.Errorf("path %q escapes home directory %q", path, homeDir)
 	}
 	return nil

@@ -133,6 +133,17 @@ func removeStaleFiles(w fsutil.FileSystem, dirPath string, keepSet map[string]st
 			}
 			continue
 		}
+		// Our own atomic-write temp files live in this directory and are never in keepSet,
+		// so the plain stale rule deletes them. On POSIX that is survivable — a renamed or
+		// unlinked open file keeps working. On Windows it is not: deleting the temp out from
+		// under an in-flight write makes the rename fail with "cannot find the file
+		// specified", and a temp another process still has open fails to delete at all,
+		// turning scanner noise into a failed install. They are also not user content, so
+		// removing one is not a change worth reporting. Sweep leftovers best-effort.
+		if strings.HasPrefix(child.Name(), fsutil.TempPrefix) {
+			_ = w.Remove(childPath)
+			continue
+		}
 		if _, keep := keepSet[childPath]; !keep {
 			// File exists on disk but is not in the new mirror — remove it.
 			if err := w.Remove(childPath); err != nil {
