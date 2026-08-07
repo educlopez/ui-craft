@@ -38,7 +38,11 @@ func buildRealDetectedHarnesses() []core.DetectedHarness {
 
 func TestRunApplyCmd_GlobalScope_WritesState(t *testing.T) {
 	home := t.TempDir()
+	// os.UserHomeDir reads %USERPROFILE% on Windows and $HOME everywhere else, so
+	// setting only HOME leaves Windows pointed at the real user profile — these tests
+	// were reading and writing the actual ui-craft install there.
 	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
 
 	// Pin the clock so InstalledAt is deterministic.
 	fixed := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
@@ -97,6 +101,7 @@ func TestRunApplyCmd_ProjectScope_WritesStateAtProjectRoot(t *testing.T) {
 	projectDir := t.TempDir()
 	homeDir := t.TempDir()
 	t.Setenv("HOME", homeDir)
+	t.Setenv("USERPROFILE", homeDir)
 
 	fixed := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
 	orig := core.Now
@@ -145,6 +150,7 @@ func TestRunApplyCmd_ProjectScope_WritesStateAtProjectRoot(t *testing.T) {
 func TestRunApplyCmd_OverridePath_SkipsSaveState(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
 
 	m := NewAppModel("v1.0.0-test", t.TempDir())
 	m.selected = buildRealDetectedHarnesses()

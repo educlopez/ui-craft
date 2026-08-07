@@ -34,7 +34,11 @@ import (
 // harness, but proven here against a real file via the real command.
 func TestInstall_malformedMCPJSON_realFS_endToEnd(t *testing.T) {
 	home := t.TempDir()
+	// os.UserHomeDir reads %USERPROFILE% on Windows and $HOME everywhere else, so
+	// setting only HOME leaves Windows pointed at the real user profile — these tests
+	// were reading and writing the actual ui-craft install there.
 	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
 
 	h := harness.ClaudeHarness{}
 	mcpTarget := h.ConfigPaths().MCPConfig
@@ -98,6 +102,7 @@ func TestInstall_malformedMCPJSON_realFS_endToEnd(t *testing.T) {
 func TestInstallJSONPersistsState(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
 
 	restoreDetect := cmd.SetDetectAllFn(func(reg []harness.Harness) []core.DetectedHarness {
 		for _, h := range reg {
@@ -159,6 +164,7 @@ func TestInstallJSONPersistsState(t *testing.T) {
 func TestInstallJSONStateWarningStaysOnStderr(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
 
 	// A regular file at the state-root path makes SaveState fail without
 	// interfering with the selected MCP-only install target.

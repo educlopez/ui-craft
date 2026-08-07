@@ -59,6 +59,12 @@ jobs:
       - name: Unreachable functions did not grow
         run: node scripts/check-deadcode.mjs
 
+      # Windows resolves the home directory from %USERPROFILE%, not $HOME. A test that sets
+      # only HOME is isolated everywhere except there, where it reads and writes the real
+      # user profile — and the failure it produces blames the code under test.
+      - name: HOME overrides in tests also cover Windows
+        run: node scripts/check-home-isolation.mjs
+
       - name: gofmt (fail on any unformatted file)
         run: |
           FILES=$(cd cli && gofmt -l .)

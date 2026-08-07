@@ -23,7 +23,11 @@ import (
 // with the correct depth-1 layout.
 func TestWriteSkill_cleansStaleDepth2_realFS(t *testing.T) {
 	home := t.TempDir()
+	// os.UserHomeDir reads %USERPROFILE% on Windows and $HOME everywhere else, so
+	// setting only HOME leaves Windows pointed at the real user profile — these tests
+	// were reading and writing the actual ui-craft install there.
 	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
 
 	h := harness.ClaudeHarness{}
 	skillsDir := h.ConfigPaths().SkillsDir
@@ -68,6 +72,7 @@ func TestWriteSkill_cleansStaleDepth2_realFS(t *testing.T) {
 func TestWriteSkill_siblingSkillSurvives_realFS(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
 
 	h := harness.ClaudeHarness{}
 	skillsDir := h.ConfigPaths().SkillsDir
