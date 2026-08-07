@@ -26,6 +26,22 @@ Tables get the rule the detector already enforced and the skill never taught: wr
 
 `route_task` also indexes tables by `overflow-x` and `sticky-header`, so asking about either reaches `dashboard.md`.
 
+## v1.0.16 (2026-08-07) — Windows
+
+We publish `windows_amd64` and `windows_arm64` archives on every release, and the Go suite had never been green on Windows. Getting it there took eighteen failures to zero and turned up five bugs. Four of them reached users; every one is the same mistake, a path compared as a raw string rather than as a path.
+
+The worst destroyed data. On rollback, the backup store deletes files under a snapshotted directory that were not in the snapshot, on the reasoning that the install created them. Membership was decided with a string prefix — but the directory's path travels through the manifest exactly as the caller spelled it, while each file's path is rebuilt during the snapshot walk. On Windows one arrives with forward slashes and the other with backslashes, so nothing matched, the set of "files that were already here" came out empty, and rollback deleted every pre-existing file in the directory. Those are your own agents, not ours.
+
+Installing could fail outright. `WriteFileAtomic` writes to a temp file beside its destination, so temps live inside the skill directory. The stale-file sweep deleted them and the backup tried to read them — harmless on macOS and Linux, where an open file can still be renamed and unlinked, and fatal on Windows, where it cannot. The process holding the file open is usually the virus scanner, which opens everything newly written, so this was the ordinary case rather than a rare collision. Renames and deletes now retry briefly when Windows reports the file as in use, and our own temp files are no longer mistaken for either user content or install leftovers.
+
+`ui-craft backup` and `ui-craft rollback` could also refuse to touch files that were plainly yours: the check that keeps a restore inside your home directory compared paths byte for byte, while Windows paths are case-insensitive and the home directory comes from the environment rather than from the filesystem. The two disagree on capitalisation routinely.
+
+The reason all of this shipped is duller than any of the bugs. The Windows suite ran after merge and overnight — it gated nothing, so when it went red there was no one waiting on it. It now runs on pull requests, where the job takes about ninety seconds.
+
+Nothing here changes behaviour on macOS or Linux. Windows users should reinstall or `ui-craft self-update`; the four bugs above are not things a previous version can be made to avoid.
+
+Installers and generated launchers still write `ui-craft-mcp@0.8.2`.
+
 ## v1.0.15 (2026-08-06) — Two user-reported bugs
 
 `self-update` looked for an archive no release has ever published. It built goreleaser's legacy default naming — title-cased OS, no version, `amd64` rewritten to `x86_64` — producing `ui-craft_Darwin_arm64.tar.gz` against a release that ships `ui-craft_1.0.15_darwin_arm64.tar.gz`. Nothing matched on any platform, for any user, since the explicit `name_template` was introduced. Homebrew and the install script take a different path, which is why it went unreported.
