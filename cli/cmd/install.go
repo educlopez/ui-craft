@@ -283,8 +283,26 @@ var installCmd = &cobra.Command{
 			// Collect components that were actually applied (appear in
 			// result.Changes) for this harness. Using Changes avoids recording
 			// skipped components.
+			//
+			// Merged with what state already records, never replacing it. A run scoped with
+			// --components applies only those, so building the list from this run's changes
+			// alone drops every component installed earlier — the files stay on disk while
+			// state forgets them. `update` reads exactly this list to decide what to refresh
+			// and prints "not in saved state — skipping" for anything absent, so a single
+			// `install --components mcp-gates` silently stops `update` from ever touching
+			// skill+commands again. update.go already merges for this reason; install did not.
+			//
+			// Only uninstall removes entries, which is the same rule update follows.
 			seen := map[string]bool{}
 			var installedComps []string
+			if existing := core.FindHarness(state, dh.Harness.Name()); existing != nil {
+				for _, c := range existing.InstalledComponents {
+					if !seen[c] {
+						seen[c] = true
+						installedComps = append(installedComps, c)
+					}
+				}
+			}
 			for _, ch := range result.Changes {
 				if ch.HarnessName == dh.Harness.Name() && !seen[ch.Component] {
 					seen[ch.Component] = true
