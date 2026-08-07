@@ -26,6 +26,22 @@ Tables get the rule the detector already enforced and the skill never taught: wr
 
 `route_task` also indexes tables by `overflow-x` and `sticky-header`, so asking about either reaches `dashboard.md`.
 
+## v1.0.17 (2026-08-07) — install stops forgetting what it installed
+
+`install` rebuilt each harness's recorded component list from the run in progress. A run scoped with `--components` applies only those, so the entry was rewritten to just them and everything installed earlier disappeared from the state file — while its files stayed on disk.
+
+Nothing fails at that moment, which is why it went unnoticed. `update` is what reads that list, and it skips whatever is missing. So a single `ui-craft install --components mcp-gates` quietly stops `update` from ever refreshing your skill and commands again.
+
+That is not hypothetical. It is how one machine went on serving skill files whose frontmatter v1.0.15 had already fixed: the state said `mcp-gates`, `update` found nothing to do, and Codex kept silently skipping fourteen skills it could not parse.
+
+`update` already merged rather than replaced, and said so in a comment. `install` now follows the same rule — only `uninstall` removes an entry.
+
+If your state file has already lost entries, one `ui-craft install` with the components you want puts them back. The files were never gone, only the record of them.
+
+The README now states per-platform coverage: which platforms run the test suite, which run the installer end-to-end, and which are built and published with nothing exercising them. macOS on Intel is the largest gap.
+
+Installers and generated launchers still write `ui-craft-mcp@0.8.2`.
+
 ## v1.0.16 (2026-08-07) — Windows
 
 We publish `windows_amd64` and `windows_arm64` archives on every release, and the Go suite had never been green on Windows. Getting it there took eighteen failures to zero and turned up five bugs. Four of them reached users; every one is the same mistake, a path compared as a raw string rather than as a path.
