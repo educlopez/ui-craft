@@ -14,6 +14,12 @@ export const SUITES = Object.freeze([
     args: ["scripts/check-versions-md.mjs"],
   },
   {
+    id: "frontmatter",
+    label: "Shipped frontmatter (independent YAML parser)",
+    command: "node",
+    args: ["scripts/check-frontmatter-strict.mjs"],
+  },
+  {
     id: "contracts",
     label: "Distribution contract",
     command: "node",

@@ -39,5 +39,11 @@ jobs:
       - name: Install MCP dependencies
         run: npm ci --prefix mcp
 
+      # The frontmatter suite cross-checks every shipped file with a real YAML parser, and
+      # exits 2 rather than passing when it cannot run — so the parser is installed here
+      # instead of letting the gate quietly degrade to "not checked".
+      - name: Install PyYAML for the frontmatter cross-check
+        run: python3 -m pip install --quiet --break-system-packages pyyaml || python3 -m pip install --quiet pyyaml
+
       - name: Run canonical verification gate
         run: pnpm verify

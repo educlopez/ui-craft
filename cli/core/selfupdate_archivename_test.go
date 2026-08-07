@@ -77,3 +77,52 @@ func TestArchiveNameIsPresentInReportedReleaseAssets(t *testing.T) {
 	}
 	t.Errorf("self-update would look for %q, which is not in the v1.0.14 release: %v", got, published)
 }
+
+// Every platform the release actually builds, not just the one running the test.
+//
+// #124 shipped a name that was wrong for all six published platforms. A test bound to
+// runtime.GOOS could not have caught that — on the maintainer's Mac it would have asserted
+// one wrong name against one wrong expectation and passed. The matrix comes from
+// .goreleaser.yaml so adding a platform there fails here until self-update knows about it.
+func TestArchiveNameForEveryBuiltPlatform(t *testing.T) {
+	raw, err := os.ReadFile("../../.goreleaser.yaml")
+	if err != nil {
+		t.Fatalf("cannot read .goreleaser.yaml: %v", err)
+	}
+
+	builds := regexp.MustCompile(`(?ms)^builds:.*?^archives:`).Find(raw)
+	if builds == nil {
+		t.Fatal("no builds section found in .goreleaser.yaml")
+	}
+	list := func(key string) []string {
+		m := regexp.MustCompile(`(?s)` + key + `:\s*\n((?:\s*-\s*\w+\n)+)`).FindSubmatch(builds)
+		if m == nil {
+			return nil
+		}
+		var out []string
+		for _, l := range regexp.MustCompile(`-\s*(\w+)`).FindAllSubmatch(m[1], -1) {
+			out = append(out, string(l[1]))
+		}
+		return out
+	}
+
+	oses, arches := list("goos"), list("goarch")
+	if len(oses) == 0 || len(arches) == 0 {
+		t.Fatalf("could not parse the build matrix: goos=%v goarch=%v", oses, arches)
+	}
+
+	for _, goos := range oses {
+		for _, goarch := range arches {
+			got := core.ArchiveNameFor("v1.0.15", goos, goarch)
+			wantExt := ".tar.gz"
+			if goos == "windows" {
+				wantExt = ".zip"
+			}
+			want := "ui-craft_1.0.15_" + goos + "_" + goarch + wantExt
+			if got != want {
+				t.Errorf("%s/%s: self-update looks for %q, release publishes %q", goos, goarch, got, want)
+			}
+		}
+	}
+	t.Logf("checked %d platform(s) from the build matrix", len(oses)*len(arches))
+}

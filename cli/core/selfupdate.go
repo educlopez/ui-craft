@@ -278,12 +278,22 @@ func DetectInstallMethod(exePath string) string {
 //
 // tag is the release tag ("v1.0.14"); the template wants it without the leading "v".
 func ArchiveNameForPlatform(tag string) string {
+	return ArchiveNameFor(tag, runtime.GOOS, runtime.GOARCH)
+}
+
+// ArchiveNameFor is the same rendering for an arbitrary platform.
+//
+// Split out because the platform-bound version can only ever be tested on the machine
+// running the tests — which is how #124 shipped: the name was wrong for all six published
+// platforms and a macOS test could not have said so. This one is testable against the whole
+// build matrix in .goreleaser.yaml.
+func ArchiveNameFor(tag, goos, goarch string) string {
 	version := strings.TrimPrefix(tag, "v")
 	ext := "tar.gz"
-	if runtime.GOOS == "windows" {
+	if goos == "windows" {
 		ext = "zip"
 	}
-	return fmt.Sprintf("ui-craft_%s_%s_%s.%s", version, runtime.GOOS, runtime.GOARCH, ext)
+	return fmt.Sprintf("ui-craft_%s_%s_%s.%s", version, goos, goarch, ext)
 }
 
 // ─── Checksum verification ────────────────────────────────────────────────────
