@@ -35,13 +35,26 @@ const yellow = (s) => c('33', s);
 const dim = (s) => c('2', s);
 
 /** Every file that ships a frontmatter a harness will parse. */
+const dangling = [];
+
 function shippedFiles() {
   const out = [];
+  // statSync follows symlinks, and the repo tracks a couple that point outside it — they
+  // resolve on the machine that made them and dangle everywhere else. The first version
+  // crashed the entire check on the first dangling link, which on CI meant a guard that
+  // reported nothing at all rather than reporting the files it could read.
   const walk = (dir) => {
     if (!existsSync(dir)) return;
     for (const name of readdirSync(dir)) {
       const p = path.join(dir, name);
-      if (statSync(p).isDirectory()) walk(p);
+      let st;
+      try {
+        st = statSync(p);
+      } catch {
+        dangling.push(path.relative(ROOT, p));
+        continue;
+      }
+      if (st.isDirectory()) walk(p);
       else if (name === 'SKILL.md' || (dir.endsWith('commands') && name.endsWith('.md'))) out.push(p);
     }
   };
@@ -128,3 +141,12 @@ if (bad.length) {
 }
 
 process.stdout.write(`✓ check-frontmatter-strict: ${files.length} shipped frontmatters parse under PyYAML\n`);
+if (dangling.length) {
+  process.stdout.write(
+    dim(
+      `  ${dangling.length} dangling symlink(s) skipped — they point outside the repo and cannot be read here:\n` +
+        dangling.map((d) => `    ${d}`).join('\n') +
+        '\n  Not a failure, but nothing verified them either.\n'
+    )
+  );
+}
