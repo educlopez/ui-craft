@@ -1,6 +1,7 @@
 package harness
 
 import (
+	"errors"
 	"fmt"
 	"io/fs"
 	"os"
@@ -122,8 +123,15 @@ func removeStaleFiles(w fsutil.FileSystem, dirPath string, keepSet map[string]st
 
 	children, err := rdf.ReadDir(dirPath)
 	if err != nil {
-		// Directory doesn't exist yet — nothing to clean.
-		return nil
+		if errors.Is(err, fs.ErrNotExist) {
+			// Directory doesn't exist yet — genuinely nothing to clean.
+			return nil
+		}
+		// Any other error means the sweep did not happen. Treating that as success is how
+		// this went unnoticed on Windows for every release: MemFS returned ErrNotExist for
+		// directories it had recorded under malformed keys, the sweep returned nil, and six
+		// tests reported "stale file still exists" with no hint that nothing had run.
+		return fmt.Errorf("writeMirrorToDir: read %s for stale cleanup: %w", dirPath, err)
 	}
 	for _, child := range children {
 		childPath := filepath.Join(dirPath, child.Name())

@@ -105,25 +105,26 @@ func (m *MemFS) WriteFile(name string, data []byte, perm fs.FileMode) error {
 	return nil
 }
 
-// NOTE: MemFS models Unix-style paths; Windows absolute paths (C:\) are not
-// faithfully modeled. Test infra only; revisit if Windows MemFS tests are added.
+// MkdirAll records every ancestor so Stat and ReadDir on parent dirs work.
+//
+// The volume name must be split off before walking components. On Windows the first
+// component of C:\Users\x is "C:", and filepath.Join("C:", "Users") is "C:Users" — a
+// drive-*relative* path, not C:\Users. Every ancestor key came out malformed, so ReadDir
+// never found the directory it was asked about, and callers that treat a missing directory
+// as "nothing to do" silently did nothing. That is what disabled the whole stale-file sweep
+// on Windows: not a failure, an absence, which is worse because it looks like success.
 func (m *MemFS) MkdirAll(path string, _ fs.FileMode) error {
 	key := m.clean(path)
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	// Record every component so Stat on parent dirs works.
-	parts := strings.Split(key, string(filepath.Separator))
-	built := ""
-	for _, p := range parts {
+	vol := filepath.VolumeName(key)
+	built := vol
+	for _, p := range strings.Split(key[len(vol):], string(filepath.Separator)) {
 		if p == "" {
-			built = string(filepath.Separator)
+			built = vol + string(filepath.Separator)
 			continue
 		}
-		if built == string(filepath.Separator) {
-			built += p
-		} else {
-			built = filepath.Join(built, p)
-		}
+		built = filepath.Join(built, p)
 		m.dirs[built] = struct{}{}
 	}
 	return nil
