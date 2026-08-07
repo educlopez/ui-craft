@@ -517,6 +517,14 @@ func (s *Store) snapshotDir(harness, dirPath string) ([]archiveEntry, error) {
 		}
 		for _, child := range children {
 			childPath := filepath.Join(dir, child.Name())
+			// Our own atomic-write temp files sit beside their destination, so a walk of a
+			// skill directory finds them. They are never user content — capturing one stores
+			// a half-written file under a name nothing will restore to. Worse on Windows,
+			// where reading a temp another process still holds open fails outright and took
+			// the whole snapshot with it, aborting the install that had asked for it.
+			if strings.HasPrefix(child.Name(), fsutil.TempPrefix) {
+				continue
+			}
 			// Symlink handling: a directory symlink — e.g. a
 			// skill another tool installed as ~/.claude/skills/foo -> /elsewhere —
 			// must be skipped so the walk never follows it into an external tree.

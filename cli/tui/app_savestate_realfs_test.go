@@ -43,6 +43,8 @@ func TestRunApplyCmd_GlobalScope_WritesState(t *testing.T) {
 	// were reading and writing the actual ui-craft install there.
 	t.Setenv("HOME", home)
 	t.Setenv("USERPROFILE", home)
+	t.Setenv("APPDATA", filepath.Join(home, "AppData", "Roaming"))
+	t.Setenv("LOCALAPPDATA", filepath.Join(home, "AppData", "Local"))
 
 	// Pin the clock so InstalledAt is deterministic.
 	fixed := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
@@ -102,6 +104,8 @@ func TestRunApplyCmd_ProjectScope_WritesStateAtProjectRoot(t *testing.T) {
 	homeDir := t.TempDir()
 	t.Setenv("HOME", homeDir)
 	t.Setenv("USERPROFILE", homeDir)
+	t.Setenv("APPDATA", filepath.Join(homeDir, "AppData", "Roaming"))
+	t.Setenv("LOCALAPPDATA", filepath.Join(homeDir, "AppData", "Local"))
 
 	fixed := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
 	orig := core.Now
@@ -151,6 +155,8 @@ func TestRunApplyCmd_OverridePath_SkipsSaveState(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	t.Setenv("USERPROFILE", home)
+	t.Setenv("APPDATA", filepath.Join(home, "AppData", "Roaming"))
+	t.Setenv("LOCALAPPDATA", filepath.Join(home, "AppData", "Local"))
 
 	m := NewAppModel("v1.0.0-test", t.TempDir())
 	m.selected = buildRealDetectedHarnesses()

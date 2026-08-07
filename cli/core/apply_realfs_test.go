@@ -41,6 +41,8 @@ func TestApply_readOnlyWriteTarget_realFS(t *testing.T) {
 	// were reading and writing the actual ui-craft install there.
 	t.Setenv("HOME", home)
 	t.Setenv("USERPROFILE", home)
+	t.Setenv("APPDATA", filepath.Join(home, "AppData", "Roaming"))
+	t.Setenv("LOCALAPPDATA", filepath.Join(home, "AppData", "Local"))
 	backupRoot := filepath.Join(home, ".ui-craft-backups")
 	if err := os.MkdirAll(backupRoot, 0o750); err != nil {
 		t.Fatal(err)

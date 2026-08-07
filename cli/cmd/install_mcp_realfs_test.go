@@ -39,6 +39,8 @@ func TestInstall_malformedMCPJSON_realFS_endToEnd(t *testing.T) {
 	// were reading and writing the actual ui-craft install there.
 	t.Setenv("HOME", home)
 	t.Setenv("USERPROFILE", home)
+	t.Setenv("APPDATA", filepath.Join(home, "AppData", "Roaming"))
+	t.Setenv("LOCALAPPDATA", filepath.Join(home, "AppData", "Local"))
 
 	h := harness.ClaudeHarness{}
 	mcpTarget := h.ConfigPaths().MCPConfig
@@ -103,6 +105,8 @@ func TestInstallJSONPersistsState(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	t.Setenv("USERPROFILE", home)
+	t.Setenv("APPDATA", filepath.Join(home, "AppData", "Roaming"))
+	t.Setenv("LOCALAPPDATA", filepath.Join(home, "AppData", "Local"))
 
 	restoreDetect := cmd.SetDetectAllFn(func(reg []harness.Harness) []core.DetectedHarness {
 		for _, h := range reg {
@@ -165,6 +169,8 @@ func TestInstallJSONStateWarningStaysOnStderr(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	t.Setenv("USERPROFILE", home)
+	t.Setenv("APPDATA", filepath.Join(home, "AppData", "Roaming"))
+	t.Setenv("LOCALAPPDATA", filepath.Join(home, "AppData", "Local"))
 
 	// A regular file at the state-root path makes SaveState fail without
 	// interfering with the selected MCP-only install target.

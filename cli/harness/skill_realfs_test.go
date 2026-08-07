@@ -28,6 +28,8 @@ func TestWriteSkill_cleansStaleDepth2_realFS(t *testing.T) {
 	// were reading and writing the actual ui-craft install there.
 	t.Setenv("HOME", home)
 	t.Setenv("USERPROFILE", home)
+	t.Setenv("APPDATA", filepath.Join(home, "AppData", "Roaming"))
+	t.Setenv("LOCALAPPDATA", filepath.Join(home, "AppData", "Local"))
 
 	h := harness.ClaudeHarness{}
 	skillsDir := h.ConfigPaths().SkillsDir
@@ -73,6 +75,8 @@ func TestWriteSkill_siblingSkillSurvives_realFS(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	t.Setenv("USERPROFILE", home)
+	t.Setenv("APPDATA", filepath.Join(home, "AppData", "Roaming"))
+	t.Setenv("LOCALAPPDATA", filepath.Join(home, "AppData", "Local"))
 
 	h := harness.ClaudeHarness{}
 	skillsDir := h.ConfigPaths().SkillsDir

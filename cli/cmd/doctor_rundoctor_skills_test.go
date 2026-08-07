@@ -81,6 +81,8 @@ func setupHomeWithHarness(t *testing.T, harnessName string) (home, skillsDir str
 	// were reading and writing the actual ui-craft install there.
 	t.Setenv("HOME", home)
 	t.Setenv("USERPROFILE", home)
+	t.Setenv("APPDATA", filepath.Join(home, "AppData", "Roaming"))
+	t.Setenv("LOCALAPPDATA", filepath.Join(home, "AppData", "Local"))
 
 	var h harness.Harness
 	for _, cand := range harness.All() {
@@ -176,6 +178,8 @@ func TestRunDoctor_registeredMCPOnlyHarnessSkipsSkillChecks(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	t.Setenv("USERPROFILE", home)
+	t.Setenv("APPDATA", filepath.Join(home, "AppData", "Roaming"))
+	t.Setenv("LOCALAPPDATA", filepath.Join(home, "AppData", "Local"))
 
 	state := &core.InstallState{
 		Version: "test",

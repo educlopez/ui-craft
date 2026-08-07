@@ -657,11 +657,26 @@ func TestSecurity_validateUnderHome_rejectsSymlinkOutside(t *testing.T) {
 		t.Fatalf("Snapshot: %v", err)
 	}
 
+	// Check the premise before judging the behaviour. This test asserts that Restore rejects
+	// an escape, which only means anything if an escape was actually set up — and twice now on
+	// Windows the setup was the thing that was wrong while the failure message accused the
+	// security check. If EvalSymlinks does not resolve the link to somewhere outside home,
+	// there is nothing here for Restore to reject and saying so beats a false accusation.
+	resolvedLink, evalErr := filepath.EvalSymlinks(symlinkPath)
+	if evalErr != nil {
+		t.Skipf("EvalSymlinks(%q) failed, so no escape exists to reject: %v", symlinkPath, evalErr)
+	}
+	if rel, relErr := filepath.Rel(resolvedHome, resolvedLink); relErr == nil && !strings.HasPrefix(rel, "..") {
+		t.Skipf("the symlink resolves to %q, which is inside home %q (rel %q) — no escape to reject",
+			resolvedLink, resolvedHome, rel)
+	}
+
 	// Restore must reject symlinkPath because EvalSymlinks(symlinkPath) resolves
 	// to outsideFile which is outside HOME.
 	err = osStore.Restore(id)
 	if err == nil {
-		t.Error("Restore should have rejected a symlink-inside-HOME pointing outside HOME")
+		t.Errorf("Restore accepted a symlink at %q resolving to %q, outside home %q",
+			symlinkPath, resolvedLink, resolvedHome)
 	}
 }
 

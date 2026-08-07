@@ -41,6 +41,8 @@ func TestApplyProject_allHarnesses_realFS(t *testing.T) {
 	// were reading and writing the actual ui-craft install there.
 	t.Setenv("HOME", fakeHomeDir)
 	t.Setenv("USERPROFILE", fakeHomeDir)
+	t.Setenv("APPDATA", filepath.Join(fakeHomeDir, "AppData", "Roaming"))
+	t.Setenv("LOCALAPPDATA", filepath.Join(fakeHomeDir, "AppData", "Local"))
 
 	fs := fsutil.OsFS{}
 
