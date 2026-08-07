@@ -1,19 +1,46 @@
 name: CLI Windows
 
-# We publish windows_amd64 and windows_arm64 archives on every release and, until now, no
-# test had ever run on Windows. The CLI is not platform-neutral: it writes harness configs by
-# path, merges JSON and TOML on disk, unpacks a .zip there instead of a .tar.gz, and resolves
-# a self-update archive whose name is built per GOOS — the exact surface that produced #124.
+# We publish windows_amd64 and windows_arm64 archives on every release, and for a long time
+# no test had ever run on Windows. The CLI is not platform-neutral: it writes harness configs
+# by path, merges JSON and TOML on disk, unpacks a .zip there instead of a .tar.gz, and
+# resolves a self-update archive whose name is built per GOOS — the surface that produced #124.
 #
-# Not in the PR matrix on purpose. Windows runners are slow enough that adding one to every
-# pull request taxes work that has nothing to do with Windows; a merge gate plus a nightly
-# catches platform breakage within a day without that cost.
+# This gates pull requests, which it did not until 2026-08-07.
+#
+# The old reason for keeping it out was that Windows runners are slow enough to tax every PR
+# that has nothing to do with Windows, so a merge gate plus a nightly would catch breakage
+# within a day. Measured, the job takes about 90 seconds. And "within a day" is not what
+# happened: five Windows-only bugs reached users, including one where rollback deleted the
+# user's own files, because the only signal arrived after the merge that introduced it and
+# nobody was watching a workflow that does not block anything.
+#
+# The path filter keeps it off pull requests that do not touch the CLI, so the cost lands
+# only where the risk does. main is unprotected, so a skipped run cannot block a merge.
+#
+# There is a tempting alternative — a small "release blockers" subset here and the full suite
+# elsewhere. That shape exists to stop a backlog of known platform failures from holding up
+# releases. This suite has no backlog: it is green, every package, so there is nothing to
+# quarantine and splitting it would only create somewhere for failures to hide.
 
 on:
+  pull_request:
+    paths:
+      - 'cli/**'
+      # The self-update tests read the release config to render the archive name they assert
+      # against. #124 was precisely a mismatch between that template and the code, so a change
+      # to it alone must run this suite — the file is Windows-relevant even though it is not
+      # Windows-specific: it is where the .zip-instead-of-.tar.gz decision lives.
+      - '.goreleaser.yaml'
+      - '.github/workflows/cli-windows.yml'
   push:
     branches: [main]
     paths:
       - 'cli/**'
+      # The self-update tests read the release config to render the archive name they assert
+      # against. #124 was precisely a mismatch between that template and the code, so a change
+      # to it alone must run this suite — the file is Windows-relevant even though it is not
+      # Windows-specific: it is where the .zip-instead-of-.tar.gz decision lives.
+      - '.goreleaser.yaml'
       - '.github/workflows/cli-windows.yml'
   schedule:
     # 04:20 UTC — after the working day, before the next one.
