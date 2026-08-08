@@ -110,7 +110,7 @@ The rules that make the biggest difference between "AI-generated" and "designed 
 |---|---|
 | Code editor surfaces (syntax, gutters, diff views) | Monaco or CodeMirror with their own theming API |
 | Native mobile apps | Apple HIG or Material directly — UI Craft covers web |
-| Realtime collaboration UI (presence, live cursors, conflict states) | A different problem class; the recipes assume a single actor |
+| Realtime collaboration UI (presence, live cursors, conflict states) | Liveblocks, or Yjs / Automerge if you own the sync layer — the recipes assume a single actor |
 | HTML email | MJML or a dedicated email framework — the CSS rules here are void in mail clients |
 
 Refusing with a pointer beats confident bad output. Silence produces the second one.

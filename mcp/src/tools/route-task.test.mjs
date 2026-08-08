@@ -366,6 +366,10 @@ test('out of scope: ordinary vocabulary does not trigger it', () => {
     'analytics dashboard with KPIs',
     'mobile navigation drawer',
     'email capture form on the landing page',
+    // An email *client* is a web surface — inbox list, thread view, composer. Only the
+    // artefact being produced puts a brief out of scope, not the subject it deals with.
+    'build a web email client',
+    'inbox list view with unread state',
   ]) {
     const r = routeTask({ prompt });
     assert.equal(r.out_of_scope, undefined, `${prompt} must not be flagged out of scope`);

@@ -102,18 +102,20 @@ Apply on dashboard, auth, settings, onboarding, admin — load with [recipe-dash
 
 Naming the platform is not enough to act on. Install what the row says:
 
-| Brief reads as… | Install |
-|---|---|
-| Microsoft 365 / Fluent-flavoured | `@fluentui/react-components` |
-| Atlassian-suite companion | `@atlaskit/*` (per component, e.g. `@atlaskit/button`) |
-| Shopify app or admin surface | `@shopify/polaris` |
-| Material-flavoured product | `@material/web` |
-| IBM-style B2B / enterprise analytics | `@carbon/react` |
-| Salesforce / Lightning | `@salesforce-ux/design-system` |
-| Adobe-flavoured | `@adobe/react-spectrum` |
-| GitHub-flavoured developer tooling | `@primer/react` |
-| UK public sector | `govuk-frontend` |
-| US federal / state service | `@uswds/uswds` |
+| Brief reads as… | Install | Ships as |
+|---|---|---|
+| Microsoft 365 / Fluent-flavoured | `@fluentui/react-components` | React |
+| Atlassian-suite companion | `@atlaskit/button`, `@atlaskit/textfield`, … | React, one package per component |
+| Shopify app or admin surface | `@shopify/polaris` | React |
+| Material-flavoured product | `@material/web` | Web components — any framework |
+| IBM-style B2B / enterprise analytics | `@carbon/react` | React (`@carbon/styles` for the CSS alone) |
+| Salesforce / Lightning | `@salesforce-ux/design-system` | CSS — any framework |
+| Adobe-flavoured | `@adobe/react-spectrum` | React |
+| GitHub-flavoured developer tooling | `@primer/react` | React (`@primer/primitives` for tokens alone) |
+| UK public sector | `govuk-frontend` | Plain CSS + JS |
+| US federal / state service | `@uswds/uswds` | Plain CSS + JS |
+
+Check the third column against the project before adding a dependency. Most of these ship as React and installing one into a Vue, Svelte or Angular codebase is worse than hand-rolling: take the system's tokens and CSS instead, which is the part that makes it recognisable. Atlassian has no meta-package — install the components the surface actually uses.
 
 No row matches → this rule does not apply. Proceed with the normal token flow rather than reaching for the nearest big component library.
 

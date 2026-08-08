@@ -570,7 +570,9 @@ export const OUT_OF_SCOPE = [
   {
     id: 'html-email',
     label: 'HTML email',
-    triggers: ['html email', 'email template', 'newsletter template', 'mjml', 'email client'],
+    // Deliberately no 'email client': a web email client is a web surface and squarely our
+    // work. The trigger has to name the artefact being produced, not the subject matter.
+    triggers: ['html email', 'email template', 'newsletter template', 'mjml', 'transactional email'],
     use: 'MJML or a dedicated email framework — the CSS rules here are void in mail clients.',
   },
   {
