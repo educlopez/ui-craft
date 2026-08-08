@@ -541,4 +541,46 @@ export const CORPUS = [
   },
 ];
 
-export default { STOPWORDS, SYNONYMS, CORPUS, REPAIR_MARKERS };
+/**
+ * Surface classes the recipes do not help with.
+ *
+ * Reported alongside normal routing, never instead of it. A brief that mentions one of
+ * these is rarely only that — "landing page for our iOS app" is our work, and the native
+ * screens are not — so treating a match as a hard stop would refuse real jobs. The routing
+ * still runs; this only adds the sentence the skill would otherwise leave unsaid.
+ *
+ * Without it the failure is confident rather than silent: "react native mobile screen"
+ * routed to responsive.md and accessibility.md, which is web guidance for a native brief.
+ * Triggers are phrases, not single words, for the same reason — "mobile" alone is ordinary
+ * responsive vocabulary.
+ */
+export const OUT_OF_SCOPE = [
+  {
+    id: 'native-mobile',
+    label: 'Native mobile screens',
+    triggers: ['react native', 'swiftui', 'swift ui', 'uikit', 'jetpack compose', 'native screen', 'native app screen'],
+    use: 'Apple HIG or Material directly — UI Craft covers web surfaces.',
+  },
+  {
+    id: 'code-editor',
+    label: 'Code-editor surfaces (syntax, gutters, diff views)',
+    triggers: ['code editor', 'syntax highlight', 'syntax highlighting', 'monaco', 'codemirror', 'diff viewer', 'editor gutter'],
+    use: 'Monaco or CodeMirror with their own theming API.',
+  },
+  {
+    id: 'html-email',
+    label: 'HTML email',
+    // Deliberately no 'email client': a web email client is a web surface and squarely our
+    // work. The trigger has to name the artefact being produced, not the subject matter.
+    triggers: ['html email', 'email template', 'newsletter template', 'mjml', 'transactional email'],
+    use: 'MJML or a dedicated email framework — the CSS rules here are void in mail clients.',
+  },
+  {
+    id: 'realtime-collab',
+    label: 'Realtime collaboration UI (presence, live cursors, conflict states)',
+    triggers: ['live cursor', 'live cursors', 'presence indicator', 'collaborative editing', 'operational transform', 'multiplayer cursor'],
+    use: 'A different problem class — the recipes assume a single actor.',
+  },
+];
+
+export default { STOPWORDS, SYNONYMS, CORPUS, REPAIR_MARKERS, OUT_OF_SCOPE };

@@ -104,6 +104,17 @@ The rules that make the biggest difference between "AI-generated" and "designed 
 
 **Overlap with other skills:** defer marketing copy to a copywriting skill; defer SEO strategy to an SEO skill — UI Craft covers the correctness of metadata already being emitted ([metadata.md](references/metadata.md)), not keyword or ranking strategy. UI Craft is the visual and interaction layer.
 
+**Out of scope.** These are surface classes the recipes do not help with. Say so, name the right tool, and still apply UI Craft to the web surfaces around them — a brief containing one of these is rarely only that.
+
+| Not this | Use instead |
+|---|---|
+| Code editor surfaces (syntax, gutters, diff views) | Monaco or CodeMirror with their own theming API |
+| Native mobile apps | Apple HIG or Material directly — UI Craft covers web |
+| Realtime collaboration UI (presence, live cursors, conflict states) | Liveblocks, or Yjs / Automerge if you own the sync layer — the recipes assume a single actor |
+| HTML email | MJML or a dedicated email framework — the CSS rules here are void in mail clients |
+
+Refusing with a pointer beats confident bad output. Silence produces the second one.
+
 ---
 
 ## Stack Detection (Always Run First)
