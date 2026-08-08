@@ -18,7 +18,7 @@
  * about the UI itself.
  */
 
-import { STOPWORDS, SYNONYMS, CORPUS, REPAIR_MARKERS } from '../route-data.mjs';
+import { STOPWORDS, SYNONYMS, CORPUS, REPAIR_MARKERS, OUT_OF_SCOPE } from '../route-data.mjs';
 
 // ─── Signal ladder ───────────────────────────────────────────────────────────
 // An exact name match wins. An exact keyword is next. Below those sit the near
@@ -257,6 +257,38 @@ const KIND_LABEL = {
  * @param {{ prompt?: string, limit?: number }} input
  * @returns {object} { prompt, concepts, first_move, results: {commands, references, mcp_tools}, instruction }
  */
+
+/**
+ * Surface classes in the prompt that the recipes do not cover.
+ *
+ * Matched on the raw prompt rather than on concepts, because these are multi-word phrases
+ * and the concept pipeline drops stopwords and stems — "react native" would not survive it.
+ *
+ * Additive by design: the answer accompanies the routing instead of replacing it. "Landing
+ * page for our iOS app" is our work and its native screens are not, so a hard stop would
+ * refuse a real job to avoid a partial one.
+ */
+export function outOfScopeMatches(prompt) {
+  const haystack = ` ${deaccent(String(prompt).toLowerCase()).replace(/[^a-z0-9]+/g, ' ')} `;
+  return OUT_OF_SCOPE.filter((c) => c.triggers.some((t) => haystack.includes(` ${t} `))).map(
+    ({ id, label, use }) => ({ id, label, use })
+  );
+}
+
+/** Attaches the out-of-scope verdict to a result, when there is one. */
+function withScope(result, prompt) {
+  const out = outOfScopeMatches(prompt);
+  if (!out.length) return result;
+  return {
+    ...result,
+    out_of_scope: out,
+    instruction:
+      `${result.instruction ? result.instruction + ' ' : ''}` +
+      `Out of scope: ${out.map((o) => `${o.label} → ${o.use}`).join(' ')} ` +
+      'Say so rather than producing web guidance for it, and still apply UI Craft to the web surfaces around it.',
+  };
+}
+
 export function routeTask({ prompt, limit } = {}) {
   if (!prompt || !String(prompt).trim()) {
     return {
@@ -273,7 +305,7 @@ export function routeTask({ prompt, limit } = {}) {
   const concepts = toConcepts(prompt);
 
   if (!concepts.length) {
-    return {
+    return withScope({
       prompt,
       concepts: [],
       first_move: '/start',
@@ -281,7 +313,7 @@ export function routeTask({ prompt, limit } = {}) {
       results: { commands: [], references: [], mcp_tools: [] },
       instruction:
         'Nothing in that prompt survived stopword removal, so there is nothing to rank. Run /start — it reads the project and reports what is available before routing.',
-    };
+    }, prompt);
   }
 
   const scored = CORPUS.map((entry) => {
@@ -306,7 +338,7 @@ export function routeTask({ prompt, limit } = {}) {
   const mcpTools = scored.filter((r) => r.entry.kind === 'mcp_tool').slice(0, max).map(shape);
 
   if (!scored.length) {
-    return {
+    return withScope({
       prompt,
       concepts: concepts.map((c) => c.token),
       first_move: '/start',
@@ -316,7 +348,7 @@ export function routeTask({ prompt, limit } = {}) {
         `Nothing in the corpus matched "${prompt}" above the noise floor. That is a real answer, not a fallback: ` +
         'this may be outside what the skill covers. Run /start to see what the project has, or state the surface ' +
         '(dashboard, landing, auth, form) directly.',
-    };
+    }, prompt);
   }
 
   // The first move is a command when one is in play, because a command is a thing the
@@ -356,7 +388,7 @@ export function routeTask({ prompt, limit } = {}) {
   const eligible = repair ? candidates.filter((move) => !BUILD_MOVE.test(move)) : candidates;
   const firstMove = eligible.find((move) => !move.includes('<')) ?? null;
 
-  return {
+  return withScope({
     prompt,
     concepts: concepts.map((c) => c.token),
     first_move: firstMove,
@@ -372,5 +404,5 @@ export function routeTask({ prompt, limit } = {}) {
       'Load the references listed above before writing code — Tier 1 entries are required reading, ' +
       'and Discovery (project analysis + the Quick Ask) still runs first. These are pointers only; ' +
       'every design rule lives in the files themselves.',
-  };
+  }, prompt);
 }

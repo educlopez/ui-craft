@@ -10,7 +10,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { routeTask, tokenize, stem, editDistance, toConcepts, isRepairIntent } from './route-task.mjs';
-import { CORPUS, SYNONYMS, STOPWORDS, REPAIR_MARKERS } from '../route-data.mjs';
+import { CORPUS, SYNONYMS, STOPWORDS, REPAIR_MARKERS, OUT_OF_SCOPE } from '../route-data.mjs';
 
 const names = (result, kind = 'references') => result.results[kind].map((r) => r.name);
 const allNames = (result) => [
@@ -321,4 +321,64 @@ test('route-data: words that are both an alias and a repair marker work as both'
 test('editDistance: bails out past max', () => {
   assert.equal(editDistance('dashbord', 'dashboard'), 1);
   assert.ok(editDistance('kubernetes', 'dashboard') > 2);
+});
+
+// ── Out-of-scope surface classes ────────────────────────────────────────────
+//
+// The failure these exist for is confident, not silent: "react native mobile screen"
+// routed to responsive.md and accessibility.md — web guidance handed back for a native
+// brief, with nothing saying so.
+
+test('out of scope: a native brief is named as such, and still routed', () => {
+  const r = routeTask({ prompt: 'react native mobile screen' });
+  assert.deepEqual(
+    r.out_of_scope.map((o) => o.id),
+    ['native-mobile']
+  );
+  assert.match(r.instruction, /Apple HIG or Material/);
+  // Additive, not a refusal: the surrounding web work still gets its references.
+  assert.ok(r.results.references.length > 0, 'routing must still run alongside the verdict');
+});
+
+test('out of scope: classes that used to return nothing now return the pointer', () => {
+  for (const [prompt, id] of [
+    ['build an html email template', 'html-email'],
+    ['code editor with syntax highlighting', 'code-editor'],
+    ['live cursors and presence indicator', 'realtime-collab'],
+  ]) {
+    const r = routeTask({ prompt });
+    assert.deepEqual(
+      r.out_of_scope.map((o) => o.id),
+      [id],
+      `${prompt} should report ${id}`
+    );
+    assert.ok(r.out_of_scope[0].use.length > 0, 'a verdict without a pointer is just a refusal');
+  }
+});
+
+test('out of scope: ordinary vocabulary does not trigger it', () => {
+  // These are the false positives that would make the verdict noise. "mobile" is ordinary
+  // responsive vocabulary, and a landing page for a native app is squarely our work — the
+  // native screens are out of scope, the page selling them is not.
+  for (const prompt of [
+    'responsive mobile layout for the pricing table',
+    'landing page for our iOS app',
+    'analytics dashboard with KPIs',
+    'mobile navigation drawer',
+    'email capture form on the landing page',
+  ]) {
+    const r = routeTask({ prompt });
+    assert.equal(r.out_of_scope, undefined, `${prompt} must not be flagged out of scope`);
+  }
+});
+
+test('out of scope: every class is reachable by at least one trigger', () => {
+  // A class nobody can reach is a class that does not exist. Without this, a typo in a
+  // trigger list silently removes a verdict and every test above still passes.
+  for (const cls of OUT_OF_SCOPE) {
+    const hits = cls.triggers.filter(
+      (t) => (routeTask({ prompt: `${t} work` }).out_of_scope ?? []).some((o) => o.id === cls.id)
+    );
+    assert.ok(hits.length === cls.triggers.length, `${cls.id}: unreachable triggers ${cls.triggers.filter((t) => !hits.includes(t))}`);
+  }
 });

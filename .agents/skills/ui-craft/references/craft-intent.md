@@ -98,7 +98,24 @@ Apply on dashboard, auth, settings, onboarding, admin — load with [recipe-dash
 
 **Avoid in product shells:** scroll pinning, kinetic body copy, mesh backgrounds behind tables, glass on dense forms, decorative carousels.
 
-**Ecosystem briefs use the official system.** When the brief names a platform with a mandated or expected design system (a Shopify app, a gov service, an Atlassian/Microsoft-suite companion), install and use the official package and its tokens instead of hand-rolling a lookalike — recreating a known system's CSS by hand is both more work and instantly off. One system per project; don't mix component libraries in the same tree.
+**Ecosystem briefs use the official system.** When the brief names a platform with a mandated or expected design system, install and use the official package and its tokens instead of hand-rolling a lookalike — recreating a known system's CSS by hand is both more work and instantly off. One system per project; don't mix component libraries in the same tree.
+
+Naming the platform is not enough to act on. Install what the row says:
+
+| Brief reads as… | Install |
+|---|---|
+| Microsoft 365 / Fluent-flavoured | `@fluentui/react-components` |
+| Atlassian-suite companion | `@atlaskit/*` (per component, e.g. `@atlaskit/button`) |
+| Shopify app or admin surface | `@shopify/polaris` |
+| Material-flavoured product | `@material/web` |
+| IBM-style B2B / enterprise analytics | `@carbon/react` |
+| Salesforce / Lightning | `@salesforce-ux/design-system` |
+| Adobe-flavoured | `@adobe/react-spectrum` |
+| GitHub-flavoured developer tooling | `@primer/react` |
+| UK public sector | `govuk-frontend` |
+| US federal / state service | `@uswds/uswds` |
+
+No row matches → this rule does not apply. Proceed with the normal token flow rather than reaching for the nearest big component library.
 
 ---
 
