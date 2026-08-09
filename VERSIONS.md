@@ -38,6 +38,18 @@ Tables get the rule the detector already enforced and the skill never taught: wr
 
 `route_task` also indexes tables by `overflow-x` and `sticky-header`, so asking about either reaches `dashboard.md`.
 
+## v1.0.18 (2026-08-09) — Ecosystem packages by name, and an honest out-of-scope list
+
+The skill already said to use a platform's official design system when a brief names one — and named platforms, leaving the package to be found. That is the half that matters least: "an Atlassian companion" without `@atlaskit/button` still leaves the install to guesswork, and guesswork is what produces the hand-rolled lookalike the rule exists to prevent. Ten ecosystems now map to their actual packages, each checked against the registry rather than recalled.
+
+The table states what each one ships as, because most of them are React and installing `@carbon/react` into a Vue or Svelte codebase is worse than hand-rolling. Where the framework does not match, take the system's tokens and CSS — the part that makes it recognisable — and the CSS-only entry points are named where they exist.
+
+The skill now also says what it will not do. It deferred marketing copy and SEO and nothing else, so briefs the recipes cannot help with got confident output instead of a pointer. Code editors, native mobile, realtime collaboration and HTML email are named with the tool to reach for, along with the rule that a brief containing one is rarely only that — the web surfaces around it are still ours.
+
+Documenting that is not enough on its own, because `route_task` answers before the skill is read. It was routing "react native mobile screen" to the responsive and accessibility references — web guidance for a native brief, delivered with confidence — and returning nothing at all for email and editors, which reads the same as having no opinion. That half ships in `ui-craft-mcp@0.8.3`, which this release pins.
+
+Installers and generated launchers now write `ui-craft-mcp@0.8.3`, which also carries the seeded fold draw: the composition class for a landing used to be picked by array order, so every project on earth was handed the same three candidates. It is now keyed by the project, so two projects differ and one stays reproducible.
+
 ## v1.0.17 (2026-08-07) — install stops forgetting what it installed
 
 `install` rebuilt each harness's recorded component list from the run in progress. A run scoped with `--components` applies only those, so the entry was rewritten to just them and everything installed earlier disappeared from the state file — while its files stayed on disk.
