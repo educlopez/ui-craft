@@ -343,7 +343,8 @@ server.registerTool(
     description:
       'Draws composition classes for a landing fold, preferring ones this project has not spent yet. ' +
       'Variety cannot be requested in prose — asking a model to "be different" returns its default every time — ' +
-      'so the class is drawn from recorded state instead. Pass the classes already used in this project as `used`. ' +
+      'so the class is drawn instead — ordered by a per-project seed, then by what this project has already spent. ' +
+      'Pass the classes already used in this project as `used`. ' +
       'Classes: type-only, full-bleed-overlay, split, stacked, product-dominant, band. ' +
       '`split` is drawn last on purpose: it is the fold every generator reaches for unprompted. ' +
       'Returns each class with what it demands and what it sacrifices — the sacrifice is what makes a composition distinct.',
@@ -353,10 +354,15 @@ server.registerTool(
         .optional()
         .describe('Composition class ids already used in this project (deprioritised in the draw)'),
       count: z.number().int().min(1).max(6).optional().describe('How many candidates to draw (default 3)'),
+      seed: z
+        .string()
+        .optional()
+        .describe('Overrides the per-project seed. Defaults to the working directory, which is what makes two projects draw differently while one project stays stable across runs.'),
     },
     outputSchema: {
       candidates: z.array(compositionClassSchema),
       used: z.array(z.string()).optional(),
+      seed: z.string().nullable().optional().describe('Digest of the seed the order came from'),
       instruction: z.string().optional(),
       error: z.string().optional(),
     },

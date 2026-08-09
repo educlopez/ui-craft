@@ -78,12 +78,50 @@ export const CLASS_IDS = COMPOSITION_CLASSES.map((c) => c.id);
  * @param {{ used?: string[], count?: number }} [opts]
  * @returns {CompositionClass[]}
  */
-export function drawClasses({ used = [], count = 3 } = {}) {
+/**
+ * FNV-1a. A hash, not a random number: the same string must always give the same value,
+ * in this process and the next one, or the draw stops being reproducible.
+ */
+function hash32(str) {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return h >>> 0;
+}
+
+/**
+ * Draw composition classes, ordered by a per-project seed.
+ *
+ * The tie-break used to be the array index, which made this deterministic in a way nobody
+ * intended: with nothing spent, every project on earth drew `type-only, full-bleed-overlay,
+ * stacked` — the same three, forever. Rotation within a project worked, because the spend
+ * record moved it along; variance across projects was exactly zero. That is a poor property
+ * for the one mechanism shipped to stop every build looking alike, and it hid behind the
+ * word "draw".
+ *
+ * Seeding fixes the right half. Reproducibility is what evals need, not identity: a given
+ * seed always yields the same order, and two seeds differ. Pass the project root and a
+ * project's draws stay stable across runs while the next project starts somewhere else.
+ *
+ * Without a seed the old index order is kept exactly, so existing callers and recorded
+ * fixtures are unaffected.
+ *
+ * The two rank terms are unchanged: a spent class sinks, and `split` is held back because it
+ * is the shape everything collapses into when nothing is chosen.
+ *
+ * @param {{ used?: string[], count?: number, seed?: string }} input
+ */
+export function drawClasses({ used = [], count = 3, seed } = {}) {
   const spent = new Set(used);
   const rank = (c) => (spent.has(c.id) ? 2 : 0) + (c.id === 'split' ? 1 : 0);
+  const key = seed
+    ? (c) => hash32(`${seed}\u0000${c.id}`)
+    : (c, i) => i;
   return [...COMPOSITION_CLASSES]
-    .map((c, i) => ({ c, i }))
-    .sort((a, b) => rank(a.c) - rank(b.c) || a.i - b.i)
+    .map((c, i) => ({ c, k: key(c, i) }))
+    .sort((a, b) => rank(a.c) - rank(b.c) || a.k - b.k)
     .slice(0, Math.max(1, Math.min(count, COMPOSITION_CLASSES.length)))
     .map(({ c }) => c);
 }

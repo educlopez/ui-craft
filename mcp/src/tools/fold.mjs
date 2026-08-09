@@ -8,17 +8,50 @@
 import { measureFold, evaluateFold } from '../../../scripts/fold/analyze.mjs';
 import { drawClasses, classById, CLASS_IDS } from '../../../scripts/fold/classes.mjs';
 
+
+/** The project the server was started in, or null where there is no cwd to read. */
+function safeCwd() {
+  try {
+    return process.cwd() || null;
+  } catch {
+    return null; // a deleted working directory throws rather than returning ''
+  }
+}
+
+/**
+ * A short digest of the seed, reported instead of the seed itself. Enough to answer "why
+ * these three, and will I get them again", without echoing an absolute path back into a
+ * transcript.
+ */
+function shortSeed(seed) {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < seed.length; i++) {
+    h ^= seed.charCodeAt(i);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return h.toString(16).padStart(8, '0');
+}
+
 /**
  * Draw composition classes for a fresh attempt.
- * @param {{ used?: string[], count?: number }} input
+ *
+ * The seed defaults to the working directory, which is the project the server was started
+ * in. That is what makes two projects differ: the ordering was previously the array index,
+ * so every project's first landing drew the same three classes and the across-project
+ * variance of the one anti-sameness mechanism was zero. Within a project the draw stays
+ * stable across runs, because a directory is not a random number.
+ *
+ * @param {{ used?: string[], count?: number, seed?: string }} input
  */
-export function foldCandidates({ used = [], count = 3 } = {}) {
+export function foldCandidates({ used = [], count = 3, seed } = {}) {
   const unknown = used.filter((id) => !CLASS_IDS.includes(id));
   if (unknown.length) {
     return { error: `Unknown composition class: ${unknown.join(', ')}. Known: ${CLASS_IDS.join(', ')}`, candidates: [] };
   }
-  const drawn = drawClasses({ used, count });
+  const resolvedSeed = seed ?? safeCwd();
+  const drawn = drawClasses({ used, count, seed: resolvedSeed });
   return {
+    seed: resolvedSeed ? shortSeed(resolvedSeed) : null,
     candidates: drawn.map((c) => ({
       id: c.id,
       name: c.name,
