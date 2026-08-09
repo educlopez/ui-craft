@@ -75,7 +75,7 @@ type InstallPlan struct {
 var mcpServer = harness.MCPServer{
 	Name:    "ui-craft",
 	Command: "npx",
-	Args:    []string{"-y", "ui-craft-mcp@0.8.2"},
+	Args:    []string{"-y", "ui-craft-mcp@0.8.3"},
 }
 
 // SkillsProvider is a function that returns the skills-rooted embedded fs.FS

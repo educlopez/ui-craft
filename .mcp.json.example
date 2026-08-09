@@ -4,7 +4,7 @@
       "command": "npx",
       "args": [
         "-y",
-        "ui-craft-mcp@0.8.2"
+        "ui-craft-mcp@0.8.3"
       ]
     }
   }
