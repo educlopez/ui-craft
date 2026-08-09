@@ -8,17 +8,41 @@
 import { measureFold, evaluateFold } from '../../../scripts/fold/analyze.mjs';
 import { drawClasses, classById, CLASS_IDS } from '../../../scripts/fold/classes.mjs';
 
+
+/** The project the server was started in, or null where there is no cwd to read. */
+function safeCwd() {
+  try {
+    return process.cwd() || null;
+  } catch {
+    return null; // a deleted working directory throws rather than returning ''
+  }
+}
+
+
 /**
  * Draw composition classes for a fresh attempt.
- * @param {{ used?: string[], count?: number }} input
+ *
+ * The seed defaults to the working directory, which is the project the server was started
+ * in. That is what makes two projects differ: the ordering was previously the array index,
+ * so every project's first landing drew the same three classes and the across-project
+ * variance of the one anti-sameness mechanism was zero. Within a project the draw stays
+ * stable across runs, because a directory is not a random number.
+ *
+ * @param {{ used?: string[], count?: number, seed?: string }} input
  */
-export function foldCandidates({ used = [], count = 3 } = {}) {
+export function foldCandidates({ used = [], count = 3, seed } = {}) {
   const unknown = used.filter((id) => !CLASS_IDS.includes(id));
   if (unknown.length) {
     return { error: `Unknown composition class: ${unknown.join(', ')}. Known: ${CLASS_IDS.join(', ')}`, candidates: [] };
   }
-  const drawn = drawClasses({ used, count });
+  const resolvedSeed = seed ?? safeCwd();
+  const drawn = drawClasses({ used, count, seed: resolvedSeed });
   return {
+    // What was seeded, never a value derived from it. An eight-hex FNV-1a of a path looks
+    // like redaction and is not: paths are guessable, so anyone holding a candidate list can
+    // confirm which one produced the digest. The only thing worth reporting here is whether
+    // the order will repeat, and that needs no value at all.
+    seeded_by: resolvedSeed ? 'project' : null,
     candidates: drawn.map((c) => ({
       id: c.id,
       name: c.name,

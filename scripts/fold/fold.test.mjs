@@ -183,6 +183,53 @@ test('drawClasses deprioritises spent classes and never opens with split', () =>
   assert.equal(exhausted.length, 3, 'when every class is spent the draw still returns candidates');
 });
 
+test('drawClasses: a seed varies the order across projects and fixes it within one', () => {
+  // The bug this covers: the tie-break was the array index, so with nothing spent every
+  // project drew type-only, full-bleed-overlay, stacked — identical everywhere, forever.
+  // Rotation within a project worked; across projects the variance was exactly zero, in the
+  // one mechanism shipped to stop builds looking alike.
+  const a = drawClasses({ count: 3, seed: '/projects/alpha' }).map((c) => c.id);
+  const b = drawClasses({ count: 3, seed: '/projects/beta' }).map((c) => c.id);
+  const c = drawClasses({ count: 3, seed: '/projects/gamma' }).map((c) => c.id);
+  assert.ok(
+    new Set([a, b, c].map((x) => x.join(','))).size > 1,
+    `three projects drew the same three classes: ${a.join(',')}`
+  );
+
+  // Stable, not random. A given project must draw the same thing on every run or the draw
+  // stops being reproducible and evals stop meaning anything.
+  for (let i = 0; i < 20; i++) {
+    assert.deepEqual(drawClasses({ count: 3, seed: '/projects/alpha' }).map((x) => x.id), a);
+  }
+});
+
+test('drawClasses: seeding reaches every class that is allowed to open', () => {
+  // Coverage, not just difference: a seed that shuffled between two classes would pass the
+  // test above and still leave four classes unreachable.
+  const opened = new Set();
+  for (let i = 0; i < 500; i++) opened.add(drawClasses({ count: 1, seed: `/p/${i}` })[0].id);
+  const expected = CLASS_IDS.filter((id) => id !== 'split');
+  assert.deepEqual([...opened].sort(), [...expected].sort(), 'every class except split must be able to open');
+  assert.ok(!opened.has('split'), 'split still never opens, seeded or not');
+});
+
+test('drawClasses: the spend record still rotates a seeded project', () => {
+  // Seeding must not replace the within-project rotation, only decide where it starts.
+  const seed = '/projects/alpha';
+  const first = drawClasses({ count: 3, seed })[0].id;
+  const after = drawClasses({ count: 3, seed, used: [first] }).map((x) => x.id);
+  assert.ok(!after.includes(first), 'a spent class drops out of a seeded draw too');
+});
+
+test('drawClasses: without a seed the order is unchanged', () => {
+  // Recorded fixtures and existing callers pass no seed. Their behaviour is frozen here so a
+  // future change to the seeding cannot quietly move them.
+  assert.deepEqual(
+    drawClasses({ count: 6 }).map((c) => c.id),
+    ['type-only', 'full-bleed-overlay', 'stacked', 'product-dominant', 'band', 'split']
+  );
+});
+
 test('the injectable payload is a serialisation of the extractor, not a second copy', () => {
   const src = foldExtractorSource();
   // Drift between a node runtime and a browser runtime of the same rules is
