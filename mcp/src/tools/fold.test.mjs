@@ -14,17 +14,23 @@ import { CLASS_IDS } from '../../../scripts/fold/classes.mjs';
 
 test('fold_candidates seeds itself from the working directory', () => {
   const r = foldCandidates({ count: 3 });
-  assert.ok(r.seed, 'a draw with no explicit seed must still report one');
-  assert.match(r.seed, /^[0-9a-f]{8}$/, 'the seed is reported as a digest, not as a path');
+  assert.equal(r.seeded_by, 'project', 'a draw with no explicit seed still reports that it was seeded');
   assert.equal(r.candidates.length, 3);
 });
 
-test('fold_candidates does not echo the path it was seeded with', () => {
+test('fold_candidates leaks nothing derived from the seed', () => {
   // The seed is a directory on someone's machine and the response goes into a transcript.
-  // A digest answers "will I get these again" without carrying the path along.
+  // An earlier version reported an 8-hex FNV-1a of it, which reads as redaction and is not:
+  // paths are guessable, so a candidate list plus the digest confirms which one it was. The
+  // response now carries no function of the seed at all — only that one was used.
   const secret = '/Users/someone/private/client-work';
   const r = foldCandidates({ count: 3, seed: secret });
-  assert.ok(!JSON.stringify(r).includes(secret), 'the raw seed must not appear in the response');
+  const body = JSON.stringify(r);
+  assert.ok(!body.includes(secret), 'the raw seed must not appear');
+  for (const part of secret.split('/').filter(Boolean)) {
+    assert.ok(!body.includes(part), `no path component may appear (${part})`);
+  }
+  assert.equal(r.seeded_by, 'project');
 });
 
 test('fold_candidates: different projects get different candidates', () => {

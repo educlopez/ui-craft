@@ -18,19 +18,6 @@ function safeCwd() {
   }
 }
 
-/**
- * A short digest of the seed, reported instead of the seed itself. Enough to answer "why
- * these three, and will I get them again", without echoing an absolute path back into a
- * transcript.
- */
-function shortSeed(seed) {
-  let h = 0x811c9dc5;
-  for (let i = 0; i < seed.length; i++) {
-    h ^= seed.charCodeAt(i);
-    h = Math.imul(h, 0x01000193) >>> 0;
-  }
-  return h.toString(16).padStart(8, '0');
-}
 
 /**
  * Draw composition classes for a fresh attempt.
@@ -51,7 +38,11 @@ export function foldCandidates({ used = [], count = 3, seed } = {}) {
   const resolvedSeed = seed ?? safeCwd();
   const drawn = drawClasses({ used, count, seed: resolvedSeed });
   return {
-    seed: resolvedSeed ? shortSeed(resolvedSeed) : null,
+    // What was seeded, never a value derived from it. An eight-hex FNV-1a of a path looks
+    // like redaction and is not: paths are guessable, so anyone holding a candidate list can
+    // confirm which one produced the digest. The only thing worth reporting here is whether
+    // the order will repeat, and that needs no value at all.
+    seeded_by: resolvedSeed ? 'project' : null,
     candidates: drawn.map((c) => ({
       id: c.id,
       name: c.name,

@@ -362,7 +362,11 @@ server.registerTool(
     outputSchema: {
       candidates: z.array(compositionClassSchema),
       used: z.array(z.string()).optional(),
-      seed: z.string().nullable().optional().describe('Digest of the seed the order came from'),
+      seeded_by: z
+        .enum(['project'])
+        .nullable()
+        .optional()
+        .describe("What the order was seeded by, so a caller knows it will repeat. Deliberately not a value derived from the seed: a digest of a guessable path is not redaction."),
       instruction: z.string().optional(),
       error: z.string().optional(),
     },
