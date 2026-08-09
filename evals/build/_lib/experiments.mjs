@@ -105,10 +105,16 @@ function runClaude({ prompt, workspace, allowSkill, allowMcp = false, model, tim
     // transcript was unrecoverable while the expensive half survived. Appending costs
     // nothing and makes a partial run still worth scoring.
     const sink = streamTo ? createWriteStream(streamTo, { flags: 'a' }) : null;
-    const finish = (extra) => {
+
+    // Teardown is tied to the child exiting, not to resolving. The two are not the same
+    // event: the timeout resolves while the process is still alive, so tearing down there
+    // ended the sink under stdout that was still arriving and removed the MCP config out
+    // from under a server that had not stopped reading it.
+    let torn = false;
+    const teardown = () => {
+      if (torn) return;
+      torn = true;
       sink?.end();
-      // Every resolve path goes through here, including the timeout kill, so the temp config
-      // cannot outlive a run that ended badly.
       if (mcpDir) {
         try {
           rmSync(mcpDir, { recursive: true, force: true });
@@ -117,30 +123,45 @@ function runClaude({ prompt, workspace, allowSkill, allowMcp = false, model, tim
         }
         mcpDir = null;
       }
-      const parsed = parseStream(raw);
-      resolve({ ...parsed, raw, stderr: err + (extra ?? ''), ...(extra ? { timedOut: true } : {}) });
+    };
+
+    // Resolve exactly once. A timed-out child still emits `close` when the signal lands, and
+    // without this the second resolve would silently discard the first result.
+    let settled = false;
+    const settle = (payload) => {
+      if (settled) return;
+      settled = true;
+      resolve(payload);
     };
 
     const timer = setTimeout(() => {
       child.kill('SIGTERM');
-      finish('\n[harness] timed out');
+      // Report now; clean up when the process actually goes. If it ignores SIGTERM entirely
+      // the fallback below still frees the config rather than leaking it for the session.
+      setTimeout(teardown, 5000).unref();
+      settle({
+        ...parseStream(raw),
+        raw,
+        stderr: `${err}\n[harness] timed out`,
+        timedOut: true,
+      });
     }, timeoutMs);
 
     child.stdout.on('data', (d) => {
       raw += d;
-      sink?.write(d);
+      if (!torn) sink?.write(d);
     });
     child.stderr.on('data', (d) => (err += d));
     child.on('error', (e) => {
       clearTimeout(timer);
       err += `\n[harness] driver failed to start: ${e.message}`;
-      finish();
+      teardown();
+      settle({ ...parseStream(raw), raw, stderr: err });
     });
     child.on('close', (code) => {
       clearTimeout(timer);
-      sink?.end();
-      const out = parseStream(raw);
-      resolve({ ...out, raw, stderr: err, code });
+      teardown();
+      settle({ ...parseStream(raw), raw, stderr: err, code });
     });
   });
 }
