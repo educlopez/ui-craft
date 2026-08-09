@@ -46,7 +46,8 @@
     "test:verify": "node --test scripts/check-distribution-contract.test.mjs scripts/verify.test.mjs scripts/check-versions-md.test.mjs",
     "validate": "node scripts/validate.mjs",
     "verify": "node scripts/verify.mjs",
-    "verify:list": "node scripts/verify.mjs --list"
+    "verify:list": "node scripts/verify.mjs --list",
+    "check:pin-published": "node scripts/check-pin-published.mjs"
   },
   "engines": {
     "node": ">=18"

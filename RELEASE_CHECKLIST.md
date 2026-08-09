@@ -16,6 +16,10 @@ to re-run them manually:
 
 - [ ] `cli-ci.yml` matrix (build + `go test -race ./...`) is green on the
       release commit.
+- [ ] `cli-release.yml`'s **pinned-MCP-version** step is green — the version in
+      `distribution-manifest.json` is published on npm. The binary writes
+      `npx -y ui-craft-mcp@X` into every config it generates, so shipping ahead of the
+      publish installs nothing on first launch. Publish the MCP first, then tag the CLI.
 - [ ] `cli-release.yml`'s `smoke-test` job is green: the released binary
       returns a non-empty `ui-craft version`, and `ui-craft install --dry-run
       --json` exits 0 with valid JSON output.

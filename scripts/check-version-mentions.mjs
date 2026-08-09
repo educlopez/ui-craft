@@ -55,7 +55,12 @@ const MAX_BYTES = 4 << 20;
 
 const EXEMPT = [
   {
-    match: (rel) => rel === 'VERSIONS.md',
+    // Only the release entries, not the whole file. VERSIONS.md opens with a "Current
+    // distribution contract" section that states the pin as present tense, and exempting the
+    // file wholesale let that sentence go stale through a release — it still claimed 0.8.2
+    // while every launcher had moved to 0.8.3. History starts at the first version heading;
+    // everything above it describes now and must match the manifest like anything else.
+    match: (rel, lineNo, firstEntryLine) => rel === 'VERSIONS.md' && firstEntryLine !== null && lineNo >= firstEntryLine,
     why: 'released entries must state the pin their binaries shipped with (guarded by check-versions-md.mjs)',
   },
   {
@@ -111,7 +116,6 @@ let skippedBinary = 0;
 
 for (const file of files) {
   const rel = path.relative(ROOT, file);
-  const exemption = EXEMPT.find((e) => e.match(rel));
 
   let raw;
   try {
@@ -125,8 +129,13 @@ for (const file of files) {
   }
   const lines = raw.toString('utf8').split('\n');
 
+  // Where this file's history begins, for exemptions that cover only part of a file.
+  const idx = lines.findIndex((l) => /^## (?:ui-craft-mcp )?v\d+\.\d+\.\d+/.test(l));
+  const firstEntryLine = idx === -1 ? null : idx + 1;
+
   lines.forEach((line, i) => {
     for (const m of line.matchAll(PIN)) {
+      const exemption = EXEMPT.find((e) => e.match(rel, i + 1, firstEntryLine));
       if (exemption) {
         exemptSeen.set(exemption.why, exemptSeen.get(exemption.why) + 1);
         continue;

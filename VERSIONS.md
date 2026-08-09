@@ -2,7 +2,7 @@
 
 ## Current distribution contract
 
-The historical entries below describe several independently versioned artifacts. Their current compatibility contract is machine-readable in [`distribution-manifest.json`](distribution-manifest.json) and checked by `pnpm verify`. Every generated or documented MCP launcher uses the immutable package spec `ui-craft-mcp@0.8.2`; changing it requires updating the manifest and every launcher in the same change.
+The historical entries below describe several independently versioned artifacts. Their current compatibility contract is machine-readable in [`distribution-manifest.json`](distribution-manifest.json) and checked by `pnpm verify`. Every generated or documented MCP launcher uses the immutable package spec `ui-craft-mcp@0.8.3`; changing it requires updating the manifest and every launcher in the same change.
 
 GitHub CLI archives include GoReleaser SHA-256 checksums and GitHub build-provenance attestations. The MCP publish workflow uses npm trusted publishing plus `--provenance`; the npm package must have this repository/workflow configured as a trusted publisher before dispatch. No long-lived npm token is assumed.
 
