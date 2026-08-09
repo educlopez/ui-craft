@@ -19,6 +19,10 @@
  */
 
 import { spawn } from 'node:child_process';
+import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { createWriteStream } from 'node:fs';
 
 const DRIVER = 'claude';
@@ -27,13 +31,35 @@ const DRIVER = 'claude';
 // beyond the sandbox directory.
 const BUILD_TOOLS = ['Write', 'Edit', 'Read', 'Glob', 'Grep', 'Bash', 'TodoWrite'];
 
+const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
+const MCP_SERVER = path.join(REPO_ROOT, 'mcp', 'src', 'server.mjs');
+
+/**
+ * The tools the MCP server registers, spelled as the driver sees them.
+ *
+ * Enumerated rather than wildcarded so that adding a tool to the server without deciding
+ * whether evals should reach it is a test failure, not a silent omission. That omission is
+ * exactly what this arm exists to correct: every recorded build was captured with no
+ * ui-craft MCP tool in the allowlist at all, so the gates, the router and the fold draw had
+ * never once run inside an eval.
+ */
+export const MCP_TOOLS = [
+  'route_task',
+  'check_anti_slop',
+  'tokens_lint',
+  'acceptance_bar',
+  'score_ui',
+  'fold_candidates',
+  'check_fold',
+].map((t) => `mcp__ui-craft__${t}`);
+
 /**
  * Drive the headless CLI in `workspace` and return everything it said.
  *
  * The transcript is the return value, not a side effect: half of what a build eval scores
  * (did the Craft Read appear, in the prescribed shape, before the code) exists only here.
  */
-function runClaude({ prompt, workspace, allowSkill, model, timeoutMs, streamTo }) {
+function runClaude({ prompt, workspace, allowSkill, allowMcp = false, model, timeoutMs, streamTo }) {
   // stream-json, not text. `--output-format text` emits only the FINAL message, and the
   // Craft Read is emitted mid-run, before the first file is written — so a text run scores
   // an empty transcript and fails every transcript check for the wrong reason. The stream
@@ -48,10 +74,23 @@ function runClaude({ prompt, workspace, allowSkill, model, timeoutMs, streamTo }
     '--permission-mode',
     'acceptEdits',
     '--allowedTools',
-    [...BUILD_TOOLS, ...(allowSkill ? ['Skill'] : [])].join(','),
+    [...BUILD_TOOLS, ...(allowSkill ? ['Skill'] : []), ...(allowMcp ? MCP_TOOLS : [])].join(','),
   ];
   if (!allowSkill) args.push('--disallowedTools', 'Skill');
   if (model) args.push('--model', model);
+
+  // The MCP config is written to a temp dir, not into the workspace: the workspace is the
+  // artifact a scorer reads, and a config file dropped in it would be scored as something
+  // the agent produced.
+  let mcpDir = null;
+  if (allowMcp) {
+    mcpDir = mkdtempSync(path.join(os.tmpdir(), 'ui-craft-eval-mcp-'));
+    const cfg = path.join(mcpDir, 'mcp.json');
+    // The server from this checkout, not the published package: an eval measures what is
+    // about to ship, and reaching npm would make the run depend on the network.
+    writeFileSync(cfg, JSON.stringify({ mcpServers: { 'ui-craft': { command: 'node', args: [MCP_SERVER] } } }));
+    args.push('--mcp-config', cfg);
+  }
 
   return new Promise((resolve) => {
     // stdin is closed, not inherited. Left open, the driver waits on it and warns
@@ -66,32 +105,63 @@ function runClaude({ prompt, workspace, allowSkill, model, timeoutMs, streamTo }
     // transcript was unrecoverable while the expensive half survived. Appending costs
     // nothing and makes a partial run still worth scoring.
     const sink = streamTo ? createWriteStream(streamTo, { flags: 'a' }) : null;
-    const finish = (extra) => {
+
+    // Teardown is tied to the child exiting, not to resolving. The two are not the same
+    // event: the timeout resolves while the process is still alive, so tearing down there
+    // ended the sink under stdout that was still arriving and removed the MCP config out
+    // from under a server that had not stopped reading it.
+    let torn = false;
+    const teardown = () => {
+      if (torn) return;
+      torn = true;
       sink?.end();
-      const parsed = parseStream(raw);
-      resolve({ ...parsed, raw, stderr: err + (extra ?? ''), ...(extra ? { timedOut: true } : {}) });
+      if (mcpDir) {
+        try {
+          rmSync(mcpDir, { recursive: true, force: true });
+        } catch {
+          // A leftover temp dir is not worth failing a build eval over.
+        }
+        mcpDir = null;
+      }
+    };
+
+    // Resolve exactly once. A timed-out child still emits `close` when the signal lands, and
+    // without this the second resolve would silently discard the first result.
+    let settled = false;
+    const settle = (payload) => {
+      if (settled) return;
+      settled = true;
+      resolve(payload);
     };
 
     const timer = setTimeout(() => {
       child.kill('SIGTERM');
-      finish('\n[harness] timed out');
+      // Report now; clean up when the process actually goes. If it ignores SIGTERM entirely
+      // the fallback below still frees the config rather than leaking it for the session.
+      setTimeout(teardown, 5000).unref();
+      settle({
+        ...parseStream(raw),
+        raw,
+        stderr: `${err}\n[harness] timed out`,
+        timedOut: true,
+      });
     }, timeoutMs);
 
     child.stdout.on('data', (d) => {
       raw += d;
-      sink?.write(d);
+      if (!torn) sink?.write(d);
     });
     child.stderr.on('data', (d) => (err += d));
     child.on('error', (e) => {
       clearTimeout(timer);
       err += `\n[harness] driver failed to start: ${e.message}`;
-      finish();
+      teardown();
+      settle({ ...parseStream(raw), raw, stderr: err });
     });
     child.on('close', (code) => {
       clearTimeout(timer);
-      sink?.end();
-      const out = parseStream(raw);
-      resolve({ ...out, raw, stderr: err, code });
+      teardown();
+      settle({ ...parseStream(raw), raw, stderr: err, code });
     });
   });
 }
@@ -168,6 +238,15 @@ export const EXPERIMENTS = {
     suite: 'benchmark',
     description: 'Headless Claude Code with the Skill tool available — ui-craft reachable.',
     run: (opts) => runClaude({ ...opts, allowSkill: true }),
+  },
+  'skill-mcp': {
+    name: 'skill-mcp',
+    suite: 'benchmark',
+    description:
+      'Skill plus the ui-craft MCP server — the gates, the router and the fold draw reachable. ' +
+      'A separate arm rather than a change to `skill`, so the recorded fixtures keep meaning ' +
+      'what they meant and skill → skill-mcp isolates what the tools add.',
+    run: (opts) => runClaude({ ...opts, allowSkill: true, allowMcp: true }),
   },
   'no-skill': {
     name: 'no-skill',
