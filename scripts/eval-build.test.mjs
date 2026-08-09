@@ -12,12 +12,12 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { promises as fs } from 'node:fs';
+import { promises as fs, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { makeContext, runScorer, wordCount, visibleText } from '../evals/build/_lib/context.mjs';
-import { EXPERIMENTS, resolveExperiments, parseStream } from '../evals/build/_lib/experiments.mjs';
+import { EXPERIMENTS, MCP_TOOLS, resolveExperiments, parseStream } from '../evals/build/_lib/experiments.mjs';
 
 const REPO_ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const BUILD_DIR = path.join(REPO_ROOT, 'evals', 'build');
@@ -330,4 +330,34 @@ test('every build eval has a prompt, a scorer and a recorded fixture', async () 
     assert.match(raw, /^---\n[\s\S]*?\nsuite:\s*\w+/, `${id}: PROMPT.md needs frontmatter with a suite`);
     assert.match(raw, /\n---\n[\s\S]*\S/, `${id}: PROMPT.md needs a task body after the frontmatter`);
   }
+});
+
+// ── The MCP arm ─────────────────────────────────────────────────────────────
+//
+// Every recorded build was captured with no ui-craft MCP tool in the driver's allowlist,
+// so the gates, the router and the fold draw had never once run inside an eval. The harness
+// that exists to test "not whether a rule is written, but whether it was followed" could not
+// reach half of what the product ships. These pin the correction.
+
+test('the MCP arm exposes exactly the tools the server registers', () => {
+  // The failure this prevents is silent: a tool added to the server but not here is simply
+  // unreachable in evals, and nothing reports it. That is how fold_candidates went unexercised
+  // for its entire life.
+  const server = readFileSync(new URL('../mcp/src/server.mjs', import.meta.url), 'utf8');
+  const registered = [...server.matchAll(/registerTool\(\s*'([a-z_]+)'/g)].map((m) => m[1]);
+  assert.ok(registered.length >= 7, `expected the server to register tools, found ${registered.length}`);
+
+  const exposed = MCP_TOOLS.map((t) => t.replace('mcp__ui-craft__', ''));
+  assert.deepEqual(
+    [...exposed].sort(),
+    [...registered].sort(),
+    'the eval allowlist and the MCP server disagree about which tools exist'
+  );
+});
+
+test('only the MCP arm turns the tools on', () => {
+  assert.equal(EXPERIMENTS['skill-mcp'].suite, 'benchmark');
+  // skill and no-skill must stay as they were, or the recorded fixtures stop being a control.
+  assert.ok(EXPERIMENTS.skill, 'the plain skill arm still exists');
+  assert.ok(EXPERIMENTS['no-skill'], 'the control arm still exists');
 });

@@ -39,6 +39,7 @@ attributable to the setup.
 | Experiment | What it is |
 |---|---|
 | `skill` | Headless driver with the Skill tool available — ui-craft reachable |
+| `skill-mcp` | Skill **plus** the MCP server — gates, router and fold draw reachable |
 | `no-skill` | Same driver, Skill tool blocked — the control arm |
 | `recorded` | Scores a captured workspace, spends no agent run (via `--record`) |
 
@@ -68,6 +69,28 @@ A harness with only passing fixtures cannot tell you it still detects anything �
 check to `true` and the suite goes green. A known-bad build is what makes the scorers
 falsifiable, and it is why `scripts/eval-build.test.mjs` can run in CI at zero cost and still
 mean something.
+
+## The `skill-mcp` arm
+
+Until it existed, no build eval could reach a single ui-craft MCP tool. `--allowedTools` listed
+`Write, Edit, Read, Glob, Grep, Bash, TodoWrite` and `Skill`, and there was no `--mcp-config` —
+so `check_anti_slop`, `tokens_lint`, `acceptance_bar`, `score_ui`, `route_task`,
+`fold_candidates` and `check_fold` had never once run inside the harness built to test whether
+rules are followed. Every recorded fixture was captured that way. `fold_candidates` shipped, was
+measured, was argued about on #87, and had never executed in an eval.
+
+It is a separate arm rather than a change to `skill`, for the same reason `no-skill` is separate:
+the recorded fixtures are controls, and moving what `skill` means would retire them. `skill` →
+`skill-mcp` is now a diff that isolates what the tools add.
+
+The server is the one in this checkout (`mcp/src/server.mjs`), not the published package — an
+eval measures what is about to ship, and reaching npm would make a run depend on the network. The
+config is written to a temp dir, never into the workspace, because the workspace is the artifact
+a scorer reads.
+
+`MCP_TOOLS` is enumerated rather than wildcarded, and a test asserts it matches what the server
+registers. Adding a tool without deciding whether evals should reach it is then a failure rather
+than a silence — which is the exact shape of the gap this arm closed.
 
 ## The `no-skill` arm
 
