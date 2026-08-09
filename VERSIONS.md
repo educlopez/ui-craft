@@ -2,9 +2,21 @@
 
 ## Current distribution contract
 
-The historical entries below describe several independently versioned artifacts. Their current compatibility contract is machine-readable in [`distribution-manifest.json`](distribution-manifest.json) and checked by `pnpm verify`. Every generated or documented MCP launcher uses the immutable package spec `ui-craft-mcp@0.8.2`; changing it requires updating the manifest and every launcher in the same change.
+The historical entries below describe several independently versioned artifacts. Their current compatibility contract is machine-readable in [`distribution-manifest.json`](distribution-manifest.json) and checked by `pnpm verify`. Every generated or documented MCP launcher uses the immutable package spec `ui-craft-mcp@0.8.3`; changing it requires updating the manifest and every launcher in the same change.
 
 GitHub CLI archives include GoReleaser SHA-256 checksums and GitHub build-provenance attestations. The MCP publish workflow uses npm trusted publishing plus `--provenance`; the npm package must have this repository/workflow configured as a trusted publisher before dispatch. No long-lived npm token is assumed.
+
+## ui-craft-mcp v0.8.3 (2026-08-09) — The draw draws, and the router says what it will not do
+
+`fold_candidates` shipped in 0.7.0 to stop every landing looking alike. It did not draw. The order was a rank — spent classes sink, `split` is held back — with the array index breaking every tie and no randomness anywhere, so with nothing spent every project on earth was handed the same three classes: `type-only`, `full-bleed-overlay`, `stacked`. Rotation *within* a project worked, because the spend record moved it along. Variance *across* projects was exactly zero, in the one mechanism built for variety.
+
+What the constant left out matters as much. `band` is the most common composition in both of our measured corpora — 9 of 18 reference pages, 5 of 7 generated — and it was not offered until a project's fourth surface.
+
+The order is now keyed by a hash of the project directory. Reproducibility is what an eval needs, not identity: a project draws the same three classes on every run, in this process and the next, and two projects differ. Across 500 projects every class except `split` opens, at roughly a fifth each; `split` is still held back on purpose, because it is the fold everything collapses into when nothing is chosen.
+
+`route_task` now answers for the surfaces the recipes do not cover. It was routing "react native mobile screen" to `responsive.md` and `accessibility.md` — web guidance for a native brief, delivered with confidence and nothing marking it wrong — while HTML email and code editors returned silence, which reads the same as having no opinion. Four classes now come back named, with the tool to use instead: native mobile, code editors, realtime collaboration, HTML email.
+
+The verdict is additive, not a refusal. A landing page for an iOS app is our work and its native screens are not, so a match annotates the routing rather than replacing it, and the triggers are phrases rather than words — `mobile` alone is ordinary responsive vocabulary.
 
 ## ui-craft-mcp v0.8.2 (2026-08-05) — The tool description says 43
 

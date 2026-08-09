@@ -1,7 +1,7 @@
 {
   "name": "ui-craft-mcp",
-  "version": "0.8.2",
-  "description": "ui-craft MCP server — deterministic design-quality gate (anti-slop, tokens, acceptance-bar, score)",
+  "version": "0.8.3",
+  "description": "ui-craft MCP server \u2014 deterministic design-quality gate (anti-slop, tokens, acceptance-bar, score)",
   "type": "module",
   "repository": {
     "type": "git",

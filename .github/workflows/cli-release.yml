@@ -50,6 +50,13 @@ jobs:
           fi
 
       # ── Step 2: Setup Go ──────────────────────────────────────────────────
+      # The binary writes `npx -y ui-craft-mcp@X` into every MCP config it generates. If that
+      # version is not on npm yet, the release installs nothing on a user's first launch --
+      # on a version string they never chose. The pin bump, the npm publish and this tag are
+      # three separate steps, and nothing connected them before.
+      - name: The pinned MCP version is published
+        run: node scripts/check-pin-published.mjs
+
       - name: Setup Go
         uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff  # v5.6.0
         with:

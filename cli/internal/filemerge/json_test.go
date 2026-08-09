@@ -27,7 +27,7 @@ func jsonGet(t *testing.T, data []byte, keys ...string) any {
 // without removing existing keys.
 func TestMergeJSONObjects_basicMerge(t *testing.T) {
 	base := []byte(`{"mcpServers":{"existing":{"command":"node","args":["server.js"]}}}`)
-	overlay := []byte(`{"mcpServers":{"ui-craft":{"__replace__":{"command":"npx","args":["-y","ui-craft-mcp@0.8.2"]}}}}`)
+	overlay := []byte(`{"mcpServers":{"ui-craft":{"__replace__":{"command":"npx","args":["-y","ui-craft-mcp@0.8.3"]}}}}`)
 
 	out, err := MergeJSONObjects(base, overlay)
 	if err != nil {
@@ -51,7 +51,7 @@ func TestMergeJSONObjects_basicMerge(t *testing.T) {
 // back to {} and the overlay is still applied.
 func TestMergeJSONObjects_malformedBase(t *testing.T) {
 	base := []byte(`{this is not valid JSON`)
-	overlay := []byte(`{"mcpServers":{"ui-craft":{"command":"npx","args":["-y","ui-craft-mcp@0.8.2"]}}}`)
+	overlay := []byte(`{"mcpServers":{"ui-craft":{"command":"npx","args":["-y","ui-craft-mcp@0.8.3"]}}}`)
 
 	out, err := MergeJSONObjects(base, overlay)
 	if err != nil {
@@ -74,7 +74,7 @@ func TestMergeJSONObjects_jsoncComments(t *testing.T) {
     "other": {"command": "other-tool"}, // trailing comma
   }
 }`)
-	overlay := []byte(`{"mcpServers":{"ui-craft":{"command":"npx","args":["-y","ui-craft-mcp@0.8.2"]}}}`)
+	overlay := []byte(`{"mcpServers":{"ui-craft":{"command":"npx","args":["-y","ui-craft-mcp@0.8.3"]}}}`)
 
 	out, err := MergeJSONObjects(base, overlay)
 	if err != nil {
@@ -98,7 +98,7 @@ func TestMergeJSONObjects_jsoncComments(t *testing.T) {
 // force-replaces the key's subtree rather than merging recursively.
 func TestMergeJSONObjects_replaceSentinel(t *testing.T) {
 	base := []byte(`{"mcpServers":{"ui-craft":{"command":"old","args":["old-arg"],"extra":"keep-me-not"}}}`)
-	overlay := []byte(`{"mcpServers":{"ui-craft":{"__replace__":{"command":"npx","args":["-y","ui-craft-mcp@0.8.2"]}}}}`)
+	overlay := []byte(`{"mcpServers":{"ui-craft":{"__replace__":{"command":"npx","args":["-y","ui-craft-mcp@0.8.3"]}}}}`)
 
 	out, err := MergeJSONObjects(base, overlay)
 	if err != nil {
@@ -122,7 +122,7 @@ func TestMergeJSONObjects_replaceSentinel(t *testing.T) {
 // produces identical output (no duplication, no error).
 func TestMergeJSONObjects_idempotent(t *testing.T) {
 	base := []byte(`{}`)
-	overlay := []byte(`{"mcpServers":{"ui-craft":{"__replace__":{"command":"npx","args":["-y","ui-craft-mcp@0.8.2"]}}}}`)
+	overlay := []byte(`{"mcpServers":{"ui-craft":{"__replace__":{"command":"npx","args":["-y","ui-craft-mcp@0.8.3"]}}}}`)
 
 	out1, err := MergeJSONObjects(base, overlay)
 	if err != nil {
