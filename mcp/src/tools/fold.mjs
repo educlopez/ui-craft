@@ -80,19 +80,34 @@ export async function checkFold({ url, costly_detail, expected_class, width, hei
   const { screenshot, ...m } = measurement;
   const verdict = evaluateFold(m, { costlyDetail: costly_detail });
 
+  // Three outcomes, not two. Without `expected_class` nothing was compared, and reporting
+  // that as "no drift" is the shape a false pass takes: measured n=7, one run called this
+  // tool as `{"url": …}` alone, got no drift back, and read as compliance — while the class
+  // it built was not even among the three it had been offered.
+  const compared = Boolean(expected_class);
   const drift =
-    expected_class && verdict.composition.id !== expected_class
+    compared && verdict.composition.id !== expected_class
       ? `Drift: asked for "${classById(expected_class)?.name ?? expected_class}", built "${classById(verdict.composition.id)?.name ?? verdict.composition.id}" — ${verdict.composition.why}.`
       : null;
+  const drift_status = !compared
+    ? 'not-compared'
+    : drift
+      ? 'drifted'
+      : 'matched';
+  const drift_note = compared
+    ? null
+    : `Nothing was compared. Pass \`expected_class\` with the class you set out to build — without it this reports what the fold IS and cannot tell you whether it is what you intended. Built: "${classById(verdict.composition.id)?.name ?? verdict.composition.id}".`;
 
   return {
     url,
     composition: verdict.composition,
     expected_class: expected_class ?? null,
     drift,
+    drift_status,
+    ...(drift_note ? { drift_note } : {}),
     checks: verdict.checks,
     observations: verdict.observations,
-    summary: { passed: verdict.passed, total: verdict.total, ok: verdict.ok && !drift },
+    summary: { passed: verdict.passed, total: verdict.total, ok: verdict.ok && !drift && compared },
     measured: {
       dominance: Number.isFinite(m.dominance) ? +m.dominance.toFixed(2) : null,
       symmetry: +m.symmetry.toFixed(2),

@@ -42,7 +42,7 @@ export default async function score(ctx) {
   // Same gate its five siblings apply. Omitting it here would have let this eval report a
   // clean sweep while the build skipped the one artifact every other surface is measured on.
   const craftRead = ctx.preCode.match(/^[\s>*_-]*\**Craft Read\**:?\s*\**([^\n]{20,400})/im);
-  ctx.check(
+  ctx.checkOrdered(
     'Craft Read line emitted',
     Boolean(craftRead),
     craftRead ? craftRead[0].slice(0, 200) : 'no "Craft Read:" line before the first file write'

@@ -44,6 +44,7 @@ const bold = (s) => c('1', s);
 const dim = (s) => c('2', s);
 const red = (s) => c('31', s);
 const green = (s) => c('32', s);
+const yellow = (s) => c('33', s);
 const cyan = (s) => c('36', s);
 
 function parseArgs(argv) {
@@ -131,7 +132,7 @@ async function copySeed(from, to) {
 
 function printChecks(result) {
   for (const ch of result.checks) {
-    const mark = ch.pass ? green('  ✓') : red('  ✗');
+    const mark = ch.unmeasurable ? yellow('  ⊘') : ch.pass ? green('  ✓') : red('  ✗');
     process.stdout.write(`${mark} ${ch.name}\n${dim(`      ${ch.evidence}`)}\n`);
   }
 }
@@ -208,7 +209,7 @@ async function main() {
     const result = await runScorer(scorer, ctx);
     if (flags.json) process.stdout.write(`${JSON.stringify({ eval: e.id, experiment: 'recorded', ...result }, null, 2)}\n`);
     else {
-      process.stdout.write(`\n${bold(`${e.id}`)} ${dim('× recorded')} → ${result.pass ? green('PASS') : red('FAIL')} ${dim(`(${result.total - result.failed}/${result.total})`)}\n`);
+      process.stdout.write(`\n${bold(`${e.id}`)} ${dim('× recorded')} → ${result.pass ? green('PASS') : red('FAIL')} ${dim(`(${result.total - result.failed}/${result.total})`)}${result.unmeasurable ? yellow(` ⊘${result.unmeasurable} unmeasurable`) : ''}\n`);
       printChecks(result);
     }
     process.exit(result.pass ? 0 : 1);
@@ -293,7 +294,7 @@ async function main() {
       await fs.writeFile(path.join(RESULTS_DIR, `${stamp}.transcript.txt`), run.transcript ?? '');
 
       if (!flags.json) {
-        process.stdout.write(`${result.pass ? green('  PASS') : red('  FAIL')} ${dim(`${result.total - result.failed}/${result.total}`)}\n`);
+        process.stdout.write(`${result.pass ? green('  PASS') : red('  FAIL')} ${dim(`${result.total - result.failed}/${result.total}`)}${result.unmeasurable ? yellow(` ⊘${result.unmeasurable}`) : ''}\n`);
         printChecks(result);
       }
       rows.push({ eval: e.id, experiment: x.name, pass: result.pass, failed: result.failed, total: result.total });

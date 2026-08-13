@@ -9,7 +9,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { foldCandidates } from './fold.mjs';
+import { foldCandidates, checkFold } from './fold.mjs';
 import { CLASS_IDS } from '../../../scripts/fold/classes.mjs';
 
 test('fold_candidates seeds itself from the working directory', () => {
@@ -60,4 +60,67 @@ test('fold_candidates still rejects an unknown class, and still marks spent ones
   const after = foldCandidates({ count: 3, seed, used: [first] });
   assert.ok(!after.candidates.some((c) => c.id === first), 'a spent class drops out');
   assert.ok(after.candidates.every((c) => CLASS_IDS.includes(c.id)));
+});
+
+// ── drift has three outcomes, not two ───────────────────────────────────────
+//
+// Measured over seven landing builds (#141), one called this tool as `{"url": …}` with no
+// expected_class, got no drift back, and read as compliance — while the class it built was
+// not among the three it had been offered. An absent drift field is not evidence of none.
+
+/** Serve one HTML page on an ephemeral port for the duration of `body`. */
+async function withPage(html, body) {
+  const http = await import('node:http');
+  const server = http.createServer((_req, res) => {
+    res.writeHead(200, { 'content-type': 'text/html' });
+    res.end(html);
+  });
+  await new Promise((r) => server.listen(0, '127.0.0.1', r));
+  const url = `http://127.0.0.1:${server.address().port}/`;
+  try {
+    return await body(url);
+  } finally {
+    await new Promise((r) => server.close(r));
+  }
+}
+
+const PAGE = `<main style="font-family:system-ui">
+  <section style="height:70vh;display:flex;flex-direction:column;gap:24px;padding:48px">
+    <h1 style="font-size:72px;margin:0">A headline that occupies the fold</h1>
+    <p style="font-size:20px;max-width:40ch">Subtext that says what the product does, in a measured 14 words here.</p>
+    <a href="#x" style="background:#3355ff;color:#fff;padding:14px 22px;width:fit-content">Start free</a>
+  </section>
+</main>`;
+
+test('check_fold: no expected_class reports not-compared, not "no drift"', async (t) => {
+  const r = await withPage(PAGE, (url) => checkFold({ url }));
+  if (r.error) t.skip(`no browser available: ${r.error}`);
+  else {
+    assert.equal(r.drift_status, 'not-compared');
+    assert.equal(r.drift, null, 'drift stays null — the status is what carries the meaning');
+    assert.match(r.drift_note ?? '', /Nothing was compared/);
+    assert.equal(r.summary.ok, false, 'ok must not claim success when nothing was compared');
+  }
+});
+
+test('check_fold: a declared class that matches reports matched', async (t) => {
+  const first = await withPage(PAGE, (url) => checkFold({ url }));
+  if (first.error) return t.skip(`no browser available: ${first.error}`);
+  // Declare whatever the page actually is, so this tests the matched path rather than the
+  // page's geometry.
+  const built = first.composition.id;
+  const r = await withPage(PAGE, (url) => checkFold({ url, expected_class: built }));
+  assert.equal(r.drift_status, 'matched');
+  assert.equal(r.drift, null);
+  assert.equal(r.drift_note, undefined);
+});
+
+test('check_fold: a declared class that differs reports drifted', async (t) => {
+  const first = await withPage(PAGE, (url) => checkFold({ url }));
+  if (first.error) return t.skip(`no browser available: ${first.error}`);
+  const other = CLASS_IDS.find((id) => id !== first.composition.id);
+  const r = await withPage(PAGE, (url) => checkFold({ url, expected_class: other }));
+  assert.equal(r.drift_status, 'drifted');
+  assert.match(r.drift ?? '', /^Drift: asked for/);
+  assert.equal(r.summary.ok, false);
 });

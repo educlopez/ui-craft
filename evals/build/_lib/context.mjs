@@ -130,6 +130,26 @@ export async function makeContext({
     return Boolean(pass);
   };
 
+  /**
+   * A check whose question is "did this happen BEFORE the first write".
+   *
+   * When the transcript cannot answer that, this records UNMEASURABLE instead of a verdict.
+   * `ctx.check()` already refuses an empty evidence string on the principle that a check
+   * which cannot say what decided it is not a check; recording a pass for a question the
+   * input cannot answer is the same failure wearing a ✓.
+   */
+  const recordOrdered = (name, pass, evidence) => {
+    if (preCode === null) {
+      return record(
+        name,
+        true,
+        `UNMEASURABLE — this transcript carries no tool-use events, so there is no first write to order against. Not a pass: the question was not asked.`,
+        { unmeasurable: true }
+      );
+    }
+    return record(name, pass, evidence);
+  };
+
   return {
     workspace,
     transcript,
@@ -139,10 +159,21 @@ export async function makeContext({
      * The checklist asks whether the Craft Read came before the code, and that is not the
      * same question as whether it appears at all: a read produced after the files exist is
      * a summary of decisions already made, which is exactly the habit the gate exists to
-     * prevent. Falls back to the full transcript when the driver could not order events, so
-     * a recorded fixture without ordering still scores rather than silently passing.
+     * prevent.
+     *
+     * Falls back to the full transcript when the driver could not order events — a plain
+     * `.txt` recorded transcript carries no tool-use events, so there is no first write to
+     * split on. The fallback keeps such a fixture scoreable, but it turns "before the first
+     * write" into "appears anywhere", and the old comment here claimed that was the opposite
+     * of a silent pass. It is exactly a silent pass: the only fixture that ever passed the
+     * Craft Read check was a `.txt` one, and its ✓ meant "somewhere in the transcript".
+     *
+     * So the fallback stays and `orderingKnown` tells the truth about it. Ordering-dependent
+     * checks must use `checkOrdered`, which reports UNMEASURABLE rather than a verdict.
      */
     preCode: preCode ?? transcript,
+    /** Whether preCode is really "before the first write" or the whole transcript. */
+    orderingKnown: preCode !== null,
     /** Tool names in call order — `toolUses.includes('Skill')` is how an arm proves itself. */
     toolUses,
     /** Reference files opened before the first write, in order. */
@@ -253,6 +284,7 @@ export async function makeContext({
     detect: () => scan(workspace),
     /** Record a named result. `pass` false is a finding, not an exception. */
     check: record,
+    checkOrdered: recordOrdered,
     checks,
     wordCount,
     visibleText,
@@ -276,11 +308,16 @@ export async function runScorer(scorer, ctx) {
       fatal: true,
     });
   }
-  const failed = ctx.checks.filter((c) => !c.pass);
+  // Unmeasurable checks are excluded from the ratio rather than counted as passes. Left in
+  // the denominator they would read as coverage the run does not have.
+  const measured = ctx.checks.filter((c) => !c.unmeasurable);
+  const unmeasurable = ctx.checks.filter((c) => c.unmeasurable);
+  const failed = measured.filter((c) => !c.pass);
   return {
     pass: failed.length === 0,
-    total: ctx.checks.length,
+    total: measured.length,
     failed: failed.length,
+    unmeasurable: unmeasurable.length,
     checks: ctx.checks,
   };
 }
