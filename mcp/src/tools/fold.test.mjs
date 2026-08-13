@@ -11,6 +11,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { foldCandidates, checkFold } from './fold.mjs';
 import { CLASS_IDS } from '../../../scripts/fold/classes.mjs';
+import { isBrowserUnavailable } from '../../../scripts/fold/browser.mjs';
 
 test('fold_candidates seeds itself from the working directory', () => {
   const r = foldCandidates({ count: 3 });
@@ -70,19 +71,18 @@ test('fold_candidates still rejects an unknown class, and still marks spent ones
 
 
 /**
- * Only a genuinely absent browser may skip a test.
+ * Only a genuinely undrivable browser may skip a test.
  *
  * The first version skipped on any `checkFold` error, which meant a navigation, fixture or
  * measurement regression would report as "skipped: no browser" — the same cannot-check-reads-
- * as-checked shape this file exists to close, in the test rather than the tool.
+ * as-checked shape this file exists to close, in the test rather than the tool. The second
+ * matched one message and missed the other: CI runs Node 20, where driving CDP without
+ * puppeteer is impossible for a reason that is still "no browser available". The predicate
+ * now lives beside the messages, in scripts/fold/browser.mjs.
  */
-function browserMissing(err) {
-  return typeof err === 'string' && /No Chrome-family browser found/.test(err);
-}
-
 function assertRan(t, r) {
-  if (r.error && browserMissing(r.error)) {
-    t.skip('no Chrome-family browser on this machine');
+  if (r.error && isBrowserUnavailable(r.error)) {
+    t.skip(`browser not drivable here: ${r.error}`);
     return false;
   }
   assert.equal(r.error, undefined, `checkFold failed for a reason that is not a missing browser: ${r.error}`);

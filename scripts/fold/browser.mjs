@@ -71,6 +71,19 @@ export function findBrowser(deps = {}) {
 }
 
 /** Human-readable reason, used when there is nothing to drive. */
+/**
+ * Whether a failure means "no browser to drive" rather than "the browser found a problem".
+ *
+ * Lives here, beside the messages it describes, so a third reason updates one place. A test
+ * that string-matched only the missing-executable message skipped correctly on a laptop and
+ * treated CI's Node-20 WebSocket gap as a real failure — and would equally have treated a
+ * navigation regression as a skip, which is the more expensive direction.
+ */
+export function isBrowserUnavailable(message) {
+  const m = String(message ?? '');
+  return /No Chrome-family browser found/.test(m) || /has no global WebSocket/.test(m);
+}
+
 export function noBrowserMessage() {
   return (
     'No Chrome-family browser found. check_fold measures a rendered page, so it needs one. ' +
