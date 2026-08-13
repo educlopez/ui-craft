@@ -21,6 +21,12 @@ dist/
 # Local tooling + out-of-scope artifacts (not part of the repo)
 .codegraph/
 .cursor/
+
+# A contributor's local Codex MCP registration, not repo content. It was committed by
+# accident during a mirror sync and carried a stale pin that failed check-version-mentions.
+# The repo's own registration is .mcp.json / .mcp.json.example; .codex/skills/ stays tracked
+# because those are the shipped mirrors.
+.codex/config.toml
 openspec/
 video/
 
