@@ -2,9 +2,17 @@
 
 ## Current distribution contract
 
-The historical entries below describe several independently versioned artifacts. Their current compatibility contract is machine-readable in [`distribution-manifest.json`](distribution-manifest.json) and checked by `pnpm verify`. Every generated or documented MCP launcher uses the immutable package spec `ui-craft-mcp@0.8.3`; changing it requires updating the manifest and every launcher in the same change.
+The historical entries below describe several independently versioned artifacts. Their current compatibility contract is machine-readable in [`distribution-manifest.json`](distribution-manifest.json) and checked by `pnpm verify`. Every generated or documented MCP launcher uses the immutable package spec `ui-craft-mcp@0.8.4`; changing it requires updating the manifest and every launcher in the same change.
 
 GitHub CLI archives include GoReleaser SHA-256 checksums and GitHub build-provenance attestations. The MCP publish workflow uses npm trusted publishing plus `--provenance`; the npm package must have this repository/workflow configured as a trusted publisher before dispatch. No long-lived npm token is assumed.
+
+## ui-craft-mcp v0.8.4 (2026-08-13) — An omitted comparison stops reading as agreement
+
+`check_fold` accepted a bare `url` and returned no drift, which reads as compliance. Measured across seven landing builds, one run did exactly that — and the fold it had built was not among the three classes it had been offered. Drift now has three outcomes rather than two: `matched`, `drifted`, and `not-compared`, the last carrying a note saying what to pass. `summary.ok` no longer claims success when nothing was compared.
+
+`fold_candidates` stops asking for three folds. Not one agent of seven built more than one, so the request spent the instruction's only read on the part that gets ignored — and what got ignored alongside it was the verification, skipped or left uncompared in five of the seven. It now asks for one committed fold and names `expected_class`, because the argument being optional is what let a call compare nothing and look clean.
+
+Measured after the change, across three builds: the draw was called in all three, up from four in seven, and verified with a declared class in two of three, up from two in seven.
 
 ## ui-craft-mcp v0.8.3 (2026-08-09) — The draw draws, and the router says what it will not do
 
