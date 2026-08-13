@@ -110,14 +110,21 @@ test('dashboard fixture: the missing table overflow and sticky header are caught
 test('dashboard fixture: a well-formed Craft Read passes every transcript check', async () => {
   const r = await scoreRecorded('craft-dashboard-001');
 
-  for (const name of ['Craft Read line emitted', 'Craft Read names product', 'Craft Read declares', 'variance is a product', 'Craft Read names a signature']) {
+  // "line emitted" is an ordering question and this fixture ships a .txt transcript, so it is
+  // unmeasurable rather than passing — that ✓ was the false pass. The CONTENT checks are
+  // still answerable from an unordered transcript and must still pass.
+  assert.equal(named(r, 'Craft Read line emitted').unmeasurable, true);
+  assert.equal(named(r, 'Craft Read line emitted').pass, null, 'never true — the JSON is read by other things');
+
+  for (const name of ['Craft Read names product', 'Craft Read declares', 'variance is a product', 'Craft Read names a signature']) {
     assert.equal(named(r, name).pass, true, `${name} should pass on the dashboard fixture`);
   }
 });
 
 test('dashboard fixture: only the table checks fail', async () => {
   const r = await scoreRecorded('craft-dashboard-001');
-  const failures = r.checks.filter((c) => !c.pass).map((c) => c.name);
+  // pass === false, not falsy: an unmeasurable check carries null and is not a failure.
+  const failures = r.checks.filter((c) => c.pass === false).map((c) => c.name);
 
   assert.deepEqual(
     failures.sort(),

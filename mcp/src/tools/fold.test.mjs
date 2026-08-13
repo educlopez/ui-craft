@@ -68,6 +68,27 @@ test('fold_candidates still rejects an unknown class, and still marks spent ones
 // expected_class, got no drift back, and read as compliance — while the class it built was
 // not among the three it had been offered. An absent drift field is not evidence of none.
 
+
+/**
+ * Only a genuinely absent browser may skip a test.
+ *
+ * The first version skipped on any `checkFold` error, which meant a navigation, fixture or
+ * measurement regression would report as "skipped: no browser" — the same cannot-check-reads-
+ * as-checked shape this file exists to close, in the test rather than the tool.
+ */
+function browserMissing(err) {
+  return typeof err === 'string' && /No Chrome-family browser found/.test(err);
+}
+
+function assertRan(t, r) {
+  if (r.error && browserMissing(r.error)) {
+    t.skip('no Chrome-family browser on this machine');
+    return false;
+  }
+  assert.equal(r.error, undefined, `checkFold failed for a reason that is not a missing browser: ${r.error}`);
+  return true;
+}
+
 /** Serve one HTML page on an ephemeral port for the duration of `body`. */
 async function withPage(html, body) {
   const http = await import('node:http');
@@ -94,8 +115,7 @@ const PAGE = `<main style="font-family:system-ui">
 
 test('check_fold: no expected_class reports not-compared, not "no drift"', async (t) => {
   const r = await withPage(PAGE, (url) => checkFold({ url }));
-  if (r.error) t.skip(`no browser available: ${r.error}`);
-  else {
+  if (assertRan(t, r)) {
     assert.equal(r.drift_status, 'not-compared');
     assert.equal(r.drift, null, 'drift stays null — the status is what carries the meaning');
     assert.match(r.drift_note ?? '', /Nothing was compared/);
@@ -105,7 +125,7 @@ test('check_fold: no expected_class reports not-compared, not "no drift"', async
 
 test('check_fold: a declared class that matches reports matched', async (t) => {
   const first = await withPage(PAGE, (url) => checkFold({ url }));
-  if (first.error) return t.skip(`no browser available: ${first.error}`);
+  if (!assertRan(t, first)) return;
   // Declare whatever the page actually is, so this tests the matched path rather than the
   // page's geometry.
   const built = first.composition.id;
@@ -117,7 +137,7 @@ test('check_fold: a declared class that matches reports matched', async (t) => {
 
 test('check_fold: a declared class that differs reports drifted', async (t) => {
   const first = await withPage(PAGE, (url) => checkFold({ url }));
-  if (first.error) return t.skip(`no browser available: ${first.error}`);
+  if (!assertRan(t, first)) return;
   const other = CLASS_IDS.find((id) => id !== first.composition.id);
   const r = await withPage(PAGE, (url) => checkFold({ url, expected_class: other }));
   assert.equal(r.drift_status, 'drifted');

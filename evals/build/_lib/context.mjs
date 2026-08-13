@@ -126,8 +126,13 @@ export async function makeContext({
   const checks = [];
   const record = (name, pass, evidence, opts = {}) => {
     if (!evidence) throw new Error(`check "${name}" recorded with no evidence — a check with no evidence is not a check`);
-    checks.push({ name, pass: Boolean(pass), evidence: String(evidence).slice(0, 400), ...opts });
-    return Boolean(pass);
+    // `pass` is null, never true, for an unmeasurable check. The summary already excluded
+    // those from the ratio, but the persisted result JSON exposes `checks`, and storing
+    // pass:true there hands the false pass straight back to anything reading the field —
+    // which is the whole bug this state exists to remove, one layer down.
+    const resolved = opts.unmeasurable ? null : Boolean(pass);
+    checks.push({ name, pass: resolved, evidence: String(evidence).slice(0, 400), ...opts });
+    return resolved === true;
   };
 
   /**
@@ -142,7 +147,7 @@ export async function makeContext({
     if (preCode === null) {
       return record(
         name,
-        true,
+        null,
         `UNMEASURABLE — this transcript carries no tool-use events, so there is no first write to order against. Not a pass: the question was not asked.`,
         { unmeasurable: true }
       );

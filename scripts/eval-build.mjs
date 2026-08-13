@@ -297,7 +297,7 @@ async function main() {
         process.stdout.write(`${result.pass ? green('  PASS') : red('  FAIL')} ${dim(`${result.total - result.failed}/${result.total}`)}${result.unmeasurable ? yellow(` ⊘${result.unmeasurable}`) : ''}\n`);
         printChecks(result);
       }
-      rows.push({ eval: e.id, experiment: x.name, pass: result.pass, failed: result.failed, total: result.total });
+      rows.push({ eval: e.id, experiment: x.name, pass: result.pass, failed: result.failed, total: result.total, unmeasurable: result.unmeasurable ?? 0 });
       if (!result.pass) failures++;
     }
   }
@@ -308,7 +308,7 @@ async function main() {
     process.stdout.write(`\n${bold('Summary')}\n`);
     for (const r of rows) {
       process.stdout.write(
-        `  ${r.pass ? green('PASS') : red('FAIL')}  ${r.eval} × ${r.experiment}  ${dim(`${r.total - r.failed}/${r.total}`)}\n`
+        `  ${r.pass ? green('PASS') : red('FAIL')}  ${r.eval} × ${r.experiment}  ${dim(`${r.total - r.failed}/${r.total}`)}${r.unmeasurable ? yellow(` ⊘${r.unmeasurable}`) : ''}\n`
       );
     }
     process.stdout.write(`${dim(`\nResults written to results/. Workspaces left in ${os.tmpdir()} for inspection.`)}\n`);
