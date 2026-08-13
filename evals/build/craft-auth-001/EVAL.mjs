@@ -12,7 +12,7 @@
 export default async function score(ctx) {
   // ── Transcript ────────────────────────────────────────────────────────────
   const craftRead = ctx.preCode.match(/^[\s>*_-]*\**Craft Read\**:?\s*\**([^\n]{20,400})/im);
-  ctx.check(
+  ctx.checkOrdered(
     'Craft Read line emitted',
     Boolean(craftRead),
     craftRead ? craftRead[0].slice(0, 200) : 'no "Craft Read:" line before the first file write'

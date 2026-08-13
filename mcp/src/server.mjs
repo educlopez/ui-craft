@@ -418,6 +418,11 @@ server.registerTool(
     outputSchema: {
       url: z.string().optional(),
       composition: z.object({ id: z.string(), confidence: z.string(), why: z.string() }).optional(),
+      drift_status: z
+        .enum(['matched', 'drifted', 'not-compared'])
+        .optional()
+        .describe("Whether the built class was compared against an intended one at all. 'not-compared' means no expected_class was passed — an absent drift field is not evidence of none."),
+      drift_note: z.string().optional().describe('Why nothing was compared, when that is the case'),
       expected_class: z.string().nullable().optional(),
       drift: z.string().nullable().optional(),
       checks: z.array(

@@ -23,7 +23,7 @@ export default async function score(ctx) {
   // turn quoted the instruction, so the check passed while measuring nothing. An emitted
   // read opens a line; a reference to one sits mid-sentence.
   const craftRead = ctx.preCode.match(/^[\s>*_-]*\**Craft Read\**:?\s*\**([^\n]{20,400})/im);
-  ctx.check(
+  ctx.checkOrdered(
     'Craft Read line emitted',
     Boolean(craftRead),
     craftRead ? craftRead[0].slice(0, 200) : 'no "Craft Read:" line before the first file write'
