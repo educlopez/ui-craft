@@ -52,9 +52,17 @@ export function foldCandidates({ used = [], count = 3, seed } = {}) {
       spent: used.includes(c.id),
     })),
     used,
+    // Asked for three folds until 2026-08-13, and across seven measured builds not one agent
+    // built more than one. Asking for something nobody does spends the instruction's only
+    // read on the part that gets ignored — and the part that got ignored with it was the
+    // verification, which is cheap and was skipped in 5 of 7. So: one committed fold, and
+    // name expected_class, because a check_fold call without it compares nothing and reads
+    // as agreement.
     instruction:
-      'Build one fold per candidate, each committing fully to its class — a half-hearted version of a class is a split in disguise. ' +
-      'Render each and run check_fold, then choose on the evidence. Do not converge the three toward one another.',
+      'Pick ONE of these and commit to it fully — a half-hearted version of a class is a split in disguise. ' +
+      'Then render it and call check_fold with `expected_class` set to the id you picked: without that argument it ' +
+      'reports what the fold is and cannot tell you whether it is what you intended. If you want to compare classes, ' +
+      'build them as separate attempts rather than blending them into one fold.',
   };
 }
 

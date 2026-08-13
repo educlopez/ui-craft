@@ -144,3 +144,14 @@ test('check_fold: a declared class that differs reports drifted', async (t) => {
   assert.match(r.drift ?? '', /^Drift: asked for/);
   assert.equal(r.summary.ok, false);
 });
+
+test('fold_candidates asks for one committed fold and names expected_class', () => {
+  // Both halves are measured corrections. Seven builds, none built more than one fold, so
+  // asking for three spent the instruction's only read on the part that gets ignored. And
+  // 5 of 7 skipped verification entirely or called check_fold without expected_class, which
+  // compares nothing and reads as agreement — so the argument is named, not implied.
+  const { instruction } = foldCandidates({ count: 3 });
+  assert.match(instruction, /Pick ONE/);
+  assert.match(instruction, /expected_class/);
+  assert.doesNotMatch(instruction, /one fold per candidate/, 'the three-fold ask is retired');
+});

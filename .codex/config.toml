@@ -1,0 +1,6 @@
+[mcp_servers.ui-craft]
+command = "npx"
+args = [
+    "-y",
+    "ui-craft-mcp@0.8.2",
+]
