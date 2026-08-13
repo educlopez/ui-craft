@@ -46,6 +46,18 @@ Tables get the rule the detector already enforced and the skill never taught: wr
 
 `route_task` also indexes tables by `overflow-x` and `sticky-header`, so asking about either reaches `dashboard.md`.
 
+## v1.0.19 (2026-08-13) — The fold's geometry is drawn, not prescribed by a diagram
+
+The landing recipe shipped three ASCII diagrams, one per content strategy, and the first was labelled *default*. Its geometry was text on one side and a visual on the other — which is the `split` composition class, the one the MCP's draw deliberately offers last because it is the fold every generator reaches for unprompted. Across seven measured builds, every fold that got built was one of the three geometries those diagrams prescribed, and none was the class the draw had offered. One build drew `stacked`, declared `stacked`, and built `split`: it followed the draw when asked what it intended and the recipe when it wrote the code, because the recipe is always in context, has a picture, and says default.
+
+So the pictures are gone and the content grammar stayed. Step 1 is now two decisions in order — what the fold argues, which is yours to choose from the brief, and how it is laid out, which is drawn. No strategy is a default any more. Every numeric limit the diagrams carried is preserved, and three exclusions are stated where a geometry cannot hold an argument: a product-forward fold cannot be type-only, a message-forward one cannot be product-dominant, a proof-forward one cannot be a full-bleed overlay.
+
+The skill also names `fold_candidates` and `check_fold` for the first time. It previously mentioned composition classes exactly once, in the brief's spent list, so the protocol existed only inside a tool's own response — an agent had to call the tool to learn it should call the tool. That is the likeliest reason three builds in seven never drew a class at all. Measured after the change, across three builds: the draw was called in all three, and verified against a declared class in two.
+
+Installers and generated launchers now write `ui-craft-mcp@0.8.4`, which carries the matching half — an omitted comparison in `check_fold` no longer reads as agreement, and the draw asks for one committed fold rather than three nobody built.
+
+Honest limit on all of the above: three builds is a direction, not a result. The convergence itself did not move — both verified builds still landed on `band` while declaring something else, and removing the competing diagrams did not stop it. Adoption turned out to be fixable by naming the protocol where the agent already reads. The geometry is not fixable by asking.
+
 ## v1.0.18 (2026-08-09) — Ecosystem packages by name, and an honest out-of-scope list
 
 The skill already said to use a platform's official design system when a brief names one — and named platforms, leaving the package to be found. That is the half that matters least: "an Atlassian companion" without `@atlaskit/button` still leaves the install to guesswork, and guesswork is what produces the hand-rolled lookalike the rule exists to prevent. Ten ecosystems now map to their actual packages, each checked against the registry rather than recalled.
