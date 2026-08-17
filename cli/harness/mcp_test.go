@@ -12,7 +12,7 @@ import (
 var uiCraftServer = MCPServer{
 	Name:    "ui-craft",
 	Command: "npx",
-	Args:    []string{"-y", "ui-craft-mcp@0.8.4"},
+	Args:    []string{"-y", "ui-craft-mcp@0.9.0"},
 }
 
 // --------------------------------------------------------------------------

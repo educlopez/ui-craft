@@ -91,7 +91,7 @@ test(`MCP tools registered — ${SITE_COUNTS} says 8`, async () => {
  * they are reading about — which is exactly what happened with route_task, documented on a
  * page whose snippet still installed a server without it.
  */
-test("MCP pin — ui-craft-docs/src/lib/gate-counts.json says 0.8.4", async () => {
+test("MCP pin — ui-craft-docs/src/lib/gate-counts.json says 0.9.0", async () => {
   const { readFileSync } = await import("node:fs")
   const { fileURLToPath } = await import("node:url")
   const manifest = JSON.parse(
@@ -100,7 +100,7 @@ test("MCP pin — ui-craft-docs/src/lib/gate-counts.json says 0.8.4", async () =
 
   assert.equal(
     manifest.components.mcp.version,
-    "0.8.4",
+    "0.9.0",
     `The manifest pins ui-craft-mcp@${manifest.components.mcp.version}. Update "mcpPin" in ` +
       "ui-craft-docs/src/lib/gate-counts.json and the snippet in its mcp.md, then this assertion. " +
       "A stale documented pin installs a server older than the page describing it.",
