@@ -47,6 +47,7 @@ test('server boots over stdio and lists the 7 tools', async () => {
       'route_task',
       'score_ui',
       'tokens_lint',
+      'ux_coverage',
     ]);
   } finally {
     await client.close();

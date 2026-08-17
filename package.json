@@ -30,7 +30,9 @@
     "code-quality"
   ],
   "scripts": {
+    "build:coverage-ref": "node scripts/build-coverage-reference.mjs",
     "check:action-pins": "node scripts/check-action-pins.mjs",
+    "check:coverage-ref": "node scripts/build-coverage-reference.mjs --check",
     "check:deadcode": "node scripts/check-deadcode.mjs",
     "check:distribution": "node scripts/check-distribution-contract.mjs",
     "check:frontmatter": "node scripts/check-frontmatter-strict.mjs",
