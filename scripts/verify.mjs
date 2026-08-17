@@ -61,6 +61,16 @@ export const SUITES = Object.freeze([
     args: ["scripts/validate.mjs"],
   },
   {
+    // references/coverage.md is generated from mcp/src/coverage-data.mjs. It is the
+    // fallback for installs without the MCP server, so a stale copy fails only for
+    // the users with the least tooling — exactly the failure nobody reports. Checked
+    // before the mirror gate, since mirroring a stale file just propagates it.
+    id: "coverage-ref",
+    label: "references/coverage.md matches coverage-data.mjs",
+    command: "node",
+    args: ["scripts/build-coverage-reference.mjs", "--check"],
+  },
+  {
     id: "mirrors",
     label: "Canonical source mirrors",
     command: "node",

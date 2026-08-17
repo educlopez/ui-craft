@@ -507,6 +507,12 @@ export const CORPUS = [
     keywords: ['review', 'agents', 'agent', 'subagent', 'delegate', 'parallel'],
     contains: ['design-reviewer', 'a11y-auditor'], first_move: null,
   },
+  {
+    id: 'ref-coverage', kind: 'reference', name: 'coverage', path: 'references/coverage.md', tier: 4,
+    summary: 'UX coverage — the parts 12 screen archetypes need to be complete. Fallback for installs without the MCP tool.',
+    keywords: ['missing', 'completeness', 'coverage'],
+    contains: ['what is missing', 'archetype', 'parts'], first_move: 'ux_coverage',
+  },
 
   // ── MCP tools ─────────────────────────────────────────────────────────────
   {
@@ -523,6 +529,22 @@ export const CORPUS = [
     id: 'mcp-acceptance-bar', kind: 'mcp_tool', name: 'acceptance_bar', path: 'mcp:acceptance_bar',
     summary: 'Returns the deterministic acceptance checklist for a surface (dashboard, landing, auth, generic).',
     keywords: ['ship', 'review'], contains: ['checklist'], first_move: 'acceptance_bar',
+  },
+  {
+    id: 'mcp-ux-coverage', kind: 'mcp_tool', name: 'ux_coverage', path: 'mcp:ux_coverage',
+    summary: 'Returns the parts a screen archetype needs to be complete — the completeness axis, reported beside distinction, never scored.',
+    // Keywords stay narrow and intent-shaped. Listing the twelve archetype names here
+    // instead would make this entry match almost any product noun and win on volume —
+    // "the signup form validates wrong" is a repair, not a coverage request. The
+    // archetype vocabulary lives in `contains`, where it is a weaker signal that only
+    // fires once the prompt is already about completeness.
+    keywords: ['missing', 'completeness', 'coverage'],
+    contains: [
+      'what is missing', 'archetype', 'not-needed', 'bulk actions', 'danger zone',
+      'data table', 'settings', 'detail view', 'billing', 'pricing', 'docs page',
+      'checkout', 'onboarding', 'destructive confirm', 'invite',
+    ],
+    first_move: 'ux_coverage',
   },
   {
     id: 'mcp-score-ui', kind: 'mcp_tool', name: 'score_ui', path: 'mcp:score_ui',

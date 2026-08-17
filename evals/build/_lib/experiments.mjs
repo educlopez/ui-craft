@@ -48,6 +48,9 @@ export const MCP_TOOLS = [
   'check_anti_slop',
   'tokens_lint',
   'acceptance_bar',
+  // Reachable on purpose: /harden now pulls an archetype's coverage parts, so a build
+  // eval that could not call this would score the hardening pass against half its input.
+  'ux_coverage',
   'score_ui',
   'fold_candidates',
   'check_fold',

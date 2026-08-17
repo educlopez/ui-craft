@@ -10,7 +10,9 @@
  *   route_task       — routes a natural-language prompt to the references/commands that cover it
  *   check_anti_slop  — flags anti-slop patterns via scripts/detect.mjs scan()
  *   tokens_lint      — flags off-system token values (color, radius, spacing, z-index)
- *   acceptance_bar   — returns acceptance checklist for a UI surface
+ *   acceptance_bar   — returns acceptance checklist for a UI surface (distinction axis)
+ *   ux_coverage      — returns the parts a screen archetype needs to be complete (completeness axis)
+ *                      Separate axis from acceptance_bar and score_ui by design; report-only, never gates.
  *   score_ui         — composite UICraftScore (anti-slop + tokens + a11y) via evals/quality/score.mjs
  *                      Note: score_ui imports from ../../../evals/quality/ — consistent with
  *                      check_anti_slop importing ../../../scripts/ (same cross-package pattern).
@@ -26,6 +28,7 @@ import { z } from 'zod';
 import { checkAntiSlop } from './tools/check-anti-slop.mjs';
 import { tokensLint } from './tools/tokens-lint.mjs';
 import { acceptanceBar } from './tools/acceptance-bar.mjs';
+import { uxCoverage, KNOWN_ARCHETYPES } from './tools/ux-coverage.mjs';
 import { scoreUiTool } from './tools/score-ui.mjs';
 import { checkFold, foldCandidates } from './tools/fold.mjs';
 import { routeTask } from './tools/route-task.mjs';
@@ -258,6 +261,85 @@ server.registerTool(
       result = {
         error: `Unexpected error: ${e.message}`,
         surface: args.surface ?? null,
+        items: [],
+      };
+    }
+    const isError = Boolean(result.error);
+    return {
+      content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+      ...(isError ? {} : { structuredContent: result }),
+      isError,
+    };
+  }
+);
+
+// ─── Tool: ux_coverage ───────────────────────────────────────────────────────
+
+server.registerTool(
+  'ux_coverage',
+  {
+    title: 'UX Coverage',
+    description:
+      'Returns the parts a screen of a given kind needs in order to be complete, and the contract for reporting them. ' +
+      'This is the COMPLETENESS axis — "does this screen have the parts screens of its kind need". ' +
+      'It is not the distinction axis: acceptance_bar and score_ui answer "is this designed". ' +
+      'Report the two side by side; never fold coverage into a score, a count or a percentage. ' +
+      'Report-only — coverage never gates and never fails a build. ' +
+      `Archetypes: ${KNOWN_ARCHETYPES.join(', ')}. ` +
+      'Call with no archetype to get the catalogue. dashboard, landing and auth are served by acceptance_bar instead. ' +
+      'Returns DATA only — no scoring or judgment.',
+    inputSchema: {
+      archetype: z
+        .string()
+        .optional()
+        .describe(
+          'Screen archetype to retrieve coverage parts for. Accepts the key, the label, or a synonym ' +
+            '("table", "plans", "are you sure"). Omit to list the catalogue.'
+        ),
+    },
+    outputSchema: {
+      archetype: z.string().nullable(),
+      label: z.string().optional(),
+      family: z.string().optional(),
+      states: z.array(z.string()).optional(),
+      items: z.array(
+        z.object({
+          id: z.string().optional(),
+          part: z.string().optional(),
+          exists: z.string().optional(),
+          craft: z.string().optional(),
+          cost: z.string().optional(),
+          category: z.string().optional(),
+        })
+      ),
+      reporting: z
+        .object({
+          markers: z.array(z.object({ marker: z.string(), meaning: z.string() })),
+          rules: z.array(z.string()),
+        })
+        .optional(),
+      catalogue: z
+        .array(
+          z.object({
+            archetype: z.string(),
+            label: z.string(),
+            family: z.string(),
+            also: z.array(z.string()).optional(),
+          })
+        )
+        .optional(),
+      note: z.string().optional(),
+      error: z.string().optional(),
+    },
+  },
+  (args) => {
+    let result;
+    try {
+      result = uxCoverage(args);
+    } catch (e) {
+      result = {
+        error: `Unexpected error: ${e.message}`,
+        archetype: args?.archetype ?? null,
         items: [],
       };
     }

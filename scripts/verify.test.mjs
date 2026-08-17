@@ -50,7 +50,7 @@ test("verify suite ids are unique and commands are explicit", () => {
  */
 const SITE_COUNTS = 'ui-craft-docs/src/lib/gate-counts.json'
 
-test(`skill references — ${SITE_COUNTS} says 33`, async () => {
+test(`skill references — ${SITE_COUNTS} says 34`, async () => {
   const { readdirSync } = await import("node:fs")
   const { fileURLToPath } = await import("node:url")
   const dir = fileURLToPath(new URL("../skills/ui-craft/references", import.meta.url))
@@ -58,12 +58,12 @@ test(`skill references — ${SITE_COUNTS} says 33`, async () => {
 
   assert.equal(
     refs.length,
-    33,
+    34,
     `references/ now has ${refs.length} files. Update "references" in ${SITE_COUNTS}, then this assertion.`,
   )
 })
 
-test(`MCP tools registered — ${SITE_COUNTS} says 7`, async () => {
+test(`MCP tools registered — ${SITE_COUNTS} says 8`, async () => {
   const { readFileSync } = await import("node:fs")
   const { fileURLToPath } = await import("node:url")
   const src = readFileSync(fileURLToPath(new URL("../mcp/src/server.mjs", import.meta.url)), "utf8")
@@ -71,7 +71,7 @@ test(`MCP tools registered — ${SITE_COUNTS} says 7`, async () => {
 
   assert.equal(
     registered.length,
-    7,
+    8,
     `server.mjs registers ${registered.length} tools (${registered.join(", ")}). ` +
       `Update "mcpTools" in ${SITE_COUNTS}, then this assertion.`,
   )

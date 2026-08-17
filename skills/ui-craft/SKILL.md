@@ -74,7 +74,8 @@ The rules that make the biggest difference between "AI-generated" and "designed 
 | Color / theming / dark mode (focused pass: `/colorize`) | [color.md](references/color.md) |
 | Accessibility / a11y audit (technical audit: `/audit`) | [accessibility.md](references/accessibility.md) |
 | UX critique, no code changes | Run `/critique` — [review.md](references/review.md) + [inspiration.md](references/inspiration.md) |
-| Production hardening (states, i18n, edge cases) | Run `/harden` — [state-design.md](references/state-design.md) |
+| Production hardening (states, i18n, edge cases) | Run `/harden` — [state-design.md](references/state-design.md) + [coverage.md](references/coverage.md) |
+| "What's missing from this screen?" / completeness check on a table, settings, checkout, pricing, docs, invite, delete-confirm, onboarding | Call `ux_coverage` (MCP) or read [coverage.md](references/coverage.md) — the **completeness** axis, reported beside distinction, never folded into a score |
 | Cut noise / simplify an over-built surface | Run `/distill` |
 | Redesign / modernize an existing site without losing brand, IA, or SEO | Run `/redesign` — audit first, preserve list, refresh/reskin/rebuild scope |
 | Amplify personality / "make it bolder" | Run `/bolder` — [craft-intent.md](references/craft-intent.md) |
@@ -387,5 +388,6 @@ Same references as before, same weight when their trigger fires. Only the claim 
 | [heuristics.md](references/heuristics.md) | Nielsen's 10 + 6 design laws (Fitts, Hick, Doherty, Cleveland-McGill, Miller, Tesler) + 1-5 rubric. Load for `/heuristic`. |
 | [personas.md](references/personas.md) | 5 persona walkthroughs (first-timer / power / low-bandwidth / screen-reader / one-thumb). Load for `/heuristic --persona=<name>`. |
 | [state-design.md](references/state-design.md) | State lattice — idle / loading / empty / error / partial / conflict / offline. Load for `/unhappy`. |
+| [coverage.md](references/coverage.md) | UX coverage — the parts 12 screen archetypes need to be complete (data table, settings, search, detail view, first-run, billing, pricing, docs, checkout, onboarding, destructive confirm, invite). The **completeness** axis, not distinction. Load for `/harden`, or when asked what a screen is missing. **Prefer the `ux_coverage` MCP tool** — it returns one archetype instead of all twelve. Generated from `mcp/src/coverage-data.mjs`; do not edit by hand. |
 | [dataviz.md](references/dataviz.md) | Cleveland-McGill perceptual hierarchy, chart selection matrix, ColorBrewer/Okabe-Ito palettes, Tufte, direct labeling. Load when designing charts. |
 | [agents.md](references/agents.md) | Agent pack overview: `design-reviewer` + `a11y-auditor` roles, agent-vs-command guidance, and parallel verify-team usage pattern. Load when setting up or describing the verify team. |
