@@ -7,9 +7,9 @@ Deterministic design-quality gate exposed as a stdio MCP server. Complements the
 Requires Node.js 20 or newer.
 
 ```bash
-npm install -g ui-craft-mcp@0.8.4
+npm install -g ui-craft-mcp@0.9.0
 # or use npx (no install required):
-npx -y ui-craft-mcp@0.8.4
+npx -y ui-craft-mcp@0.9.0
 ```
 
 ## Wiring
@@ -21,7 +21,7 @@ Copy `.mcp.json.example` from the repo root to `.mcp.json` in your project:
   "mcpServers": {
     "ui-craft": {
       "command": "npx",
-      "args": ["-y", "ui-craft-mcp@0.8.4"]
+      "args": ["-y", "ui-craft-mcp@0.9.0"]
     }
   }
 }

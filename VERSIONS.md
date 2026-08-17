@@ -2,9 +2,23 @@
 
 ## Current distribution contract
 
-The historical entries below describe several independently versioned artifacts. Their current compatibility contract is machine-readable in [`distribution-manifest.json`](distribution-manifest.json) and checked by `pnpm verify`. Every generated or documented MCP launcher uses the immutable package spec `ui-craft-mcp@0.8.4`; changing it requires updating the manifest and every launcher in the same change.
+The historical entries below describe several independently versioned artifacts. Their current compatibility contract is machine-readable in [`distribution-manifest.json`](distribution-manifest.json) and checked by `pnpm verify`. Every generated or documented MCP launcher uses the immutable package spec `ui-craft-mcp@0.9.0`; changing it requires updating the manifest and every launcher in the same change.
 
 GitHub CLI archives include GoReleaser SHA-256 checksums and GitHub build-provenance attestations. The MCP publish workflow uses npm trusted publishing plus `--provenance`; the npm package must have this repository/workflow configured as a trusted publisher before dispatch. No long-lived npm token is assumed.
+
+## ui-craft-mcp v0.9.0 (2026-08-17) — Completeness is a second axis, not a lower score
+
+New tool: `ux_coverage`. Every gate shipped so far answers *is this designed* — anti-slop, token discipline, the fold, the acceptance bar. Nothing answered *does this screen have the parts screens of its kind need*, and only three surfaces had a parts list at all, because only three have outcome recipes. Settings, data tables, search, detail views, billing, pricing, docs pages, checkout, onboarding, destructive confirms and invite flows had none. Twelve archetypes, 85 parts, served from `coverage-data.mjs`.
+
+Each part carries four fields, and none of them ships alone: what should exist, what *present* concretely looks like, the ui-craft rule for building it with the reference that states it, and what the user loses when it is absent. Presence on its own is a generic checklist. The rule on its own restates a reference. The cost is what makes a finding arguable instead of a preference — "no export" is a status; "the user expects the 24 rows on screen and receives 10,000" is a reason.
+
+It returns markers, not a number: `present`, `partial`, `missing`, `not-needed`, `unknown`. That is a deliberate refusal, and it comes from our own measurement rather than taste. Coverage is a hygiene axis, and the v0.8.x-era score audit found 30 of 49 files tied at exactly 100 with every finding hygiene — so a coverage number would read near-100 for most surfaces and bury the distinction signal underneath it. A number also converts `not-needed` into a failure, which is the single reading the marker set exists to prevent: a read-only table is not failing two-thirds of a table checklist because it has no bulk actions. Run against a real staging table during development, the split came out 1 present, 2 partial, 1 missing and **4 not-needed** — "1 of 8, 12%" would have described a mostly-correct surface as broken. So the tool is report-only. It never gates, never exits non-zero, and is never folded into `score_ui`; the two axes are reported side by side.
+
+The reporting contract travels inside the response rather than only in a reference file. v1.0.19 established that adoption is fixable by naming a protocol where the agent already reads — the fold protocol was called 4 of 7 times while it lived only in a tool's reply. Here the markers and the no-score rule are part of every successful lookup, and a test asserts they stay there.
+
+`references/coverage.md` is generated from the same data for installs without the server, byte-stable, with a drift gate ordered ahead of the mirror check — mirroring a stale fallback only propagates it. The fallback is what the least-tooled users get, so a hand-maintained second copy would fail exactly where nobody reports it.
+
+Honest limits. The planned eval could not run: the quality fixtures are eleven components of 1–2 KB and not one contains a table, a checkout or a settings screen. Validation ran instead against a real documentation site that predates the work — 0 present, 2 partial, 5 missing, so the items discriminate rather than tying at the top, which was the predicted failure mode. But the same author wrote the items and ran the check, so that shows they discriminate, not that they are the right twelve archetypes or the right 85 parts.
 
 ## ui-craft-mcp v0.8.4 (2026-08-13) — An omitted comparison stops reading as agreement
 

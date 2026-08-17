@@ -228,4 +228,4 @@ Edit these files freely. The skill reads them as plain markdown — no memory pr
 
 ## Architecture
 
-The binary is an installer only — no AI logic runs in Go. It embeds hand-authored per-harness assets (`go:embed` from `cli/assets/<harness>/`). All design rules stay in JS, served via the exact MCP package version declared in [`distribution-manifest.json`](../distribution-manifest.json) (currently `npx -y ui-craft-mcp@0.8.4`, wired into each harness's MCP config on install). See `cli/assets/embed.go` and [CONTRIBUTING.md](../CONTRIBUTING.md) for the asset-tree layout.
+The binary is an installer only — no AI logic runs in Go. It embeds hand-authored per-harness assets (`go:embed` from `cli/assets/<harness>/`). All design rules stay in JS, served via the exact MCP package version declared in [`distribution-manifest.json`](../distribution-manifest.json) (currently `npx -y ui-craft-mcp@0.9.0`, wired into each harness's MCP config on install). See `cli/assets/embed.go` and [CONTRIBUTING.md](../CONTRIBUTING.md) for the asset-tree layout.
