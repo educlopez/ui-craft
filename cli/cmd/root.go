@@ -86,7 +86,12 @@ func init() {
 	rootCmd.PersistentFlags().StringSliceVar(&flags.Components, "components", nil, "Comma-separated components to install (skill+commands,mcp-gates,review-agents,design-memory)")
 	rootCmd.PersistentFlags().BoolVar(&flags.Yes, "yes", false, "Skip interactive prompts and apply defaults")
 	rootCmd.PersistentFlags().BoolVar(&flags.DryRun, "dry-run", false, "Show what would be changed without writing any files")
-	rootCmd.PersistentFlags().StringVar(&flags.Dir, "dir", ".", "Project directory (default: current directory)")
+	// Deliberately not "project directory" alone: readers took that to mean it scopes
+	// where skills and commands get written, and it does not. install/update always
+	// resolve harness config paths globally (see install.go's core.Global) — --dir only
+	// locates the .ui-craft/ design-memory scaffold, and for the TUI the project root of
+	// a project-scoped install.
+	rootCmd.PersistentFlags().StringVar(&flags.Dir, "dir", ".", "Project directory holding .ui-craft/ design memory (default: current directory). Does not scope skill/command install paths; see install --help")
 	rootCmd.PersistentFlags().BoolVar(&flags.JSON, "json", false, "Emit machine-readable JSON output (implies non-interactive)")
 	rootCmd.PersistentFlags().BoolVar(&flags.Quiet, "quiet", false, "Suppress non-essential output; print only errors (stderr) + final outcome")
 }
