@@ -54,8 +54,20 @@ var detectAllFn = func(reg []harness.Harness) []core.DetectedHarness {
 
 // installCmd implements the detect → plan → apply pipeline.
 var installCmd = &cobra.Command{
-	Use:          "install",
-	Short:        "Install ui-craft components into detected AI coding harnesses",
+	Use:   "install",
+	Short: "Install ui-craft components into detected AI coding harnesses",
+	Long: `Install ui-craft components into detected AI coding harnesses.
+
+Harness config paths are always GLOBAL for this subcommand — skills, commands,
+MCP config and review agents go to each harness's home-derived location (for
+example ~/.claude), never inside the current project.
+
+--dir does not change that. It locates the .ui-craft/ design-memory scaffold,
+so it only has an effect when design-memory is among the installed components.
+Passing --dir with --components skill+commands is a no-op.
+
+For a project-scoped install, run "ui-craft" with no arguments and choose
+"Install (this project)" in the interactive hub.`,
 	SilenceUsage: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		out := cmd.OutOrStdout()
