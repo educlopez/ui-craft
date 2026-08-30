@@ -30,7 +30,7 @@ jobs:
   sweep:
     runs-on: ubuntu-latest
     steps:
-      - uses: educlopez/friction-log@v1
+      - uses: educlopez/friction-log@5d380b70a0a049f4e3084302df2f62357aa8f4bc # v1.1.2
         with:
           dry-run: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || false }}
           force: ${{ github.event_name == 'workflow_dispatch' && inputs.force || false }}

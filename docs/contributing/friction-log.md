@@ -38,7 +38,7 @@ GitHub is the log.
 ## Daily investigation
 
 The `Friction log` GitHub Action runs daily at 04:00 UTC. It uses
-`educlopez/friction-log@v1` to list open `friction` issues and, when any are
+`educlopez/friction-log` (SHA-pinned in the workflow, per this repo's action-pins gate) to list open `friction` issues and, when any are
 eligible and `CURSOR_API_KEY` is set, spawn one Cursor Cloud Agent on
 `educlopez/ui-craft` `main`.
 
