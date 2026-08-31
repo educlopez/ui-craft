@@ -20,7 +20,11 @@ dist/
 
 # Local tooling + out-of-scope artifacts (not part of the repo)
 .codegraph/
-.cursor/
+.cursor/*
+!.cursor/skills/
+.cursor/skills/*
+# The friction-log skill is shared contributor tooling, not personal editor config.
+!.cursor/skills/friction-log/
 
 # A contributor's local Codex MCP registration, not repo content. It was committed by
 # accident during a mirror sync and carried a stale pin that failed check-version-mentions.
