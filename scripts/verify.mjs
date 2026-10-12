@@ -52,6 +52,7 @@ export const SUITES = Object.freeze([
       "--test",
       "scripts/check-distribution-contract.test.mjs",
       "scripts/verify.test.mjs",
+      "scripts/cursor-plugin.test.mjs",
     ],
   },
   {

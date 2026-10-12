@@ -140,6 +140,18 @@ One command installs the skill, all 25 slash commands, the 2 review agents, and 
 
 The plugin bundles a `.mcp.json` (`npx -y ui-craft-mcp@0.9.0`), so the deterministic gates register automatically on install. The exact package version is declared in [`distribution-manifest.json`](distribution-manifest.json), avoiding an implicit upgrade on first launch. This uses Claude Code's own plugin system, so it's not affected by the global-path issue noted below.
 
+### Cursor plugin — alternative (skill + commands + agents + MCP + rules + hook)
+
+Clone this repository into Cursor's local plugin folder, then reload the window:
+
+```bash
+git clone https://github.com/educlopez/ui-craft.git ~/.cursor/plugins/local/ui-craft
+```
+
+The plugin is the repo itself (`.cursor-plugin/plugin.json`). It registers the `ui-craft` skill and its variants, the slash commands, the `design-reviewer` and `a11y-auditor` agents, the `.mdc` rules, the `ui-craft-mcp` quality-gate server, and a `preToolUse` hook that runs `ui-craft-detect` before every file write.
+
+Open **Customize** and confirm those components loaded. On Teams and Enterprise, local plugin imports must be allowed under Dashboard → Settings → Security & Identity → Marketplace and Plugins.
+
 ### Agent Skills — alternative (skill + commands only, any harness)
 
 ```bash

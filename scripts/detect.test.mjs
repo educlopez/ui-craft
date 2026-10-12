@@ -2294,6 +2294,31 @@ test("integration: hook-run fails open on non-scannable files and malformed stdi
   assert.equal(runDetectCli(["hook-run"], { input: "" }).exitCode, 0);
 });
 
+test("integration: hook-run preToolUse allows a clean Write and emits Cursor JSON", () => {
+  const payload = JSON.stringify({
+    hook_event_name: "preToolUse",
+    tool_name: "Write",
+    tool_input: { path: CLEAN_FIXTURE },
+  });
+  const result = runDetectCli(["hook-run"], { input: payload });
+  assert.equal(result.exitCode, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), { permission: "allow" });
+});
+
+test("integration: hook-run preToolUse denies a sloppy Write from proposed contents", () => {
+  const slop = fs.readFileSync(SLOP_FIXTURE, "utf8");
+  const payload = JSON.stringify({
+    hook_event_name: "preToolUse",
+    tool_name: "Write",
+    tool_input: { path: "/tmp/pending-slop.tsx", contents: slop },
+  });
+  const result = runDetectCli(["hook-run"], { input: payload });
+  assert.equal(result.exitCode, 0, result.stderr);
+  const body = JSON.parse(result.stdout);
+  assert.equal(body.permission, "deny");
+  assert.match(body.agent_message, /design finding/);
+});
+
 // ---------------------------------------------------------------------------
 // URL scanning — scanUrl() + CLI URL mode (fetch engine; puppeteer not in CI)
 // ---------------------------------------------------------------------------
