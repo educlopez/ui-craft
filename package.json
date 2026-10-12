@@ -45,7 +45,7 @@
     "eval:build": "node scripts/eval-build.mjs",
     "sync": "node scripts/sync-mirrors.mjs",
     "test:evals": "node --test scripts/eval-build.test.mjs",
-    "test:verify": "node --test scripts/check-distribution-contract.test.mjs scripts/verify.test.mjs scripts/check-versions-md.test.mjs",
+    "test:verify": "node --test scripts/check-distribution-contract.test.mjs scripts/verify.test.mjs scripts/check-versions-md.test.mjs scripts/cursor-plugin.test.mjs",
     "validate": "node scripts/validate.mjs",
     "verify": "node scripts/verify.mjs",
     "verify:list": "node scripts/verify.mjs --list",

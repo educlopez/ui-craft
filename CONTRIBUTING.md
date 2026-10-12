@@ -33,6 +33,9 @@ ui-craft/
 ├── examples/
 ├── evals/
 ├── .claude-plugin/
+├── .cursor-plugin/                 # Cursor plugin manifest (points at skills/, commands/, agents/, rules/)
+├── hooks/                          # Cursor plugin hooks (preToolUse → ui-craft-detect)
+├── rules/                          # Cursor plugin .mdc rules (pointers to skills/, not copies)
 ├── .github/workflows/
 ├── .githooks/pre-commit
 ├── RELEASE_CHECKLIST.md            # Manual steps CI cannot cover (e.g. Gatekeeper on Apple Silicon)

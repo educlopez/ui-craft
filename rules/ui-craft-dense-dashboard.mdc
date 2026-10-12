@@ -1,0 +1,6 @@
+---
+description: UI Craft dense-dashboard variant — admin / data-heavy operator tools.
+alwaysApply: false
+---
+
+Follow `skills/ui-craft-dense-dashboard/SKILL.md` when the surface is a dense dashboard, admin panel, or data-heavy internal tool. Base rules stay in `skills/ui-craft/SKILL.md`.

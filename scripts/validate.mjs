@@ -2,6 +2,7 @@
 /**
  * Repo validator. Checks:
  *   - .claude-plugin/plugin.json and marketplace.json parse as JSON.
+ *   - .cursor-plugin/plugin.json matches the documented Cursor plugin schema.
  *   - Every path listed under plugin.json.skills exists.
  *   - plugin.json.commands paths exist.
  *   - Every skills/<slug>/SKILL.md has YAML frontmatter with `name` + `description`.
@@ -20,6 +21,8 @@
 import { readFileSync, existsSync, readdirSync, statSync } from "node:fs"
 import { resolve, dirname, join, relative } from "node:path"
 import { fileURLToPath } from "node:url"
+
+import { discoverCursorPlugin } from "./cursor-plugin.mjs"
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const ROOT = resolve(__dirname, "..")
@@ -119,6 +122,52 @@ if (marketplace) {
 
 if (plugin) {
   check("plugin.json has name", Boolean(plugin.name))
+}
+
+const cursorPluginPath = resolve(ROOT, ".cursor-plugin/plugin.json")
+check(".cursor-plugin/plugin.json exists", existsSync(cursorPluginPath))
+if (existsSync(cursorPluginPath)) {
+  try {
+    const discovered = discoverCursorPlugin(ROOT)
+    check(
+      ".cursor-plugin/plugin.json matches documented schema",
+      discovered.failures.length === 0,
+      discovered.failures.join("; "),
+    )
+    check("cursor plugin name is ui-craft", discovered.manifest.name === "ui-craft")
+    check(
+      "cursor plugin skills include ui-craft and variants",
+      ["skills/ui-craft", "skills/ui-craft-minimal", "skills/ui-craft-editorial", "skills/ui-craft-dense-dashboard"]
+        .every((skill) => discovered.skills.includes(skill)),
+      discovered.skills.join(", "),
+    )
+    check("cursor plugin commands are discovered", discovered.commands.length > 0, `${discovered.commands.length} files`)
+    check(
+      "cursor plugin review agents are discovered",
+      discovered.agents.includes("agents/design-reviewer.md") &&
+        discovered.agents.includes("agents/a11y-auditor.md"),
+      discovered.agents.join(", "),
+    )
+    check(
+      "cursor plugin .mdc rules are discovered",
+      discovered.rules.some((rule) => rule.endsWith(".mdc")),
+      discovered.rules.join(", "),
+    )
+    check(
+      "cursor plugin mcpServers has ui-craft-mcp",
+      Boolean(discovered.mcpServers["ui-craft-mcp"]?.command),
+    )
+    const preWrite = discovered.hookEvents.find(
+      (hook) => hook.event === "preToolUse" && /ui-craft-detect|detect\.mjs hook-run/.test(hook.command),
+    )
+    check(
+      "cursor plugin preToolUse hook runs ui-craft-detect before Write",
+      Boolean(preWrite) && preWrite.matcher === "Write",
+      preWrite ? `${preWrite.command} matcher=${preWrite.matcher}` : "missing",
+    )
+  } catch (error) {
+    check(".cursor-plugin/plugin.json loads", false, error.message)
+  }
 }
 
 // Bundled MCP server config — auto-registered on `/plugin install`.

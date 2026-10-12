@@ -7,7 +7,7 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 
 import { dim, bold, c, SCAN_EXTENSIONS } from "./constants.mjs";
-import { scan } from "./engine.mjs";
+import { loadConfig, scan, scanFile } from "./engine.mjs";
 import { fileExists } from "./ci.mjs";
 
 // --- agent edit-time hooks ---------------------------------------------------
@@ -20,6 +20,8 @@ import { fileExists } from "./ci.mjs";
 //     code 2 feeds stderr back to the model as actionable feedback.
 //   Cursor — .cursor/hooks.json → hooks.afterFileEdit (schema version 1)
 //     informational hook; findings appear in Cursor's Hooks output channel.
+//   Cursor plugin — hooks/hooks.json → hooks.preToolUse matcher Write
+//     same runner; when the event is preToolUse it prints Cursor hook JSON.
 //
 // Both manifests invoke `hook-run`, which parses the event JSON, scans only
 // the edited file, and exits 2 with a compact findings summary when critical
@@ -241,17 +243,44 @@ function readStdinText(timeoutMs = 5000) {
   });
 }
 
+function findingsSummary(filePath, blocking) {
+  const rel = path.relative(process.cwd(), filePath);
+  const shown = blocking.slice(0, 10);
+  let msg = `ui-craft-detect: ${blocking.length} design finding(s) in ${rel} — fix before finishing:\n`;
+  for (const f of shown) {
+    msg += `  - L${f.line} [${f.severity}] ${f.description} — fix: ${f.fix}\n`;
+  }
+  if (blocking.length > shown.length) {
+    msg += `  …and ${blocking.length - shown.length} more (run \`npx ui-craft-detect ${rel}\` for the full list)\n`;
+  }
+  msg += `False positive? Suppress with a  // ui-craft-detect-ignore-rule: <rule-id>  comment on the flagged line.\n`;
+  return msg;
+}
+
+function replyPreToolUse(permission, extra = {}) {
+  process.stdout.write(JSON.stringify({ permission, ...extra }) + "\n");
+  process.exit(0);
+}
+
 /**
  * Hook runner — the command the installed manifests execute after each agent
- * file edit. Reads the harness event JSON from stdin (Claude Code PostToolUse
- * puts the path at .tool_input.file_path; Cursor afterFileEdit at .file_path),
- * scans just that file, and exits 2 with a compact stderr summary when
- * critical/major findings exist. Warn-level findings never interrupt.
- * Fails open (exit 0) on internal errors so a broken hook can't stall agents.
+ * file edit, and the Cursor plugin `preToolUse` hook before every Write.
+ * Reads the harness event JSON from stdin (Claude Code PostToolUse puts the
+ * path at .tool_input.file_path; Cursor afterFileEdit at .file_path; Cursor
+ * preToolUse at .tool_input.path / .tool_input.file_path, with optional
+ * proposed .tool_input.contents).
+ *
+ * Scans just that file (or the proposed contents), and exits 2 with a compact
+ * stderr summary when critical/major findings exist. Warn-level findings never
+ * interrupt. For `preToolUse`, prints Cursor hook JSON (`permission`) instead
+ * of using the exit-2 convention. Fails open (exit 0, or allow) on internal
+ * errors so a broken hook can't stall agents.
  */
 export async function runHookRun(argv) {
+  let isPreToolUse = false;
   try {
     let filePath = argv.find((a) => !a.startsWith("--")) ?? null;
+    let contents = null;
     if (!filePath) {
       const raw = await readStdinText();
       if (!raw.trim()) process.exit(0);
@@ -261,35 +290,56 @@ export async function runHookRun(argv) {
       } catch {
         process.exit(0);
       }
+      isPreToolUse = payload?.hook_event_name === "preToolUse";
       filePath =
-        payload?.tool_input?.file_path ?? payload?.file_path ?? payload?.inputs?.file_path ?? null;
+        payload?.tool_input?.file_path ??
+        payload?.tool_input?.path ??
+        payload?.file_path ??
+        payload?.inputs?.file_path ??
+        null;
+      const proposed = payload?.tool_input?.contents ?? payload?.tool_input?.content;
+      if (typeof proposed === "string") contents = proposed;
     }
-    if (!filePath || typeof filePath !== "string") process.exit(0);
+    if (!filePath || typeof filePath !== "string") {
+      if (isPreToolUse) replyPreToolUse("allow");
+      process.exit(0);
+    }
 
     const resolved = path.resolve(filePath);
-    if (!SCAN_EXTENSIONS.has(path.extname(resolved))) process.exit(0);
-    if (!(await fileExists(resolved))) process.exit(0);
+    if (!SCAN_EXTENSIONS.has(path.extname(resolved))) {
+      if (isPreToolUse) replyPreToolUse("allow");
+      process.exit(0);
+    }
 
-    const result = await scan(resolved);
-    const blocking = result.findings.filter(
+    let findings;
+    if (contents != null) {
+      const loaded = await loadConfig(process.cwd());
+      findings = scanFile(resolved, contents, loaded.config);
+    } else {
+      if (!(await fileExists(resolved))) {
+        if (isPreToolUse) replyPreToolUse("allow");
+        process.exit(0);
+      }
+      const result = await scan(resolved);
+      findings = result.findings;
+    }
+    const blocking = findings.filter(
       (f) => f.severity === "critical" || f.severity === "major",
     );
-    if (blocking.length === 0) process.exit(0);
+    if (blocking.length === 0) {
+      if (isPreToolUse) replyPreToolUse("allow");
+      process.exit(0);
+    }
 
-    const rel = path.relative(process.cwd(), resolved);
-    const shown = blocking.slice(0, 10);
-    let msg = `ui-craft-detect: ${blocking.length} design finding(s) in ${rel} — fix before finishing:\n`;
-    for (const f of shown) {
-      msg += `  - L${f.line} [${f.severity}] ${f.description} — fix: ${f.fix}\n`;
+    const msg = findingsSummary(resolved, blocking);
+    if (isPreToolUse) {
+      replyPreToolUse("deny", { agent_message: msg, user_message: msg });
     }
-    if (blocking.length > shown.length) {
-      msg += `  …and ${blocking.length - shown.length} more (run \`npx ui-craft-detect ${rel}\` for the full list)\n`;
-    }
-    msg += `False positive? Suppress with a  // ui-craft-detect-ignore-rule: <rule-id>  comment on the flagged line.\n`;
     process.stderr.write(msg);
     process.exit(2);
   } catch (err) {
     process.stderr.write(`ui-craft-detect hook-run: internal error (${err.message}); skipping\n`);
+    if (isPreToolUse) replyPreToolUse("allow");
     process.exit(0);
   }
 }

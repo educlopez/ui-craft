@@ -1,0 +1,7 @@
+---
+description: Apply the UI Craft anti-slop and craft tests when editing UI.
+alwaysApply: true
+globs: "**/*.{css,scss,sass,html,jsx,tsx,vue,svelte,astro}"
+---
+
+Follow `skills/ui-craft/SKILL.md`. That file is the source of truth for the Anti-Slop Test, the Craft Test, discovery, knobs, and routing. Do not invent a parallel rule set here.
