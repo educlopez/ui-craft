@@ -3,7 +3,7 @@
  * ui-craft MCP server
  * Deterministic design-quality gate: 4 tools, stdio transport.
  *
- * SDK: @modelcontextprotocol/sdk v1.30.0
+ * SDK: @modelcontextprotocol/sdk v1.32.1
  * API: McpServer.registerTool() + StdioServerTransport
  *
  * Tools:
