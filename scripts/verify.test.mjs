@@ -128,6 +128,36 @@ test("inspectGoToolchain fails closed when go is missing from PATH", () => {
   assert.match(result.message, /was not found on PATH/)
 })
 
+test("inspectGoToolchain reports spawn errors other than ENOENT with their detail", () => {
+  const dir = mkdtempSync(join(tmpdir(), "verify-go-eacces-"))
+  writeFileSync(join(dir, "go"), "#!/bin/sh\necho should-not-run\n", { mode: 0o644 })
+  const result = inspectGoToolchain({
+    required: parseGoDirective("go 1.23"),
+    env: { ...process.env, PATH: dir },
+  })
+  assert.equal(result.ok, false)
+  assert.doesNotMatch(result.message, /was not found on PATH/)
+  assert.match(result.message, /Unable to start `go`/)
+  assert.match(result.message, /EACCES|EPERM/)
+})
+
+test("inspectGoToolchain rejects a parseable go version that exited nonzero", () => {
+  const dir = mkdtempSync(join(tmpdir(), "verify-go-nonzero-"))
+  writeFileSync(
+    join(dir, "go"),
+    "#!/bin/sh\necho 'go version go1.23.12 linux/amd64'\nexit 7\n",
+    { mode: 0o755 },
+  )
+  const result = inspectGoToolchain({
+    required: parseGoDirective("go 1.23"),
+    env: { ...process.env, PATH: dir },
+  })
+  assert.equal(result.ok, false)
+  assert.match(result.message, /exited 7/)
+  assert.match(result.message, /go1\.23\.12/)
+  assert.doesNotMatch(result.message, /was not found on PATH/)
+})
+
 function spawnVerify(args, pathPrefix) {
   return spawnSync(
     process.execPath,
@@ -163,6 +193,19 @@ test("verify fails before Go suites when PATH has Go 1.22", () => {
   assert.match(result.stderr, /Go 1\.22\.2 is on PATH/)
   assert.match(result.stderr, /cli\/go\.mod requires Go >= 1\.23/)
   assert.match(result.stderr, /\.cursor\/install\.sh/)
+  assert.doesNotMatch(result.stdout + result.stderr, /Go vet/)
+})
+
+test("verify fails before Go suites when go version exits nonzero", () => {
+  const dir = mkdtempSync(join(tmpdir(), "verify-go-fail-"))
+  writeFileSync(
+    join(dir, "go"),
+    "#!/bin/sh\necho 'go version go1.23.12 linux/amd64'\nexit 7\n",
+    { mode: 0o755 },
+  )
+  const result = spawnVerify(["--suite=go-vet"], dir)
+  assert.equal(result.status, 2)
+  assert.match(result.stderr, /exited 7/)
   assert.doesNotMatch(result.stdout + result.stderr, /Go vet/)
 })
 

@@ -165,16 +165,33 @@ export function compareGoVersions(a, b) {
   return a.major - b.major || a.minor - b.minor || a.patch - b.patch
 }
 
-export function formatGoToolchainError({ required, installed, missing, unparseable }) {
+export function formatGoToolchainError({
+  required,
+  installed,
+  missing,
+  unparseable,
+  startup,
+  commandFailed,
+}) {
   const need = `Go >= ${required.label}`
-  const lines = missing
-    ? [`\`go\` was not found on PATH; ${GO_MOD_REL} requires ${need}.`]
-    : unparseable != null
-      ? [
-          `Could not parse \`go version\` output; ${GO_MOD_REL} requires ${need}.`,
-          `Output: ${unparseable || "(empty)"}`,
-        ]
-      : [`Go ${installed.label} is on PATH; ${GO_MOD_REL} requires ${need}.`]
+  let lines
+  if (missing) {
+    lines = [`\`go\` was not found on PATH; ${GO_MOD_REL} requires ${need}.`]
+  } else if (startup) {
+    lines = [`Unable to start \`go\`: ${startup}`]
+  } else if (commandFailed != null) {
+    lines = [
+      `\`go version\` exited ${commandFailed.status}; ${GO_MOD_REL} requires ${need}.`,
+      `Output: ${commandFailed.output || "(empty)"}`,
+    ]
+  } else if (unparseable != null) {
+    lines = [
+      `Could not parse \`go version\` output; ${GO_MOD_REL} requires ${need}.`,
+      `Output: ${unparseable || "(empty)"}`,
+    ]
+  } else {
+    lines = [`Go ${installed.label} is on PATH; ${GO_MOD_REL} requires ${need}.`]
+  }
 
   lines.push(
     "",
@@ -199,11 +216,20 @@ export function inspectGoToolchain({
 } = {}) {
   const result = spawnSync("go", ["version"], { encoding: "utf8", env })
   if (result.error) {
-    return { ok: false, message: formatGoToolchainError({ required, missing: true }) }
+    if (result.error.code === "ENOENT") {
+      return { ok: false, message: formatGoToolchainError({ required, missing: true }) }
+    }
+    const detail = result.error.code
+      ? `${result.error.message} (${result.error.code})`
+      : result.error.message
+    return { ok: false, message: formatGoToolchainError({ required, startup: detail }) }
   }
   const output = `${result.stdout ?? ""}${result.stderr ?? ""}`.trim()
-  if (result.status !== 0 && !output) {
-    return { ok: false, message: formatGoToolchainError({ required, missing: true }) }
+  if (result.status !== 0) {
+    return {
+      ok: false,
+      message: formatGoToolchainError({ required, commandFailed: { status: result.status, output } }),
+    }
   }
   const installed = parseGoToolchainVersion(output)
   if (!installed) {
