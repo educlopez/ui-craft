@@ -33,9 +33,19 @@ if ! version_ge "$GO_VERSION" "$mod_line"; then
   exit 1
 fi
 
+# `set -euo pipefail` would abort on a broken `go version` (the pipeline
+# fails, the assignment fails, the script exits 1 with no message). Probe
+# inside `if` so a missing or failing toolchain is treated as "not installed".
 current=""
-if command -v go >/dev/null 2>&1; then
-  current="$(go version 2>/dev/null | sed -n 's/^go version go\([0-9.]*\).*/\1/p')"
+if ! command -v go >/dev/null 2>&1; then
+  echo "Go not found on PATH; installing ${GO_VERSION}"
+elif go_out="$(go version 2>&1)"; then
+  current="$(printf '%s\n' "$go_out" | sed -n 's/^go version go\([0-9.]*\).*/\1/p')"
+  if [[ -z "$current" ]]; then
+    echo "warning: could not parse \`go version\` output (${go_out}); installing ${GO_VERSION}" >&2
+  fi
+else
+  echo "warning: \`go version\` failed${go_out:+: ${go_out}}; installing ${GO_VERSION}" >&2
 fi
 
 if [[ -n "$current" ]] && version_ge "$current" "$mod_line"; then
