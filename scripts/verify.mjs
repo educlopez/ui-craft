@@ -1,10 +1,12 @@
 #!/usr/bin/env node
 
 import { spawnSync } from "node:child_process"
+import { readFileSync } from "node:fs"
 import { dirname, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..")
+export const GO_MOD_REL = "cli/go.mod"
 
 export const SUITES = Object.freeze([
   {
@@ -137,6 +139,82 @@ export const SUITES = Object.freeze([
   },
 ])
 
+export function suitesNeedGo(suites) {
+  return suites.some((suite) => suite.command === "go" || suite.command === "gofmt")
+}
+
+export function parseGoToolchainVersion(text) {
+  const match = String(text ?? "").match(/\bgo(\d+)\.(\d+)(?:\.(\d+))?\b/)
+  if (!match) return null
+  const patch = match[3] ? Number(match[3]) : 0
+  return {
+    major: Number(match[1]),
+    minor: Number(match[2]),
+    patch,
+    label: match[3] ? `${match[1]}.${match[2]}.${match[3]}` : `${match[1]}.${match[2]}`,
+  }
+}
+
+export function parseGoDirective(modSource) {
+  const match = String(modSource ?? "").match(/^go\s+(\d+)\.(\d+)(?:\.(\d+))?\s*(?:\/\/.*)?$/m)
+  if (!match) return null
+  return parseGoToolchainVersion(`go${match[1]}.${match[2]}${match[3] ? `.${match[3]}` : ""}`)
+}
+
+export function compareGoVersions(a, b) {
+  return a.major - b.major || a.minor - b.minor || a.patch - b.patch
+}
+
+export function formatGoToolchainError({ required, installed, missing, unparseable }) {
+  const need = `Go >= ${required.label}`
+  const lines = missing
+    ? [`\`go\` was not found on PATH; ${GO_MOD_REL} requires ${need}.`]
+    : unparseable != null
+      ? [
+          `Could not parse \`go version\` output; ${GO_MOD_REL} requires ${need}.`,
+          `Output: ${unparseable || "(empty)"}`,
+        ]
+      : [`Go ${installed.label} is on PATH; ${GO_MOD_REL} requires ${need}.`]
+
+  lines.push(
+    "",
+    `Install ${need} from https://go.dev/dl/ and put its bin directory first on PATH.`,
+    "A distro go under /usr/bin is often too old; the newer binary must win.",
+    "Cloud Agents: run `bash .cursor/install.sh` (the environment install step).",
+  )
+  return lines.join("\n")
+}
+
+export function requiredGoVersionFromMod(modSource = readFileSync(resolve(ROOT, GO_MOD_REL), "utf8")) {
+  const required = parseGoDirective(modSource)
+  if (!required) {
+    throw new Error(`Could not read a go directive from ${GO_MOD_REL}`)
+  }
+  return required
+}
+
+export function inspectGoToolchain({
+  required = requiredGoVersionFromMod(),
+  env = process.env,
+} = {}) {
+  const result = spawnSync("go", ["version"], { encoding: "utf8", env })
+  if (result.error) {
+    return { ok: false, message: formatGoToolchainError({ required, missing: true }) }
+  }
+  const output = `${result.stdout ?? ""}${result.stderr ?? ""}`.trim()
+  if (result.status !== 0 && !output) {
+    return { ok: false, message: formatGoToolchainError({ required, missing: true }) }
+  }
+  const installed = parseGoToolchainVersion(output)
+  if (!installed) {
+    return { ok: false, message: formatGoToolchainError({ required, unparseable: output }) }
+  }
+  if (compareGoVersions(installed, required) < 0) {
+    return { ok: false, message: formatGoToolchainError({ required, installed }) }
+  }
+  return { ok: true, installed, required }
+}
+
 export function runSuite(suite) {
   const result = spawnSync(suite.command, suite.args, {
     cwd: resolve(ROOT, suite.cwd ?? "."),
@@ -178,6 +256,18 @@ function main() {
     console.error(`Unknown suite(s): ${unknown.join(", ")}`)
     process.exitCode = 2
     return
+  }
+
+  // Distro Go 1.22 cannot build a go 1.23 module, and its toolchain download
+  // fails with "toolchain not available". Fail before any suite so the message
+  // is the first thing on the screen, not buried under go-test/go-vet noise.
+  if (suitesNeedGo(suites)) {
+    const toolchain = inspectGoToolchain()
+    if (!toolchain.ok) {
+      console.error(toolchain.message)
+      process.exitCode = 2
+      return
+    }
   }
 
   const failed = []
