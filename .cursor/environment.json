@@ -1,0 +1,4 @@
+{
+  "name": "ui-craft",
+  "install": "bash .cursor/install.sh"
+}

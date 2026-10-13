@@ -34,6 +34,7 @@ ui-craft/
 ├── evals/
 ├── .claude-plugin/
 ├── .cursor-plugin/                 # Cursor plugin manifest (points at skills/, commands/, agents/, rules/)
+├── .cursor/environment.json        # Cloud Agent bootstrap (installs Go 1.23+)
 ├── hooks/                          # Cursor plugin hooks (preToolUse → ui-craft-detect)
 ├── rules/                          # Cursor plugin .mdc rules (pointers to skills/, not copies)
 ├── .github/workflows/
@@ -152,7 +153,12 @@ After adding a command, also materialize it in harness-specific layouts:
 
 ### CLI changes (`cli/`)
 
-The Go installer requires **Go 1.23+**. From `cli/`:
+The Go installer requires **Go 1.23+** (`cli/go.mod`). `scripts/verify.mjs` checks the
+toolchain first and exits before the Go suites if PATH is below that floor. Cloud Agents
+run `.cursor/install.sh` from `.cursor/environment.json` so a stock image Go 1.22 is
+replaced with the pinned official tarball.
+
+From `cli/`:
 
 ```bash
 make test              # go test -race ./...
@@ -178,6 +184,7 @@ Before a CLI release, see `RELEASE_CHECKLIST.md` for steps CI cannot automate (n
 Before opening a PR:
 
 ```bash
+node scripts/verify.mjs                  # canonical gate (fails fast if Go < 1.23)
 node scripts/validate.mjs                # manifests + links
 node scripts/check-mirror-copies.mjs     # skills/commands ↔ harness mirrors
 node scripts/detect.mjs .                # self-scan — should be 0 findings
