@@ -89,6 +89,24 @@ function assertRan(t, r) {
   return true;
 }
 
+test('isBrowserUnavailable treats a DevTools-endpoint timeout as unavailable', () => {
+  assert.equal(
+    isBrowserUnavailable('browser did not report a DevTools endpoint in time'),
+    true,
+    'a browser that never exposes a DevTools endpoint is still undrivable',
+  );
+  assert.equal(
+    isBrowserUnavailable('evaluation failed in the page'),
+    false,
+    'an in-page failure is a real failure, not a skip',
+  );
+  assert.equal(
+    isBrowserUnavailable('could not load http://127.0.0.1:9/ — net::ERR_CONNECTION_REFUSED'),
+    false,
+    'a navigation failure is a real failure, not a skip',
+  );
+});
+
 /** Serve one HTML page on an ephemeral port for the duration of `body`. */
 async function withPage(html, body) {
   const http = await import('node:http');

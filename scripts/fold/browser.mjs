@@ -81,7 +81,11 @@ export function findBrowser(deps = {}) {
  */
 export function isBrowserUnavailable(message) {
   const m = String(message ?? '');
-  return /No Chrome-family browser found/.test(m) || /has no global WebSocket/.test(m);
+  return (
+    /No Chrome-family browser found/.test(m) ||
+    /has no global WebSocket/.test(m) ||
+    /did not report a DevTools endpoint in time/.test(m)
+  );
 }
 
 export function noBrowserMessage() {
