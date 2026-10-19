@@ -263,8 +263,8 @@ test('the payload is self-contained — nothing to resolve at injection time', (
   const file = path.join(os.tmpdir(), `fold-extractor-${process.pid}-${Date.now()}.js`);
   writeFileSync(file, src);
   try {
-    const checked = spawnSync('node', ['--check', file], { shell: false });
-    assert.equal(checked.status, 0);
+    const checked = spawnSync(process.execPath, ['--check', file], { encoding: 'utf8', shell: false });
+    assert.equal(checked.status, 0, checked.stderr);
   } finally {
     unlinkSync(file);
   }
