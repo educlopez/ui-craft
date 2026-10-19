@@ -24,11 +24,11 @@ test('fold_candidates leaks nothing derived from the seed', () => {
   // An earlier version reported an 8-hex FNV-1a of it, which reads as redaction and is not:
   // paths are guessable, so a candidate list plus the digest confirms which one it was. The
   // response now carries no function of the seed at all — only that one was used.
-  const secret = '/Users/someone/private/client-work';
-  const r = foldCandidates({ count: 3, seed: secret });
+  const seedPath = '/tmp/example-project/seed-dir';
+  const r = foldCandidates({ count: 3, seed: seedPath });
   const body = JSON.stringify(r);
-  assert.ok(!body.includes(secret), 'the raw seed must not appear');
-  for (const part of secret.split('/').filter(Boolean)) {
+  assert.ok(!body.includes(seedPath), 'the raw seed must not appear');
+  for (const part of seedPath.split('/').filter(Boolean)) {
     assert.ok(!body.includes(part), `no path component may appear (${part})`);
   }
   assert.equal(r.seeded_by, 'project');
