@@ -1,5 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert';
+import { spawnSync } from 'node:child_process';
+import { unlinkSync, writeFileSync } from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { summarise, evaluateFold, extract, foldExtractorSource, REFERENCE_RANGE, CORPUS_FINDING } from './analyze.mjs';
 import { drawClasses, classifyFold, CLASS_IDS } from './classes.mjs';
 import { findBrowser, noBrowserMessage } from './browser.mjs';
@@ -256,8 +260,14 @@ test('the payload is self-contained — nothing to resolve at injection time', (
   for (const forbidden of ['import ', 'require(', 'export ', 'module.exports']) {
     assert.ok(!src.includes(forbidden), `payload must not contain "${forbidden}"`);
   }
-  // Parses standalone: a content script or console paste would accept it.
-  assert.doesNotThrow(() => new Function(`return ${src.replace(/\)\(\)$/, ')')}`));
+  const file = path.join(os.tmpdir(), `fold-extractor-${process.pid}-${Date.now()}.js`);
+  writeFileSync(file, src);
+  try {
+    const checked = spawnSync('node', ['--check', file], { shell: false });
+    assert.equal(checked.status, 0);
+  } finally {
+    unlinkSync(file);
+  }
 });
 
 test('the browser is found among the ones people already have', () => {
