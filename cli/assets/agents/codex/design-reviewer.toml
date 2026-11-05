@@ -12,6 +12,8 @@ Adversarial design critique. Your job is to find what is wrong, not to fix it. Y
 
 ## On load — read these references in full before reviewing
 
+These paths are relative to your Codex config: `~/.codex/` (or `$CODEX_HOME`) for a global install, `.codex/` in the project for a project install.
+
 1. `skills/ui-craft/references/review.md` — systematic critique methodology, feedback hierarchy, anti-slop detection, Polish Pass
 2. `skills/ui-craft/SKILL.md` sections **The Anti-Slop Test** and **The Craft Test** — the critical/major/minor slop signals and what craft aims for
 3. `skills/ui-craft/references/heuristics.md` — Nielsen's 10 heuristics + Fitts/Hick/Doherty/Cleveland-McGill/Miller/Tesler, scoring rubric, impact framing

@@ -524,8 +524,11 @@ func TestCodexAgentRoles_parseAndRequiredFields(t *testing.T) {
 		claudeMD, _ := fs.ReadFile(claudeFS, name+".md")
 		parts := strings.SplitN(string(claudeMD), "\n---\n", 2)
 		wantBody := strings.TrimLeft(parts[1], "\n")
-		if doc["developer_instructions"] != wantBody {
+		if withoutPathNote(doc["developer_instructions"]) != withoutPathNote(wantBody) {
 			t.Errorf("%s: developer_instructions differs from the Claude agent body", name)
+		}
+		if !strings.Contains(doc["developer_instructions"], "relative to your Codex config: `~/.codex/`") {
+			t.Errorf("%s: missing the Codex skill-path note", name)
 		}
 	}
 }
@@ -549,13 +552,39 @@ func TestMarkdownAgents_sameBodyAsClaude(t *testing.T) {
 		}
 		return strings.TrimLeft(parts[1], "\n")
 	}
-	for _, h := range []string{"cursor", "gemini"} {
+	notes := map[string]string{
+		"cursor":   "relative to your Cursor config: `~/.cursor/`",
+		"gemini":   "relative to your Gemini CLI config: `~/.gemini/`",
+		"opencode": "relative to your OpenCode config: `~/.config/opencode/`",
+	}
+	for h, note := range notes {
 		for _, name := range []string{"a11y-auditor.md", "design-reviewer.md"} {
-			if body(t, assets.Agents(h), name) != body(t, assets.Agents("claude"), name) {
+			got := body(t, assets.Agents(h), name)
+			if withoutPathNote(got) != withoutPathNote(body(t, assets.Agents("claude"), name)) {
 				t.Errorf("%s/%s body differs from claude/%s", h, name, name)
+			}
+			if !strings.Contains(got, note) {
+				t.Errorf("%s/%s: missing its own skill-path note %q", h, name, note)
 			}
 		}
 	}
+}
+
+// withoutPathNote drops the one paragraph that legitimately differs between
+// harnesses: where the `skills/ui-craft/` paths resolve for that harness.
+func withoutPathNote(body string) string {
+	var keep []string
+	lines := strings.Split(body, "\n")
+	for i := 0; i < len(lines); i++ {
+		if strings.Contains(lines[i], "paths are relative to") {
+			if i+1 < len(lines) && lines[i+1] == "" {
+				i++
+			}
+			continue
+		}
+		keep = append(keep, lines[i])
+	}
+	return strings.Join(keep, "\n")
 }
 
 // A legacy SKILL.md with CRLF line endings (Windows editor, or a checkout with
