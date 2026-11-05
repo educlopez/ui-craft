@@ -177,6 +177,9 @@ func isOwnedSkillDir(w fsutil.FileSystem, dir, id string) bool {
 	if err != nil {
 		return false
 	}
+	// Normalize CRLF first: a SKILL.md saved by a Windows editor, or checked out with
+	// core.autocrlf, would otherwise never match and the legacy copy would survive.
+	data = bytes.ReplaceAll(data, []byte("\r\n"), []byte("\n"))
 	return bytes.Contains(data, []byte("\nname: "+id+"\n")) && bytes.Contains(data, []byte("ui-craft"))
 }
 

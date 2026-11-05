@@ -557,3 +557,23 @@ func TestMarkdownAgents_sameBodyAsClaude(t *testing.T) {
 		}
 	}
 }
+
+// A legacy SKILL.md with CRLF line endings (Windows editor, or a checkout with
+// core.autocrlf) must still be recognised as ui-craft's, or the old copy survives.
+func TestIsOwnedSkillDir_acceptsCRLF(t *testing.T) {
+	mem := fsutil.NewMemFS()
+	dir := filepath.Join(string(filepath.Separator)+"p", ".gemini", "audit")
+	if err := mem.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	body := "---\r\nname: audit\r\ndescription: ui-craft audit\r\n---\r\nbody\r\n"
+	if err := mem.WriteFile(filepath.Join(dir, "SKILL.md"), []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if !isOwnedSkillDir(mem, dir, "audit") {
+		t.Fatal("CRLF SKILL.md not recognised as ui-craft-owned")
+	}
+	if isOwnedSkillDir(mem, dir, "polish") {
+		t.Fatal("matched a different id")
+	}
+}
