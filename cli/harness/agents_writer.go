@@ -33,7 +33,9 @@ func writeAgentsToDir(w fsutil.FileSystem, agentsFS fs.FS, agentsDir, harnessNam
 			return nil
 		}
 		// Only write .md files; skip any scaffolding artifacts.
-		if filepath.Ext(d.Name()) != ".md" {
+		// .md for markdown agents (Claude, Cursor, Gemini, OpenCode);
+		// .toml for Codex agent roles.
+		if ext := filepath.Ext(d.Name()); ext != ".md" && ext != ".toml" {
 			return nil
 		}
 

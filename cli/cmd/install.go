@@ -430,6 +430,9 @@ For a project-scoped install, run "ui-craft" with no arguments and choose
 				if ch.FilePath == t.SnapPath && ch.MalformedBase && !flags.Quiet {
 					fmt.Fprintf(out, "  WARNING: %s was malformed JSON; original backed up before rewrite.\n", ch.FilePath)
 				}
+				if ch.FilePath == t.SnapPath && ch.Notice != "" && !flags.Quiet {
+					fmt.Fprintf(out, "  NOTE: %s\n", ch.Notice)
+				}
 			}
 			if !flags.Quiet {
 				fmt.Fprintf(out, "  %s/mcp-gates: %s\n", t.Harness.Name(), status)
@@ -469,14 +472,15 @@ For a project-scoped install, run "ui-craft" with no arguments and choose
 
 // detectNativeClaudePlugin returns true when a Claude Code native plugin install
 // for ui-craft is detected. It checks for the presence of the plugin manifest
-// directory that the npm-based plugin install creates (~/.claude/plugins/ui-craft/).
+// directory that the npm-based plugin install creates (<claude root>/plugins/ui-craft/,
+// where the root honours $CLAUDE_CONFIG_DIR).
 // This is a best-effort heuristic: false negatives are safe (no unnecessary blocking).
 func detectNativeClaudePlugin() bool {
-	home, err := os.UserHomeDir()
-	if err != nil {
+	root := harness.ClaudeHarness{}.ConfigRoot()
+	if root == "" {
 		return false
 	}
-	pluginDir := filepath.Join(home, ".claude", "plugins", "ui-craft")
+	pluginDir := filepath.Join(root, "plugins", "ui-craft")
 	if _, err := os.Stat(pluginDir); err == nil {
 		return true
 	}

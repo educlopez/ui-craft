@@ -3,7 +3,6 @@ package harness
 import (
 	"fmt"
 	"io/fs"
-	"os"
 	"path/filepath"
 
 	"github.com/educlopez/ui-craft/cli/component"
@@ -13,12 +12,21 @@ import (
 
 // CodexHarness is the adapter for OpenAI Codex CLI.
 //
+// Config root: $CODEX_HOME when set, else ~/.codex. Below, ~/.codex means
+// that root.
 // Detection: "codex" on PATH.
 // MCP config: ~/.codex/config.toml (global) or <projectRoot>/.codex/config.toml
 // (project-scoped, full parity with the other harnesses — see ConfigPathsFor).
 // Skills dir: ~/.codex/skills/ (plus managed block in project AGENTS.md — Slice 5).
-// Agents dir: (none — Codex has no native sub-agent format).
-// Supports:   SkillCommands, MCPGates, DesignMemory = true; ReviewAgents = false.
+//
+//	Codex also reads ~/.agents/skills, but Cursor, Gemini CLI and OpenCode
+//	read that directory too. Each harness ships its own skill flavour, so a
+//	shared dir would hand them duplicate, wrong-flavoured copies. Codex still
+//	loads $CODEX_HOME/skills (kept for backward compatibility), so we stay there.
+//
+// Agents dir: ~/.codex/agents/ or <projectRoot>/.codex/agents/ (<name>.toml
+// agent roles: name, description, developer_instructions, read-only sandbox).
+// Supports:   SkillCommands, MCPGates, ReviewAgents, DesignMemory (all true).
 type CodexHarness struct {
 	// projectRoot is set via WithProjectRoot so ConfigPaths() resolves to
 	// project-scoped paths. Empty (zero value) means global scope.
@@ -41,7 +49,10 @@ func (h CodexHarness) WithProjectRoot(projectRoot string) Harness {
 func (h CodexHarness) ConfigRoot() string { return h.configRoot() }
 
 func (h CodexHarness) configRoot() string {
-	home, _ := os.UserHomeDir()
+	if dir := envDir("CODEX_HOME"); dir != "" {
+		return dir
+	}
+	home := homeDir()
 	if home == "" {
 		return ""
 	}
@@ -106,27 +117,28 @@ func (h CodexHarness) ConfigPathsFor(projectRoot string) ConfigPaths {
 		return ConfigPaths{
 			MCPConfig:    filepath.Join(projectRoot, ".codex", "config.toml"),
 			SkillsDir:    filepath.Join(projectRoot, ".codex", "skills"),
-			AgentsDir:    "", // Codex has no sub-agent directory.
+			AgentsDir:    filepath.Join(projectRoot, ".codex", "agents"),
 			AgentsMDPath: h.agentsMDPath(projectRoot),
 			ProjectRoot:  projectRoot,
 		}
 	}
 	root := h.configRoot()
+	if root == "" {
+		return ConfigPaths{}
+	}
 	return ConfigPaths{
 		MCPConfig:    filepath.Join(root, "config.toml"),
 		SkillsDir:    filepath.Join(root, "skills"),
-		AgentsDir:    "", // Codex has no sub-agent directory.
+		AgentsDir:    filepath.Join(root, "agents"),
 		AgentsMDPath: h.agentsMDPath(""),
 	}
 }
 
-// Supports reports capability support. Codex does NOT support ReviewAgents.
+// Supports reports capability support.
 func (h CodexHarness) Supports(c component.Component) bool {
 	switch c {
-	case component.SkillCommands, component.MCPGates, component.DesignMemory:
+	case component.SkillCommands, component.MCPGates, component.ReviewAgents, component.DesignMemory:
 		return true
-	case component.ReviewAgents:
-		return false
 	default:
 		return false
 	}
@@ -247,12 +259,14 @@ func (h CodexHarness) WriteSkill(w fsutil.FileSystem, mirror fs.FS) (Change, err
 	return ch, nil
 }
 
-// WriteAgents returns ErrUnsupported. Codex has no native sub-agent format;
-// core.Plan maps this to a graceful skip notice (exit code 0). Supports(ReviewAgents)
-// returns false, so this method is not called in normal install flows — it is
-// present only to satisfy the Harness interface.
-func (h CodexHarness) WriteAgents(_ fsutil.FileSystem, _ fs.FS) ([]Change, error) {
-	return nil, ErrUnsupported
+// WriteAgents writes the Codex agent roles (assets/agents/codex/*.toml) into
+// $CODEX_HOME/agents/ or <project>/.codex/agents/, the per-config-layer
+// agents folder Codex loads roles from. A nil agentsFS returns ErrUnsupported.
+func (h CodexHarness) WriteAgents(w fsutil.FileSystem, agentsFS fs.FS) ([]Change, error) {
+	if agentsFS == nil {
+		return nil, ErrUnsupported
+	}
+	return writeAgentsToDir(w, agentsFS, h.ConfigPaths().AgentsDir, "codex")
 }
 
 // WriteCommands returns ErrUnsupported. Codex has no native slash-command

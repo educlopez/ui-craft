@@ -102,15 +102,20 @@ func TestApplyProject_allHarnesses_realFS(t *testing.T) {
 		filepath.Join(projectRoot, ".codex", "skills", "ui-craft", "SKILL.md"),
 		filepath.Join(projectRoot, "AGENTS.md"),
 		filepath.Join(projectRoot, ".codex", "config.toml"),
+		filepath.Join(projectRoot, ".codex", "agents", "design-reviewer.toml"),
 		// Cursor
-		filepath.Join(projectRoot, ".cursor", "rules", "ui-craft", "SKILL.md"),
+		filepath.Join(projectRoot, ".cursor", "skills", "ui-craft", "SKILL.md"),
+		filepath.Join(projectRoot, ".cursor", "agents", "design-reviewer.md"),
 		filepath.Join(projectRoot, ".cursor", "mcp.json"),
 		// Gemini
-		filepath.Join(projectRoot, ".gemini", "ui-craft", "SKILL.md"),
+		filepath.Join(projectRoot, ".gemini", "skills", "ui-craft", "SKILL.md"),
+		filepath.Join(projectRoot, ".gemini", "agents", "design-reviewer.md"),
 		filepath.Join(projectRoot, "GEMINI.md"),
 		filepath.Join(projectRoot, ".gemini", "settings.json"),
 		// OpenCode
-		filepath.Join(projectRoot, ".opencode", "skill", "ui-craft", "SKILL.md"),
+		filepath.Join(projectRoot, ".opencode", "skills", "ui-craft", "SKILL.md"),
+		filepath.Join(projectRoot, ".opencode", "agents", "design-reviewer.md"),
+		filepath.Join(projectRoot, ".opencode", "commands", "audit.md"),
 		filepath.Join(projectRoot, "opencode.json"),
 	}
 	for _, p := range wantPaths {

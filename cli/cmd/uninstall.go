@@ -14,6 +14,7 @@ package cmd
 
 import (
 	"fmt"
+	"io"
 	iofs "io/fs"
 	"os"
 	"path/filepath"
@@ -157,7 +158,11 @@ func runUninstall(cmd *cobra.Command, _ []string) error {
 	var snapTargets []backup.SnapshotTarget
 	for _, h := range targetHarnesses {
 		paths := h.ConfigPaths()
-		for _, p := range []string{paths.MCPConfig, paths.SkillsDir, paths.AgentsDir, paths.AgentsMDPath} {
+		snapPaths := []string{paths.MCPConfig, paths.SkillsDir, paths.AgentsDir, paths.CommandsDir, paths.AgentsMDPath}
+		for _, comp := range uninstallableComponents {
+			snapPaths = append(snapPaths, harness.LegacyPaths(h, comp, ownedAssets(h.Name()))...)
+		}
+		for _, p := range snapPaths {
 			if p == "" {
 				continue
 			}
@@ -199,6 +204,7 @@ func runUninstall(cmd *cobra.Command, _ []string) error {
 				if err := removeMCP(fs, out, hName, h, paths); err != nil {
 					fmt.Fprintf(out, "  %s/mcp-gates: error: %v\n", hName, err)
 				}
+				cleanupLegacy(fs, out, h, component.MCPGates)
 
 			case component.SkillCommands:
 				if paths.SkillsDir == "" || !filepath.IsAbs(paths.SkillsDir) {
@@ -233,6 +239,7 @@ func runUninstall(cmd *cobra.Command, _ []string) error {
 						}
 					}
 				}
+				cleanupLegacy(fs, out, h, component.SkillCommands)
 				// For Codex: also remove the managed block from AGENTS.md
 				if hName == "codex" && paths.AgentsMDPath != "" {
 					if err := removeAgentsMDBlock(fs, paths.AgentsMDPath); err != nil {
@@ -247,6 +254,7 @@ func runUninstall(cmd *cobra.Command, _ []string) error {
 					fmt.Fprintf(out, "  %s/review-agents: skipped (not supported by this harness)\n", hName)
 					continue
 				}
+				cleanupLegacy(fs, out, h, component.ReviewAgents)
 				if paths.AgentsDir == "" {
 					continue
 				}
@@ -352,61 +360,51 @@ func runUninstall(cmd *cobra.Command, _ []string) error {
 	return nil
 }
 
-// removeMCP removes only the ui-craft server entry from the harness's MCP config
-// while preserving all other servers.
-func removeMCP(fs fsutil.FileSystem, out interface{ Write([]byte) (int, error) }, hName string, h harness.Harness, paths harness.ConfigPaths) error {
-	target := paths.MCPConfig
-	if target == "" {
+// removeMCP removes only the ui-craft server entry from the harness's MCP
+// config while preserving all other servers and keys. It never deletes the
+// config file: every one of them is shared (~/.claude.json, .mcp.json,
+// mcp.json, settings.json, opencode.json(c), config.toml).
+func removeMCP(fs fsutil.FileSystem, out io.Writer, hName string, h harness.Harness, paths harness.ConfigPaths) error {
+	if paths.MCPConfig == "" {
 		return nil
 	}
-
-	existing, err := fs.ReadFile(target)
+	ch, err := harness.RemoveMCP(fs, h, "ui-craft")
 	if err != nil {
-		// File doesn't exist — nothing to remove.
-		fmt.Fprintf(out, "  %s/mcp-gates: no MCP config found at %s\n", hName, target)
-		return nil
+		return err
 	}
-
-	var updated []byte
-	switch h.Name() {
-	case "claude":
-		// Claude uses a separate file per server — just remove the whole file.
-		if err := fs.Remove(target); err != nil {
-			return fmt.Errorf("remove %s: %w", target, err)
-		}
-		fmt.Fprintf(out, "  %s/mcp-gates: removed %s\n", hName, target)
-		return nil
-
-	case "cursor", "gemini":
-		// JSON/JSONC — remove "mcpServers"."ui-craft".
-		result, err := filemerge.RemoveJSONKey(existing, "mcpServers", "ui-craft")
-		if err != nil {
-			return err
-		}
-		updated = result
-
-	case "opencode":
-		// JSONC — remove "mcp"."ui-craft".
-		result, err := filemerge.RemoveJSONKey(existing, "mcp", "ui-craft")
-		if err != nil {
-			return err
-		}
-		updated = result
-
-	case "codex":
-		// TOML — remove [mcp_servers.ui-craft] block.
-		content := string(existing)
-		content = filemerge.RemoveTOMLTable(content, "mcp_servers", "ui-craft")
-		updated = []byte(content)
-	}
-
-	if updated != nil {
-		if _, err := fsutil.WriteFileAtomic(fs, target, updated, 0o644); err != nil {
-			return fmt.Errorf("write %s: %w", target, err)
-		}
-		fmt.Fprintf(out, "  %s/mcp-gates: removed ui-craft server entry from %s\n", hName, target)
+	switch {
+	case ch.Notice != "":
+		fmt.Fprintf(out, "  %s/mcp-gates: manual action needed: %s\n", hName, ch.Notice)
+	case !ch.ExistedBefore:
+		fmt.Fprintf(out, "  %s/mcp-gates: no MCP config found at %s\n", hName, paths.MCPConfig)
+	case ch.Changed:
+		fmt.Fprintf(out, "  %s/mcp-gates: removed ui-craft server entry from %s\n", hName, paths.MCPConfig)
+	default:
+		fmt.Fprintf(out, "  %s/mcp-gates: no ui-craft entry in %s\n", hName, paths.MCPConfig)
 	}
 	return nil
+}
+
+// ownedAssets returns the embedded trees that identify ui-craft's own files
+// for a harness (used by the legacy-location sweep).
+func ownedAssets(hName string) harness.OwnedAssets {
+	return harness.OwnedAssets{
+		Skills:   assets.SkillsFS(hName),
+		Commands: assets.CommandsFS(hName),
+		Agents:   assets.Agents(hName),
+	}
+}
+
+// cleanupLegacy sweeps the locations older ui-craft versions wrote for comp
+// and reports what it removed.
+func cleanupLegacy(fs fsutil.FileSystem, out io.Writer, h harness.Harness, comp component.Component) {
+	removed, err := harness.CleanupLegacy(fs, h, comp, ownedAssets(h.Name()), false)
+	if err != nil {
+		fmt.Fprintf(out, "  %s/%s: legacy cleanup error: %v\n", h.Name(), comp, err)
+	}
+	for _, p := range removed {
+		fmt.Fprintf(out, "  %s/%s: removed legacy %s\n", h.Name(), comp, p)
+	}
 }
 
 // removeAgentsMDBlock removes the ui-craft managed block from an AGENTS.md file,

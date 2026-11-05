@@ -124,9 +124,11 @@ var CheckCodexAgentsMD = checkCodexAgentsMD
 // MakeUninstallCmd exposes the uninstall command constructor for test use.
 func MakeUninstallCmd() *cobra.Command { return uninstallCmd }
 
-// RemoveJSONKeyForTest is a thin wrapper over filemerge.RemoveJSONKey for test use.
+// RemoveJSONKeyForTest wraps filemerge.RemoveOrderedJSONKey, the remover
+// uninstall uses for every JSON MCP config, for test use.
 func RemoveJSONKeyForTest(src []byte, parent, key string) ([]byte, error) {
-	return filemerge.RemoveJSONKey(src, parent, key)
+	out, _, err := filemerge.RemoveOrderedJSONKey(src, parent, key)
+	return out, err
 }
 
 // NewBackupStoreForTest constructs a backup.Store at the given root for tests.

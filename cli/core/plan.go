@@ -183,13 +183,30 @@ func Plan(detected []DetectedHarness, selected []component.Component, filesystem
 			switch c {
 			case component.MCPGates:
 				// Wire the concrete write op for MCPGates.
+				// Legacy locations older versions wrote (e.g. Claude's
+				// <root>/mcp/ui-craft.json) are swept after the write and are
+				// part of the snapshot, so rollback restores them too.
 				snapPath := configPathsFor(h).MCPConfig
 				hh := h
 				w := filesystem
 				srv := mcpServer
 				target.SnapPath = snapPath
+				if legacy := harness.LegacyPaths(h, component.MCPGates, harness.OwnedAssets{}); len(legacy) > 0 {
+					target.SnapPaths = append([]string{snapPath}, legacy...)
+				}
 				target.Op = func() (harness.Change, error) {
-					return hh.WriteMCP(w, srv)
+					ch, err := hh.WriteMCP(w, srv)
+					if err != nil {
+						return ch, err
+					}
+					removed, err := harness.CleanupLegacy(w, hh, component.MCPGates, harness.OwnedAssets{}, false)
+					if err != nil {
+						return ch, err
+					}
+					if len(removed) > 0 {
+						ch.Changed = true
+					}
+					return ch, nil
 				}
 
 			case component.SkillCommands:
@@ -231,6 +248,8 @@ func Plan(detected []DetectedHarness, selected []component.Component, filesystem
 				if commandsFS != nil && paths.CommandsDir != "" {
 					snapPaths = append(snapPaths, paths.CommandsDir)
 				}
+				owned := harness.OwnedAssets{Skills: mirror, Commands: commandsFS}
+				snapPaths = append(snapPaths, harness.LegacyPaths(h, component.SkillCommands, owned)...)
 				target.SnapPaths = snapPaths
 				target.SnapPath = skillsDir // keep for legacy callers that read SnapPath
 				cFS := commandsFS           // capture for closure
@@ -253,6 +272,13 @@ func Plan(detected []DetectedHarness, selected []component.Component, filesystem
 								break
 							}
 						}
+					}
+					removed, err := harness.CleanupLegacy(w, hh, component.SkillCommands, owned, false)
+					if err != nil {
+						return ch, err
+					}
+					if len(removed) > 0 {
+						ch.Changed = true
 					}
 					return ch, nil
 				}
@@ -339,15 +365,20 @@ func Plan(detected []DetectedHarness, selected []component.Component, filesystem
 				// agent files we created, leaving the user's other agents intact.
 				// SnapPaths supersedes SnapPath; the deprecated SnapPath field is
 				// intentionally omitted here (see SnapPath deprecation notice).
-				target.SnapPaths = []string{agentsDir}
 				aFS := agentsFS
+				ownedAgents := harness.OwnedAssets{Agents: aFS}
+				target.SnapPaths = append([]string{agentsDir}, harness.LegacyPaths(h, component.ReviewAgents, ownedAgents)...)
 				target.Op = func() (harness.Change, error) {
 					changes, err := hh.WriteAgents(w, aFS)
 					if err != nil {
 						return harness.Change{}, err
 					}
+					removed, err := harness.CleanupLegacy(w, hh, component.ReviewAgents, ownedAgents, false)
+					if err != nil {
+						return harness.Change{}, err
+					}
 					// Aggregate: Changed if any agent file changed or was created.
-					anyChanged := false
+					anyChanged := len(removed) > 0
 					for _, ch := range changes {
 						if ch.Changed {
 							anyChanged = true
