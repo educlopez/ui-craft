@@ -15,7 +15,7 @@ import (
 	"github.com/educlopez/ui-craft/cli/fsutil"
 )
 
-var testServer = MCPServer{Name: "ui-craft", Command: "npx", Args: []string{"-y", "ui-craft-mcp@1.0.0"}}
+var testServer = MCPServer{Name: "ui-craft", Command: "npx", Args: []string{"-y", "ui-craft-mcp@0.9.0"}}
 
 func write(t *testing.T, mem *fsutil.MemFS, p, content string) {
 	t.Helper()
@@ -100,7 +100,7 @@ func TestClaudeWriteMCP_globalPreservesOtherKeysAndOrder(t *testing.T) {
       "command": "npx",
       "args": [
         "-y",
-        "ui-craft-mcp@1.0.0"
+        "ui-craft-mcp@0.9.0"
       ]
     }
   },`, 1)
@@ -201,7 +201,7 @@ func TestClaudeWriteMCP_projectAbsentCreatesWrappedFile(t *testing.T) {
 	if _, err := h.WriteMCP(mem, testServer); err != nil {
 		t.Fatal(err)
 	}
-	want := "{\n  \"mcpServers\": {\n    \"ui-craft\": {\n      \"command\": \"npx\",\n      \"args\": [\n        \"-y\",\n        \"ui-craft-mcp@1.0.0\"\n      ]\n    }\n  }\n}\n"
+	want := "{\n  \"mcpServers\": {\n    \"ui-craft\": {\n      \"command\": \"npx\",\n      \"args\": [\n        \"-y\",\n        \"ui-craft-mcp@0.9.0\"\n      ]\n    }\n  }\n}\n"
 	if got := read(t, mem, filepath.Join(project, ".mcp.json")); got != want {
 		t.Errorf(".mcp.json:\n%s\nwant:\n%s", got, want)
 	}

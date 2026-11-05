@@ -9,7 +9,7 @@ import (
 var uiCraftEntry = struct {
 	Command string   `json:"command"`
 	Args    []string `json:"args"`
-}{"npx", []string{"-y", "ui-craft-mcp@1.0.0"}}
+}{"npx", []string{"-y", "ui-craft-mcp@0.9.0"}}
 
 // A ~/.claude.json-like file: keys in non-alphabetical order, nested state,
 // an HTML-ish string and a big number that a map round-trip would mangle.
@@ -58,7 +58,7 @@ func TestUpsertOrderedJSONKey_preservesEverythingElse(t *testing.T) {
       "command": "npx",
       "args": [
         "-y",
-        "ui-craft-mcp@1.0.0"
+        "ui-craft-mcp@0.9.0"
       ]
     }
   },`, 1)
