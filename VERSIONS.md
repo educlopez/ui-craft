@@ -60,6 +60,22 @@ Tables get the rule the detector already enforced and the skill never taught: wr
 
 `route_task` also indexes tables by `overflow-x` and `sticky-header`, so asking about either reaches `dashboard.md`.
 
+## v1.0.21 (2026-11-05) — Installed where each tool actually looks
+
+Three installs were landing in places their harness never reads. On Claude Code the MCP server went to `~/.claude/mcp/ui-craft.json`, a path Claude Code does not load, so the quality gates were never there; in a project, `.mcp.json` was written without its `mcpServers` wrapper and replaced whole, and uninstall deleted it. Cursor project skills went into `.cursor/rules`, where Cursor only reads `.mdc` rules. Gemini project skills went into `.gemini/<id>` instead of `.gemini/skills/<id>`.
+
+Every path was checked against the harness itself on 2026-11-05: source code for Codex, Gemini CLI and OpenCode, official docs for Claude Code and Cursor. Claude's MCP entry now merges into `~/.claude.json` and `.mcp.json` under `mcpServers`, keeping every other key in its original order, the file's permissions, and a symlink if the file is one; a `~/.claude.json` that does not parse stops the install untouched. On Windows, Claude's root is `%USERPROFILE%\.claude` (`%APPDATA%\Claude` is Claude Desktop's) and OpenCode's is `~/.config/opencode`, the XDG path OpenCode uses on every OS. `CLAUDE_CONFIG_DIR`, `CODEX_HOME`, `GEMINI_CLI_HOME`, `OPENCODE_CONFIG_DIR` and `XDG_CONFIG_HOME` are honoured. OpenCode moves to its plural `skills/`, `agents/`, `commands/` folders and writes into `opencode.jsonc` when that is the only config; a commented one is left alone, the CLI prints the entry to add (also in `--json` and the TUI), and the server is not recorded as installed.
+
+The two review agents, `design-reviewer` and `a11y-auditor`, now install on every harness, each in its native read-only form: Codex `agents/*.toml` with `sandbox_mode = "read-only"`, Cursor `agents/*.md` with `readonly: true`, Gemini `agents/*.md` limited to read, grep, glob and list tools. Each agent names where its harness keeps the skill it reads on load, and a test keeps the rest of their instructions identical to the Claude ones.
+
+Older installs migrate on their own. Install and uninstall remove what earlier versions left at the old paths, and only what is provably ui-craft's: a skill file must be one ui-craft ships, in a folder whose `SKILL.md` names our id, so files you added survive; the MCP entry is removed by key, and shared config files are never deleted. Everything swept goes into the rollback snapshot.
+
+Two things stay as they were, on purpose. Codex skills remain in `$CODEX_HOME/skills`: Codex marks it deprecated but still loads it, and the newer `~/.agents/skills` is also read by Cursor, Gemini and OpenCode, which would then see a second, Codex-flavoured copy of every skill. Cursor and Gemini get no command files, because commands already install there as skills.
+
+The Homebrew cask now uses `postflight_steps`, so `brew upgrade` stops warning that `postflight` is deprecated.
+
+Honest limits. Windows behaviour is covered by the Windows CI suite and a simulated platform, not by an install on a real Windows machine. Rollback cannot restore files when `CLAUDE_CONFIG_DIR`, `CODEX_HOME` or a similar variable points outside your home folder; install says so before writing.
+
 ## v1.0.20 (2026-08-19) — The second question a review can ask
 
 Every gate this skill has shipped answers one question: *is this designed*. Anti-slop rules, token discipline, the fold draw, the acceptance bar. Nothing answered the other one — *does this screen have the parts screens of its kind need* — and only three surfaces had a parts list at all, because only three have an outcome recipe. Settings, data tables, search, detail views, first-run states, billing, pricing, docs pages, checkout, onboarding, destructive confirms and invite flows had none.
