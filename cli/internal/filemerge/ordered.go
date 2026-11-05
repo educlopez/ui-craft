@@ -115,6 +115,30 @@ func indexOf(members []member, key string) int {
 	return -1
 }
 
+// lastIndexOf returns the index of the last member named key, or -1. A JSON
+// object with a duplicate key resolves to its last occurrence in
+// encoding/json and JSON.parse alike, so that is the one a harness reads.
+func lastIndexOf(members []member, key string) int {
+	for i := len(members) - 1; i >= 0; i-- {
+		if members[i].key == key {
+			return i
+		}
+	}
+	return -1
+}
+
+// withoutKey returns members minus every member named key, and how many it
+// dropped.
+func withoutKey(members []member, key string) ([]member, int) {
+	kept := make([]member, 0, len(members))
+	for _, m := range members {
+		if m.key != key {
+			kept = append(kept, m)
+		}
+	}
+	return kept, len(members) - len(kept)
+}
+
 // equalJSON reports whether two raw JSON values are equal once insignificant
 // whitespace is removed.
 func equalJSON(a, b []byte) bool {
@@ -131,6 +155,10 @@ func equalJSON(a, b []byte) bool {
 //
 //   - every other key, at every level, keeps its value bytes and its position;
 //   - an existing entry for key is replaced in place, a new one is appended;
+//     when the parent holds key more than once, the first occurrence takes
+//     the value and the later duplicates are dropped;
+//   - a duplicated parentKey is resolved like a JSON parser does: the last
+//     occurrence is the one edited;
 //   - a missing parentKey object is appended to the root;
 //   - src that is not a single JSON object, or a parentKey that holds a
 //     non-object, returns ErrNotJSONObject and no bytes: never a partial write.
@@ -147,7 +175,7 @@ func UpsertOrderedJSONKey(src []byte, parentKey, key string, value any) (out []b
 		return nil, false, fmt.Errorf("filemerge: marshal value: %w", err)
 	}
 
-	pi := indexOf(root, parentKey)
+	pi := lastIndexOf(root, parentKey)
 	var parent []member
 	if pi >= 0 {
 		parent, err = decodeOrderedObject(root[pi].raw)
@@ -157,10 +185,18 @@ func UpsertOrderedJSONKey(src []byte, parentKey, key string, value any) (out []b
 	}
 
 	if ki := indexOf(parent, key); ki >= 0 {
-		if equalJSON(parent[ki].raw, valueRaw) {
+		dups := 0
+		for _, m := range parent[ki+1:] {
+			if m.key == key {
+				dups++
+			}
+		}
+		if dups == 0 && equalJSON(parent[ki].raw, valueRaw) {
 			return src, false, nil
 		}
-		parent[ki].raw = valueRaw
+		head := append(parent[:ki:ki], member{key: key, raw: valueRaw})
+		tail, _ := withoutKey(parent[ki+1:], key)
+		parent = append(head, tail...)
 	} else {
 		parent = append(parent, member{key: key, raw: valueRaw})
 	}
@@ -187,7 +223,8 @@ func UpsertOrderedJSONKey(src []byte, parentKey, key string, value any) (out []b
 
 // RemoveOrderedJSONKey deletes root[parentKey][key] (or root[key] when
 // parentKey is empty) and returns the new bytes, preserving the order and
-// bytes of everything else. The parent object is kept even when it becomes
+// bytes of everything else. Every occurrence goes: each duplicate of key, in
+// each duplicate of parentKey. The parent object is kept even when it becomes
 // empty. removed is false (and src is returned untouched) when the key is
 // absent. Invalid JSON returns ErrNotJSONObject: the caller must not write.
 func RemoveOrderedJSONKey(src []byte, parentKey, key string) (out []byte, removed bool, err error) {
@@ -196,31 +233,34 @@ func RemoveOrderedJSONKey(src []byte, parentKey, key string) (out []byte, remove
 		return nil, false, err
 	}
 	if parentKey == "" {
-		ki := indexOf(root, key)
-		if ki < 0 {
+		var n int
+		if root, n = withoutKey(root, key); n == 0 {
 			return src, false, nil
 		}
-		root = append(root[:ki], root[ki+1:]...)
 	} else {
-		pi := indexOf(root, parentKey)
-		if pi < 0 {
+		total := 0
+		for pi := range root {
+			if root[pi].key != parentKey {
+				continue
+			}
+			parent, perr := decodeOrderedObject(root[pi].raw)
+			if perr != nil {
+				continue // not an object: our key cannot be inside it
+			}
+			parent, n := withoutKey(parent, key)
+			if n == 0 {
+				continue
+			}
+			total += n
+			parentRaw, err := encodeOrderedObject(parent)
+			if err != nil {
+				return nil, false, err
+			}
+			root[pi].raw = parentRaw
+		}
+		if total == 0 {
 			return src, false, nil
 		}
-		parent, perr := decodeOrderedObject(root[pi].raw)
-		if perr != nil {
-			// Not an object: our key cannot be inside it.
-			return src, false, nil
-		}
-		ki := indexOf(parent, key)
-		if ki < 0 {
-			return src, false, nil
-		}
-		parent = append(parent[:ki], parent[ki+1:]...)
-		parentRaw, err := encodeOrderedObject(parent)
-		if err != nil {
-			return nil, false, err
-		}
-		root[pi].raw = parentRaw
 	}
 	compact, err := encodeOrderedObject(root)
 	if err != nil {
@@ -235,13 +275,15 @@ func RemoveOrderedJSONKey(src []byte, parentKey, key string) (out []byte, remove
 
 // LookupOrderedJSONKey returns the raw bytes of root[parentKey][key] (or
 // root[key] when parentKey is empty), or nil when absent or src is invalid.
+// Duplicate keys resolve to their last occurrence, as a JSON parser reads
+// them.
 func LookupOrderedJSONKey(src []byte, parentKey, key string) json.RawMessage {
 	root, err := decodeOrderedObject(src)
 	if err != nil {
 		return nil
 	}
 	if parentKey != "" {
-		pi := indexOf(root, parentKey)
+		pi := lastIndexOf(root, parentKey)
 		if pi < 0 {
 			return nil
 		}
@@ -249,7 +291,7 @@ func LookupOrderedJSONKey(src []byte, parentKey, key string) json.RawMessage {
 			return nil
 		}
 	}
-	if ki := indexOf(root, key); ki >= 0 {
+	if ki := lastIndexOf(root, key); ki >= 0 {
 		return root[ki].raw
 	}
 	return nil

@@ -174,3 +174,83 @@ func TestRemoveOrderedJSONKey(t *testing.T) {
 		t.Errorf("invalid JSON: err = %v, want ErrNotJSONObject", err)
 	}
 }
+
+// A hand-edited config can hold the same key twice. JSON parsers keep the
+// last occurrence, so a helper that only touched the first one would report
+// success while the harness still read the stale entry.
+const dupJSON = `{
+  "mcpServers": {
+    "ui-craft": {
+      "command": "old-first"
+    },
+    "other": {
+      "command": "keep"
+    },
+    "ui-craft": {
+      "command": "old-second"
+    }
+  }
+}
+`
+
+func TestUpsertOrderedJSONKey_collapsesDuplicateKeys(t *testing.T) {
+	out, changed, err := UpsertOrderedJSONKey([]byte(dupJSON), "mcpServers", "ui-craft", uiCraftEntry)
+	if err != nil || !changed {
+		t.Fatalf("upsert: changed=%v err=%v", changed, err)
+	}
+	s := string(out)
+	if n := strings.Count(s, `"ui-craft"`); n != 1 {
+		t.Fatalf("want exactly one ui-craft entry, got %d:\n%s", n, s)
+	}
+	if strings.Contains(s, "old-") || !strings.Contains(s, "ui-craft-mcp@0.9.0") || !strings.Contains(s, `"keep"`) {
+		t.Fatalf("stale duplicate kept or neighbour lost:\n%s", s)
+	}
+	if strings.Index(s, `"ui-craft"`) > strings.Index(s, `"other"`) {
+		t.Fatalf("entry should stay at the first occurrence's position:\n%s", s)
+	}
+	// A second run sees one up-to-date entry and changes nothing.
+	again, changed, err := UpsertOrderedJSONKey(out, "mcpServers", "ui-craft", uiCraftEntry)
+	if err != nil || changed || string(again) != s {
+		t.Fatalf("second upsert should be a no-op: changed=%v err=%v", changed, err)
+	}
+}
+
+func TestUpsertOrderedJSONKey_duplicateWithEqualFirstStillChanges(t *testing.T) {
+	src := `{"mcpServers":{"ui-craft":{"command":"npx","args":["-y","ui-craft-mcp@0.9.0"]},"ui-craft":{"command":"stale"}}}`
+	out, changed, err := UpsertOrderedJSONKey([]byte(src), "mcpServers", "ui-craft", uiCraftEntry)
+	if err != nil || !changed {
+		t.Fatalf("a stale later duplicate must force a write: changed=%v err=%v", changed, err)
+	}
+	if strings.Contains(string(out), "stale") {
+		t.Fatalf("stale duplicate kept:\n%s", out)
+	}
+}
+
+func TestRemoveOrderedJSONKey_removesEveryDuplicate(t *testing.T) {
+	out, removed, err := RemoveOrderedJSONKey([]byte(dupJSON), "mcpServers", "ui-craft")
+	if err != nil || !removed {
+		t.Fatalf("remove: removed=%v err=%v", removed, err)
+	}
+	if strings.Contains(string(out), "ui-craft") || !strings.Contains(string(out), `"keep"`) {
+		t.Fatalf("duplicate survived or neighbour lost:\n%s", out)
+	}
+
+	top := `{"ui-craft":{"command":"a"},"x":1,"ui-craft":{"command":"b"}}`
+	out, removed, err = RemoveOrderedJSONKey([]byte(top), "", "ui-craft")
+	if err != nil || !removed || strings.Contains(string(out), "ui-craft") {
+		t.Fatalf("top-level duplicates: removed=%v err=%v out=%s", removed, err, out)
+	}
+
+	parents := `{"mcp":{"ui-craft":{"a":1}},"mcp":{"ui-craft":{"b":2},"y":true}}`
+	out, removed, err = RemoveOrderedJSONKey([]byte(parents), "mcp", "ui-craft")
+	if err != nil || !removed || strings.Contains(string(out), "ui-craft") || !strings.Contains(string(out), `"y"`) {
+		t.Fatalf("duplicate parents: removed=%v err=%v out=%s", removed, err, out)
+	}
+}
+
+func TestLookupOrderedJSONKey_readsLastDuplicate(t *testing.T) {
+	got := LookupOrderedJSONKey([]byte(dupJSON), "mcpServers", "ui-craft")
+	if !strings.Contains(string(got), "old-second") {
+		t.Fatalf("lookup should return the occurrence a parser keeps, got %s", got)
+	}
+}
