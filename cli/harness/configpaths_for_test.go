@@ -35,7 +35,7 @@ func TestConfigPathsFor_projectScoped(t *testing.T) {
 			want: ConfigPaths{
 				MCPConfig:    filepath.Join(projectRoot, ".codex", "config.toml"),
 				SkillsDir:    filepath.Join(projectRoot, ".codex", "skills"),
-				AgentsDir:    "",
+				AgentsDir:    filepath.Join(projectRoot, ".codex", "agents"),
 				AgentsMDPath: filepath.Join(projectRoot, "AGENTS.md"),
 				ProjectRoot:  projectRoot,
 			},
@@ -45,8 +45,8 @@ func TestConfigPathsFor_projectScoped(t *testing.T) {
 			harness: CursorHarness{},
 			want: ConfigPaths{
 				MCPConfig:   filepath.Join(projectRoot, ".cursor", "mcp.json"),
-				SkillsDir:   filepath.Join(projectRoot, ".cursor", "rules"),
-				AgentsDir:   "",
+				SkillsDir:   filepath.Join(projectRoot, ".cursor", "skills"),
+				AgentsDir:   filepath.Join(projectRoot, ".cursor", "agents"),
 				ProjectRoot: projectRoot,
 			},
 		},
@@ -55,8 +55,8 @@ func TestConfigPathsFor_projectScoped(t *testing.T) {
 			harness: GeminiHarness{},
 			want: ConfigPaths{
 				MCPConfig:    filepath.Join(projectRoot, ".gemini", "settings.json"),
-				SkillsDir:    filepath.Join(projectRoot, ".gemini"),
-				AgentsDir:    "",
+				SkillsDir:    filepath.Join(projectRoot, ".gemini", "skills"),
+				AgentsDir:    filepath.Join(projectRoot, ".gemini", "agents"),
 				AgentsMDPath: filepath.Join(projectRoot, "GEMINI.md"),
 				ProjectRoot:  projectRoot,
 			},
@@ -66,9 +66,9 @@ func TestConfigPathsFor_projectScoped(t *testing.T) {
 			harness: OpenCodeHarness{},
 			want: ConfigPaths{
 				MCPConfig:   filepath.Join(projectRoot, "opencode.json"),
-				SkillsDir:   filepath.Join(projectRoot, ".opencode", "skill"),
-				CommandsDir: filepath.Join(projectRoot, ".opencode", "command"),
-				AgentsDir:   filepath.Join(projectRoot, ".opencode", "agent"),
+				SkillsDir:   filepath.Join(projectRoot, ".opencode", "skills"),
+				CommandsDir: filepath.Join(projectRoot, ".opencode", "commands"),
+				AgentsDir:   filepath.Join(projectRoot, ".opencode", "agents"),
 				ProjectRoot: projectRoot,
 			},
 		},

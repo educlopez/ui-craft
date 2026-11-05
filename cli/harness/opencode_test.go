@@ -33,8 +33,8 @@ func TestOpenCodeWriteSkill_projectScope_noAGENTSMDWrite(t *testing.T) {
 		t.Errorf("expected Changed=true on first write")
 	}
 
-	// The skill mirror itself must land under the project-scoped .opencode/skill dir.
-	wantSkillsDir := filepath.Join(projectRoot, ".opencode", "skill")
+	// The skill mirror itself must land under the project-scoped .opencode/skills dir.
+	wantSkillsDir := filepath.Join(projectRoot, ".opencode", "skills")
 	if _, statErr := m.Stat(filepath.Join(wantSkillsDir, "ui-craft", "SKILL.md")); statErr != nil {
 		t.Errorf("expected skill mirror at %s, stat error: %v", wantSkillsDir, statErr)
 	}

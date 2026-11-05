@@ -1,0 +1,4 @@
+# Embedded assets ship byte-for-byte in the binary. Keep them LF on every
+# checkout (Windows runners default to core.autocrlf=true), so tests and local
+# Windows builds embed the same bytes the release build does.
+cli/assets/** text eol=lf

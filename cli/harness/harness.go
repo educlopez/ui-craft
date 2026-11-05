@@ -15,9 +15,10 @@ import (
 // slice and will be completed in later slices (4, 5, 8).
 var ErrNotImplemented = errors.New("not implemented in this slice")
 
-// ErrUnsupported is returned by WriteAgents for harnesses that have no native
-// sub-agent format (Cursor, Codex, Gemini). core.Plan maps this to a skip notice
-// so the exit code remains 0 (graceful-skip spec scenario).
+// ErrUnsupported is returned by a Write* method that has nothing to write for
+// a harness (for example WriteCommands on Cursor, Codex and Gemini, which get
+// commands as peer skills, or any writer handed a nil asset FS). core.Plan
+// maps this to a skip notice so the exit code remains 0.
 var ErrUnsupported = errors.New("component not supported by this harness")
 
 // DetectResult describes whether a harness is installed and where.
@@ -65,9 +66,9 @@ type ConfigPaths struct {
 type WriteStrategy int
 
 const (
-	// SeparateFiles writes a standalone JSON file per MCP server (Claude Code).
+	// SeparateFiles writes a standalone file per item (agent definitions).
 	SeparateFiles WriteStrategy = iota
-	// ConfigFile merges into a shared JSON config file (Cursor).
+	// ConfigFile merges into a shared JSON config file (Claude Code, Cursor).
 	ConfigFile
 	// MergeIntoSettings merges into the harness's main settings file (Gemini, OpenCode).
 	MergeIntoSettings
@@ -95,6 +96,10 @@ type Change struct {
 	// still applied and a clean file was written), and callers should warn the
 	// user that the original corrupt file was snapshotted before rewrite.
 	MalformedBase bool
+	// Notice is a user-facing message for a write that was deliberately
+	// skipped (for example a JSONC config ui-craft will not rewrite because it
+	// would lose the user's comments). Empty when there is nothing to report.
+	Notice string
 	// Strategy is the idempotency strategy that was applied.
 	Strategy WriteStrategy
 	// Component identifies which component produced this Change. Set by
@@ -145,17 +150,19 @@ type Harness interface {
 	// Project-local targets (cwd-rooted, per design #917's confirmed
 	// component/path map):
 	//   Claude:   <projectRoot>/.claude/{skills,commands,agents}, <projectRoot>/.mcp.json
-	//   Codex:    <projectRoot>/.codex/skills, <projectRoot>/AGENTS.md (managed block),
+	//   Codex:    <projectRoot>/.codex/{skills,agents}, <projectRoot>/AGENTS.md (managed block),
 	//             <projectRoot>/.codex/config.toml (full parity — Codex MCP is
 	//             project-scoped too, not global-only; OpenAI's Codex CLI docs
 	//             confirm project-local .codex/config.toml support for
 	//             "trusted projects", which is Codex's own trust/approval UX,
 	//             not something this installer implements)
-	//   Cursor:   <projectRoot>/.cursor/rules/*.mdc, <projectRoot>/.cursor/mcp.json
-	//   Gemini:   <projectRoot>/GEMINI.md (managed block, written by WriteSkill
-	//             via filemerge.UpsertManagedBlock — mirrors Codex's AGENTS.md
+	//   Cursor:   <projectRoot>/.cursor/{skills,agents}, <projectRoot>/.cursor/mcp.json
+	//   Gemini:   <projectRoot>/.gemini/{skills,agents}, <projectRoot>/GEMINI.md
+	//             (managed block, written by WriteSkill via
+	//             filemerge.UpsertManagedBlock — mirrors Codex's AGENTS.md
 	//             pattern), <projectRoot>/.gemini/settings.json
-	//   OpenCode: <projectRoot>/.opencode/{skill,command,agent}, <projectRoot>/opencode.json
+	//   OpenCode: <projectRoot>/.opencode/{skills,commands,agents},
+	//             <projectRoot>/opencode.json (or an existing opencode.jsonc)
 	//             — NO AGENTS.md write (design Q3: OpenCode's native project
 	//             mechanism IS its skills/commands/agent dirs)
 	ConfigPathsFor(projectRoot string) ConfigPaths
@@ -166,7 +173,7 @@ type Harness interface {
 
 	// ConfigRoot returns the absolute path to the harness's primary config
 	// directory (e.g. ~/.claude, ~/.cursor). Returns an empty string when the
-	// root cannot be determined (e.g. missing APPDATA on Windows, empty HOME).
+	// root cannot be determined (e.g. empty HOME).
 	// Callers should treat an empty string as "not available".
 	ConfigRoot() string
 
@@ -186,9 +193,9 @@ type Harness interface {
 	// WriteAgents writes review agent definitions into the harness's agent dir.
 	// agentsFS is the harness-specific sub-FS rooted at the agent definitions
 	// directory. Each
-	// .md file in the FS is written as a separate agent file.
-	// Harnesses without a native sub-agent format (Cursor, Codex, Gemini) return
-	// ErrUnsupported; core.Plan converts this to a graceful skip (exit code 0).
+	// .md (or, for Codex, .toml) file in the FS is written as a separate agent
+	// file. A nil agentsFS returns ErrUnsupported; core.Plan converts this to a
+	// graceful skip (exit code 0).
 	WriteAgents(w fsutil.FileSystem, agentsFS fs.FS) ([]Change, error)
 
 	// WriteCommands writes slash-command .md files flat into the harness's

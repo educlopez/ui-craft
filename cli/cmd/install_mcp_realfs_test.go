@@ -22,16 +22,18 @@ import (
 
 	"github.com/educlopez/ui-craft/cli/cmd"
 	"github.com/educlopez/ui-craft/cli/core"
+	"github.com/educlopez/ui-craft/cli/fsutil"
 	"github.com/educlopez/ui-craft/cli/harness"
 	"github.com/spf13/cobra"
 )
 
-// TestInstall_malformedMCPJSON_realFS_endToEnd verifies that when a real MCP
-// config file on disk contains invalid JSON, running `ui-craft install`
-// end-to-end (through installCmd.RunE, real fsutil.OsFS{}, real HOME) does
-// NOT crash or silently corrupt/truncate the file. It must fall back to the
-// same MalformedBase recovery semantics already unit-tested in filemerge and
-// harness, but proven here against a real file via the real command.
+// TestInstall_malformedMCPJSON_realFS_endToEnd verifies that when Claude
+// Code's ~/.claude.json on disk contains invalid JSON, running `ui-craft
+// install` end-to-end (through installCmd.RunE, real fsutil.OsFS{}, real
+// HOME) refuses to touch it: the install fails, everything is rolled back and
+// the file keeps its exact bytes. ~/.claude.json holds Claude Code's account
+// and per-project state, so the MalformedBase "replace with {}" recovery the
+// other harnesses use would destroy it.
 func TestInstall_malformedMCPJSON_realFS_endToEnd(t *testing.T) {
 	home := t.TempDir()
 	// os.UserHomeDir reads %USERPROFILE% on Windows and $HOME everywhere else, so
@@ -83,21 +85,22 @@ func TestInstall_malformedMCPJSON_realFS_endToEnd(t *testing.T) {
 	root.SetArgs([]string{"install"})
 
 	err := root.Execute()
-	if err != nil {
-		t.Fatalf("install must not error on a malformed MCP config, got: %v", err)
+	if err == nil {
+		t.Fatal("install must fail on a malformed ~/.claude.json, got nil error")
+	}
+	if !strings.Contains(err.Error(), "refusing to modify") || !strings.Contains(err.Error(), "rolled back") {
+		t.Errorf("error should say the file was refused and the install rolled back, got: %v", err)
 	}
 
-	// The file must still exist, be readable, and be VALID JSON afterward —
-	// not truncated/corrupted garbage. This is the MalformedBase fallback
-	// (falls back to {}, then merges ui-craft's own key in) already proven
-	// at the unit level; here we confirm it holds end-to-end on real disk.
 	data, err := os.ReadFile(mcpTarget)
 	if err != nil {
-		t.Fatalf("MCP config file missing after install: %v", err)
+		t.Fatalf("~/.claude.json missing after a refused install: %v", err)
 	}
-	var parsed map[string]any
-	if err := json.Unmarshal(data, &parsed); err != nil {
-		t.Fatalf("MCP config file is not valid JSON after install (corrupted): %v\ncontent: %s", err, data)
+	if !bytes.Equal(data, malformed) {
+		t.Errorf("~/.claude.json was modified:\n got: %s\nwant: %s", data, malformed)
+	}
+	if _, statErr := os.Stat(filepath.Join(home, ".claude", "skills", "ui-craft", "SKILL.md")); statErr == nil {
+		t.Error("skills were left behind: the failed install should have been rolled back")
 	}
 }
 
@@ -231,3 +234,172 @@ func TestInstallJSONStateWarningStaysOnStderr(t *testing.T) {
 type discardWriter struct{}
 
 func (discardWriter) Write(p []byte) (int, error) { return len(p), nil }
+
+// An OpenCode config with comments is left untouched and the user is told what to
+// add. That is not an install: --json must say "manual-action-needed" and carry
+// the notice, and state.json must not record mcp-gates (or `update` would treat a
+// server that is not configured as installed).
+func TestInstallJSON_commentedOpenCodeConfigIsManualAction(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
+	t.Setenv("APPDATA", filepath.Join(home, "AppData", "Roaming"))
+	t.Setenv("LOCALAPPDATA", filepath.Join(home, "AppData", "Local"))
+
+	cfgDir := filepath.Join(home, ".config", "opencode")
+	if err := os.MkdirAll(cfgDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	jsonc := []byte("{\n  // my servers\n  \"mcp\": {}\n}\n")
+	cfg := filepath.Join(cfgDir, "opencode.jsonc")
+	if err := os.WriteFile(cfg, jsonc, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// An earlier run recorded mcp-gates (and skill+commands) for OpenCode; the
+	// config was since replaced by a commented .jsonc without the entry.
+	prior := &core.InstallState{Harnesses: []core.HarnessState{{
+		Name:                "opencode",
+		InstalledComponents: []string{"skill+commands", "mcp-gates"},
+	}}}
+	if err := core.SaveState(fsutil.OsFS{}, filepath.Join(home, ".ui-craft"), prior); err != nil {
+		t.Fatal(err)
+	}
+
+	restoreDetect := cmd.SetDetectAllFn(func(reg []harness.Harness) []core.DetectedHarness {
+		for _, h := range reg {
+			if h.Name() == "opencode" {
+				return []core.DetectedHarness{{
+					Harness: h,
+					Result:  harness.DetectResult{Installed: true, ConfigRoot: h.ConfigRoot()},
+				}}
+			}
+		}
+		return nil
+	})
+	defer restoreDetect()
+
+	restoreFlags := cmd.SetInstallFlagsForTest(cmd.InstallFlagsForTest{
+		Harness:    "opencode",
+		Components: []string{"mcp-gates"},
+		Yes:        true,
+		Dir:        home,
+		JSON:       true,
+	})
+	defer restoreFlags()
+
+	var out, errOut bytes.Buffer
+	root := &cobra.Command{Use: "ui-craft", SilenceUsage: true}
+	root.AddCommand(cmd.MakeInstallCmd())
+	root.SetOut(&out)
+	root.SetErr(&errOut)
+	root.SetArgs([]string{"install"})
+	if err := root.Execute(); err != nil {
+		t.Fatalf("install --json: %v\nstdout: %s\nstderr: %s", err, out.String(), errOut.String())
+	}
+
+	var res struct {
+		Targets []struct {
+			Component string `json:"component"`
+			Status    string `json:"status"`
+			Notice    string `json:"notice"`
+		} `json:"targets"`
+	}
+	if err := json.Unmarshal(out.Bytes(), &res); err != nil {
+		t.Fatalf("invalid JSON: %v\n%s", err, out.String())
+	}
+	found := false
+	for _, tg := range res.Targets {
+		if tg.Component != "mcp-gates" {
+			continue
+		}
+		found = true
+		if tg.Status != "manual-action-needed" {
+			t.Errorf("status = %q, want manual-action-needed", tg.Status)
+		}
+		if !strings.Contains(tg.Notice, "ui-craft-mcp@") {
+			t.Errorf("notice must carry the entry to add, got %q", tg.Notice)
+		}
+	}
+	if !found {
+		t.Fatalf("no mcp-gates target in %s", out.String())
+	}
+
+	if got, _ := os.ReadFile(cfg); !bytes.Equal(got, jsonc) {
+		t.Errorf("commented opencode.jsonc was rewritten:\n%s", got)
+	}
+	if _, err := os.Stat(filepath.Join(cfgDir, "opencode.json")); err == nil {
+		t.Error("a second config, opencode.json, was created next to opencode.jsonc")
+	}
+	if data, err := os.ReadFile(filepath.Join(home, ".ui-craft", "state.json")); err == nil {
+		var state core.InstallState
+		if err := json.Unmarshal(data, &state); err != nil {
+			t.Fatal(err)
+		}
+		keptSkills := false
+		for _, h := range state.Harnesses {
+			for _, c := range h.InstalledComponents {
+				if h.Name == "opencode" && c == "mcp-gates" {
+					t.Error("state.json still records opencode mcp-gates although it now needs manual action")
+				}
+				if h.Name == "opencode" && c == "skill+commands" {
+					keptSkills = true
+				}
+			}
+		}
+		if !keptSkills {
+			t.Error("an unrelated component (skill+commands) was dropped from state.json")
+		}
+	} else {
+		t.Fatalf("state.json not written: %v", err)
+	}
+}
+
+// A config root moved outside HOME by an env var is outside the backup store's
+// trust boundary, so rollback cannot restore it. Install must say so, on
+// stderr, keeping --json stdout parseable.
+func TestInstall_configRootOutsideHomeWarns(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
+	t.Setenv("APPDATA", filepath.Join(home, "AppData", "Roaming"))
+	t.Setenv("LOCALAPPDATA", filepath.Join(home, "AppData", "Local"))
+	codexHome := t.TempDir() // a sibling of home, not inside it
+	t.Setenv("CODEX_HOME", codexHome)
+
+	restoreDetect := cmd.SetDetectAllFn(func(reg []harness.Harness) []core.DetectedHarness {
+		for _, h := range reg {
+			if h.Name() == "codex" {
+				return []core.DetectedHarness{{
+					Harness: h,
+					Result:  harness.DetectResult{Installed: true, ConfigRoot: h.ConfigRoot()},
+				}}
+			}
+		}
+		return nil
+	})
+	defer restoreDetect()
+
+	restoreFlags := cmd.SetInstallFlagsForTest(cmd.InstallFlagsForTest{
+		Harness:    "codex",
+		Components: []string{"mcp-gates"},
+		Yes:        true,
+		Dir:        home,
+		JSON:       true,
+	})
+	defer restoreFlags()
+
+	var out, errOut bytes.Buffer
+	root := &cobra.Command{Use: "ui-craft", SilenceUsage: true}
+	root.AddCommand(cmd.MakeInstallCmd())
+	root.SetOut(&out)
+	root.SetErr(&errOut)
+	root.SetArgs([]string{"install"})
+	_ = root.Execute() // the outcome of the write itself is not under test here
+
+	if !strings.Contains(errOut.String(), "outside your home folder; rollback cannot restore") {
+		t.Errorf("no outside-HOME warning on stderr:\nstderr: %s\nstdout: %s", errOut.String(), out.String())
+	}
+	if strings.Contains(out.String(), "NOTE:") {
+		t.Errorf("warning leaked into --json stdout: %s", out.String())
+	}
+}

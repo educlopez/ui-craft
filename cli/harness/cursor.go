@@ -17,10 +17,12 @@ import (
 // Detection: ~/.cursor/ dir existence ONLY — Cursor ships no CLI binary.
 // This is gotcha #6: do NOT attempt exec.LookPath("cursor").
 //
-// MCP config: ~/.cursor/mcp.json (ConfigFile / merge strategy).
-// Skills dir: ~/.cursor/skills/
-// Agents dir: (none — Cursor has no native sub-agent format).
-// Supports:   SkillCommands, MCPGates, DesignMemory = true; ReviewAgents = false.
+// MCP config: ~/.cursor/mcp.json or <project>/.cursor/mcp.json (merge strategy).
+// Skills dir: ~/.cursor/skills/ or <project>/.cursor/skills/ (<id>/SKILL.md).
+// Agents dir: ~/.cursor/agents/ or <project>/.cursor/agents/ (markdown with
+// YAML frontmatter; .cursor/ wins over .claude/agents on a name clash).
+// Supports:   SkillCommands, MCPGates, ReviewAgents, DesignMemory (all true).
+// Commands are not installed: they ship as peer skills.
 type CursorHarness struct {
 	// projectRoot is set via WithProjectRoot so ConfigPaths() resolves to
 	// project-scoped paths. Empty (zero value) means global scope.
@@ -74,38 +76,46 @@ func (h CursorHarness) ConfigPaths() ConfigPaths {
 }
 
 // ConfigPathsFor returns Cursor's paths, scoped to projectRoot when
-// non-empty. Project-local targets: <projectRoot>/.cursor/rules (per spec's
-// `.cursor/rules/*.mdc` convention — SkillsDir is repurposed as the rules dir
-// for the project branch; the WriteSkill call site's *.mdc write-format
-// alignment is a follow-up item, not part of this path-wiring task) and
-// <projectRoot>/.cursor/mcp.json.
+// non-empty. Project-local targets: <projectRoot>/.cursor/skills,
+// <projectRoot>/.cursor/agents and <projectRoot>/.cursor/mcp.json.
+// (.cursor/rules only loads .mdc rule files, so skills never go there.)
 func (h CursorHarness) ConfigPathsFor(projectRoot string) ConfigPaths {
 	if projectRoot != "" {
 		return ConfigPaths{
 			MCPConfig:   filepath.Join(projectRoot, ".cursor", "mcp.json"),
-			SkillsDir:   filepath.Join(projectRoot, ".cursor", "rules"),
-			AgentsDir:   "", // Cursor has no sub-agent directory.
+			SkillsDir:   filepath.Join(projectRoot, ".cursor", "skills"),
+			AgentsDir:   filepath.Join(projectRoot, ".cursor", "agents"),
 			ProjectRoot: projectRoot,
 		}
 	}
 	root := h.configRoot()
+	if root == "" {
+		return ConfigPaths{}
+	}
 	return ConfigPaths{
 		MCPConfig: filepath.Join(root, "mcp.json"),
 		SkillsDir: filepath.Join(root, "skills"),
-		AgentsDir: "", // Cursor has no sub-agent directory.
+		AgentsDir: filepath.Join(root, "agents"),
 	}
 }
 
-// Supports reports capability support. Cursor does NOT support ReviewAgents.
+// Supports reports capability support.
 func (h CursorHarness) Supports(c component.Component) bool {
 	switch c {
-	case component.SkillCommands, component.MCPGates, component.DesignMemory:
+	case component.SkillCommands, component.MCPGates, component.ReviewAgents, component.DesignMemory:
 		return true
-	case component.ReviewAgents:
-		return false
 	default:
 		return false
 	}
+}
+
+// legacyTargets: older versions put project skill trees in
+// <project>/.cursor/rules/<id>/, which Cursor ignores (rules must be .mdc).
+func (h CursorHarness) legacyTargets(c component.Component) []legacyTarget {
+	if h.projectRoot == "" || c != component.SkillCommands {
+		return nil
+	}
+	return []legacyTarget{{path: filepath.Join(h.projectRoot, ".cursor", "rules"), kind: legacySkillDirs, pruneDir: true}}
 }
 
 // WriteMCP implements the ConfigFile strategy for Cursor.
@@ -119,8 +129,10 @@ func (h CursorHarness) WriteMCP(w fsutil.FileSystem, server MCPServer) (Change, 
 	target := paths.MCPConfig // ~/.cursor/mcp.json
 
 	// Read existing content (may not exist yet).
-	existing, readErr := w.ReadFile(target)
-	existed := readErr == nil
+	existing, existed, readErr := readConfigFile(w, target)
+	if readErr != nil {
+		return Change{}, fmt.Errorf("cursor: read MCP config %s: %w", target, readErr)
+	}
 	if !existed {
 		existing = []byte("{}")
 	}
@@ -152,7 +164,7 @@ func (h CursorHarness) WriteMCP(w fsutil.FileSystem, server MCPServer) (Change, 
 		prior = nil
 	}
 
-	wr, err := fsutil.WriteFileAtomic(w, target, mr.Data, 0o644)
+	wr, err := writeConfigFile(w, target, mr.Data, 0o644)
 	if err != nil {
 		return Change{}, fmt.Errorf("cursor: write MCP config %s: %w", target, err)
 	}
@@ -180,12 +192,14 @@ func (h CursorHarness) WriteSkill(w fsutil.FileSystem, mirror fs.FS) (Change, er
 	return ch, nil
 }
 
-// WriteAgents returns ErrUnsupported. Cursor has no native sub-agent format;
-// core.Plan maps this to a graceful skip notice (exit code 0). Supports(ReviewAgents)
-// returns false, so this method is not called in normal install flows — it is
-// present only to satisfy the Harness interface.
-func (h CursorHarness) WriteAgents(_ fsutil.FileSystem, _ fs.FS) ([]Change, error) {
-	return nil, ErrUnsupported
+// WriteAgents writes the Cursor-format review agents (assets/agents/cursor/)
+// into ~/.cursor/agents/ or <project>/.cursor/agents/. A nil agentsFS returns
+// ErrUnsupported.
+func (h CursorHarness) WriteAgents(w fsutil.FileSystem, agentsFS fs.FS) ([]Change, error) {
+	if agentsFS == nil {
+		return nil, ErrUnsupported
+	}
+	return writeAgentsToDir(w, agentsFS, h.ConfigPaths().AgentsDir, "cursor")
 }
 
 // WriteCommands returns ErrUnsupported. Cursor has no native slash-command

@@ -318,80 +318,26 @@ func TestOpenCodeDetect_notInstalled(t *testing.T) {
 
 // --- Supports matrix ---
 
-// TestSupports_reviewAgentsOnlyClaudeAndOpenCode asserts the critical capability
-// gate: only Claude Code and OpenCode return true for ReviewAgents.
-func TestSupports_reviewAgentsOnlyClaudeAndOpenCode(t *testing.T) {
-	type tc struct {
-		h    Harness
-		want bool
-	}
-	cases := []tc{
-		{ClaudeHarness{}, true},
-		{OpenCodeHarness{}, true},
-		{CursorHarness{}, false},
-		{CodexHarness{}, false},
-		{GeminiHarness{}, false},
-	}
-	for _, c := range cases {
-		got := c.h.Supports(component.ReviewAgents)
-		if got != c.want {
-			t.Errorf("%s.Supports(ReviewAgents) = %v, want %v", c.h.Name(), got, c.want)
+// TestSupports_reviewAgentsEveryHarness asserts that every harness accepts
+// the review agents: Claude Code (.claude/agents), Cursor (.cursor/agents),
+// Codex (agent-role TOML under .codex/agents), Gemini CLI (.gemini/agents)
+// and OpenCode (agents/).
+func TestSupports_reviewAgentsEveryHarness(t *testing.T) {
+	for _, h := range All() {
+		if !h.Supports(component.ReviewAgents) {
+			t.Errorf("%s.Supports(ReviewAgents) = false, want true", h.Name())
 		}
 	}
 }
 
-// TestSupports_cursorSkipsAgents is an explicitly named variant required by tasks.md.
-func TestSupports_cursorSkipsAgents(t *testing.T) {
-	h := CursorHarness{}
-	if h.Supports(component.ReviewAgents) {
-		t.Fatal("CursorHarness must not support ReviewAgents")
-	}
-}
-
-// TestSupports_codexSkipsAgents is an explicitly named variant required by tasks.md.
-func TestSupports_codexSkipsAgents(t *testing.T) {
-	h := CodexHarness{}
-	if h.Supports(component.ReviewAgents) {
-		t.Fatal("CodexHarness must not support ReviewAgents")
-	}
-}
-
-// TestSupports_geminiSkipsAgents is an explicitly named variant required by tasks.md.
-func TestSupports_geminiSkipsAgents(t *testing.T) {
-	h := GeminiHarness{}
-	if h.Supports(component.ReviewAgents) {
-		t.Fatal("GeminiHarness must not support ReviewAgents")
-	}
-}
-
-// TestSupports_exhaustiveMatrix iterates component.All() × All() harnesses and
-// asserts the complete expected capability matrix:
-//
-//	SkillCommands / MCPGates / DesignMemory = true for every harness
-//	ReviewAgents = true only for Claude and OpenCode, false for the rest
-//
-// This replaces the false-completeness of testing only universal components:
-// it also exercises each harness explicitly for every component value.
+// TestSupports_exhaustiveMatrix iterates component.All() x All() harnesses and
+// asserts the complete expected capability matrix: every harness supports
+// every component.
 func TestSupports_exhaustiveMatrix(t *testing.T) {
-	// reviewAgentHarnesses is the set of harness names that must return true
-	// for ReviewAgents.
-	reviewAgentHarnesses := map[string]bool{
-		"claude":   true,
-		"opencode": true,
-	}
-
 	for _, h := range All() {
 		for _, c := range component.All() {
-			got := h.Supports(c)
-			var want bool
-			switch c {
-			case component.SkillCommands, component.MCPGates, component.DesignMemory:
-				want = true
-			case component.ReviewAgents:
-				want = reviewAgentHarnesses[h.Name()]
-			}
-			if got != want {
-				t.Errorf("%s.Supports(%s) = %v, want %v", h.Name(), c, got, want)
+			if !h.Supports(c) {
+				t.Errorf("%s.Supports(%s) = false, want true", h.Name(), c)
 			}
 		}
 	}
