@@ -155,8 +155,10 @@ func (h CodexHarness) WriteMCP(w fsutil.FileSystem, server MCPServer) (Change, e
 	target := paths.MCPConfig // ~/.codex/config.toml
 
 	// Read existing content (may not exist yet).
-	existing, readErr := w.ReadFile(target)
-	existed := readErr == nil
+	existing, existed, readErr := readConfigFile(w, target)
+	if readErr != nil {
+		return Change{}, fmt.Errorf("codex: read TOML config %s: %w", target, readErr)
+	}
 	content := ""
 	if existed {
 		content = string(existing)
@@ -176,7 +178,7 @@ func (h CodexHarness) WriteMCP(w fsutil.FileSystem, server MCPServer) (Change, e
 		prior = nil
 	}
 
-	wr, err := fsutil.WriteFileAtomic(w, target, []byte(updated), 0o644)
+	wr, err := writeConfigFile(w, target, []byte(updated), 0o644)
 	if err != nil {
 		return Change{}, fmt.Errorf("codex: write TOML config %s: %w", target, err)
 	}
@@ -230,8 +232,10 @@ func (h CodexHarness) WriteSkill(w fsutil.FileSystem, mirror fs.FS) (Change, err
 	// --- Target 2: AGENTS.md managed-block inject ---
 	// ProjectRoot is honored: project-local AGENTS.md when set, global otherwise.
 	agentsMD := h.agentsMDPath(paths.ProjectRoot)
-	existing, readErr := w.ReadFile(agentsMD)
-	existedBefore := readErr == nil
+	existing, existedBefore, readErr := readConfigFile(w, agentsMD)
+	if readErr != nil {
+		return Change{}, fmt.Errorf("codex: read AGENTS.md: %w", readErr)
+	}
 	if !existedBefore {
 		existing = []byte("")
 	}
@@ -242,7 +246,7 @@ func (h CodexHarness) WriteSkill(w fsutil.FileSystem, mirror fs.FS) (Change, err
 		"Load it at the start of any UI design or implementation task."
 	updated := filemerge.UpsertManagedBlock(string(existing), blockContent)
 
-	agentsWR, err := fsutil.WriteFileAtomic(w, agentsMD, []byte(updated), 0o644)
+	agentsWR, err := writeConfigFile(w, agentsMD, []byte(updated), 0o644)
 	if err != nil {
 		return Change{}, fmt.Errorf("codex: write AGENTS.md managed block: %w", err)
 	}

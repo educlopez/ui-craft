@@ -12,7 +12,8 @@ import (
 // with the user or with the harness (~/.claude.json, .mcp.json, mcp.json,
 // settings.json, opencode.json(c), config.toml).
 //
-// A missing file or a missing entry is a no-op (Changed=false). A JSON file
+// A missing file or a missing entry is a no-op (Changed=false); any other
+// read error is returned. A JSON file
 // that does not parse as plain JSON (corrupt, or JSONC with comments) is not
 // rewritten: the returned Change carries a Notice naming the entry to delete
 // by hand.
@@ -21,8 +22,11 @@ func RemoveMCP(w fsutil.FileSystem, h Harness, name string) (Change, error) {
 	if target == "" {
 		return Change{}, nil
 	}
-	existing, err := w.ReadFile(target)
+	existing, existed, err := readConfigFile(w, target)
 	if err != nil {
+		return Change{}, fmt.Errorf("%s: read %s: %w", h.Name(), target, err)
+	}
+	if !existed {
 		return Change{FilePath: target}, nil
 	}
 	ch := Change{FilePath: target, PriorBytes: existing, ExistedBefore: true}
@@ -58,7 +62,8 @@ func RemoveMCP(w fsutil.FileSystem, h Harness, name string) (Change, error) {
 		updated = out
 	}
 
-	wr, err := fsutil.WriteFileAtomic(w, target, updated, 0o644)
+	// The file exists here, so writeConfigFile keeps its current mode.
+	wr, err := writeConfigFile(w, target, updated, 0o644)
 	if err != nil {
 		return Change{}, fmt.Errorf("%s: write %s: %w", h.Name(), target, err)
 	}

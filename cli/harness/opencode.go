@@ -202,8 +202,10 @@ func (h OpenCodeHarness) WriteMCP(w fsutil.FileSystem, server MCPServer) (Change
 		return Change{}, fmt.Errorf("opencode: cannot resolve the config path (home directory unknown)")
 	}
 
-	existing, readErr := w.ReadFile(target)
-	existed := readErr == nil
+	existing, existed, readErr := readConfigFile(w, target)
+	if readErr != nil {
+		return Change{}, fmt.Errorf("opencode: read %s: %w", target, readErr)
+	}
 	if !existed {
 		existing = []byte("{}")
 	}
@@ -250,7 +252,7 @@ func (h OpenCodeHarness) WriteMCP(w fsutil.FileSystem, server MCPServer) (Change
 		prior = nil
 	}
 
-	wr, err := fsutil.WriteFileAtomic(w, target, mr.Data, 0o644)
+	wr, err := writeConfigFile(w, target, mr.Data, 0o644)
 	if err != nil {
 		return Change{}, fmt.Errorf("opencode: write %s: %w", target, err)
 	}

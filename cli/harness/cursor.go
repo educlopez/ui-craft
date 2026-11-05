@@ -129,8 +129,10 @@ func (h CursorHarness) WriteMCP(w fsutil.FileSystem, server MCPServer) (Change, 
 	target := paths.MCPConfig // ~/.cursor/mcp.json
 
 	// Read existing content (may not exist yet).
-	existing, readErr := w.ReadFile(target)
-	existed := readErr == nil
+	existing, existed, readErr := readConfigFile(w, target)
+	if readErr != nil {
+		return Change{}, fmt.Errorf("cursor: read MCP config %s: %w", target, readErr)
+	}
 	if !existed {
 		existing = []byte("{}")
 	}
@@ -162,7 +164,7 @@ func (h CursorHarness) WriteMCP(w fsutil.FileSystem, server MCPServer) (Change, 
 		prior = nil
 	}
 
-	wr, err := fsutil.WriteFileAtomic(w, target, mr.Data, 0o644)
+	wr, err := writeConfigFile(w, target, mr.Data, 0o644)
 	if err != nil {
 		return Change{}, fmt.Errorf("cursor: write MCP config %s: %w", target, err)
 	}

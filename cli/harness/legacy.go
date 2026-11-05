@@ -244,7 +244,7 @@ func sweepJSONKey(w fsutil.FileSystem, p, parent, key string, dryRun bool) ([]st
 		return nil, nil
 	}
 	if !dryRun {
-		if _, err := fsutil.WriteFileAtomic(w, p, out, 0o644); err != nil {
+		if _, err := writeConfigFile(w, p, out, 0o644); err != nil {
 			return nil, err
 		}
 	}

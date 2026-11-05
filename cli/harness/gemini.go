@@ -148,8 +148,10 @@ func (h GeminiHarness) WriteMCP(w fsutil.FileSystem, server MCPServer) (Change, 
 	paths := h.ConfigPaths()
 	target := paths.MCPConfig // ~/.gemini/settings.json
 
-	existing, readErr := w.ReadFile(target)
-	existed := readErr == nil
+	existing, existed, readErr := readConfigFile(w, target)
+	if readErr != nil {
+		return Change{}, fmt.Errorf("gemini: read settings.json %s: %w", target, readErr)
+	}
 	if !existed {
 		existing = []byte("{}")
 	}
@@ -179,7 +181,7 @@ func (h GeminiHarness) WriteMCP(w fsutil.FileSystem, server MCPServer) (Change, 
 		prior = nil
 	}
 
-	wr, err := fsutil.WriteFileAtomic(w, target, mr.Data, 0o644)
+	wr, err := writeConfigFile(w, target, mr.Data, 0o644)
 	if err != nil {
 		return Change{}, fmt.Errorf("gemini: write settings.json %s: %w", target, err)
 	}
@@ -228,8 +230,10 @@ func (h GeminiHarness) WriteSkill(w fsutil.FileSystem, mirror fs.FS) (Change, er
 		return ch, nil
 	}
 	geminiMD := paths.AgentsMDPath
-	existing, readErr := w.ReadFile(geminiMD)
-	existedBefore := readErr == nil
+	existing, existedBefore, readErr := readConfigFile(w, geminiMD)
+	if readErr != nil {
+		return Change{}, fmt.Errorf("gemini: read GEMINI.md: %w", readErr)
+	}
 	if !existedBefore {
 		existing = []byte("")
 	}
@@ -240,7 +244,7 @@ func (h GeminiHarness) WriteSkill(w fsutil.FileSystem, mirror fs.FS) (Change, er
 		"Load it at the start of any UI design or implementation task."
 	updated := filemerge.UpsertManagedBlock(string(existing), blockContent)
 
-	geminiWR, err := fsutil.WriteFileAtomic(w, geminiMD, []byte(updated), 0o644)
+	geminiWR, err := writeConfigFile(w, geminiMD, []byte(updated), 0o644)
 	if err != nil {
 		return Change{}, fmt.Errorf("gemini: write GEMINI.md managed block: %w", err)
 	}

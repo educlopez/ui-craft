@@ -415,7 +415,12 @@ func removeAgentsMDBlock(fs fsutil.FileSystem, agentsMDPath string) error {
 		return nil // file doesn't exist — nothing to do
 	}
 	updated := filemerge.RemoveManagedBlock(string(existing))
-	if _, err := fsutil.WriteFileAtomic(fs, agentsMDPath, []byte(updated), 0o644); err != nil {
+	// AGENTS.md is the user's file: keep its permission bits.
+	perm := os.FileMode(0o644)
+	if info, serr := fs.Stat(agentsMDPath); serr == nil {
+		perm = info.Mode().Perm()
+	}
+	if _, err := fsutil.WriteFileAtomic(fs, agentsMDPath, []byte(updated), perm); err != nil {
 		return fmt.Errorf("write %s: %w", agentsMDPath, err)
 	}
 	return nil

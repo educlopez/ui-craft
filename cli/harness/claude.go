@@ -162,8 +162,10 @@ func (h ClaudeHarness) WriteMCP(w fsutil.FileSystem, server MCPServer) (Change, 
 		return Change{}, errors.New("claude: cannot resolve the MCP config path (home directory unknown)")
 	}
 
-	prior, readErr := w.ReadFile(target)
-	existed := readErr == nil
+	prior, existed, err := readConfigFile(w, target)
+	if err != nil {
+		return Change{}, fmt.Errorf("claude: read MCP config %s: %w", target, err)
+	}
 
 	data := prior
 	changed := false
@@ -200,7 +202,13 @@ func (h ClaudeHarness) WriteMCP(w fsutil.FileSystem, server MCPServer) (Change, 
 	if !changed {
 		return ch, nil
 	}
-	wr, err := fsutil.WriteFileAtomic(w, target, out, 0o644)
+	// ~/.claude.json also holds Claude Code's account and session state, so a
+	// new one is created private; an existing file keeps its own mode.
+	newMode := fs.FileMode(0o644)
+	if h.projectRoot == "" {
+		newMode = 0o600
+	}
+	wr, err := writeConfigFile(w, target, out, newMode)
 	if err != nil {
 		return Change{}, fmt.Errorf("claude: write MCP config %s: %w", target, err)
 	}
