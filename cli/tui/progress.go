@@ -85,6 +85,14 @@ func (m ProgressModel) View() string {
 	}
 
 	for _, ch := range m.changes {
+		if ch.Notice != "" && !ch.Changed {
+			// Nothing was written on purpose; the user has to finish this by hand.
+			sb.WriteString(errorStyle().Render(fmt.Sprintf("  %s/%s: action needed", ch.HarnessName, ch.Component)))
+			sb.WriteByte('\n')
+			sb.WriteString(mutedStyle().Render("    " + strings.ReplaceAll(ch.Notice, "\n", "\n    ")))
+			sb.WriteByte('\n')
+			continue
+		}
 		status := "created"
 		if !ch.Changed {
 			status = "already configured"

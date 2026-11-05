@@ -22,9 +22,19 @@ import (
 type installJSONTarget struct {
 	Harness    string `json:"harness"`
 	Component  string `json:"component"`
-	Status     string `json:"status"` // "installed", "already-up-to-date", "skipped", "dry-run"
+	Status     string `json:"status"` // "installed", "already-up-to-date", "manual-action-needed", "skipped", "dry-run"
 	Skip       bool   `json:"skip,omitempty"`
 	SkipReason string `json:"skip_reason,omitempty"`
+	// Notice carries what the user must do by hand when Status is
+	// "manual-action-needed" (e.g. a commented opencode.jsonc ui-craft left untouched).
+	Notice string `json:"notice,omitempty"`
+}
+
+// needsManualAction reports a change that wrote nothing on purpose and asks the
+// user to finish by hand. Such a component is not installed: it must not be
+// recorded in state.json, and it must not report as already up to date.
+func needsManualAction(ch harness.Change) bool {
+	return ch.Notice != "" && !ch.Changed
 }
 
 // installJSONResult is the top-level --json result for install/update/uninstall.
@@ -316,6 +326,9 @@ For a project-scoped install, run "ui-craft" with no arguments and choose
 				}
 			}
 			for _, ch := range result.Changes {
+				if needsManualAction(ch) {
+					continue
+				}
 				if ch.HarnessName == dh.Harness.Name() && !seen[ch.Component] {
 					seen[ch.Component] = true
 					installedComps = append(installedComps, ch.Component)
@@ -339,6 +352,9 @@ For a project-scoped install, run "ui-craft" with no arguments and choose
 			}
 			for _, ch := range result.Changes {
 				if ch.HarnessName == t.Harness.Name() && ch.Component == t.Component.String() {
+					if needsManualAction(ch) {
+						return "manual-action-needed"
+					}
 					if !ch.Changed {
 						return "already-up-to-date"
 					}
@@ -346,6 +362,9 @@ For a project-scoped install, run "ui-craft" with no arguments and choose
 				}
 				// MCP uses file path as key
 				if ch.FilePath == t.SnapPath {
+					if needsManualAction(ch) {
+						return "manual-action-needed"
+					}
 					if !ch.Changed {
 						return "already-up-to-date"
 					}
@@ -376,6 +395,11 @@ For a project-scoped install, run "ui-craft" with no arguments and choose
 				if t.Skip {
 					jt.Skip = true
 					jt.SkipReason = t.SkipReason
+				}
+				for _, ch := range result.Changes {
+					if ch.FilePath == t.SnapPath && ch.Notice != "" {
+						jt.Notice = ch.Notice
+					}
 				}
 				targets = append(targets, jt)
 			}
@@ -430,8 +454,14 @@ For a project-scoped install, run "ui-craft" with no arguments and choose
 				if ch.FilePath == t.SnapPath && ch.MalformedBase && !flags.Quiet {
 					fmt.Fprintf(out, "  WARNING: %s was malformed JSON; original backed up before rewrite.\n", ch.FilePath)
 				}
-				if ch.FilePath == t.SnapPath && ch.Notice != "" && !flags.Quiet {
-					fmt.Fprintf(out, "  NOTE: %s\n", ch.Notice)
+				if ch.FilePath == t.SnapPath && ch.Notice != "" {
+					if flags.Quiet {
+						// --quiet keeps stdout to the outcome, but a step the user must
+						// finish by hand is an outcome: send it to stderr.
+						fmt.Fprintf(cmd.ErrOrStderr(), "NOTE: %s\n", ch.Notice)
+					} else {
+						fmt.Fprintf(out, "  NOTE: %s\n", ch.Notice)
+					}
 				}
 			}
 			if !flags.Quiet {

@@ -233,3 +233,104 @@ func TestInstallJSONStateWarningStaysOnStderr(t *testing.T) {
 type discardWriter struct{}
 
 func (discardWriter) Write(p []byte) (int, error) { return len(p), nil }
+
+// An OpenCode config with comments is left untouched and the user is told what to
+// add. That is not an install: --json must say "manual-action-needed" and carry
+// the notice, and state.json must not record mcp-gates (or `update` would treat a
+// server that is not configured as installed).
+func TestInstallJSON_commentedOpenCodeConfigIsManualAction(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
+	t.Setenv("APPDATA", filepath.Join(home, "AppData", "Roaming"))
+	t.Setenv("LOCALAPPDATA", filepath.Join(home, "AppData", "Local"))
+
+	cfgDir := filepath.Join(home, ".config", "opencode")
+	if err := os.MkdirAll(cfgDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	jsonc := []byte("{\n  // my servers\n  \"mcp\": {}\n}\n")
+	cfg := filepath.Join(cfgDir, "opencode.jsonc")
+	if err := os.WriteFile(cfg, jsonc, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	restoreDetect := cmd.SetDetectAllFn(func(reg []harness.Harness) []core.DetectedHarness {
+		for _, h := range reg {
+			if h.Name() == "opencode" {
+				return []core.DetectedHarness{{
+					Harness: h,
+					Result:  harness.DetectResult{Installed: true, ConfigRoot: h.ConfigRoot()},
+				}}
+			}
+		}
+		return nil
+	})
+	defer restoreDetect()
+
+	restoreFlags := cmd.SetInstallFlagsForTest(cmd.InstallFlagsForTest{
+		Harness:    "opencode",
+		Components: []string{"mcp-gates"},
+		Yes:        true,
+		Dir:        home,
+		JSON:       true,
+	})
+	defer restoreFlags()
+
+	var out, errOut bytes.Buffer
+	root := &cobra.Command{Use: "ui-craft", SilenceUsage: true}
+	root.AddCommand(cmd.MakeInstallCmd())
+	root.SetOut(&out)
+	root.SetErr(&errOut)
+	root.SetArgs([]string{"install"})
+	if err := root.Execute(); err != nil {
+		t.Fatalf("install --json: %v\nstdout: %s\nstderr: %s", err, out.String(), errOut.String())
+	}
+
+	var res struct {
+		Targets []struct {
+			Component string `json:"component"`
+			Status    string `json:"status"`
+			Notice    string `json:"notice"`
+		} `json:"targets"`
+	}
+	if err := json.Unmarshal(out.Bytes(), &res); err != nil {
+		t.Fatalf("invalid JSON: %v\n%s", err, out.String())
+	}
+	found := false
+	for _, tg := range res.Targets {
+		if tg.Component != "mcp-gates" {
+			continue
+		}
+		found = true
+		if tg.Status != "manual-action-needed" {
+			t.Errorf("status = %q, want manual-action-needed", tg.Status)
+		}
+		if !strings.Contains(tg.Notice, "ui-craft-mcp@") {
+			t.Errorf("notice must carry the entry to add, got %q", tg.Notice)
+		}
+	}
+	if !found {
+		t.Fatalf("no mcp-gates target in %s", out.String())
+	}
+
+	if got, _ := os.ReadFile(cfg); !bytes.Equal(got, jsonc) {
+		t.Errorf("commented opencode.jsonc was rewritten:\n%s", got)
+	}
+	if _, err := os.Stat(filepath.Join(cfgDir, "opencode.json")); err == nil {
+		t.Error("a second config, opencode.json, was created next to opencode.jsonc")
+	}
+	if data, err := os.ReadFile(filepath.Join(home, ".ui-craft", "state.json")); err == nil {
+		var state core.InstallState
+		if err := json.Unmarshal(data, &state); err != nil {
+			t.Fatal(err)
+		}
+		for _, h := range state.Harnesses {
+			for _, c := range h.InstalledComponents {
+				if h.Name == "opencode" && c == "mcp-gates" {
+					t.Error("state.json records opencode mcp-gates although nothing was written")
+				}
+			}
+		}
+	}
+}

@@ -218,7 +218,7 @@ func (h OpenCodeHarness) WriteMCP(w fsutil.FileSystem, server MCPServer) (Change
 	}
 
 	if existed && !json.Valid(existing) && hasJSONCSyntaxOnly(existing) {
-		snippet, err := json.MarshalIndent(map[string]any{"mcp": map[string]any{server.Name: entry}}, "", "  ")
+		snippet, err := json.MarshalIndent(map[string]any{server.Name: entry}, "", "  ")
 		if err != nil {
 			return Change{}, fmt.Errorf("opencode: marshal MCP snippet: %w", err)
 		}
@@ -228,7 +228,8 @@ func (h OpenCodeHarness) WriteMCP(w fsutil.FileSystem, server MCPServer) (Change
 			ExistedBefore: true,
 			Strategy:      MergeIntoSettings,
 			Notice: fmt.Sprintf("%s has comments or trailing commas, so ui-craft left it untouched. "+
-				"Add this entry under \"mcp\" by hand:\n%s", target, snippet),
+				"Copy the \"%s\" key and its value below into the top-level \"mcp\" object "+
+				"(add \"mcp\": {} if the file has none):\n%s", target, server.Name, snippet),
 		}, nil
 	}
 
