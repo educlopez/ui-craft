@@ -48,7 +48,7 @@ func (h OpenCodeHarness) ConfigRoot() string { return h.configRoot() }
 // $OPENCODE_CONFIG_DIR, then $XDG_CONFIG_HOME/opencode, then
 // ~/.config/opencode. An unresolvable home dir yields "".
 func (h OpenCodeHarness) configRoot() string {
-	if dir := envDir("OPENCODE_CONFIG_DIR"); dir != "" {
+	if dir := envDirFromCwd("OPENCODE_CONFIG_DIR"); dir != "" {
 		return dir
 	}
 	if xdg := envDir("XDG_CONFIG_HOME"); xdg != "" {

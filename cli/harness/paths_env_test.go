@@ -2,6 +2,7 @@ package harness
 
 import (
 	"io/fs"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -128,10 +129,27 @@ func TestRoots_envOverrides(t *testing.T) {
 			t.Errorf("paths = %+v, want everything under %q", p, dir)
 		}
 	})
-	t.Run("relative override ignored", func(t *testing.T) {
-		t.Setenv("CODEX_HOME", "relative/codex")
-		if got := (CodexHarness{}).ConfigRoot(); !filepath.IsAbs(got) {
-			t.Errorf("relative CODEX_HOME was trusted: %q", got)
+	// Codex canonicalizes a relative CODEX_HOME against its working directory;
+	// Gemini and OpenCode use theirs as given. Resolve the same way, so the
+	// install lands where the harness reads.
+	t.Run("relative override resolved against cwd", func(t *testing.T) {
+		cwd, err := os.Getwd()
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Setenv("CODEX_HOME", filepath.Join("relative", "codex"))
+		if got, want := (CodexHarness{}).ConfigRoot(), filepath.Join(cwd, "relative", "codex"); got != want {
+			t.Errorf("CODEX_HOME root = %q, want %q", got, want)
+		}
+		t.Setenv("OPENCODE_CONFIG_DIR", filepath.Join("relative", "oc"))
+		if got, want := (OpenCodeHarness{}).ConfigRoot(), filepath.Join(cwd, "relative", "oc"); got != want {
+			t.Errorf("OPENCODE_CONFIG_DIR root = %q, want %q", got, want)
+		}
+	})
+	t.Run("relative CLAUDE_CONFIG_DIR ignored", func(t *testing.T) {
+		t.Setenv("CLAUDE_CONFIG_DIR", filepath.Join("relative", "claude"))
+		if got := (ClaudeHarness{}).ConfigRoot(); !filepath.IsAbs(got) {
+			t.Errorf("relative CLAUDE_CONFIG_DIR was trusted: %q", got)
 		}
 	})
 }

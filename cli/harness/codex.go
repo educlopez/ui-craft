@@ -49,7 +49,7 @@ func (h CodexHarness) WithProjectRoot(projectRoot string) Harness {
 func (h CodexHarness) ConfigRoot() string { return h.configRoot() }
 
 func (h CodexHarness) configRoot() string {
-	if dir := envDir("CODEX_HOME"); dir != "" {
+	if dir := envDirFromCwd("CODEX_HOME"); dir != "" {
 		return dir
 	}
 	home := homeDir()

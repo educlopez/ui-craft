@@ -45,7 +45,7 @@ func (h GeminiHarness) ConfigRoot() string { return h.configRoot() }
 // configRoot returns <home>/.gemini, where <home> is $GEMINI_CLI_HOME when
 // set (Gemini CLI uses it in place of the user's home dir) or the real home.
 func (h GeminiHarness) configRoot() string {
-	home := envDir("GEMINI_CLI_HOME")
+	home := envDirFromCwd("GEMINI_CLI_HOME")
 	if home == "" {
 		home = homeDir()
 	}

@@ -50,6 +50,25 @@ func envDir(name string) string {
 	return filepath.Clean(v)
 }
 
+// envDirFromCwd is envDir for variables the harness itself resolves against the
+// working directory when relative: CODEX_HOME (Codex canonicalizes it),
+// GEMINI_CLI_HOME and OPENCODE_CONFIG_DIR (both used as given, so relative to
+// the cwd). Ignoring a relative value would install into a different root than
+// the one the harness reads. CLAUDE_CONFIG_DIR and XDG_CONFIG_HOME keep envDir:
+// Claude Code documents an absolute path, and the XDG spec says to ignore
+// relative values.
+func envDirFromCwd(name string) string {
+	v := os.Getenv(name)
+	if v == "" {
+		return ""
+	}
+	abs, err := filepath.Abs(v)
+	if err != nil {
+		return ""
+	}
+	return abs
+}
+
 // windowsAppDataDir returns %APPDATA%\<name> on Windows, where older ui-craft
 // versions wrote Claude Code and OpenCode files, or "" elsewhere.
 func windowsAppDataDir(name string) string {
