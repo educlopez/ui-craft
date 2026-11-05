@@ -22,6 +22,7 @@ import (
 
 	"github.com/educlopez/ui-craft/cli/cmd"
 	"github.com/educlopez/ui-craft/cli/core"
+	"github.com/educlopez/ui-craft/cli/fsutil"
 	"github.com/educlopez/ui-craft/cli/harness"
 	"github.com/spf13/cobra"
 )
@@ -254,6 +255,15 @@ func TestInstallJSON_commentedOpenCodeConfigIsManualAction(t *testing.T) {
 	if err := os.WriteFile(cfg, jsonc, 0o644); err != nil {
 		t.Fatal(err)
 	}
+	// An earlier run recorded mcp-gates (and skill+commands) for OpenCode; the
+	// config was since replaced by a commented .jsonc without the entry.
+	prior := &core.InstallState{Harnesses: []core.HarnessState{{
+		Name:                "opencode",
+		InstalledComponents: []string{"skill+commands", "mcp-gates"},
+	}}}
+	if err := core.SaveState(fsutil.OsFS{}, filepath.Join(home, ".ui-craft"), prior); err != nil {
+		t.Fatal(err)
+	}
 
 	restoreDetect := cmd.SetDetectAllFn(func(reg []harness.Harness) []core.DetectedHarness {
 		for _, h := range reg {
@@ -325,13 +335,22 @@ func TestInstallJSON_commentedOpenCodeConfigIsManualAction(t *testing.T) {
 		if err := json.Unmarshal(data, &state); err != nil {
 			t.Fatal(err)
 		}
+		keptSkills := false
 		for _, h := range state.Harnesses {
 			for _, c := range h.InstalledComponents {
 				if h.Name == "opencode" && c == "mcp-gates" {
-					t.Error("state.json records opencode mcp-gates although nothing was written")
+					t.Error("state.json still records opencode mcp-gates although it now needs manual action")
+				}
+				if h.Name == "opencode" && c == "skill+commands" {
+					keptSkills = true
 				}
 			}
 		}
+		if !keptSkills {
+			t.Error("an unrelated component (skill+commands) was dropped from state.json")
+		}
+	} else {
+		t.Fatalf("state.json not written: %v", err)
 	}
 }
 

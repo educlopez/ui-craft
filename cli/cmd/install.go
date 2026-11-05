@@ -333,8 +333,20 @@ For a project-scoped install, run "ui-craft" with no arguments and choose
 			// Only uninstall removes entries, which is the same rule update follows.
 			seen := map[string]bool{}
 			var installedComps []string
+			// A component this run left for the user to finish by hand is not
+			// installed now, whatever an earlier run recorded: drop it, so `update`
+			// does not treat an unconfigured server as installed.
+			manual := map[string]bool{}
+			for _, ch := range result.Changes {
+				if ch.HarnessName == dh.Harness.Name() && needsManualAction(ch) {
+					manual[ch.Component] = true
+				}
+			}
 			if existing := core.FindHarness(state, dh.Harness.Name()); existing != nil {
 				for _, c := range existing.InstalledComponents {
+					if manual[c] {
+						continue
+					}
 					if !seen[c] {
 						seen[c] = true
 						installedComps = append(installedComps, c)

@@ -203,7 +203,11 @@ func Plan(detected []DetectedHarness, selected []component.Component, filesystem
 					if err != nil {
 						return ch, err
 					}
-					if len(removed) > 0 {
+					// Removing a legacy copy is a change worth reporting, but WriteMCP owns
+					// the outcome of the active config: a Notice-only result (nothing
+					// written, the user must finish by hand) must stay that way, or it
+					// would be reported and recorded as installed.
+					if len(removed) > 0 && ch.Notice == "" {
 						ch.Changed = true
 					}
 					return ch, nil
