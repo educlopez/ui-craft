@@ -4,9 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/fs"
-	"os"
 	"path/filepath"
-	"runtime"
 
 	"github.com/educlopez/ui-craft/cli/component"
 	"github.com/educlopez/ui-craft/cli/fsutil"
@@ -15,15 +13,16 @@ import (
 
 // OpenCodeHarness is the adapter for OpenCode.
 //
-// Detection: "opencode" on PATH.
-// MCP config: ~/.config/opencode/opencode.json (JSONC / MergeIntoSettings strategy).
-// Skills dir: ~/.config/opencode/skills/
-// Agents dir: ~/.config/opencode/agent/ (or project .opencode/agent/).
+// Global root: $OPENCODE_CONFIG_DIR when set, else $XDG_CONFIG_HOME/opencode
+// when set, else ~/.config/opencode — on every OS, Windows included.
+// Detection:  global root dir OR "opencode" on PATH.
+// MCP config: top-level "mcp" key of opencode.json (or of an existing
+// opencode.jsonc when there is no opencode.json), global or project root.
+// Dirs:       skills/, agents/, commands/ under the global root or under
+// <project>/.opencode/. The plural names are canonical; the singular ones
+// older ui-craft versions used are only read for backward compatibility and
+// are swept by the legacy cleanup.
 // Supports:   SkillCommands, MCPGates, ReviewAgents, DesignMemory (all true).
-//
-// Windows: ~/.config resolves via %APPDATA% expansion.
-// Gotcha: the config root on Windows differs — always use configRoot() rather
-// than hardcoding a path.
 type OpenCodeHarness struct {
 	// projectRoot is set via WithProjectRoot so ConfigPaths() resolves to
 	// project-scoped paths. Empty (zero value) means global scope.
@@ -35,46 +34,43 @@ var _ Harness = OpenCodeHarness{}
 
 func (h OpenCodeHarness) Name() string { return "opencode" }
 
-// WithProjectRoot returns a copy of OpenCodeHarness scoped to projectRoot.
-// See Harness.WithProjectRoot for why this exists.
+// WithProjectRoot returns a copy of OpenCodeHarness scoped to projectRoot. See
+// Harness.WithProjectRoot for why this exists.
 func (h OpenCodeHarness) WithProjectRoot(projectRoot string) Harness {
 	h.projectRoot = projectRoot
 	return h
 }
 
-// ConfigRoot returns the OpenCode config root. Satisfies the Harness interface.
+// ConfigRoot returns OpenCode's global config root. Satisfies the Harness interface.
 func (h OpenCodeHarness) ConfigRoot() string { return h.configRoot() }
 
-// configRoot returns the OS-appropriate OpenCode config root.
-// On Windows, it uses %APPDATA%\opencode; if APPDATA is empty the harness is
-// not detectable and an empty string is returned. On non-Windows systems the
-// Unix path (~/.config/opencode) is used. An empty home dir also yields "".
+// configRoot resolves the global root the way OpenCode does: an explicit
+// $OPENCODE_CONFIG_DIR, then $XDG_CONFIG_HOME/opencode, then
+// ~/.config/opencode. An unresolvable home dir yields "".
 func (h OpenCodeHarness) configRoot() string {
-	if runtime.GOOS == "windows" {
-		appdata := os.Getenv("APPDATA")
-		if appdata == "" {
-			// APPDATA missing on Windows — do NOT fall through to Unix path.
-			return ""
-		}
-		return filepath.Join(appdata, "opencode")
+	if dir := envDirFromCwd("OPENCODE_CONFIG_DIR"); dir != "" {
+		return dir
 	}
-	home, _ := os.UserHomeDir()
+	if xdg := envDir("XDG_CONFIG_HOME"); xdg != "" {
+		return filepath.Join(xdg, "opencode")
+	}
+	home := homeDir()
 	if home == "" {
 		return ""
 	}
 	return filepath.Join(home, ".config", "opencode")
 }
 
-// Detect checks for the "opencode" binary on PATH or the config dir existence.
-// If configRoot() returns empty (e.g. missing APPDATA on Windows or empty home),
-// the harness is reported as not installed rather than constructing a bogus path.
+// Detect checks for the global root directory or "opencode" on PATH.
+// If configRoot() returns empty (empty home), the harness is reported as not
+// installed rather than constructing a bogus path.
 func (h OpenCodeHarness) Detect() (DetectResult, error) {
 	root := h.configRoot()
 	if root == "" {
 		return DetectResult{Installed: false}, nil
 	}
 
-	// Primary: check config directory existence.
+	// Primary: config root directory.
 	if _, err := statPath(root); err == nil {
 		return DetectResult{
 			Installed:  true,
@@ -82,7 +78,7 @@ func (h OpenCodeHarness) Detect() (DetectResult, error) {
 		}, nil
 	}
 
-	// Secondary: check binary on PATH.
+	// Secondary: binary on PATH.
 	if bin, err := lookPath("opencode"); err == nil {
 		return DetectResult{
 			Installed:  true,
@@ -102,32 +98,46 @@ func (h OpenCodeHarness) ConfigPaths() ConfigPaths {
 }
 
 // ConfigPathsFor returns OpenCode's paths, scoped to projectRoot when
-// non-empty. Project-local targets mirror OpenCode's existing global
-// component set (skills-dir, commands-dir, agent-dir) into `.opencode/`-scoped
-// project dirs, plus a project-root opencode.json for MCP. Per design's Q3
-// resolution, OpenCode never writes an AGENTS.md managed block in project
-// mode — its skills/commands/agent dirs are its native project mechanism.
+// non-empty: <projectRoot>/.opencode/{skills,agents,commands} and the project
+// config file. Global: the same names under the global root.
 func (h OpenCodeHarness) ConfigPathsFor(projectRoot string) ConfigPaths {
 	if projectRoot != "" {
+		dir := filepath.Join(projectRoot, ".opencode")
 		return ConfigPaths{
-			MCPConfig:   filepath.Join(projectRoot, "opencode.json"),
-			SkillsDir:   filepath.Join(projectRoot, ".opencode", "skill"),
-			AgentsDir:   filepath.Join(projectRoot, ".opencode", "agent"),
-			CommandsDir: filepath.Join(projectRoot, ".opencode", "command"),
+			MCPConfig:   opencodeConfigFile(projectRoot),
+			SkillsDir:   filepath.Join(dir, "skills"),
+			AgentsDir:   filepath.Join(dir, "agents"),
+			CommandsDir: filepath.Join(dir, "commands"),
 			ProjectRoot: projectRoot,
 		}
 	}
 	root := h.configRoot()
+	if root == "" {
+		return ConfigPaths{}
+	}
 	return ConfigPaths{
-		MCPConfig:   filepath.Join(root, "opencode.json"),
+		MCPConfig:   opencodeConfigFile(root),
 		SkillsDir:   filepath.Join(root, "skills"),
-		AgentsDir:   filepath.Join(root, "agent"),
+		AgentsDir:   filepath.Join(root, "agents"),
 		CommandsDir: filepath.Join(root, "commands"),
 	}
 }
 
-// Supports reports capability support. OpenCode supports all four components
-// including ReviewAgents (it has a native sub-agent format).
+// opencodeConfigFile picks the config file in dir: opencode.json, unless only
+// opencode.jsonc exists, in which case that file is used instead of creating
+// a second, competing config.
+func opencodeConfigFile(dir string) string {
+	jsonPath := filepath.Join(dir, "opencode.json")
+	jsoncPath := filepath.Join(dir, "opencode.jsonc")
+	if _, err := statPath(jsonPath); err != nil {
+		if _, err := statPath(jsoncPath); err == nil {
+			return jsoncPath
+		}
+	}
+	return jsonPath
+}
+
+// Supports reports capability support. OpenCode supports all four components.
 func (h OpenCodeHarness) Supports(c component.Component) bool {
 	switch c {
 	case component.SkillCommands, component.MCPGates, component.ReviewAgents, component.DesignMemory:
@@ -137,37 +147,95 @@ func (h OpenCodeHarness) Supports(c component.Component) bool {
 	}
 }
 
-// WriteMCP implements the MergeIntoSettings strategy for OpenCode.
-//
-// OpenCode uses JSONC for its config (~/.config/opencode/opencode.json).
-// The ui-craft server entry is merged under the top-level "mcp" key:
-//
-//	"mcp": { "<name>": { "type": "local", "command": ["npx","-y","ui-craft-mcp@0.9.0"] } }
-//
-// Comments and trailing commas in the existing config are stripped before
-// parse (JSONC support) and the file is rewritten as clean JSON.
-// Atomic + idempotent (byte-compare skips write when unchanged).
-func (h OpenCodeHarness) WriteMCP(w fsutil.FileSystem, server MCPServer) (Change, error) {
-	paths := h.ConfigPaths()
-	target := paths.MCPConfig // ~/.config/opencode/opencode.json
+// legacyTargets lists the singular skill/, agent/, command/ dirs older
+// ui-craft versions wrote (global and project) and, on Windows, the
+// %APPDATA%\opencode root OpenCode never reads.
+func (h OpenCodeHarness) legacyTargets(c component.Component) []legacyTarget {
+	type dirs struct{ skills, commands, agents string }
+	var sets []dirs
+	var mcpFiles []string
+	if h.projectRoot != "" {
+		base := filepath.Join(h.projectRoot, ".opencode")
+		sets = append(sets, dirs{filepath.Join(base, "skill"), filepath.Join(base, "command"), filepath.Join(base, "agent")})
+	} else {
+		if root := h.configRoot(); root != "" {
+			sets = append(sets, dirs{filepath.Join(root, "skill"), filepath.Join(root, "command"), filepath.Join(root, "agent")})
+		}
+		if appdata := windowsAppDataDir("opencode"); appdata != "" {
+			sets = append(sets, dirs{filepath.Join(appdata, "skills"), filepath.Join(appdata, "commands"), filepath.Join(appdata, "agent")})
+			mcpFiles = append(mcpFiles, filepath.Join(appdata, "opencode.json"))
+		}
+	}
+	var out []legacyTarget
+	for _, s := range sets {
+		switch c {
+		case component.SkillCommands:
+			out = append(out,
+				legacyTarget{path: s.skills, kind: legacySkillDirs, pruneDir: true},
+				legacyTarget{path: s.commands, kind: legacyCommandFiles, pruneDir: true},
+			)
+		case component.ReviewAgents:
+			out = append(out, legacyTarget{path: s.agents, kind: legacyAgentFiles, pruneDir: true})
+		}
+	}
+	if c == component.MCPGates {
+		for _, f := range mcpFiles {
+			out = append(out, legacyTarget{path: f, kind: legacyJSONKey, parent: "mcp", key: "ui-craft"})
+		}
+	}
+	return out
+}
 
-	existing, readErr := w.ReadFile(target)
-	existed := readErr == nil
+// WriteMCP merges the ui-craft server into the "mcp" key of opencode.json
+// (or opencode.jsonc, see opencodeConfigFile):
+//
+//	{ "mcp": { "<name>": { "type": "local", "command": ["<cmd>", "<arg>", ...] } } }
+//
+// OpenCode configs may be JSONC. A file that only parses once comments or
+// trailing commas are removed is NOT rewritten (that would silently delete
+// the user's comments): the Change carries a Notice with the snippet to add
+// by hand instead. A file that is not JSON at all keeps the shared
+// malformed-base behaviour (backed up, then replaced; MalformedBase is set).
+func (h OpenCodeHarness) WriteMCP(w fsutil.FileSystem, server MCPServer) (Change, error) {
+	target := h.ConfigPaths().MCPConfig
+	if target == "" {
+		return Change{}, fmt.Errorf("opencode: cannot resolve the config path (home directory unknown)")
+	}
+
+	existing, existed, readErr := readConfigFile(w, target)
+	if readErr != nil {
+		return Change{}, fmt.Errorf("opencode: read %s: %w", target, readErr)
+	}
 	if !existed {
 		existing = []byte("{}")
 	}
 
-	// Build the command slice: combine Command + Args.
+	// OpenCode wants the full command line as a single array.
 	cmd := append([]string{server.Command}, server.Args...)
+	entry := map[string]any{
+		"type":    "local",
+		"command": cmd,
+	}
+
+	if existed && !json.Valid(existing) && hasJSONCSyntaxOnly(existing) {
+		snippet, err := json.MarshalIndent(map[string]any{server.Name: entry}, "", "  ")
+		if err != nil {
+			return Change{}, fmt.Errorf("opencode: marshal MCP snippet: %w", err)
+		}
+		return Change{
+			FilePath:      target,
+			PriorBytes:    existing,
+			ExistedBefore: true,
+			Strategy:      MergeIntoSettings,
+			Notice: fmt.Sprintf("%s has comments or trailing commas, so ui-craft left it untouched. "+
+				"Copy the \"%s\" key and its value below into the top-level \"mcp\" object "+
+				"(add \"mcp\": {} if the file has none):\n%s", target, server.Name, snippet),
+		}, nil
+	}
 
 	overlay := map[string]any{
 		"mcp": map[string]any{
-			server.Name: map[string]any{
-				"__replace__": map[string]any{
-					"type":    "local",
-					"command": cmd,
-				},
-			},
+			server.Name: map[string]any{"__replace__": entry},
 		},
 	}
 	overlayJSON, err := json.Marshal(overlay)
@@ -175,11 +243,9 @@ func (h OpenCodeHarness) WriteMCP(w fsutil.FileSystem, server MCPServer) (Change
 		return Change{}, fmt.Errorf("opencode: marshal MCP overlay: %w", err)
 	}
 
-	// MergeJSONObjectsEx handles JSONC (strips comments + trailing commas before
-	// parse) and reports whether the base was malformed (gotcha #2).
 	mr, err := filemerge.MergeJSONObjectsEx(existing, overlayJSON)
 	if err != nil {
-		return Change{}, fmt.Errorf("opencode: merge opencode.json: %w", err)
+		return Change{}, fmt.Errorf("opencode: merge %s: %w", filepath.Base(target), err)
 	}
 
 	prior := existing
@@ -187,9 +253,9 @@ func (h OpenCodeHarness) WriteMCP(w fsutil.FileSystem, server MCPServer) (Change
 		prior = nil
 	}
 
-	wr, err := fsutil.WriteFileAtomic(w, target, mr.Data, 0o644)
+	wr, err := writeConfigFile(w, target, mr.Data, 0o644)
 	if err != nil {
-		return Change{}, fmt.Errorf("opencode: write opencode.json %s: %w", target, err)
+		return Change{}, fmt.Errorf("opencode: write %s: %w", target, err)
 	}
 
 	return Change{
@@ -202,10 +268,16 @@ func (h OpenCodeHarness) WriteMCP(w fsutil.FileSystem, server MCPServer) (Change
 	}, nil
 }
 
-// WriteSkill copies the embedded OpenCode skills tree into ~/.config/opencode/skills/.
+// hasJSONCSyntaxOnly reports whether src is valid JSON once JSONC comments
+// and trailing commas are removed.
+func hasJSONCSyntaxOnly(src []byte) bool {
+	mr, err := filemerge.MergeJSONObjectsEx(src, []byte("{}"))
+	return err == nil && !mr.MalformedBase
+}
+
+// WriteSkill copies the embedded OpenCode skills tree into the skills dir.
 // The mirror FS is rooted at the skills level (assets.SkillsFS("opencode")),
-// so walking it yields <id>/SKILL.md paths that land at depth-1:
-// ~/.config/opencode/skills/<id>/SKILL.md. Full-file ownership; idempotent.
+// so walking it yields <id>/SKILL.md paths that land at depth-1.
 func (h OpenCodeHarness) WriteSkill(w fsutil.FileSystem, mirror fs.FS) (Change, error) {
 	destDir := h.ConfigPaths().SkillsDir
 	ch, err := writeMirrorToDir(w, mirror, destDir)
@@ -215,34 +287,24 @@ func (h OpenCodeHarness) WriteSkill(w fsutil.FileSystem, mirror fs.FS) (Change, 
 	return ch, nil
 }
 
-// WriteCommands writes slash-command .md files flat into ~/.config/opencode/commands/.
-// commandsFS is the commands-rooted FS from assets.CommandsFS("opencode"), where
-// each entry is a flat <name>.md file. The CLI owns the command files it
-// installs; stale files no longer in commandsFS are removed (scoped cleanup).
+// WriteCommands writes slash-command .md files flat into the commands dir.
+// commandsFS is the commands-rooted FS from assets.CommandsFS("opencode").
+// Stale command files no longer in commandsFS are removed (scoped cleanup).
 // A nil commandsFS returns ErrUnsupported.
 func (h OpenCodeHarness) WriteCommands(w fsutil.FileSystem, commandsFS fs.FS) ([]Change, error) {
 	if commandsFS == nil {
 		return nil, ErrUnsupported
 	}
-	commandsDir := h.ConfigPaths().CommandsDir // ~/.config/opencode/commands/
-	return writeFlatMDToDir(w, commandsFS, commandsDir, "opencode")
+	return writeFlatMDToDir(w, commandsFS, h.ConfigPaths().CommandsDir, "opencode")
 }
 
-// WriteAgents writes the review agent definitions into OpenCode's native agent
-// directory (~/.config/opencode/agent/). Each .md file in agentsFS is written
-// as a separate agent file using WriteFileAtomic (idempotent byte-compare).
-//
-// OpenCode uses a simpler frontmatter schema (name + description only, no tools
-// or color fields). The agent files in assets/agents/opencode/ are pre-formatted
-// for OpenCode — the body/instructions are identical to the Claude versions but
-// only the harness-relevant frontmatter keys are present.
-//
-// agentsFS is the sub-FS rooted at assets/agents/opencode/. If agentsFS is nil,
-// ErrUnsupported is returned.
+// WriteAgents writes the OpenCode-format review agents (assets/agents/opencode/)
+// into the agents dir. Each file is written with WriteFileAtomic (idempotent
+// byte-compare); other user agents are never touched. A nil agentsFS returns
+// ErrUnsupported.
 func (h OpenCodeHarness) WriteAgents(w fsutil.FileSystem, agentsFS fs.FS) ([]Change, error) {
 	if agentsFS == nil {
 		return nil, ErrUnsupported
 	}
-	agentsDir := h.ConfigPaths().AgentsDir // ~/.config/opencode/agent/
-	return writeAgentsToDir(w, agentsFS, agentsDir, "opencode")
+	return writeAgentsToDir(w, agentsFS, h.ConfigPaths().AgentsDir, "opencode")
 }

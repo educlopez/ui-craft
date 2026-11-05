@@ -11,6 +11,8 @@ Accessibility audit with an a11y lens. Your job is to find what violates or risk
 
 ## On load — read this reference in full before auditing
 
+These paths are relative to your OpenCode config: `~/.config/opencode/` (or `$OPENCODE_CONFIG_DIR`) for a global install, `.opencode/` in the project for a project install.
+
 1. `skills/ui-craft/references/accessibility.md` — WAI-ARIA, keyboard navigation, focus management, touch targets, APCA contrast, reduced-motion, and WCAG criteria
 
 Do NOT restate the rules from this reference in your output. The reference is the authority; point to it by name if relevant.

@@ -19,11 +19,9 @@ func setupClaudeInstall(t *testing.T, includeAgents bool) (*fsutil.MemFS, string
 	_ = m.MkdirAll(skillDir, 0o755)
 	_ = m.WriteFile(filepath.Join(skillDir, "SKILL.md"), []byte("# UI Craft Skill\n"), 0o644)
 
-	// MCP config
-	mcpDir := filepath.Join(root, "mcp")
-	_ = m.MkdirAll(mcpDir, 0o755)
-	_ = m.WriteFile(filepath.Join(mcpDir, "ui-craft.json"),
-		[]byte(`{"ui-craft":{"command":"npx","args":["-y","ui-craft-mcp@0.9.0"]}}`+"\n"), 0o644)
+	// MCP config: user scope lives in ~/.claude.json, next to ~/.claude.
+	_ = m.WriteFile("/home/user/.claude.json",
+		[]byte(`{"numStartups":3,"mcpServers":{"ui-craft":{"command":"npx","args":["-y","ui-craft-mcp@0.9.0"]}}}`+"\n"), 0o644)
 
 	if includeAgents {
 		// Agent files
@@ -65,7 +63,7 @@ func TestParity_allChecksPass(t *testing.T) {
 func TestParity_missingMCP(t *testing.T) {
 	m, root := setupClaudeInstall(t, false)
 	// Remove the MCP file.
-	_ = m.Remove(filepath.Join(root, "mcp", "ui-craft.json"))
+	_ = m.Remove(filepath.Join(filepath.Dir(root), ".claude.json"))
 
 	state := &core.InstallState{
 		Harnesses: []core.HarnessState{
@@ -183,10 +181,8 @@ func TestParity_claudeFullInstall_integration(t *testing.T) {
 	_ = m.WriteFile(filepath.Join(skillDir, "SKILL.md"), []byte("# UI Craft Skill\n"), 0o644)
 
 	// --- mcp-gates ---
-	mcpDir := filepath.Join(claudeRoot, "mcp")
-	_ = m.MkdirAll(mcpDir, 0o755)
-	_ = m.WriteFile(filepath.Join(mcpDir, "ui-craft.json"),
-		[]byte(`{"ui-craft":{"command":"npx","args":["-y","ui-craft-mcp@0.9.0"]}}`+"\n"), 0o644)
+	_ = m.WriteFile("/home/user/.claude.json",
+		[]byte(`{"mcpServers":{"ui-craft":{"command":"npx","args":["-y","ui-craft-mcp@0.9.0"]}}}`+"\n"), 0o644)
 
 	// --- review-agents ---
 	agentsDir := filepath.Join(claudeRoot, "agents")

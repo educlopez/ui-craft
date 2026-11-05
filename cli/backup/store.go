@@ -876,6 +876,23 @@ func resolvedHomeDir() (string, error) {
 	return filepath.EvalSymlinks(home)
 }
 
+// Restorable reports whether Restore would accept path for a store whose trust
+// boundary is root: the current user's home directory for a global store
+// (root == ""), the project root for a project store (see
+// core.NewProjectBackupStore). A path that fails it cannot be rolled back, so
+// callers keep it out of snapshots and out of any destructive step the
+// snapshot is meant to cover.
+func Restorable(path, root string) bool {
+	if root == "" {
+		home, err := os.UserHomeDir()
+		if err != nil || home == "" {
+			return false
+		}
+		root = home
+	}
+	return validateUnderHome(path, root) == nil
+}
+
 // validateUnderHome checks that path resolves under homeDir after symlink
 // resolution. Symlink-resolution prevents a symlink inside HOME pointing
 // outside HOME (e.g. ~/escape → /etc) from bypassing the check.

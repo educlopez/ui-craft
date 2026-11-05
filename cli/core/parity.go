@@ -13,6 +13,7 @@ import (
 	"github.com/educlopez/ui-craft/cli/component"
 	"github.com/educlopez/ui-craft/cli/fsutil"
 	"github.com/educlopez/ui-craft/cli/harness"
+	"github.com/educlopez/ui-craft/cli/internal/filemerge"
 )
 
 // ParityIssue describes one failing parity check.
@@ -38,7 +39,8 @@ type ParityResult struct {
 // VerifyClaudeCodeParity verifies that all Claude-Code components recorded in
 // state are actually present on disk.  It checks:
 //   - skill+commands: at least one file under ~/.claude/skills/ui-craft/
-//   - mcp-gates:      ~/.claude/mcp/ui-craft.json exists and is non-empty
+//   - mcp-gates:      the user MCP config (~/.claude.json, or
+//     $CLAUDE_CONFIG_DIR/.claude.json) has an mcpServers."ui-craft" entry
 //   - review-agents:  at least one .md file under ~/.claude/agents/ (only when
 //     "review-agents" appears in the saved state for the claude harness)
 //
@@ -55,8 +57,14 @@ func VerifyClaudeCodeParity(filesystem fsutil.FileSystem, state *InstallState, c
 
 	// Resolve config root via the harness's own ConfigRoot() method — robust,
 	// no path reversal required.
+	// The user-scope MCP config is not inside the config root: it is
+	// ~/.claude.json next to ~/.claude (or $CLAUDE_CONFIG_DIR/.claude.json).
+	// An explicit root is taken to use the default layout.
+	mcpFile := h.ConfigPaths().MCPConfig
 	if claudeConfigRoot == "" {
 		claudeConfigRoot = h.ConfigRoot()
+	} else {
+		mcpFile = filepath.Join(filepath.Dir(claudeConfigRoot), ".claude.json")
 	}
 
 	// Find the claude harness state.
@@ -90,14 +98,13 @@ func VerifyClaudeCodeParity(filesystem fsutil.FileSystem, state *InstallState, c
 
 	// Check mcp-gates — only if it was recorded as installed.
 	if installed[component.MCPGates.String()] {
-		mcpFile := filepath.Join(claudeConfigRoot, "mcp", "ui-craft.json")
 		data, err := filesystem.ReadFile(mcpFile)
-		passed := err == nil && len(data) > 0
+		passed := err == nil && filemerge.LookupOrderedJSONKey(data, "mcpServers", "ui-craft") != nil
 		results = append(results, ParityResult{CheckName: "mcp", Passed: passed})
 		if !passed {
 			issues = append(issues, ParityIssue{
 				Check:       "mcp",
-				Description: fmt.Sprintf("expected non-empty %s (err: %v)", mcpFile, err),
+				Description: fmt.Sprintf("expected an mcpServers.ui-craft entry in %s (err: %v)", mcpFile, err),
 			})
 		}
 	}

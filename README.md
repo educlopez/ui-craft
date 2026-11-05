@@ -103,7 +103,7 @@ scoop install educlopez/ui-craft
 |-----------|:---:|:------------------:|:----------------:|
 | Skill + commands | All harnesses | ✅ | All harnesses |
 | MCP gates (`check_anti_slop`, `tokens_lint`, `acceptance_bar`, `score_ui`) | All MCP-capable harnesses | ✅ auto-wired | Manual `.mcp.json` |
-| Review agents (`design-reviewer`, `a11y-auditor`) | Claude Code + OpenCode | ✅ | — |
+| Review agents (`design-reviewer`, `a11y-auditor`) | All harnesses | ✅ | — |
 | Design memory (`.ui-craft/`) | ✅ (component opt-in) | — | — |
 
 ### Platform support
