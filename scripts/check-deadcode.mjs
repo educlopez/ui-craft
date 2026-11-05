@@ -38,7 +38,7 @@ const dim = (s) => (tty ? `\x1b[2m${s}\x1b[0m` : s);
 
 let out;
 try {
-  out = execFileSync('go', ['run', 'golang.org/x/tools/cmd/deadcode@v0.31.0', '-test', './...'], {
+  out = execFileSync('go', ['run', 'golang.org/x/tools/cmd/deadcode@v0.49.0', '-test', './...'], {
     cwd: path.join(ROOT, 'cli'),
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'pipe'],
