@@ -24,7 +24,6 @@
     },
     "claudePlugin": {
       "name": "ui-craft",
-      "version": "1.0.0",
       "contract": "harness-assets-v1"
     },
     "marketplaceListing": {

@@ -100,9 +100,7 @@ export function marketplaceListingIsValid(manifestListing, marketplace, plugin) 
   return (
     manifestListing.name === plugin.name &&
     listing?.name === plugin.name &&
-    /^\d{4}\.(?:[1-9]|1[0-2])\.(?:[1-9]|[12]\d|3[01])\.(?:[01]\d|2[0-3])[0-5]\d$/.test(
-      listing.version,
-    )
+    !("version" in listing)
   )
 }
 
@@ -151,9 +149,12 @@ export function checkDistributionContract({ root = ROOT } = {}) {
       manifest.components.mcp.invocation === `${mcpPackage.name}@${mcpPackage.version}`,
     ],
     [
-      "Claude plugin version matches",
+      // No pinned version anywhere: Claude Code then versions the plugin by commit
+      // SHA, so every push to main reaches users. A manifest "version" wins over
+      // everything else and froze users on 1.0.0 from 2026-06-25 to 2026-11-05.
+      "Claude plugin tracks commits (no pinned version)",
       manifest.components.claudePlugin.name === plugin.name &&
-        manifest.components.claudePlugin.version === plugin.version,
+        !("version" in plugin),
     ],
     [
       "marketplace listing metadata is valid",
