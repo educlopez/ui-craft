@@ -93,11 +93,15 @@ homebrew_casks:
     # Strip the com.apple.quarantine flag on install. Without this, the
     # ad-hoc-signed binary is SIGKILLed ("killed: 9") by Gatekeeper on
     # Apple Silicon instead of running. Runs only on macOS.
+    # `install_steps` renders Homebrew's declarative `postflight_steps`
+    # stanza; the Ruby `postflight` block (`install:`) is deprecated since
+    # Homebrew 7 and goreleaser v2.19, and prints a warning on every
+    # `brew upgrade`/`brew info`.
     hooks:
       post:
-        install: |
-          if OS.mac? && File.exist?("#{staged_path}/ui-craft")
-            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/ui-craft"]
+        install_steps: |
+          on_macos do
+            run "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "{{ .StagedPath }}/ui-craft"]
           end
 
 scoops:

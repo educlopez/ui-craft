@@ -8,10 +8,14 @@ on:
     paths:
       - 'cli/**'
       - '.github/workflows/cli-ci.yml'
+      - 'scripts/check-deadcode.mjs'
+      - 'scripts/check-home-isolation.mjs'
   pull_request:
     paths:
       - 'cli/**'
       - '.github/workflows/cli-ci.yml'
+      - 'scripts/check-deadcode.mjs'
+      - 'scripts/check-home-isolation.mjs'
 
 jobs:
   test:
@@ -86,9 +90,9 @@ jobs:
           go-version: stable
 
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@9fae48acfc02a90574d7c304a1758ef9895495fa  # v7.0.1
+        uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a  # v9.3.0
         with:
-          version: v2.12.2
+          version: v2.15.0
           working-directory: cli
 
   govulncheck:
