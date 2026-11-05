@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -85,5 +86,60 @@ func TestUninstall_claudeKeepsClaudeJSON(t *testing.T) {
 	}
 	if !strings.Contains(out.String(), "removed legacy") {
 		t.Errorf("output does not report the legacy sweep:\n%s", out.String())
+	}
+}
+
+// TestUninstall_mcpOnlySnapshotsOnlyMCPLegacy: an MCP-only uninstall must not
+// snapshot the legacy skill dirs it never touches. An unreadable one there
+// used to abort the snapshot, and with it the whole uninstall.
+func TestUninstall_mcpOnlySnapshotsOnlyMCPLegacy(t *testing.T) {
+	if runtime.GOOS == "windows" || os.Geteuid() == 0 {
+		t.Skip("needs POSIX permissions and a non-root user")
+	}
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
+	t.Setenv("XDG_CONFIG_HOME", "")
+	t.Setenv("OPENCODE_CONFIG_DIR", "")
+
+	ocDir := filepath.Join(home, ".config", "opencode")
+	cfg := filepath.Join(ocDir, "opencode.json")
+	if err := os.MkdirAll(ocDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(cfg, []byte(`{"mcp":{"ui-craft":{"type":"local","command":["npx"]},"x":{"type":"local"}}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// A legacy skill dir (singular skill/) the snapshot cannot read.
+	locked := filepath.Join(ocDir, "skill", "ui-craft")
+	if err := os.MkdirAll(locked, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(locked, "SKILL.md"), []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(locked, 0o000); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(locked, 0o755) })
+
+	restore := cmd.SetFlags("opencode", []string{"mcp-gates"}, true)
+	defer restore()
+
+	var out bytes.Buffer
+	root := &cobra.Command{Use: "ui-craft", SilenceUsage: true}
+	root.AddCommand(cmd.MakeUninstallCmd())
+	root.SetOut(&out)
+	root.SetErr(&out)
+	root.SetArgs([]string{"uninstall"})
+	if err := root.Execute(); err != nil {
+		t.Fatalf("uninstall: %v\n%s", err, out.String())
+	}
+	got, err := os.ReadFile(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(got), "ui-craft") || !strings.Contains(string(got), `"x"`) {
+		t.Errorf("opencode.json after uninstall:\n%s", got)
 	}
 }

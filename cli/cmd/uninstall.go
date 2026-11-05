@@ -159,7 +159,7 @@ func runUninstall(cmd *cobra.Command, _ []string) error {
 	for _, h := range targetHarnesses {
 		paths := h.ConfigPaths()
 		snapPaths := []string{paths.MCPConfig, paths.SkillsDir, paths.AgentsDir, paths.CommandsDir, paths.AgentsMDPath}
-		for _, comp := range uninstallableComponents {
+		for _, comp := range selectedComponents {
 			snapPaths = append(snapPaths, harness.LegacyPaths(h, comp, ownedAssets(h.Name()))...)
 		}
 		for _, p := range snapPaths {
