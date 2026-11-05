@@ -12,3 +12,9 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    groups:
+      # init, autobuild and analyze must share one version: CodeQL fails
+      # when the steps of a workflow run different codeql-action releases.
+      codeql-action:
+        patterns:
+          - "github/codeql-action*"
