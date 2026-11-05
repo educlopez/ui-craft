@@ -45,7 +45,14 @@ try {
   });
 } catch (e) {
   process.stderr.write(
-    `check-deadcode: COULD NOT RUN — ${String(e.stderr || e.message).split('\n')[0]}\n` +
+    // `go run` prints one "go: downloading …" line per module on a cold cache. Showing only
+    // the first stderr line hid the real error behind that noise on every fresh CI runner.
+    `check-deadcode: COULD NOT RUN\n${
+      String(e.stderr || e.message)
+        .split('\n')
+        .filter((l) => l.trim() && !l.startsWith('go: downloading'))
+        .join('\n') || `exit ${e.status}`
+    }\n` +
       dim('  This is not a pass. Needs network on first run to fetch the tool.\n')
   );
   process.exit(2);
