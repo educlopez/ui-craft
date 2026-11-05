@@ -51,6 +51,13 @@ func WriteFileAtomic(filesystem FileSystem, path string, data []byte, perm fs.Fi
 	// any decorator wrapping OsFS (e.g. a logging or metering layer) still gets
 	// the full fsync atomic path rather than silently falling to temp+rename.
 	if _, ok := filesystem.(realDiskFS); ok {
+		// rename(2) replaces a symlink with a regular file instead of writing
+		// through it. Dotfile managers symlink configs such as ~/.claude.json
+		// into a repo, so write to the link's target and keep the link. Only the
+		// real-disk branch resolves: callers keep the original path for backups.
+		if resolved, err := filepath.EvalSymlinks(path); err == nil {
+			path = resolved
+		}
 		return writeAtomicOS(path, data, perm)
 	}
 

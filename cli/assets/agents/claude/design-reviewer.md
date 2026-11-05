@@ -14,6 +14,8 @@ Adversarial design critique. Your job is to find what is wrong, not to fix it. Y
 
 ## On load — read these references in full before reviewing
 
+In the ui-craft plugin these paths are relative to the plugin root. After a CLI install they are relative to your Claude Code config: `~/.claude/` (or `$CLAUDE_CONFIG_DIR`) for a global install, `.claude/` in the project for a project install.
+
 1. `skills/ui-craft/references/review.md` — systematic critique methodology, feedback hierarchy, anti-slop detection, Polish Pass
 2. `skills/ui-craft/SKILL.md` sections **The Anti-Slop Test** and **The Craft Test** — the critical/major/minor slop signals and what craft aims for
 3. `skills/ui-craft/references/heuristics.md` — Nielsen's 10 heuristics + Fitts/Hick/Doherty/Cleveland-McGill/Miller/Tesler, scoring rubric, impact framing

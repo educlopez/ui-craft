@@ -22,9 +22,19 @@ import (
 type installJSONTarget struct {
 	Harness    string `json:"harness"`
 	Component  string `json:"component"`
-	Status     string `json:"status"` // "installed", "already-up-to-date", "skipped", "dry-run"
+	Status     string `json:"status"` // "installed", "already-up-to-date", "manual-action-needed", "skipped", "dry-run"
 	Skip       bool   `json:"skip,omitempty"`
 	SkipReason string `json:"skip_reason,omitempty"`
+	// Notice carries what the user must do by hand when Status is
+	// "manual-action-needed" (e.g. a commented opencode.jsonc ui-craft left untouched).
+	Notice string `json:"notice,omitempty"`
+}
+
+// needsManualAction reports a change that wrote nothing on purpose and asks the
+// user to finish by hand. Such a component is not installed: it must not be
+// recorded in state.json, and it must not report as already up to date.
+func needsManualAction(ch harness.Change) bool {
+	return ch.Notice != "" && !ch.Changed
 }
 
 // installJSONResult is the top-level --json result for install/update/uninstall.
@@ -278,6 +288,22 @@ For a project-scoped install, run "ui-craft" with no arguments and choose
 		backupRoot := filepath.Join(home, ".ui-craft-backups")
 		backupStore := backup.NewStore(backupRoot, osfs, nil) // nil clock = time.Now
 
+		// A config root moved outside HOME by CLAUDE_CONFIG_DIR, CODEX_HOME, etc. is
+		// outside the backup store's trust boundary: Restore refuses those paths, so
+		// `ui-craft rollback` (and the automatic rollback of a failed install) cannot
+		// put files there back. Say so before writing, on stderr so --json stays clean.
+		warnedRoots := map[string]bool{}
+		for _, t := range plan.Targets {
+			root := t.Harness.ConfigRoot()
+			if t.Skip || root == "" || warnedRoots[root] || backup.Restorable(root, "") {
+				continue
+			}
+			warnedRoots[root] = true
+			fmt.Fprintf(cmd.ErrOrStderr(),
+				"NOTE: %s config root %s is outside your home folder; rollback cannot restore files written there.\n",
+				t.Harness.Name(), root)
+		}
+
 		// Execute transactional apply.
 		result, applyErr := core.Apply(plan, osfs, backupStore, cmdVersion, false)
 		if applyErr != nil {
@@ -307,8 +333,20 @@ For a project-scoped install, run "ui-craft" with no arguments and choose
 			// Only uninstall removes entries, which is the same rule update follows.
 			seen := map[string]bool{}
 			var installedComps []string
+			// A component this run left for the user to finish by hand is not
+			// installed now, whatever an earlier run recorded: drop it, so `update`
+			// does not treat an unconfigured server as installed.
+			manual := map[string]bool{}
+			for _, ch := range result.Changes {
+				if ch.HarnessName == dh.Harness.Name() && needsManualAction(ch) {
+					manual[ch.Component] = true
+				}
+			}
 			if existing := core.FindHarness(state, dh.Harness.Name()); existing != nil {
 				for _, c := range existing.InstalledComponents {
+					if manual[c] {
+						continue
+					}
 					if !seen[c] {
 						seen[c] = true
 						installedComps = append(installedComps, c)
@@ -316,6 +354,9 @@ For a project-scoped install, run "ui-craft" with no arguments and choose
 				}
 			}
 			for _, ch := range result.Changes {
+				if needsManualAction(ch) {
+					continue
+				}
 				if ch.HarnessName == dh.Harness.Name() && !seen[ch.Component] {
 					seen[ch.Component] = true
 					installedComps = append(installedComps, ch.Component)
@@ -339,6 +380,9 @@ For a project-scoped install, run "ui-craft" with no arguments and choose
 			}
 			for _, ch := range result.Changes {
 				if ch.HarnessName == t.Harness.Name() && ch.Component == t.Component.String() {
+					if needsManualAction(ch) {
+						return "manual-action-needed"
+					}
 					if !ch.Changed {
 						return "already-up-to-date"
 					}
@@ -346,6 +390,9 @@ For a project-scoped install, run "ui-craft" with no arguments and choose
 				}
 				// MCP uses file path as key
 				if ch.FilePath == t.SnapPath {
+					if needsManualAction(ch) {
+						return "manual-action-needed"
+					}
 					if !ch.Changed {
 						return "already-up-to-date"
 					}
@@ -376,6 +423,11 @@ For a project-scoped install, run "ui-craft" with no arguments and choose
 				if t.Skip {
 					jt.Skip = true
 					jt.SkipReason = t.SkipReason
+				}
+				for _, ch := range result.Changes {
+					if ch.FilePath == t.SnapPath && ch.Notice != "" {
+						jt.Notice = ch.Notice
+					}
 				}
 				targets = append(targets, jt)
 			}
@@ -430,6 +482,15 @@ For a project-scoped install, run "ui-craft" with no arguments and choose
 				if ch.FilePath == t.SnapPath && ch.MalformedBase && !flags.Quiet {
 					fmt.Fprintf(out, "  WARNING: %s was malformed JSON; original backed up before rewrite.\n", ch.FilePath)
 				}
+				if ch.FilePath == t.SnapPath && ch.Notice != "" {
+					if flags.Quiet {
+						// --quiet keeps stdout to the outcome, but a step the user must
+						// finish by hand is an outcome: send it to stderr.
+						fmt.Fprintf(cmd.ErrOrStderr(), "NOTE: %s\n", ch.Notice)
+					} else {
+						fmt.Fprintf(out, "  NOTE: %s\n", ch.Notice)
+					}
+				}
 			}
 			if !flags.Quiet {
 				fmt.Fprintf(out, "  %s/mcp-gates: %s\n", t.Harness.Name(), status)
@@ -469,14 +530,15 @@ For a project-scoped install, run "ui-craft" with no arguments and choose
 
 // detectNativeClaudePlugin returns true when a Claude Code native plugin install
 // for ui-craft is detected. It checks for the presence of the plugin manifest
-// directory that the npm-based plugin install creates (~/.claude/plugins/ui-craft/).
+// directory that the npm-based plugin install creates (<claude root>/plugins/ui-craft/,
+// where the root honours $CLAUDE_CONFIG_DIR).
 // This is a best-effort heuristic: false negatives are safe (no unnecessary blocking).
 func detectNativeClaudePlugin() bool {
-	home, err := os.UserHomeDir()
-	if err != nil {
+	root := harness.ClaudeHarness{}.ConfigRoot()
+	if root == "" {
 		return false
 	}
-	pluginDir := filepath.Join(home, ".claude", "plugins", "ui-craft")
+	pluginDir := filepath.Join(root, "plugins", "ui-craft")
 	if _, err := os.Stat(pluginDir); err == nil {
 		return true
 	}
