@@ -199,7 +199,7 @@ Version bump (if you changed the detector or the skill surface):
 
 1. Update the top entry in `VERSIONS.md` with a new `## vX.Y.Z` heading + date + summary
 2. Bump `package.json` version if the detector changed
-3. The `.githooks/pre-commit` hook auto-bumps `marketplace.json` CalVer on commit (macOS/Linux)
+3. Do not add a `version` to `.claude-plugin/plugin.json` or the `marketplace.json` entry: without one, Claude Code versions the plugin by commit SHA, so every push to `main` reaches plugin users (`check-distribution-contract` enforces this)
 
 On push to main:
 - `validate.yml` runs the validator + skill/command mirror drift guard + agent copy drift guard

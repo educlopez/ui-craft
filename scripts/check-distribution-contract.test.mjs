@@ -106,27 +106,24 @@ test("compatibility matrix rejects MCP pins stale against components.mcp.invocat
   ])
 })
 
-test("marketplace CalVer may change without drifting the distribution manifest", () => {
+test("marketplace listing must not pin a version", () => {
   const manifestListing = { name: "ui-craft" }
   const plugin = { name: "ui-craft" }
 
-  for (const version of ["2026.7.28.1026", "2026.7.28.2359"]) {
+  assert.equal(
+    marketplaceListingIsValid(manifestListing, { plugins: [{ name: "ui-craft" }] }, plugin),
+    true,
+  )
+  // Any pinned string, CalVer included, freezes users on the cached copy until it
+  // changes, and a per-commit bump makes every pair of open PRs conflict.
+  for (const version of ["2026.7.28.1026", "1.0.0", "latest"]) {
     assert.equal(
       marketplaceListingIsValid(
         manifestListing,
         { plugins: [{ name: "ui-craft", version }] },
         plugin,
       ),
-      true,
+      false,
     )
   }
-
-  assert.equal(
-    marketplaceListingIsValid(
-      manifestListing,
-      { plugins: [{ name: "ui-craft", version: "latest" }] },
-      plugin,
-    ),
-    false,
-  )
 })
