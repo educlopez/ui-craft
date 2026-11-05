@@ -1,7 +1,11 @@
 #!/bin/bash
-# Pre-commit hook for ui-craft. Runs two steps:
-#   1. Auto-bump marketplace.json version (CalVer) so plugin cache refreshes.
-#   2. Run the anti-slop detector on any staged UI files.
+# Pre-commit hook for ui-craft. Runs the anti-slop detector on any staged UI
+# files.
+#
+# It used to also stamp a CalVer "version" into marketplace.json on every
+# commit. That did nothing for users (plugin.json pinned "1.0.0", which Claude
+# Code reads first) and made every two open PRs conflict. Neither manifest
+# pins a version now, so Claude Code versions the plugin by commit SHA.
 #
 # Enable once per clone:
 #   git config core.hooksPath .githooks
@@ -11,20 +15,7 @@
 
 set -e
 
-# --- 1. Auto-version ------------------------------------------------------
-
-VERSION=$(date +"%Y.%-m.%-d.%H%M")
-if [ -f ".claude-plugin/marketplace.json" ]; then
-  if sed --version >/dev/null 2>&1; then
-    sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$VERSION\"/" .claude-plugin/marketplace.json
-  else
-    sed -i '' "s/\"version\": \"[^\"]*\"/\"version\": \"$VERSION\"/" .claude-plugin/marketplace.json
-  fi
-  git add .claude-plugin/marketplace.json
-  echo "Auto-versioned to $VERSION"
-fi
-
-# --- 2. Anti-slop detector on staged UI files -----------------------------
+# --- Anti-slop detector on staged UI files -----------------------------
 
 STAGED=$(git diff --cached --name-only --diff-filter=ACM \
   | grep -E '\.(css|scss|sass|tsx|jsx|ts|js|vue|svelte|astro|html)$' || true)

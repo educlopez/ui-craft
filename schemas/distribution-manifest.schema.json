@@ -67,10 +67,9 @@
         },
         "claudePlugin": {
           "type": "object",
-          "required": ["name", "version", "contract"],
+          "required": ["name", "contract"],
           "properties": {
             "name": { "type": "string" },
-            "version": { "type": "string" },
             "contract": { "type": "string" }
           },
           "additionalProperties": false
