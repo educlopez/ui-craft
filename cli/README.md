@@ -65,6 +65,24 @@ ui-craft doctor --json                    # health check as JSON (ok bool + chec
 ui-craft completion zsh                   # generate zsh completion script
 ```
 
+## Where files go
+
+Global installs (`ui-craft install`) write to each harness's home-derived config. Project installs (the hub's "Install (this project)") write the project-local equivalent.
+
+| Harness | Root (global) | Skills | Review agents | Commands | MCP server entry |
+|---|---|---|---|---|---|
+| Claude Code | `$CLAUDE_CONFIG_DIR`, else `~/.claude` | `skills/<id>/` | `agents/*.md` | `commands/*.md` | `mcpServers` in `~/.claude.json` (`$CLAUDE_CONFIG_DIR/.claude.json` when set); project: `.mcp.json` |
+| Codex | `$CODEX_HOME`, else `~/.codex` | `skills/<id>/` | `agents/*.toml` (read-only agent roles) | as skills | `[mcp_servers.ui-craft]` in `config.toml` |
+| Cursor | `~/.cursor` | `skills/<id>/` | `agents/*.md` | as skills | `mcpServers` in `mcp.json` |
+| Gemini CLI | `$GEMINI_CLI_HOME/.gemini`, else `~/.gemini` | `skills/<id>/` | `agents/*.md` | as skills | `mcpServers` in `settings.json` |
+| OpenCode | `$OPENCODE_CONFIG_DIR`, else `$XDG_CONFIG_HOME/opencode`, else `~/.config/opencode` (Windows too) | `skills/<id>/` | `agents/*.md` | `commands/*.md` | `mcp` in `opencode.json` (or an existing `opencode.jsonc`) |
+
+Project scope uses `<project>/.claude/`, `.codex/`, `.cursor/`, `.gemini/` and `.opencode/` with the same sub-paths. On Windows, `~` is `%USERPROFILE%`.
+
+Shared config files are merged, never replaced: only the `ui-craft` entry is added or removed, and uninstall never deletes the file. ui-craft will not rewrite a `~/.claude.json` that does not parse (the install stops and rolls back), nor an OpenCode config that contains comments (it prints the entry to add by hand).
+
+Older versions wrote some files where the harness never reads them (`~/.claude/mcp/ui-craft.json`, project skills in `.cursor/rules/` or straight under `.gemini/`, OpenCode's singular `skill/`, `agent/`, `command/` dirs, and `%APPDATA%\Claude` / `%APPDATA%\opencode` on Windows). Install and uninstall remove ui-craft's own files from those places and leave everything else alone.
+
 ## Update lifecycle (state.json)
 
 After a successful `install`, the CLI saves the selected harness+component choices to `~/.ui-craft/state.json`. This file is the single source of truth for `update`:
@@ -89,7 +107,7 @@ ui-craft version --check-parity
 Verifies that the CLI install into Claude Code produced the expected surface:
 
 - `skill` — at least one file under `~/.claude/skills/ui-craft/`
-- `mcp` — `~/.claude/mcp/ui-craft.json` exists and is non-empty
+- `mcp` — `~/.claude.json` (or `$CLAUDE_CONFIG_DIR/.claude.json`) has an `mcpServers["ui-craft"]` entry
 - `agents` — at least one `.md` file under `~/.claude/agents/` (only when review-agents is installed)
 
 Exits 0 when all checks pass; exits 1 when any check fails.

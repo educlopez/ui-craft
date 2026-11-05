@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/fs"
-	"os"
 	"path/filepath"
 
 	"github.com/educlopez/ui-craft/cli/component"
@@ -15,10 +14,13 @@ import (
 // GeminiHarness is the adapter for Google Gemini CLI.
 //
 // Detection: "gemini" on PATH.
+// Config root: $GEMINI_CLI_HOME/.gemini when set, else ~/.gemini.
 // MCP config: ~/.gemini/settings.json (JSON / MergeIntoSettings strategy).
-// Skills dir: ~/.gemini/skills/
-// Agents dir: (none — Gemini CLI has no native sub-agent format).
-// Supports:   SkillCommands, MCPGates, DesignMemory = true; ReviewAgents = false.
+// Skills dir: ~/.gemini/skills/ or <project>/.gemini/skills/ (<id>/SKILL.md).
+// Agents dir: ~/.gemini/agents/ or <project>/.gemini/agents/ (local subagents:
+// markdown with name/description/kind/tools frontmatter).
+// Supports:   SkillCommands, MCPGates, ReviewAgents, DesignMemory (all true).
+// Commands are not installed: they ship as peer skills.
 type GeminiHarness struct {
 	// projectRoot is set via WithProjectRoot so ConfigPaths() resolves to
 	// project-scoped paths. Empty (zero value) means global scope.
@@ -40,8 +42,13 @@ func (h GeminiHarness) WithProjectRoot(projectRoot string) Harness {
 // ConfigRoot returns the Gemini config root (~/.gemini). Satisfies the Harness interface.
 func (h GeminiHarness) ConfigRoot() string { return h.configRoot() }
 
+// configRoot returns <home>/.gemini, where <home> is $GEMINI_CLI_HOME when
+// set (Gemini CLI uses it in place of the user's home dir) or the real home.
 func (h GeminiHarness) configRoot() string {
-	home, _ := os.UserHomeDir()
+	home := envDirFromCwd("GEMINI_CLI_HOME")
+	if home == "" {
+		home = homeDir()
+	}
 	if home == "" {
 		return ""
 	}
@@ -89,36 +96,47 @@ func (h GeminiHarness) ConfigPaths() ConfigPaths {
 // non-empty. Project-local targets: <projectRoot>/GEMINI.md (managed block,
 // written by WriteSkill via filemerge.UpsertManagedBlock — mirrors Codex's
 // AGENTS.md pattern) and <projectRoot>/.gemini/settings.json for MCP.
-// SkillsDir resolves to <projectRoot>/.gemini since Gemini's project-local
-// skills-equivalent surface is the project .gemini/ directory itself.
+// Skills go to <projectRoot>/.gemini/skills/<id>/ and agents to
+// <projectRoot>/.gemini/agents/.
 func (h GeminiHarness) ConfigPathsFor(projectRoot string) ConfigPaths {
 	if projectRoot != "" {
 		return ConfigPaths{
 			MCPConfig:    filepath.Join(projectRoot, ".gemini", "settings.json"),
-			SkillsDir:    filepath.Join(projectRoot, ".gemini"),
-			AgentsDir:    "", // Gemini CLI has no sub-agent directory.
+			SkillsDir:    filepath.Join(projectRoot, ".gemini", "skills"),
+			AgentsDir:    filepath.Join(projectRoot, ".gemini", "agents"),
 			AgentsMDPath: filepath.Join(projectRoot, "GEMINI.md"),
 			ProjectRoot:  projectRoot,
 		}
 	}
 	root := h.configRoot()
+	if root == "" {
+		return ConfigPaths{}
+	}
 	return ConfigPaths{
 		MCPConfig: filepath.Join(root, "settings.json"),
 		SkillsDir: filepath.Join(root, "skills"),
-		AgentsDir: "", // Gemini CLI has no sub-agent directory.
+		AgentsDir: filepath.Join(root, "agents"),
 	}
 }
 
-// Supports reports capability support. Gemini does NOT support ReviewAgents.
+// Supports reports capability support.
 func (h GeminiHarness) Supports(c component.Component) bool {
 	switch c {
-	case component.SkillCommands, component.MCPGates, component.DesignMemory:
+	case component.SkillCommands, component.MCPGates, component.ReviewAgents, component.DesignMemory:
 		return true
-	case component.ReviewAgents:
-		return false
 	default:
 		return false
 	}
+}
+
+// legacyTargets: older versions wrote project skills straight into
+// <project>/.gemini/<id>/. Only dirs named exactly like our skill ids (and
+// holding our SKILL.md) are swept; .gemini itself is never pruned.
+func (h GeminiHarness) legacyTargets(c component.Component) []legacyTarget {
+	if h.projectRoot == "" || c != component.SkillCommands {
+		return nil
+	}
+	return []legacyTarget{{path: filepath.Join(h.projectRoot, ".gemini"), kind: legacySkillDirs}}
 }
 
 // WriteMCP implements the MergeIntoSettings strategy for Gemini CLI.
@@ -130,8 +148,10 @@ func (h GeminiHarness) WriteMCP(w fsutil.FileSystem, server MCPServer) (Change, 
 	paths := h.ConfigPaths()
 	target := paths.MCPConfig // ~/.gemini/settings.json
 
-	existing, readErr := w.ReadFile(target)
-	existed := readErr == nil
+	existing, existed, readErr := readConfigFile(w, target)
+	if readErr != nil {
+		return Change{}, fmt.Errorf("gemini: read settings.json %s: %w", target, readErr)
+	}
 	if !existed {
 		existing = []byte("{}")
 	}
@@ -161,7 +181,7 @@ func (h GeminiHarness) WriteMCP(w fsutil.FileSystem, server MCPServer) (Change, 
 		prior = nil
 	}
 
-	wr, err := fsutil.WriteFileAtomic(w, target, mr.Data, 0o644)
+	wr, err := writeConfigFile(w, target, mr.Data, 0o644)
 	if err != nil {
 		return Change{}, fmt.Errorf("gemini: write settings.json %s: %w", target, err)
 	}
@@ -180,7 +200,7 @@ func (h GeminiHarness) WriteMCP(w fsutil.FileSystem, server MCPServer) (Change, 
 // Codex's AGENTS.md pattern exactly):
 //
 //  1. Full-file mirror copy into the skills dir (global: ~/.gemini/skills/;
-//     project: <projectRoot>/.gemini/ — depth-1: <id>/SKILL.md peers). The
+//     project: <projectRoot>/.gemini/skills/ — depth-1: <id>/SKILL.md peers). The
 //     mirror FS is rooted at the skills level (assets.SkillsFS("gemini")), so
 //     walking it writes SkillsDir/<id>/SKILL.md directly.
 //  2. When ConfigPaths().AgentsMDPath is non-empty (project scope), a managed
@@ -210,8 +230,10 @@ func (h GeminiHarness) WriteSkill(w fsutil.FileSystem, mirror fs.FS) (Change, er
 		return ch, nil
 	}
 	geminiMD := paths.AgentsMDPath
-	existing, readErr := w.ReadFile(geminiMD)
-	existedBefore := readErr == nil
+	existing, existedBefore, readErr := readConfigFile(w, geminiMD)
+	if readErr != nil {
+		return Change{}, fmt.Errorf("gemini: read GEMINI.md: %w", readErr)
+	}
 	if !existedBefore {
 		existing = []byte("")
 	}
@@ -222,7 +244,7 @@ func (h GeminiHarness) WriteSkill(w fsutil.FileSystem, mirror fs.FS) (Change, er
 		"Load it at the start of any UI design or implementation task."
 	updated := filemerge.UpsertManagedBlock(string(existing), blockContent)
 
-	geminiWR, err := fsutil.WriteFileAtomic(w, geminiMD, []byte(updated), 0o644)
+	geminiWR, err := writeConfigFile(w, geminiMD, []byte(updated), 0o644)
 	if err != nil {
 		return Change{}, fmt.Errorf("gemini: write GEMINI.md managed block: %w", err)
 	}
@@ -235,12 +257,14 @@ func (h GeminiHarness) WriteSkill(w fsutil.FileSystem, mirror fs.FS) (Change, er
 	return ch, nil
 }
 
-// WriteAgents returns ErrUnsupported. Gemini CLI has no native sub-agent format;
-// core.Plan maps this to a graceful skip notice (exit code 0). Supports(ReviewAgents)
-// returns false, so this method is not called in normal install flows — it is
-// present only to satisfy the Harness interface.
-func (h GeminiHarness) WriteAgents(_ fsutil.FileSystem, _ fs.FS) ([]Change, error) {
-	return nil, ErrUnsupported
+// WriteAgents writes the Gemini-format review agents (assets/agents/gemini/)
+// into ~/.gemini/agents/ or <project>/.gemini/agents/. A nil agentsFS
+// returns ErrUnsupported.
+func (h GeminiHarness) WriteAgents(w fsutil.FileSystem, agentsFS fs.FS) ([]Change, error) {
+	if agentsFS == nil {
+		return nil, ErrUnsupported
+	}
+	return writeAgentsToDir(w, agentsFS, h.ConfigPaths().AgentsDir, "gemini")
 }
 
 // WriteCommands returns ErrUnsupported. Gemini CLI has no native slash-command

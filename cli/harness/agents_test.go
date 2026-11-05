@@ -8,7 +8,6 @@ import (
 	"testing/fstest"
 
 	"github.com/educlopez/ui-craft/cli/assets"
-	"github.com/educlopez/ui-craft/cli/component"
 	"github.com/educlopez/ui-craft/cli/fsutil"
 	"github.com/educlopez/ui-craft/cli/harness"
 )
@@ -137,48 +136,68 @@ func TestWriteAgents_idempotent(t *testing.T) {
 	}
 }
 
-// TestWriteAgents_cursorSkip verifies that CursorHarness.Supports(ReviewAgents)
-// returns false and WriteAgents returns ErrUnsupported.
-func TestWriteAgents_cursorSkip(t *testing.T) {
-	h := harness.CursorHarness{}
-
-	if h.Supports(component.ReviewAgents) {
-		t.Error("CursorHarness.Supports(ReviewAgents) = true; want false")
-	}
-
-	_, err := h.WriteAgents(fsutil.NewMemFS(), fixtureAgentsFS())
-	if err != harness.ErrUnsupported {
-		t.Errorf("WriteAgents: got %v; want ErrUnsupported", err)
+// TestWriteAgents_cursorCodexGemini writes each harness's real embedded
+// agent assets and checks the destination, the per-harness format and that a
+// second run changes nothing.
+func TestWriteAgents_cursorCodexGemini(t *testing.T) {
+	for _, tc := range []struct {
+		h        harness.Harness
+		wantDir  []string // path segments under the config root
+		ext      string
+		contains []string
+	}{
+		{harness.CursorHarness{}, []string{"agents"}, ".md", []string{"\nmodel: inherit\n", "\nreadonly: true\n"}},
+		{harness.CodexHarness{}, []string{"agents"}, ".toml", []string{`sandbox_mode = "read-only"`, "developer_instructions = '''"}},
+		{harness.GeminiHarness{}, []string{"agents"}, ".md", []string{"\nkind: local\n", "  - read_file\n", "  - grep_search\n", "  - glob\n", "  - list_directory\n"}},
+	} {
+		t.Run(tc.h.Name(), func(t *testing.T) {
+			agentsFS := assets.Agents(tc.h.Name())
+			if agentsFS == nil {
+				t.Fatalf("no embedded agents for %s", tc.h.Name())
+			}
+			mem := fsutil.NewMemFS()
+			changes, err := tc.h.WriteAgents(mem, agentsFS)
+			if err != nil {
+				t.Fatalf("WriteAgents: %v", err)
+			}
+			if len(changes) != 2 {
+				t.Fatalf("got %d changes, want 2", len(changes))
+			}
+			wantDir := filepath.Join(append([]string{tc.h.ConfigRoot()}, tc.wantDir...)...)
+			if got := tc.h.ConfigPaths().AgentsDir; got != wantDir {
+				t.Errorf("AgentsDir = %q, want %q", got, wantDir)
+			}
+			for _, name := range []string{"a11y-auditor", "design-reviewer"} {
+				p := filepath.Join(wantDir, name+tc.ext)
+				data, err := mem.ReadFile(p)
+				if err != nil {
+					t.Fatalf("agent file %s not written: %v", p, err)
+				}
+				for _, want := range append(tc.contains, name) {
+					if !strings.Contains(string(data), want) {
+						t.Errorf("%s does not contain %q", p, want)
+					}
+				}
+			}
+			again, err := tc.h.WriteAgents(mem, agentsFS)
+			if err != nil {
+				t.Fatalf("second WriteAgents: %v", err)
+			}
+			for _, ch := range again {
+				if ch.Changed {
+					t.Errorf("second run changed %s; want idempotent", ch.FilePath)
+				}
+			}
+		})
 	}
 }
 
-// TestWriteAgents_codexSkip verifies that CodexHarness.Supports(ReviewAgents)
-// returns false and WriteAgents returns ErrUnsupported.
-func TestWriteAgents_codexSkip(t *testing.T) {
-	h := harness.CodexHarness{}
-
-	if h.Supports(component.ReviewAgents) {
-		t.Error("CodexHarness.Supports(ReviewAgents) = true; want false")
-	}
-
-	_, err := h.WriteAgents(fsutil.NewMemFS(), fixtureAgentsFS())
-	if err != harness.ErrUnsupported {
-		t.Errorf("WriteAgents: got %v; want ErrUnsupported", err)
-	}
-}
-
-// TestWriteAgents_geminiSkip verifies that GeminiHarness.Supports(ReviewAgents)
-// returns false and WriteAgents returns ErrUnsupported.
-func TestWriteAgents_geminiSkip(t *testing.T) {
-	h := harness.GeminiHarness{}
-
-	if h.Supports(component.ReviewAgents) {
-		t.Error("GeminiHarness.Supports(ReviewAgents) = true; want false")
-	}
-
-	_, err := h.WriteAgents(fsutil.NewMemFS(), fixtureAgentsFS())
-	if err != harness.ErrUnsupported {
-		t.Errorf("WriteAgents: got %v; want ErrUnsupported", err)
+// TestWriteAgents_nilFSUnsupported keeps the nil-FS contract for every harness.
+func TestWriteAgents_nilFSUnsupported(t *testing.T) {
+	for _, h := range harness.All() {
+		if _, err := h.WriteAgents(fsutil.NewMemFS(), nil); err != harness.ErrUnsupported {
+			t.Errorf("%s.WriteAgents(nil) = %v, want ErrUnsupported", h.Name(), err)
+		}
 	}
 }
 

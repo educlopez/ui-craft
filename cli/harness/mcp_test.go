@@ -58,10 +58,11 @@ func readFile(t *testing.T, mem *fsutil.MemFS, path string) string {
 }
 
 // --------------------------------------------------------------------------
-// Claude — SeparateFiles
+// Claude — ConfigFile (mcpServers in ~/.claude.json / .mcp.json)
 // --------------------------------------------------------------------------
 
-// TestWriteMCP_claudeAbsent verifies that Claude creates the MCP file when absent.
+// TestWriteMCP_claudeAbsent verifies that Claude creates the user MCP config
+// with the entry under mcpServers when the file is absent.
 func TestWriteMCP_claudeAbsent(t *testing.T) {
 	mem := fsutil.NewMemFS()
 	h := ClaudeHarness{}
@@ -72,14 +73,20 @@ func TestWriteMCP_claudeAbsent(t *testing.T) {
 	if change.ExistedBefore {
 		t.Error("ExistedBefore should be false for a new file")
 	}
+	if !change.Changed {
+		t.Error("Changed should be true for a new file")
+	}
 
 	m := readJSON(t, mem, change.FilePath)
-	entry, ok := m["ui-craft"].(map[string]any)
+	entry, ok := jsonGet(t, m, "mcpServers", "ui-craft").(map[string]any)
 	if !ok {
-		t.Fatal("missing 'ui-craft' key in Claude MCP file")
+		t.Fatal("missing mcpServers.ui-craft in Claude MCP file")
 	}
 	if entry["command"] != "npx" {
 		t.Errorf("command = %v, want npx", entry["command"])
+	}
+	if _, legacy := m["ui-craft"]; legacy {
+		t.Error("top-level ui-craft key written; Claude Code only reads mcpServers")
 	}
 }
 
@@ -451,8 +458,10 @@ func TestWriteMCP_opencodeAbsent(t *testing.T) {
 	}
 }
 
-// TestWriteMCP_opencodeJSONC verifies that JSONC opencode.json (with comments)
-// is handled correctly — our key is added without destroying the parse.
+// TestWriteMCP_opencodeJSONC verifies that an opencode.json holding JSONC
+// syntax (comments, trailing commas) is NOT rewritten, because a rewrite
+// would silently delete the user's comments. The Change carries a Notice with
+// the snippet to add by hand instead.
 func TestWriteMCP_opencodeJSONC(t *testing.T) {
 	mem := fsutil.NewMemFS()
 	h := OpenCodeHarness{}
@@ -470,19 +479,23 @@ func TestWriteMCP_opencodeJSONC(t *testing.T) {
 		t.Fatalf("setup: %v", err)
 	}
 
-	if _, err := h.WriteMCP(mem, uiCraftServer); err != nil {
+	ch, err := h.WriteMCP(mem, uiCraftServer)
+	if err != nil {
 		t.Fatalf("WriteMCP on JSONC: %v", err)
 	}
-
-	m := readJSON(t, mem, target)
-	if m["theme"] != "dark" {
-		t.Error("'theme' key was removed")
+	if ch.Changed {
+		t.Error("Changed = true; a JSONC file with comments must not be rewritten")
 	}
-	if jsonGet(t, m, "mcp", "other-server") == nil {
-		t.Error("'other-server' was removed from mcp")
+	if !strings.Contains(ch.Notice, `"ui-craft"`) || !strings.Contains(ch.Notice, "ui-craft-mcp@0.9.0") {
+		t.Errorf("Notice must carry the snippet to add by hand, got %q", ch.Notice)
 	}
-	if jsonGet(t, m, "mcp", "ui-craft") == nil {
-		t.Error("ui-craft not added under mcp in JSONC config")
+	// The snippet is pasted INTO the existing "mcp" object; wrapping it in its own
+	// "mcp" key would register mcp.mcp.ui-craft, which OpenCode never reads.
+	if _, snippet, _ := strings.Cut(ch.Notice, ":\n{"); strings.Contains(snippet, `"mcp"`) {
+		t.Errorf("Notice snippet must be the bare ui-craft entry, not wrapped in \"mcp\": %q", ch.Notice)
+	}
+	if got := readFile(t, mem, target); got != string(jsonc) {
+		t.Errorf("JSONC file was modified:\n%s", got)
 	}
 }
 

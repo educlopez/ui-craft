@@ -895,6 +895,12 @@ func (m AppModel) runApplyCmd() tea.Cmd {
 			seen := map[string]bool{}
 			var installedComps []string
 			for _, ch := range result.Changes {
+				// A change that wrote nothing and asks the user to finish by hand
+				// (Notice set) is not an install; recording it would make `update`
+				// treat an unconfigured component as installed.
+				if ch.Notice != "" && !ch.Changed {
+					continue
+				}
 				if ch.HarnessName == dh.Harness.Name() && !seen[ch.Component] {
 					seen[ch.Component] = true
 					installedComps = append(installedComps, ch.Component)
