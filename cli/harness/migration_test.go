@@ -308,7 +308,7 @@ func TestLegacy_cursorRules(t *testing.T) {
 	mem := fsutil.NewMemFS()
 	rules := filepath.Join(project, ".cursor", "rules")
 	write(t, mem, filepath.Join(rules, "ui-craft", "SKILL.md"), embeddedSkill(t, "cursor", "ui-craft"))
-	write(t, mem, filepath.Join(rules, "ui-craft", "references", "x.md"), "ref")
+	write(t, mem, filepath.Join(rules, "ui-craft", "references", "accessibility.md"), "ref")
 	write(t, mem, filepath.Join(rules, "audit", "SKILL.md"), embeddedSkill(t, "cursor", "audit"))
 	// User content: a real rule, and a dir named like one of our ids that is not ours.
 	write(t, mem, filepath.Join(rules, "team.mdc"), "---\ndescription: team\n---\n")
