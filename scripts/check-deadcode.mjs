@@ -38,14 +38,21 @@ const dim = (s) => (tty ? `\x1b[2m${s}\x1b[0m` : s);
 
 let out;
 try {
-  out = execFileSync('go', ['run', 'golang.org/x/tools/cmd/deadcode@v0.31.0', '-test', './...'], {
+  out = execFileSync('go', ['run', 'golang.org/x/tools/cmd/deadcode@v0.49.0', '-test', './...'], {
     cwd: path.join(ROOT, 'cli'),
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'pipe'],
   });
 } catch (e) {
   process.stderr.write(
-    `check-deadcode: COULD NOT RUN — ${String(e.stderr || e.message).split('\n')[0]}\n` +
+    // `go run` prints one "go: downloading …" line per module on a cold cache. Showing only
+    // the first stderr line hid the real error behind that noise on every fresh CI runner.
+    `check-deadcode: COULD NOT RUN\n${
+      String(e.stderr || e.message)
+        .split('\n')
+        .filter((l) => l.trim() && !l.startsWith('go: downloading'))
+        .join('\n') || `exit ${e.status}`
+    }\n` +
       dim('  This is not a pass. Needs network on first run to fetch the tool.\n')
   );
   process.exit(2);
