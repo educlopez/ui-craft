@@ -334,3 +334,53 @@ func TestInstallJSON_commentedOpenCodeConfigIsManualAction(t *testing.T) {
 		}
 	}
 }
+
+// A config root moved outside HOME by an env var is outside the backup store's
+// trust boundary, so rollback cannot restore it. Install must say so, on
+// stderr, keeping --json stdout parseable.
+func TestInstall_configRootOutsideHomeWarns(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
+	t.Setenv("APPDATA", filepath.Join(home, "AppData", "Roaming"))
+	t.Setenv("LOCALAPPDATA", filepath.Join(home, "AppData", "Local"))
+	codexHome := t.TempDir() // a sibling of home, not inside it
+	t.Setenv("CODEX_HOME", codexHome)
+
+	restoreDetect := cmd.SetDetectAllFn(func(reg []harness.Harness) []core.DetectedHarness {
+		for _, h := range reg {
+			if h.Name() == "codex" {
+				return []core.DetectedHarness{{
+					Harness: h,
+					Result:  harness.DetectResult{Installed: true, ConfigRoot: h.ConfigRoot()},
+				}}
+			}
+		}
+		return nil
+	})
+	defer restoreDetect()
+
+	restoreFlags := cmd.SetInstallFlagsForTest(cmd.InstallFlagsForTest{
+		Harness:    "codex",
+		Components: []string{"mcp-gates"},
+		Yes:        true,
+		Dir:        home,
+		JSON:       true,
+	})
+	defer restoreFlags()
+
+	var out, errOut bytes.Buffer
+	root := &cobra.Command{Use: "ui-craft", SilenceUsage: true}
+	root.AddCommand(cmd.MakeInstallCmd())
+	root.SetOut(&out)
+	root.SetErr(&errOut)
+	root.SetArgs([]string{"install"})
+	_ = root.Execute() // the outcome of the write itself is not under test here
+
+	if !strings.Contains(errOut.String(), "outside your home folder; rollback cannot restore") {
+		t.Errorf("no outside-HOME warning on stderr:\nstderr: %s\nstdout: %s", errOut.String(), out.String())
+	}
+	if strings.Contains(out.String(), "NOTE:") {
+		t.Errorf("warning leaked into --json stdout: %s", out.String())
+	}
+}

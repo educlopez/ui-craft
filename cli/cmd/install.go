@@ -288,6 +288,22 @@ For a project-scoped install, run "ui-craft" with no arguments and choose
 		backupRoot := filepath.Join(home, ".ui-craft-backups")
 		backupStore := backup.NewStore(backupRoot, osfs, nil) // nil clock = time.Now
 
+		// A config root moved outside HOME by CLAUDE_CONFIG_DIR, CODEX_HOME, etc. is
+		// outside the backup store's trust boundary: Restore refuses those paths, so
+		// `ui-craft rollback` (and the automatic rollback of a failed install) cannot
+		// put files there back. Say so before writing, on stderr so --json stays clean.
+		warnedRoots := map[string]bool{}
+		for _, t := range plan.Targets {
+			root := t.Harness.ConfigRoot()
+			if t.Skip || root == "" || warnedRoots[root] || backup.Restorable(root, "") {
+				continue
+			}
+			warnedRoots[root] = true
+			fmt.Fprintf(cmd.ErrOrStderr(),
+				"NOTE: %s config root %s is outside your home folder; rollback cannot restore files written there.\n",
+				t.Harness.Name(), root)
+		}
+
 		// Execute transactional apply.
 		result, applyErr := core.Apply(plan, osfs, backupStore, cmdVersion, false)
 		if applyErr != nil {

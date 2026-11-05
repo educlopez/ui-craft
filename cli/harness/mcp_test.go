@@ -491,7 +491,7 @@ func TestWriteMCP_opencodeJSONC(t *testing.T) {
 	}
 	// The snippet is pasted INTO the existing "mcp" object; wrapping it in its own
 	// "mcp" key would register mcp.mcp.ui-craft, which OpenCode never reads.
-	if strings.Contains(ch.Notice, `"mcp": {`) {
+	if _, snippet, _ := strings.Cut(ch.Notice, ":\n{"); strings.Contains(snippet, `"mcp"`) {
 		t.Errorf("Notice snippet must be the bare ui-craft entry, not wrapped in \"mcp\": %q", ch.Notice)
 	}
 	if got := readFile(t, mem, target); got != string(jsonc) {
