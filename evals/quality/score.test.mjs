@@ -400,7 +400,7 @@ describe('gate counts the docs site publishes', () => {
   /**
    * These numbers are marketing copy: the meta description, the JSON-LD
    * `featureList`, `llms.txt`, `public/pricing.md` and two blog posts on
-   * skills.smoothui.dev all state them. The site already derives everything it
+   * ui-craft.smoothui.dev all state them. The site already derives everything it
    * can from the installed `ui-craft-detect` registry, but the token-discipline
    * and static-a11y sets live in parts of this repo the tarball does not ship,
    * so it keeps them in `src/lib/gate-counts.json` — a copy that cannot notice

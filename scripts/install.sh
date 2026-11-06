@@ -2,8 +2,8 @@
 # Install the ui-craft CLI binary for the current OS/arch.
 #
 # Usage:
-#   curl -fsSL https://skills.smoothui.dev/install | bash
-#   curl -fsSL https://skills.smoothui.dev/install | bash -s -- --version v0.36.0
+#   curl -fsSL https://ui-craft.smoothui.dev/install | bash
+#   curl -fsSL https://ui-craft.smoothui.dev/install | bash -s -- --version v0.36.0
 #
 # Env overrides:
 #   UI_CRAFT_VERSION      release tag or version to install (e.g. v0.36.0 or 0.36.0)

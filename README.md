@@ -2,7 +2,7 @@
 
 **Ship designer-grade UI by default.** A design engineering system for AI coding agents — install it as a skill or as the `ui-craft` CLI, and your agent starts designing like it has taste. Ask for a dashboard, get one you'd put in production. Not gradient cards and bounce animations.
 
-**Website:** [skills.smoothui.dev](https://skills.smoothui.dev)
+**Website:** [ui-craft.smoothui.dev](https://ui-craft.smoothui.dev)
 
 ![UI Craft](assets/og.png)
 
@@ -54,7 +54,7 @@ There is one thing to learn, and it's a ladder. Each rung is a real jump in what
   </tr>
 </table>
 
-More before/after comparisons on the [landing page](https://skills.smoothui.dev).
+More before/after comparisons on the [landing page](https://ui-craft.smoothui.dev).
 
 ## Install
 
@@ -64,12 +64,12 @@ A single static Go binary that detects your AI coding harness and wires skill+co
 
 **macOS / Linux:**
 ```bash
-curl -fsSL https://skills.smoothui.dev/install | bash
+curl -fsSL https://ui-craft.smoothui.dev/install | bash
 ```
 
 **Windows:**
 ```powershell
-irm https://skills.smoothui.dev/install.ps1 | iex
+irm https://ui-craft.smoothui.dev/install.ps1 | iex
 ```
 
 The script detects your OS/arch, downloads the latest release, verifies its checksum, and installs the `ui-craft` binary — no brew/scoop required.
@@ -127,7 +127,7 @@ A dash means the binary is built and published but nothing runs on it. Those row
 
 Two conditions are untested on every platform: installing with the disk nearly full, and two `ui-craft install` runs racing against the same machine. See [`RELEASE_CHECKLIST.md`](RELEASE_CHECKLIST.md) for what each release actually verifies, and what a completed checklist does not promise.
 
-**Full reference docs:** [skills.smoothui.dev/docs](https://skills.smoothui.dev/docs).
+**Full reference docs:** [ui-craft.smoothui.dev/docs](https://ui-craft.smoothui.dev/docs).
 
 ### Claude Code plugin — alternative (skill + commands + agents + MCP, no CLI needed)
 

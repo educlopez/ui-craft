@@ -1,6 +1,6 @@
 # ui-craft CLI
 
-A static Go binary that installs and configures the [UI Craft](https://skills.smoothui.dev) design system into any AI agent harness — Claude Code, Cursor, Codex, Gemini, or OpenCode.
+A static Go binary that installs and configures the [UI Craft](https://ui-craft.smoothui.dev) design system into any AI agent harness — Claude Code, Cursor, Codex, Gemini, or OpenCode.
 
 ## What it does
 
@@ -11,7 +11,7 @@ A static Go binary that installs and configures the [UI Craft](https://skills.sm
 ### macOS / Linux — recommended
 
 ```bash
-curl -fsSL https://skills.smoothui.dev/install | bash
+curl -fsSL https://ui-craft.smoothui.dev/install | bash
 ```
 
 Detects your OS/arch, downloads the latest release, verifies its sha256 checksum, and installs the `ui-craft` binary.
@@ -19,7 +19,7 @@ Detects your OS/arch, downloads the latest release, verifies its sha256 checksum
 ### Windows — recommended
 
 ```powershell
-irm https://skills.smoothui.dev/install.ps1 | iex
+irm https://ui-craft.smoothui.dev/install.ps1 | iex
 ```
 
 <details>
