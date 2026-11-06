@@ -12,7 +12,7 @@
       "source": "./",
       "description": "Design engineering skill + system for AI coding agents: anti-slop UI rules, outcome recipes, spec-driven design (/sddesign), design-review + a11y agents, and MCP quality gates.",
       "license": "MIT",
-      "homepage": "https://skills.smoothui.dev",
+      "homepage": "https://ui-craft.smoothui.dev",
       "keywords": ["ui", "design", "accessibility", "css", "frontend", "design-system", "anti-slop"]
     }
   ]

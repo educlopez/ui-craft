@@ -84,7 +84,7 @@ homebrew_casks:
       name: github-actions[bot]
       email: 41898282+github-actions[bot]@users.noreply.github.com
     commit_msg_template: "chore: update ui-craft cask to {{ .Tag }}"
-    homepage: "https://skills.smoothui.dev"
+    homepage: "https://ui-craft.smoothui.dev"
     description: "ui-craft CLI — install the UI Craft design system into any AI agent harness"
     license: "MIT"
     directory: Casks
@@ -115,7 +115,7 @@ scoops:
       name: github-actions[bot]
       email: 41898282+github-actions[bot]@users.noreply.github.com
     commit_msg_template: "chore: update ui-craft manifest to {{ .Tag }}"
-    homepage: "https://skills.smoothui.dev"
+    homepage: "https://ui-craft.smoothui.dev"
     description: "ui-craft CLI — install the UI Craft design system into any AI agent harness"
     license: "MIT"
 
