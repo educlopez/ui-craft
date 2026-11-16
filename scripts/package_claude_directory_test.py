@@ -45,6 +45,10 @@ class ClaudeDirectoryTests(unittest.TestCase):
             self.assertFalse(any(n.startswith(('agents/', 'hooks/', 'scripts/', '.claude/', '.codex/')) for n in z.namelist()))
             self.assertNotIn('.mcp.json', z.namelist())
             self.assertIn('.claude-plugin/icon.png', z.namelist())
+            manifest = json.loads(z.read('.claude-plugin/plugin.json'))
+            self.assertIn(manifest['icon'].removeprefix('./'), z.namelist())
+            self.assertTrue(manifest['privacyPolicyUrl'].endswith('/plugins/claude-directory/PRIVACY.md'))
+            self.assertTrue(manifest['termsOfServiceUrl'].endswith('/plugins/claude-directory/LICENSE'))
             self.assertTrue(all((x.external_attr >> 16) & 0o111 == 0 for x in z.infolist()))
 
     def test_complete_plugin_inputs_are_unchanged(self):
