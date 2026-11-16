@@ -12,7 +12,7 @@ import (
 var uiCraftServer = MCPServer{
 	Name:    "ui-craft",
 	Command: "npx",
-	Args:    []string{"-y", "ui-craft-mcp@0.9.0"},
+	Args:    []string{"-y", "ui-craft-mcp@0.9.1"},
 }
 
 // --------------------------------------------------------------------------
@@ -486,7 +486,7 @@ func TestWriteMCP_opencodeJSONC(t *testing.T) {
 	if ch.Changed {
 		t.Error("Changed = true; a JSONC file with comments must not be rewritten")
 	}
-	if !strings.Contains(ch.Notice, `"ui-craft"`) || !strings.Contains(ch.Notice, "ui-craft-mcp@0.9.0") {
+	if !strings.Contains(ch.Notice, `"ui-craft"`) || !strings.Contains(ch.Notice, "ui-craft-mcp@0.9.1") {
 		t.Errorf("Notice must carry the snippet to add by hand, got %q", ch.Notice)
 	}
 	// The snippet is pasted INTO the existing "mcp" object; wrapping it in its own

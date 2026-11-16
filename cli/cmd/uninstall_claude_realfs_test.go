@@ -33,7 +33,7 @@ func TestUninstall_claudeKeepsClaudeJSON(t *testing.T) {
       "command": "npx",
       "args": [
         "-y",
-        "ui-craft-mcp@0.9.0"
+        "ui-craft-mcp@0.9.1"
       ]
     }
   },

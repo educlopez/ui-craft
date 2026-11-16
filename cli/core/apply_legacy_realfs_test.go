@@ -66,7 +66,7 @@ func TestApplyProject_migratesLegacyPaths(t *testing.T) {
 		seed(t, p, c)
 	}
 	mcpJSON := filepath.Join(projectRoot, ".mcp.json")
-	seed(t, mcpJSON, `{"mcpServers":{"db":{"command":"pg-mcp"}},"ui-craft":{"command":"npx","args":["-y","ui-craft-mcp@0.9.0"]}}`)
+	seed(t, mcpJSON, `{"mcpServers":{"db":{"command":"pg-mcp"}},"ui-craft":{"command":"npx","args":["-y","ui-craft-mcp@0.9.1"]}}`)
 
 	var detected []core.DetectedHarness
 	for _, h := range harness.All() {

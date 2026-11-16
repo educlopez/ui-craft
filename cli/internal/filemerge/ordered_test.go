@@ -9,7 +9,7 @@ import (
 var uiCraftEntry = struct {
 	Command string   `json:"command"`
 	Args    []string `json:"args"`
-}{"npx", []string{"-y", "ui-craft-mcp@0.9.0"}}
+}{"npx", []string{"-y", "ui-craft-mcp@0.9.1"}}
 
 // A ~/.claude.json-like file: keys in non-alphabetical order, nested state,
 // an HTML-ish string and a big number that a map round-trip would mangle.
@@ -58,7 +58,7 @@ func TestUpsertOrderedJSONKey_preservesEverythingElse(t *testing.T) {
       "command": "npx",
       "args": [
         "-y",
-        "ui-craft-mcp@0.9.0"
+        "ui-craft-mcp@0.9.1"
       ]
     }
   },`, 1)
@@ -202,7 +202,7 @@ func TestUpsertOrderedJSONKey_collapsesDuplicateKeys(t *testing.T) {
 	if n := strings.Count(s, `"ui-craft"`); n != 1 {
 		t.Fatalf("want exactly one ui-craft entry, got %d:\n%s", n, s)
 	}
-	if strings.Contains(s, "old-") || !strings.Contains(s, "ui-craft-mcp@0.9.0") || !strings.Contains(s, `"keep"`) {
+	if strings.Contains(s, "old-") || !strings.Contains(s, "ui-craft-mcp@0.9.1") || !strings.Contains(s, `"keep"`) {
 		t.Fatalf("stale duplicate kept or neighbour lost:\n%s", s)
 	}
 	if strings.Index(s, `"ui-craft"`) > strings.Index(s, `"other"`) {
@@ -216,7 +216,7 @@ func TestUpsertOrderedJSONKey_collapsesDuplicateKeys(t *testing.T) {
 }
 
 func TestUpsertOrderedJSONKey_duplicateWithEqualFirstStillChanges(t *testing.T) {
-	src := `{"mcpServers":{"ui-craft":{"command":"npx","args":["-y","ui-craft-mcp@0.9.0"]},"ui-craft":{"command":"stale"}}}`
+	src := `{"mcpServers":{"ui-craft":{"command":"npx","args":["-y","ui-craft-mcp@0.9.1"]},"ui-craft":{"command":"stale"}}}`
 	out, changed, err := UpsertOrderedJSONKey([]byte(src), "mcpServers", "ui-craft", uiCraftEntry)
 	if err != nil || !changed {
 		t.Fatalf("a stale later duplicate must force a write: changed=%v err=%v", changed, err)

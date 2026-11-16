@@ -21,6 +21,7 @@
 import { readFileSync, existsSync, readdirSync, statSync } from "node:fs"
 import { resolve, dirname, join, relative } from "node:path"
 import { fileURLToPath } from "node:url"
+import { execFileSync } from "node:child_process"
 
 import { discoverCursorPlugin } from "./cursor-plugin.mjs"
 
@@ -94,6 +95,22 @@ function parseFrontmatter(md) {
 }
 
 // --- 1. Plugin manifests ---------------------------------------------------
+
+// Directory scanners inspect the Git archive, not this checkout's ignored skill
+// targets. A personal link can work locally and still be dangling on GitHub.
+if (existsSync(resolve(ROOT, ".git"))) {
+  try {
+    const links = execFileSync("git", ["ls-files", "-s", "-z"], { cwd: ROOT, encoding: "utf8" })
+      .split("\0")
+      .filter((entry) => entry.startsWith("120000 "))
+      .map((entry) => entry.slice(entry.indexOf("\t") + 1))
+    check("published plugin contains no tracked symbolic links", links.length === 0, links.join(", "))
+  } catch (error) {
+    check("tracked symbolic-link audit ran", false, error.message)
+  }
+} else {
+  console.log("Tracked symbolic-link audit not verified: no Git metadata in this folder.")
+}
 
 const pluginJsonPath = resolve(ROOT, ".claude-plugin/plugin.json")
 const plugin = readJson(pluginJsonPath)
