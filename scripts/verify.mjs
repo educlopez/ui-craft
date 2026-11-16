@@ -64,6 +64,12 @@ export const SUITES = Object.freeze([
     args: ["scripts/validate.mjs"],
   },
   {
+    id: "claude-directory-package",
+    label: "Claude skills-only edition and archive regression tests",
+    command: "python3",
+    args: ["scripts/package_claude_directory_test.py"],
+  },
+  {
     id: "openai-package",
     label: "OpenAI plugin archive regression tests",
     command: "python3",
