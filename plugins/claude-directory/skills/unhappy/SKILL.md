@@ -1,0 +1,60 @@
+---
+name: unhappy
+description: "State-first design pass — inventories and implements all non-happy states (loading, empty, error, partial, conflict, offline) before the happy path, and refactors impossible boolean state to proper state machines. Use when starting a new screen, reviewing an existing one for edge-case gaps, or when the user says \"handle the error state\" / \"add loading states\" / \"what happens when data is missing\". Invoke when the user asks for unhappy on their UI, or mentions 'unhappy' alongside design / UI / frontend work."
+---
+
+**Claude Directory skills edition.** This package provides instructions only:
+no bundled MCP server, command hook, executable helper, or review agent. Do not
+install or launch UI Craft tools on its behalf. Use the supplied references for
+manual reviews. Never invent detector results, a deterministic UICraftScore,
+seeded draws, or browser measurements. State what was actually inspected and
+mark unavailable checks as not verified. Use only capabilities already available
+and authorized in the current session; otherwise request source or screenshots.
+Write project files only with available, authorized tools; otherwise return the
+proposed content as text and do not claim it was saved.
+References named below live in the ui-craft skill's references/ directory.
+
+
+**Context:** this sub-skill is one lens of the broader `ui-craft` skill. If the `ui-craft` skill is also installed, read its SKILL.md first for Discovery + Anti-Slop + Craft Test, then apply the specific lens below.
+
+Design every non-happy state for the UI at `$ARGUMENTS`. Load the `ui-craft` skill and read `references/state-design.md`.
+
+**Step 1 — Inventory.** List every data source and interactive surface in the target. For each, enumerate its states:
+
+| Surface | idle | loading | empty | error | partial | conflict | offline |
+|---------|------|---------|-------|-------|---------|----------|---------|
+
+Mark each cell as **designed** (exists in code), **missing** (must add), or **N/A** (not applicable — e.g., a read-only view has no conflict state).
+
+**Step 2 — Fill the missing states.** For each missing state, either stub it inline or add a follow-up task comment. Use `references/state-design.md` for:
+- Skeleton sizing (match final layout, 200ms delay, 5s upper bound)
+- Empty-state copy (why empty + next action + visual)
+- Error-state contract (specific cause + one-click recovery + support ID)
+- Offline handling (queue writes + reconcile on reconnect)
+
+**Step 3 — Audit the happy path.** Flag every spot where the happy path assumes resource presence without checking. Fix with early-returns, state guards, or discriminated-union state handling. Booleans like `isLoading && !error && data` that allow impossible states are findings — refactor to a proper state machine or reducer.
+
+**Step 4 — Optimistic UI + reconciliation.** For offline-likely actions (saves, sends, edits, toggles), implement optimistic UI with reconciliation on reconnect. Queue writes locally. Surface any rejected writes — never swallow them.
+
+**Knob gating (CRAFT_LEVEL):**
+
+| CRAFT_LEVEL | Required states to stub |
+|-------------|-------------------------|
+| ≤ 4 | idle, loading, error |
+| 5-7 | idle, loading, empty, error, success |
+| 8+ | all six — add partial, conflict, offline |
+
+If `CRAFT_LEVEL` is unknown, default to 7.
+
+**Convergence note:** To iterate until all required states are present, load `skills/ui-craft/references/loops.md` and run preset `state-coverage` (budget = the default loop budget defined in loops.md): after stubbing the highest-priority missing required state, re-inventory until all knob-required states are present or budget exhausted. Emit the pre-flight cost notice before iteration 1.
+
+**Output:** edit the code directly. After each file, print the Review Format table from SKILL.md:
+
+| Before | After | Why |
+| --- | --- | --- |
+| no loading state on `<ProjectList>` | skeleton rows matching final layout, 200ms delay | prevents "is it broken?" perception; avoids CLS |
+| generic "Error" toast | inline error with specific cause + retry + support ID | recoverability (heuristic 9) |
+
+One row per state added. No full diffs.
+
+**Next step:** `/harden` — implement the states you just designed (rung 1).

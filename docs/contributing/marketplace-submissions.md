@@ -5,7 +5,42 @@ does not establish directory approval or successful installation.
 
 ## Claude
 
-- Submit the public repository root at <https://claude.ai/directory/manage>.
+- The full plugin remains at the repository root for direct Claude Code installs.
+  Its directory submission was refused by policy on 2026-11-16: local MCP and
+  command hooks require a Verified organization; the repository root also exceeds
+  the Community file/config allowlists. A paid personal plan is not that badge.
+- The separate skills-only edition is `plugins/claude-directory/`. It has 29
+  skills under the distinct plugin name `ui-craft-skills`, Markdown references,
+  a PNG icon, license and edition-specific privacy
+  notice; no MCP, hooks, executable files, package-manager config or review agents.
+  Enable only one edition per session to avoid duplicate guidance.
+- Build with `python3 scripts/package-claude-directory.py`; check freshness with
+  `python3 scripts/package-claude-directory.py --check`. The builder only reads
+  allowlisted tracked mirror/example files; personal untracked skills are excluded.
+  It adapts automated routing, detector, scoring and fold checks to honest manual
+  workflows. Do not edit generated files: update the builder or canonical sources,
+  regenerate, and review the output diff. Canonical source edits still affect the
+  full edition; edition-only adaptations belong in the builder.
+- `python3 scripts/package_claude_directory_test.py` runs nine regression tests,
+  also part of `nr verify`. The builder enforces scanner file/size limits,
+  known manifest fields, no executable config, unique skill identities and internal
+  links, and refuses symlink outputs or unexpected files rather than deleting them.
+- The ZIP is `dist/ui-craft-claude-skills.zip` (plugin files at archive root).
+  It is a local handoff artifact, not an uploaded or approved directory listing.
+- After explicit commit/push authorization, submit the repository with plugin
+  path `plugins/claude-directory`, not the repository root. The existing root
+  submission cannot change its plugin path; a new submission is needed. Keep its
+  source on main and do not withdraw the full-plugin candidacy without approval.
+- Use `.claude-plugin/icon.png` inside the skills edition for a separate portal
+  icon upload if requested (1024 x 1024 PNG). It is rendered from the existing
+  brand SVG, not a redesign. The root candidacy already recognized assets/icon.svg;
+  its letter placeholder was a preview limitation, not a missing icon.
+- Set privacy/docs/support/license links explicitly in the listing if the portal
+  does not infer them from the package README. Do not add unsupported runtime
+  fields to the manifest or make legal attestations for the publisher.
+- `claude plugin validate plugins/claude-directory` passed locally on 2026-11-16.
+  This does not run the directory's safety scan or policy review; approval is
+  **not verified**. Install-line advice remains until an actual listing exists.
 - Use Eduardo's personal paid account. The first submitting organization owns
   the listing; do not submit this personal project from an employer's account.
 - Run `claude plugin validate .` and the portal's Validate step before submission.

@@ -1,0 +1,49 @@
+{
+  "name": "ui-craft-skills",
+  "version": "1.0.0",
+  "description": "29 design-engineering skills for interfaces, accessibility, tokens, motion and manual quality reviews. Instruction-only edition; no local MCP or hooks.",
+  "author": {
+    "name": "Eduardo Calvo",
+    "url": "https://github.com/educlopez"
+  },
+  "homepage": "https://ui-craft.smoothui.dev",
+  "repository": "https://github.com/educlopez/ui-craft",
+  "license": "MIT",
+  "keywords": [
+    "design",
+    "ui",
+    "accessibility",
+    "skills"
+  ],
+  "skills": [
+    "./skills/adapt",
+    "./skills/animate",
+    "./skills/audit",
+    "./skills/bolder",
+    "./skills/brief",
+    "./skills/clarify",
+    "./skills/colorize",
+    "./skills/craft",
+    "./skills/critique",
+    "./skills/delight",
+    "./skills/distill",
+    "./skills/extract",
+    "./skills/finalize",
+    "./skills/harden",
+    "./skills/heuristic",
+    "./skills/polish",
+    "./skills/quieter",
+    "./skills/redesign",
+    "./skills/remember",
+    "./skills/sddesign",
+    "./skills/shape",
+    "./skills/start",
+    "./skills/tokens",
+    "./skills/typeset",
+    "./skills/ui-craft-dense-dashboard",
+    "./skills/ui-craft-editorial",
+    "./skills/ui-craft-minimal",
+    "./skills/ui-craft",
+    "./skills/unhappy"
+  ]
+}
