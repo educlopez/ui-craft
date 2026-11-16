@@ -20,7 +20,7 @@
   "commands": "commands",
   "agents": "agents",
   "rules": "rules",
-  "hooks": "hooks/hooks.json",
+  "hooks": "hooks/cursor.json",
   "mcpServers": {
     "ui-craft-mcp": {
       "command": "npx",

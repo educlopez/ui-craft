@@ -1,0 +1,10 @@
+{
+  "hooks": {
+    "preToolUse": [
+      {
+        "command": "node ${CURSOR_PLUGIN_ROOT}/scripts/detect.mjs hook-run",
+        "matcher": "Write"
+      }
+    ]
+  }
+}

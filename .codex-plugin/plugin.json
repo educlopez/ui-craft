@@ -1,0 +1,32 @@
+{
+  "name": "ui-craft",
+  "version": "1.0.0",
+  "description": "Design-engineering skills and local MCP quality gates for AI coding agents.",
+  "author": {
+    "name": "Eduardo Calvo",
+    "url": "https://github.com/educlopez"
+  },
+  "homepage": "https://ui-craft.smoothui.dev",
+  "repository": "https://github.com/educlopez/ui-craft",
+  "license": "MIT",
+  "skills": "./.codex/skills/",
+  "mcpServers": "./.mcp.json",
+  "requires_local_executor": true,
+  "interface": {
+    "displayName": "UI Craft",
+    "shortDescription": "Build better interfaces",
+    "longDescription": "Design engineering for AI coding agents: build interfaces, establish design tokens, review accessibility, and refine typography, layout, motion, and responsive behavior. Includes focused workflows and a local MCP server for deterministic design-quality checks. Requires local execution and Node.js 20 or newer; the MCP server is installed from npm on first use. No hosted account is required.",
+    "developerName": "Eduardo Calvo",
+    "category": "Developer Tools",
+    "capabilities": ["Build interfaces", "Review UI quality", "Audit accessibility", "Establish design tokens"],
+    "websiteURL": "https://ui-craft.smoothui.dev",
+    "supportURL": "https://github.com/educlopez/ui-craft/issues",
+    "composerIcon": "./assets/icon.svg",
+    "logo": "./assets/icon.svg",
+    "defaultPrompt": [
+      "Build a dashboard with clear hierarchy and accessible interactions.",
+      "Review my interface for accessibility and generic design patterns.",
+      "Establish a consistent token system for this project."
+    ]
+  }
+}

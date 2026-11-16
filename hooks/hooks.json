@@ -1,9 +1,14 @@
 {
   "hooks": {
-    "preToolUse": [
+    "PostToolUse": [
       {
-        "command": "node ${CURSOR_PLUGIN_ROOT}/scripts/detect.mjs hook-run",
-        "matcher": "Write"
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/detect.mjs\" hook-run"
+          }
+        ]
       }
     ]
   }
