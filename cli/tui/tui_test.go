@@ -91,7 +91,7 @@ func TestSplashModel_rendersWithoutPanic(t *testing.T) {
 	t.Run("TERM=dumb mode", func(t *testing.T) {
 		t.Setenv("NO_COLOR", "")
 		t.Setenv("TERM", "dumb")
-		m := NewSplashModel("v0.9.0")
+		m := NewSplashModel("v0.9.1")
 		view := m.View()
 		if view == "" {
 			t.Error("expected non-empty view in TERM=dumb mode")
