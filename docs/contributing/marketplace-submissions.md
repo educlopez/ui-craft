@@ -43,6 +43,11 @@ Guide: <https://cursor.com/docs/plugins>.
 - Draft manifest: `.codex-plugin/plugin.json` (supported compatibility format).
 - Run `python3 scripts/package-openai-plugin.py` to build
   `dist/ui-craft-openai.zip` from allowlisted files. This never publishes anything.
+- The archive materializes the Codex mirror once under `skills/`, not alongside
+  the canonical skill tree. Duplicate skill names and unresolved bundled skill
+  links fail the build. A package-specific README describes this installation.
+- `python3 scripts/package_openai_plugin_test.py` exercises the archive and its
+  failure cases; the `openai-package` suite in `nr verify` runs it in CI too.
 - This draft preserves the local MCP, Node.js prerequisite and focused skill
   mirrors. It is not a skills-only substitute for the full product.
 - Local MCP submissions require an approved partner organization and allowlisting.

@@ -9,7 +9,7 @@
   "homepage": "https://ui-craft.smoothui.dev",
   "repository": "https://github.com/educlopez/ui-craft",
   "license": "MIT",
-  "skills": "./.codex/skills/",
+  "skills": "./skills/",
   "mcpServers": "./.mcp.json",
   "requires_local_executor": true,
   "interface": {
