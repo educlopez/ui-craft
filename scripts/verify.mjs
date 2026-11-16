@@ -64,6 +64,12 @@ export const SUITES = Object.freeze([
     args: ["scripts/validate.mjs"],
   },
   {
+    id: "openai-package",
+    label: "OpenAI plugin archive regression tests",
+    command: "python3",
+    args: ["scripts/package_openai_plugin_test.py"],
+  },
+  {
     // references/coverage.md is generated from mcp/src/coverage-data.mjs. It is the
     // fallback for installs without the MCP server, so a stale copy fails only for
     // the users with the least tooling — exactly the failure nobody reports. Checked

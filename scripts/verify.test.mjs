@@ -25,6 +25,7 @@ test("canonical verify gate covers every distribution surface", () => {
     "frontmatter",
     "contracts",
     "validate",
+    "openai-package",
     "mirrors",
     "detector",
     "quality-unit",
