@@ -14,6 +14,9 @@ does not establish directory approval or successful installation.
 - `hooks/hooks.json` uses Claude's PostToolUse format; Cursor's separate hook
   lives in `hooks/cursor.json`.
 - Local `.DS_Store` files are ignored by Git and must not enter an uploaded archive.
+- The portal rejects `.npmrc` values beginning with `@` or containing wildcards.
+  Keep the 48-hour minimum release age without a scoped-package exemption.
+  The repository has no `@educlopez/` dependencies that need that exemption.
 
 Guide: <https://claude.com/docs/directory/publish>.
 
