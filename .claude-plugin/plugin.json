@@ -1,6 +1,13 @@
 {
   "name": "ui-craft",
   "description": "Design engineering skill + system for AI coding agents: anti-slop UI, outcome recipes, spec-driven design, design-review + a11y agents, MCP quality gates.",
+  "homepage": "https://ui-craft.smoothui.dev",
+  "repository": "https://github.com/educlopez/ui-craft",
+  "license": "MIT",
+  "privacyPolicyUrl": "https://github.com/educlopez/ui-craft/blob/main/PRIVACY.md",
+  "supportUrl": "https://github.com/educlopez/ui-craft/issues",
+  "documentationUrl": "https://ui-craft.smoothui.dev/docs",
+  "termsOfServiceUrl": "https://github.com/educlopez/ui-craft/blob/main/LICENSE",
   "author": {
     "name": "Eduardo Calvo",
     "url": "https://github.com/educlopez"

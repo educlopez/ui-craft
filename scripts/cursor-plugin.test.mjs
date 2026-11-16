@@ -1,6 +1,7 @@
 import assert from "node:assert/strict"
 import { spawnSync } from "node:child_process"
 import test from "node:test"
+import { readFileSync } from "node:fs"
 import { fileURLToPath } from "node:url"
 import { dirname, resolve } from "node:path"
 
@@ -10,6 +11,18 @@ import {
 } from "./cursor-plugin.mjs"
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..")
+
+test("Claude and Cursor use separate native hook formats", () => {
+  const claude = JSON.parse(readFileSync(resolve(ROOT, "hooks/hooks.json"), "utf8"))
+  const cursor = discoverCursorPlugin(ROOT)
+  assert.equal(cursor.manifest.hooks, "hooks/cursor.json")
+  assert.deepEqual(Object.keys(claude.hooks), ["PostToolUse"])
+  assert.equal(claude.hooks.PostToolUse[0].matcher, "Edit|Write|MultiEdit")
+  const hook = claude.hooks.PostToolUse[0].hooks[0]
+  assert.equal(hook.type, "command")
+  assert.equal(hook.command, 'node "${CLAUDE_PLUGIN_ROOT}/scripts/detect.mjs" hook-run')
+  assert.match(cursor.hookEvents[0].command, /\$\{CURSOR_PLUGIN_ROOT\}/)
+})
 
 test("repo Cursor plugin manifest matches the documented schema", () => {
   const discovered = discoverCursorPlugin(ROOT)

@@ -4,6 +4,14 @@
 
 **Website:** [ui-craft.smoothui.dev](https://ui-craft.smoothui.dev)
 
+**Privacy:** [Plugin privacy notice](PRIVACY.md). Local quality tools process
+project files and return findings to your agent; UI Craft does not operate a
+backend that retains those inputs. Workflows can write local project artifacts.
+If your agent uses browsing or optional third-party integrations during a
+workflow, its queries and supplied content are handled by those providers under
+your agent's permissions and their policies, not by a UI Craft service.
+**Support:** [UI Craft issues](https://github.com/educlopez/ui-craft/issues).
+
 ![UI Craft](assets/og.png)
 
 ## Ask for a surface. Ship it.
