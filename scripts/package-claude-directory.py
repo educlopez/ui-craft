@@ -167,7 +167,7 @@ findings separate from any externally supplied measurements.
     if name.endswith('/SKILL.md'):
         end = text.find('\n---', 4) + 4
         text = text[:end] + '\n\n' + NOTICE + text[end:]
-    return text
+    return '\n'.join(line.rstrip() for line in text.split('\n'))
 
 
 def entries():
