@@ -7,6 +7,9 @@ node-compile-cache/
 node_modules/
 mcp/node_modules/
 
+# The official registry publisher stores authentication in its working directory.
+.mcpregistry_*_token
+
 # MCP build output (rebuilt on prepublish)
 mcp/dist/
 

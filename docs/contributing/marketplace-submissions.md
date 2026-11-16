@@ -68,3 +68,13 @@ published before registering a package-backed server with `server.json` and
 choosing a version; a local edit cannot retrofit npm ownership metadata.
 
 Guide: <https://github.com/modelcontextprotocol/registry/blob/main/docs/modelcontextprotocol-io/quickstart.mdx>.
+
+The descriptor is `mcp/server.json`; its ownership marker and versions are
+checked against `mcp/package.json` by the MCP tests. After the matching npm
+artifact is published, authenticate with `mcp-publisher login github` and run
+`mcp-publisher publish mcp/server.json` from the repository root. Verify the
+registry's public API before claiming the listing is live.
+
+The publisher writes `.mcpregistry_*_token` files into its working directory.
+They are credentials, not registry metadata: never commit or copy their
+contents. They are ignored here; log out after a one-off publication.
