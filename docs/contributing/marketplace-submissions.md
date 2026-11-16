@@ -15,8 +15,11 @@ does not establish directory approval or successful installation.
   lives in `hooks/cursor.json`.
 - Local `.DS_Store` files are ignored by Git and must not enter an uploaded archive.
 - The portal rejects `.npmrc` values beginning with `@` or containing wildcards.
-  Keep the 48-hour minimum release age without a scoped-package exemption.
-  The repository has no `@educlopez/` dependencies that need that exemption.
+  The repository has no `@educlopez/` dependencies that need a scoped exemption.
+  `min-release-age=2` sets a two-day cooldown on npm versions supporting that
+  option; `minimum-release-age=2880` is a separate, legacy pnpm-style setting,
+  not an npm setting. Do not assume it is enforced by pnpm 9 in CI or modern
+  pnpm versions that require settings in `pnpm-workspace.yaml`.
 
 Guide: <https://claude.com/docs/directory/publish>.
 
