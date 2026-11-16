@@ -21,6 +21,8 @@
     "capabilities": ["Build interfaces", "Review UI quality", "Audit accessibility", "Establish design tokens"],
     "websiteURL": "https://ui-craft.smoothui.dev",
     "supportURL": "https://github.com/educlopez/ui-craft/issues",
+    "privacyPolicyURL": "https://github.com/educlopez/ui-craft/blob/main/PRIVACY.md",
+    "termsOfServiceURL": "https://github.com/educlopez/ui-craft/blob/main/LICENSE",
     "composerIcon": "./assets/icon.svg",
     "logo": "./assets/icon.svg",
     "defaultPrompt": [

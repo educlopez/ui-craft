@@ -8,7 +8,7 @@ import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
 DEST = ROOT / "dist" / "ui-craft-openai.zip"
-FILES = {".codex-plugin/plugin.json", ".mcp.json", "README.md", "LICENSE"}
+FILES = {".codex-plugin/plugin.json", ".mcp.json", "README.md", "LICENSE", "PRIVACY.md"}
 PREFIXES = (".codex/skills/", "skills/", "commands/", "agents/", "examples/")
 
 
