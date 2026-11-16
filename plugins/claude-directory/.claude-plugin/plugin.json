@@ -1,6 +1,10 @@
 {
   "name": "ui-craft-skills",
-  "version": "1.0.0",
+  "version": "1.0.1",
+  "displayName": "UI Craft Skills",
+  "icon": "./.claude-plugin/icon.png",
+  "privacyPolicyUrl": "https://github.com/educlopez/ui-craft/blob/main/plugins/claude-directory/PRIVACY.md",
+  "termsOfServiceUrl": "https://github.com/educlopez/ui-craft/blob/main/plugins/claude-directory/LICENSE",
   "description": "29 design-engineering skills for interfaces, accessibility, tokens, motion and manual quality reviews. Instruction-only edition; no local MCP or hooks.",
   "author": {
     "name": "Eduardo Calvo",

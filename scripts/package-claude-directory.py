@@ -182,7 +182,11 @@ def entries():
         dest = source.removeprefix('.codex/')
         result[dest] = adapt(dest, path.read_text()).encode()
     manifest = {
-        'name': 'ui-craft-skills', 'version': '1.0.0',
+        'name': 'ui-craft-skills', 'version': '1.0.1',
+        'displayName': 'UI Craft Skills',
+        'icon': './.claude-plugin/icon.png',
+        'privacyPolicyUrl': 'https://github.com/educlopez/ui-craft/blob/main/plugins/claude-directory/PRIVACY.md',
+        'termsOfServiceUrl': 'https://github.com/educlopez/ui-craft/blob/main/plugins/claude-directory/LICENSE',
         'description': '29 design-engineering skills for interfaces, accessibility, tokens, motion and manual quality reviews. Instruction-only edition; no local MCP or hooks.',
         'author': {'name': 'Eduardo Calvo', 'url': 'https://github.com/educlopez'},
         'homepage': 'https://ui-craft.smoothui.dev',
@@ -218,7 +222,7 @@ Project artifacts remain where the user authorizes the host to write them.
 
 def validate(files):
     manifest = json.loads(files['.claude-plugin/plugin.json'])
-    if set(manifest) != {'name', 'version', 'description', 'author', 'homepage', 'repository', 'license', 'keywords', 'skills'}:
+    if set(manifest) != {'name', 'version', 'displayName', 'icon', 'privacyPolicyUrl', 'termsOfServiceUrl', 'description', 'author', 'homepage', 'repository', 'license', 'keywords', 'skills'}:
         raise ValueError('Unexpected manifest capabilities or fields')
     skill_dirs = sorted(f'./{str(Path(n).parent)}' for n in files if n.endswith('/SKILL.md'))
     if sorted(manifest['skills']) != skill_dirs:
