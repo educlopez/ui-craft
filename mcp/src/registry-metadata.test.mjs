@@ -20,7 +20,7 @@ test('MCP Registry ownership marker and npm package descriptor stay aligned', ()
     transport: { type: 'stdio' },
     environmentVariables: [{
       name: 'UI_CRAFT_MCP_SKILLS',
-      description: 'Set 1 only on compatible hosts without native UI Craft skills; otherwise keep 0.',
+      description: 'Set 1 only when the host supports Skills over MCP and native UI Craft skills are not installed; otherwise keep 0.',
       default: '0',
       choices: ['0', '1'],
       isRequired: false,
