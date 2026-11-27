@@ -40,6 +40,25 @@ jobs:
       - name: Setup npm trusted publishing client
         run: npm install --global npm@11.5.1
 
+      - name: Setup candidate package manager
+        if: inputs.package == 'ui-craft-mcp'
+        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          version: 9
+          run_install: false
+
+      - name: Build and validate stable MCP package before changing live pins
+        if: inputs.package == 'ui-craft-mcp'
+        working-directory: experiments/skills-mcp
+        env:
+          UI_CRAFT_RELEASE_STABLE: '1'
+        run: |
+          pnpm install --frozen-lockfile --ignore-scripts
+          node build.mjs
+          node run-tests.mjs unit
+          python3 package-release.py --stable
+          node run-tests.mjs release
+
       - name: Verify requested package and version
         env:
           REQUESTED_PACKAGE: ${{ inputs.package }}
@@ -49,7 +68,7 @@ jobs:
           const fs = require("node:fs");
           const packagePath =
             process.env.REQUESTED_PACKAGE === "ui-craft-mcp"
-              ? "mcp/package.json"
+              ? "dist/marketplace-v2/npm/package.json"
               : "package.json";
           const pkg = JSON.parse(fs.readFileSync(packagePath, "utf8"));
           if (pkg.name !== process.env.REQUESTED_PACKAGE) {
@@ -69,14 +88,10 @@ jobs:
           node --test scripts/detect.test.mjs
           npm pack --dry-run
 
-      - name: Install and test MCP package
+      - name: Inspect stable MCP tarball
         if: inputs.package == 'ui-craft-mcp'
-        run: |
-          cd mcp
-          npm ci
-          npm test
-          npm run smoke:dist
-          npm pack --dry-run
+        working-directory: dist/marketplace-v2/npm
+        run: npm pack --dry-run
 
       - name: Publish detector
         if: inputs.package == 'ui-craft-detect'
@@ -84,5 +99,5 @@ jobs:
 
       - name: Publish MCP
         if: inputs.package == 'ui-craft-mcp'
-        working-directory: mcp
+        working-directory: dist/marketplace-v2/npm
         run: npm publish --provenance --access public

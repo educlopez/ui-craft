@@ -6,6 +6,19 @@ The released MCP remains 0.9.1 and the Claude Directory skills-only edition is r
 
 ## Versions and outputs
 
+### Authorized stable promotion
+
+`python3 package-release.py --stable` explicitly builds MCP 1.0.0 and plugin
+1.1.0 archives. Only this explicit mode removes the staged npm publication
+guards. The default remains a private, unpublishable release candidate.
+Run extracted-package checks with `UI_CRAFT_RELEASE_STABLE=1` for stable outputs.
+Stable and RC archives may coexist; SHA256SUMS selects exactly the current build.
+
+The trusted `npm-release.yml` workflow builds, tests and publishes the stable
+staging directory without first changing live pins. After npm publication is
+verified, promote the canonical source metadata, install pins and Registry.
+This order avoids making current consumers depend on an unpublished version.
+
 MCP candidate: 1.0.0-rc.1, stable target 1.0.0 only after release gates pass.
 Cursor/OpenAI plugin candidate: 1.1.0-rc.1. Claude Code keeps commit-based versioning
 (no fixed version in its plugin manifest), matching the current distribution contract.

@@ -3,14 +3,14 @@ import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import { copyFile, mkdir, readFile, rm, writeFile, readdir } from 'node:fs/promises';
 import { buildCatalog } from './catalog.mjs';
-import { MCP_CANDIDATE_VERSION } from './release-config.mjs';
+import { MCP_CANDIDATE_VERSION, STABLE_TARGET_VERSION } from './release-config.mjs';
 import { wrapLegacyServer } from './server-factory.mjs';
 import { installLocalZodResolver } from './dependency-resolution.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, '../..');
 const release = process.argv.includes('--release');
-const releaseVersion = MCP_CANDIDATE_VERSION;
+const releaseVersion = process.argv.includes('--stable') ? STABLE_TARGET_VERSION : MCP_CANDIDATE_VERSION;
 const output = release ? resolve(root, 'dist/marketplace-v2/runtime') : resolve(here, 'dist');
 await rm(output, { recursive: true, force: true });
 await mkdir(output, { recursive: true });

@@ -42,3 +42,9 @@ jobs:
       - run: node run-tests.mjs unit
       - run: python package-release.py
       - run: node run-tests.mjs release
+      - name: Build and check explicit stable promotion without publishing
+        env:
+          UI_CRAFT_RELEASE_STABLE: '1'
+        run: |
+          python package-release.py --stable
+          node run-tests.mjs release

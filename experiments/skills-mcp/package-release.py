@@ -10,6 +10,7 @@ import re
 import shutil
 import stat
 import subprocess
+import sys
 import tarfile
 import zipfile
 
@@ -20,6 +21,10 @@ CONFIG = (HERE / 'release-config.mjs').read_text()
 MCP_VERSION = re.search(r"MCP_CANDIDATE_VERSION = '([^']+)'", CONFIG)[1]
 PLUGIN_VERSION = re.search(r"PLUGIN_CANDIDATE_VERSION = '([^']+)'", CONFIG)[1]
 STABLE_VERSION = re.search(r"STABLE_TARGET_VERSION = '([^']+)'", CONFIG)[1]
+STABLE = '--stable' in sys.argv or os.environ.get('UI_CRAFT_RELEASE_STABLE') == '1'
+if STABLE:
+    MCP_VERSION = STABLE_VERSION
+    PLUGIN_VERSION = PLUGIN_VERSION.split('-')[0]
 TRACKED = subprocess.check_output(['git', 'ls-files', '-z'], cwd=ROOT).decode().split('\0')
 
 
@@ -95,7 +100,7 @@ def zip_tree(base, filename):
 def build():
     before = protected()
     # Build writes runtime/ only; packaging owns these isolated output folders.
-    subprocess.run(['node', str(HERE / 'build.mjs'), '--release'], cwd=HERE, check=True, timeout=120)
+    subprocess.run(['node', str(HERE / 'build.mjs'), '--release'] + (['--stable'] if STABLE else []), cwd=HERE, check=True, timeout=120)
     for name in ['npm', 'claude-code', 'cursor', 'openai', 'mcp-only', 'registry', 'promotion']:
         shutil.rmtree(OUT / name, ignore_errors=True)
         (OUT / name).mkdir(parents=True)
@@ -166,6 +171,9 @@ def build():
         description='Local design-quality tools with optional Skills over MCP.',
         scripts={'start': 'node dist/server.mjs', 'prepublishOnly': 'node -e "throw new Error(\'Local candidate: publication requires explicit promotion\')"'})
     package.pop('overrides', None)
+    if STABLE:
+        package['private'] = False
+        package['scripts'] = {'start': 'node dist/server.mjs'}
     put(base, 'package.json', package)
     copy_tracked(base, ('LICENSE', 'PRIVACY.md'))
     put(base, 'README.md', (f'# ui-craft-mcp {MCP_VERSION}\n\nLocal release candidate; not published.\n'
@@ -216,7 +224,10 @@ def build():
     if before != after:
         raise RuntimeError('Protected source/config/candidate changed during packaging')
     put(OUT, 'preserved-sources.json', before)
-    artifacts = {p.name: digest(p) for p in sorted(OUT.iterdir()) if p.suffix in ['.zip', '.tgz']}
+    archive_names = [f'ui-craft-mcp-{MCP_VERSION}.tgz'] + [
+        f'ui-craft-{channel}-{MCP_VERSION if channel == "mcp-only" else PLUGIN_VERSION}.zip'
+        for channel in ['claude-code', 'cursor', 'openai', 'mcp-only']]
+    artifacts = {name: digest(OUT / name) for name in sorted(archive_names)}
     put(OUT, 'SHA256SUMS.json', artifacts)
     for name in ['RELEASE-PREPARATION.md', 'SUBMISSION-DRAFTS.md', 'CROSS-HOST-TRIAL.md']:
         shutil.copyfile(HERE / name, OUT / name)
