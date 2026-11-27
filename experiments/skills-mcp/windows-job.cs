@@ -4,6 +4,7 @@ using System;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
+using System.IO.Pipes;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
@@ -52,6 +53,7 @@ public static class UICraftJob {
     [DllImport("kernel32.dll", SetLastError = true)] static extern IntPtr OpenProcess(uint access, bool inherit, uint pid);
     [DllImport("kernel32.dll")] static extern uint WaitForSingleObject(IntPtr handle, uint milliseconds);
     [DllImport("kernel32.dll")] static extern IntPtr GetStdHandle(int kind);
+    [DllImport("kernel32.dll", SetLastError = true)] static extern bool GetNamedPipeServerProcessId(IntPtr pipe, out uint serverPid);
     [DllImport("kernel32.dll", SetLastError = true)] static extern bool SetHandleInformation(IntPtr handle, uint mask, uint flags);
     [DllImport("kernel32.dll", SetLastError = true)] static extern bool InitializeProcThreadAttributeList(IntPtr list, int count, int flags, ref IntPtr bytes);
     [DllImport("kernel32.dll", SetLastError = true)] static extern bool UpdateProcThreadAttribute(IntPtr list, uint flags, IntPtr attribute, IntPtr value, IntPtr size, IntPtr previous, IntPtr returned);
@@ -75,6 +77,7 @@ public static class UICraftJob {
         IntPtr parent = IntPtr.Zero, job = IntPtr.Zero, list = IntPtr.Zero, jobValue = IntPtr.Zero;
         PROCESS_INFORMATION child = new PROCESS_INFORMATION();
         bool listReady = false;
+        NamedPipeClientStream input = null;
         try {
             // Pin the owner process handle before launching anything.
             parent = OpenProcess(0x00100000, false, parentId);
@@ -93,10 +96,22 @@ public static class UICraftJob {
             Marshal.WriteIntPtr(jobValue, job);
             // PROC_THREAD_ATTRIBUTE_JOB_LIST assigns at CreateProcess time.
             Check(UpdateProcThreadAttribute(list, 0, new IntPtr(0x2000D), jobValue, new IntPtr(IntPtr.Size), IntPtr.Zero, IntPtr.Zero));
+            string pipeName = Environment.GetEnvironmentVariable("UI_CRAFT_WORKER_PIPE");
+            if (!String.IsNullOrEmpty(pipeName)) {
+                input = new NamedPipeClientStream(".", pipeName, PipeDirection.InOut);
+                input.Connect(10000);
+                uint serverPid;
+                Check(GetNamedPipeServerProcessId(input.SafePipeHandle.DangerousGetHandle(), out serverPid));
+                if (serverPid != parentId) throw new Exception("Worker pipe owner mismatch");
+                byte[] greeting = Encoding.UTF8.GetBytes(Environment.GetEnvironmentVariable("UI_CRAFT_WORKER_PIPE_TOKEN") + "\n");
+                input.Write(greeting, 0, greeting.Length);
+                input.Flush();
+                Environment.SetEnvironmentVariable("UI_CRAFT_WORKER_PIPE_TOKEN", null);
+            }
             STARTUPINFOEX startup = new STARTUPINFOEX();
             startup.StartupInfo.cb = Marshal.SizeOf(startup);
             startup.StartupInfo.dwFlags = 0x100; // STARTF_USESTDHANDLES
-            startup.StartupInfo.hStdInput = GetStdHandle(-10);
+            startup.StartupInfo.hStdInput = input == null ? GetStdHandle(-10) : input.SafePipeHandle.DangerousGetHandle();
             startup.StartupInfo.hStdOutput = GetStdHandle(-11);
             startup.StartupInfo.hStdError = GetStdHandle(-12);
             foreach (IntPtr handle in new IntPtr[] { startup.StartupInfo.hStdInput, startup.StartupInfo.hStdOutput, startup.StartupInfo.hStdError })
@@ -118,6 +133,7 @@ public static class UICraftJob {
                 Thread.Sleep(25);
             }
         } finally {
+            if (input != null) input.Dispose();
             if (child.hThread != IntPtr.Zero) CloseHandle(child.hThread);
             if (child.hProcess != IntPtr.Zero) CloseHandle(child.hProcess);
             if (job != IntPtr.Zero) CloseHandle(job);

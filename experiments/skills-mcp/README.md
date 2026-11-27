@@ -35,13 +35,13 @@ Chrome at a time and tests render success, cancel, disconnect and server shutdow
 Tools only, no skills capability advertised (the default):
 
 ```sh
-node /Users/eduardocalvolopez/Developer/Personal/ui-craft/experiments/skills-mcp/dist/server.mjs
+node dist/server.mjs
 ```
 
 Tools and Skills over MCP:
 
 ```sh
-UI_CRAFT_MCP_SKILLS=1 node /Users/eduardocalvolopez/Developer/Personal/ui-craft/experiments/skills-mcp/dist/server.mjs
+UI_CRAFT_MCP_SKILLS=1 node dist/server.mjs
 ```
 
 These are stdio server commands for a test client, not interactive commands that

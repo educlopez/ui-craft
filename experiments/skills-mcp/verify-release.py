@@ -19,9 +19,9 @@ ROOT = package.ROOT
 
 
 def verify():
-    expected = json.loads((OUT / 'preserved-sources.json').read_text())
+    expected = json.loads((OUT / 'preserved-sources.json').read_text(encoding='utf-8'))
     assert expected == package.protected(), 'Existing sources, pins or Claude candidate changed'
-    sums = json.loads((OUT / 'SHA256SUMS.json').read_text())
+    sums = json.loads((OUT / 'SHA256SUMS.json').read_text(encoding='utf-8'))
     assert len(sums) == 5
     for name, digest in sums.items():
         p = OUT / name
@@ -46,12 +46,12 @@ def verify():
                     assert path.parts[0] == 'package' and '..' not in path.parts and not path.is_absolute()
                     assert entry.isfile(), entry.name
     base = OUT / 'openai'
-    manifest = json.loads((base / 'plugin.json').read_text())
+    manifest = json.loads((base / 'plugin.json').read_text(encoding='utf-8'))
     assert manifest['extensions']['com.openai']['requires_local_executor'] is True
     assert not (base / 'hooks').exists() and not (base / '.codex').exists()
     names = []
     for skill in (base / 'skills').glob('*/SKILL.md'):
-        text = skill.read_text()
+        text = skill.read_text(encoding='utf-8')
         names.append(re.search(r'^name:\s*(.+)$', text, re.M)[1].strip())
         for link in re.findall(r'\]\(([^\s)]+)\)', text):
             if '://' in link or link.startswith(('#', 'mailto:')):
@@ -62,15 +62,15 @@ def verify():
     for channel, config, variable in [('claude-code', '.mcp.json', '${CLAUDE_PLUGIN_ROOT}'),
                                      ('cursor', 'mcp.json', '${CURSOR_PLUGIN_ROOT}'),
                                      ('openai', 'mcp.json', '${PLUGIN_ROOT}')]:
-        server = json.loads((OUT / channel / config).read_text())['mcpServers']['ui-craft-mcp']
+        server = json.loads((OUT / channel / config).read_text(encoding='utf-8'))['mcpServers']['ui-craft-mcp']
         assert server['command'] == 'node'
         assert server['args'] == [variable + '/server/dist/server.mjs']
         assert server['env'] == {'UI_CRAFT_MCP_SKILLS': '0'}
         assert 'npx' not in json.dumps(server)
-    registry = json.loads((OUT / 'registry/server.json').read_text())
+    registry = json.loads((OUT / 'registry/server.json').read_text(encoding='utf-8'))
     assert registry['name'] == 'io.github.educlopez/ui-craft'
     assert registry['version'] == registry['packages'][0]['version'] == package.MCP_VERSION
-    future = json.loads((OUT / 'promotion/.mcp.json').read_text())
+    future = json.loads((OUT / 'promotion/.mcp.json').read_text(encoding='utf-8'))
     assert all('ui-craft-mcp@' + package.STABLE_VERSION in server['args']
                for server in future['mcpServers'].values())
     assert all(server['env']['UI_CRAFT_MCP_SKILLS'] == '0' for server in future['mcpServers'].values())

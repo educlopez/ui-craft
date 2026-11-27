@@ -57,7 +57,7 @@ test('real browser returns screenshot, structured result and progress, then remo
   assert.ok(progress.length >= 3);
   assert.equal(progress.at(-1).message, 'Check completed');
   assert.deepEqual(await readdir(f.root), []);
-  assert.match(f.stderr(), /completed-and-cleaned/);
+  await until(() => /completed-and-cleaned/.test(f.stderr()), 'Missing completion cleanup receipt');
 });
 
 test('real browser cancellation cleans its process group and profile', async t => {

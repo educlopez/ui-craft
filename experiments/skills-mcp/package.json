@@ -6,7 +6,7 @@
   "engines": { "node": ">=20" },
   "scripts": {
     "build": "node build.mjs",
-    "test": "node run-tests.mjs unit",
+    "test": "node build.mjs && node run-tests.mjs unit",
     "test:browser": "node run-tests.mjs browser",
     "build:release": "python3 package-release.py",
     "test:release": "node run-tests.mjs release",
