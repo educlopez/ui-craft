@@ -34,11 +34,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          version: 9
+          run_install: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7.1.0
         with:
           node-version: '20'
       - name: Install MCP dependencies
         run: cd mcp && npm install
+      - name: Install pinned SDK v2 build toolchain
+        run: pnpm --dir experiments/skills-mcp install --frozen-lockfile --ignore-scripts
       - name: Run MCP tests
         run: cd mcp && npm test
       - name: Build + smoke the published bundle

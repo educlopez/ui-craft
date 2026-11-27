@@ -60,7 +60,7 @@ test("discovered plugin components point at the canonical trees", () => {
   assert.ok(discovered.agents.includes("agents/a11y-auditor.md"))
   assert.ok(discovered.rules.every((rule) => rule.startsWith("rules/") && rule.endsWith(".mdc")))
   assert.equal(discovered.mcpServers["ui-craft-mcp"].command, "npx")
-  assert.deepEqual(discovered.mcpServers["ui-craft-mcp"].args, ["-y", "ui-craft-mcp@0.9.1"])
+  assert.deepEqual(discovered.mcpServers["ui-craft-mcp"].args, ["-y", "ui-craft-mcp@1.0.0"])
   assert.equal(discovered.hookEvents.length, 1)
   assert.equal(discovered.hookEvents[0].event, "preToolUse")
   assert.equal(discovered.hookEvents[0].matcher, "Write")

@@ -1,7 +1,7 @@
 {
   "name": "ui-craft",
   "displayName": "UI Craft",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Design engineering skill + system for AI coding agents: anti-slop UI, outcome recipes, spec-driven design, design-review + a11y agents, MCP quality gates, and a pre-write detector hook.",
   "author": {
     "name": "Eduardo Calvo"
@@ -9,7 +9,15 @@
   "homepage": "https://ui-craft.smoothui.dev",
   "repository": "https://github.com/educlopez/ui-craft",
   "license": "MIT",
-  "keywords": ["ui", "design", "accessibility", "css", "frontend", "design-system", "anti-slop"],
+  "keywords": [
+    "ui",
+    "design",
+    "accessibility",
+    "css",
+    "frontend",
+    "design-system",
+    "anti-slop"
+  ],
   "logo": "assets/icon.svg",
   "skills": [
     "skills/ui-craft",
@@ -24,7 +32,13 @@
   "mcpServers": {
     "ui-craft-mcp": {
       "command": "npx",
-      "args": ["-y", "ui-craft-mcp@0.9.1"]
+      "args": [
+        "-y",
+        "ui-craft-mcp@1.0.0"
+      ],
+      "env": {
+        "UI_CRAFT_MCP_SKILLS": "0"
+      }
     }
   }
 }

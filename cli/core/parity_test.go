@@ -21,7 +21,7 @@ func setupClaudeInstall(t *testing.T, includeAgents bool) (*fsutil.MemFS, string
 
 	// MCP config: user scope lives in ~/.claude.json, next to ~/.claude.
 	_ = m.WriteFile("/home/user/.claude.json",
-		[]byte(`{"numStartups":3,"mcpServers":{"ui-craft":{"command":"npx","args":["-y","ui-craft-mcp@0.9.1"]}}}`+"\n"), 0o644)
+		[]byte(`{"numStartups":3,"mcpServers":{"ui-craft":{"command":"npx","args":["-y","ui-craft-mcp@1.0.0"]}}}`+"\n"), 0o644)
 
 	if includeAgents {
 		// Agent files
@@ -182,7 +182,7 @@ func TestParity_claudeFullInstall_integration(t *testing.T) {
 
 	// --- mcp-gates ---
 	_ = m.WriteFile("/home/user/.claude.json",
-		[]byte(`{"mcpServers":{"ui-craft":{"command":"npx","args":["-y","ui-craft-mcp@0.9.1"]}}}`+"\n"), 0o644)
+		[]byte(`{"mcpServers":{"ui-craft":{"command":"npx","args":["-y","ui-craft-mcp@1.0.0"]}}}`+"\n"), 0o644)
 
 	// --- review-agents ---
 	agentsDir := filepath.Join(claudeRoot, "agents")
