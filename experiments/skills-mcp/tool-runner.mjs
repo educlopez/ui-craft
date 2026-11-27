@@ -5,16 +5,21 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createServer } from 'node:net';
+import { randomBytes } from 'node:crypto';
+import { verifyWorkerGreeting } from './pipe-auth.mjs';
 
 const active = new Set();
 let rendering = false;
 let shutdownInstalled = false;
 let cleanupFailed = false;
+let shuttingDown = false;
 
 function installShutdown() {
   if (shutdownInstalled) return;
   shutdownInstalled = true;
   for (const signal of ['SIGINT', 'SIGTERM']) process.once(signal, () => {
+    shuttingDown = true;
     const jobs = [...active];
     for (const job of jobs) job.abort();
     const deadline = setTimeout(async () => {
@@ -31,29 +36,88 @@ function installShutdown() {
 // A private transport owns a POSIX group or Windows Job Object. Closing the SDK
 // transport alone could kill Node but leave its Chrome descendants running.
 class OwnedTransport {
-  constructor(entry, env, onSpawn) {
+  constructor(entry, env, onSpawn, onDiagnostic) {
     this.entry = entry;
     this.env = env;
     this.onSpawn = onSpawn;
+    this.onDiagnostic = onDiagnostic;
     this.buffer = '';
   }
 
   async start() {
     if (this.child) throw new Error('Worker transport already started');
+    let pipeReady;
+    if (process.platform === 'win32') {
+      // PowerShell/its native compiler gets NUL stdin. MCP bytes travel over a
+      // local named pipe instead; never expose source code to the bootstrap.
+      const name = `ui-craft-${randomBytes(24).toString('hex')}`;
+      const secret = randomBytes(32).toString('hex');
+      this.env.UI_CRAFT_WORKER_PIPE = name;
+      this.env.UI_CRAFT_WORKER_PIPE_TOKEN = secret;
+      const sockets = new Set();
+      pipeReady = new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          this.pipeServer.close();
+          for (const socket of sockets) socket.destroy();
+          reject(new Error('Windows worker pipe bootstrap timed out'));
+        }, 25000);
+        this.pipeServer = createServer(socket => {
+          sockets.add(socket);
+          let greeting = '';
+          const failed = () => { sockets.delete(socket); socket.destroy(); };
+          socket.on('error', failed);
+          socket.on('close', () => sockets.delete(socket));
+          const authenticate = chunk => {
+            greeting += chunk.toString('utf8');
+            if (greeting.length > 128) { failed(); return; }
+            if (!greeting.includes('\n')) return;
+            if (!verifyWorkerGreeting(greeting, secret)) {
+              failed(); return;
+            }
+            clearTimeout(timeout);
+            socket.off('data', authenticate);
+            this.input = socket;
+            this.pipeServer.close();
+            for (const other of sockets) if (other !== socket) other.destroy();
+            resolve();
+          };
+          socket.on('data', authenticate);
+        });
+        this.pipeServer.once('error', error => {
+          clearTimeout(timeout);
+          for (const socket of sockets) socket.destroy();
+          reject(error);
+        });
+        this.cancelPipe = () => {
+          clearTimeout(timeout);
+          this.pipeServer.close(() => {});
+          for (const socket of sockets) socket.destroy();
+          reject(new Error('Windows worker bootstrap closed'));
+        };
+        this.pipeServer.maxConnections = 4;
+        this.pipeServer.listen(`\\\\.\\pipe\\${name}`);
+      });
+      // Start has its own bound. Handle early pipe errors while spawn settles.
+      pipeReady.catch(() => {});
+    }
     this.child = spawnWorker(this.entry, this.env);
     const child = this.child;
+    if (process.platform !== 'win32') this.input = child.stdin;
     this.exited = new Promise(resolve => {
       child.once('exit', code => resolve(code));
       child.once('error', () => resolve(-1));
     });
     child.once('error', error => { this.onerror?.(error); this.onclose?.(); });
     child.once('exit', () => this.onclose?.());
-    for (const stream of [child.stdin, child.stdout, child.stderr]) {
+    for (const stream of [child.stdin, child.stdout, child.stderr].filter(Boolean)) {
       stream.on('error', error => this.onerror?.(error));
     }
-    child.stderr.on('data', () => {}); // Drain diagnostics; never echo code/URLs.
+    // No logging by default: diagnostics can contain user code/URLs. Tests may
+    // explicitly capture their own controlled fixture's output for assertions.
+    child.stderr.on('data', chunk => this.onDiagnostic?.(chunk.toString()));
     child.stdout.setEncoding('utf8');
     child.stdout.on('data', chunk => {
+      this.onDiagnostic?.(`worker stdout: ${Buffer.byteLength(chunk)} bytes\n`);
       this.buffer += chunk;
       if (Buffer.byteLength(this.buffer) > 10 * 1024 * 1024) {
         this.onerror?.(new Error('Worker response exceeds 10 MB'));
@@ -73,11 +137,13 @@ class OwnedTransport {
       child.once('error', reject);
     });
     this.onSpawn?.(child.pid);
+    if (pipeReady) await pipeReady;
   }
 
   async send(message) {
+    this.onDiagnostic?.(`worker send: ${message.method ?? 'response'}\n`);
     await new Promise((resolve, reject) => {
-      this.child.stdin.write(`${JSON.stringify(message)}\n`, error => error ? reject(error) : resolve());
+      this.input.write(`${JSON.stringify(message)}\n`, error => error ? reject(error) : resolve());
     });
   }
 
@@ -88,16 +154,19 @@ class OwnedTransport {
   }
 
   async stop() {
+    this.cancelPipe?.();
     const pid = this.child?.pid;
     if (!pid) return;
     await stopWorker(this.child, this.exited, this.env);
-    this.child.stdin.destroy();
+    this.input?.destroy();
+    this.child.stdin?.destroy();
     this.child.stdout.destroy();
     this.child.stderr.destroy();
   }
 }
 
 export async function runTool(name, args, request, options = {}) {
+  if (shuttingDown) throw new Error('UI Craft server is shutting down');
   if (cleanupFailed) throw new Error('Worker cleanup could not be verified; inspect owned processes before restarting this server');
   if (active.size >= 2 || (name === 'check_fold' && rendering)) {
     throw new Error('UI Craft busy; retry after the current check finishes');
@@ -154,16 +223,17 @@ export async function runTool(name, args, request, options = {}) {
       ...getDefaultEnvironment(),
       TMPDIR: directory, TMP: directory, TEMP: directory,
       UI_CRAFT_MCP_TOOL_WORKER: '1', UI_CRAFT_MCP_SKILLS: '0',
+      ...(options.onDiagnostic ? { UI_CRAFT_WORKER_DIAGNOSTICS: '1' } : {}),
       ...(process.env.UI_CRAFT_CHROME ? { UI_CRAFT_CHROME: process.env.UI_CRAFT_CHROME } : {}),
     };
     transport = new OwnedTransport(options.entry ?? fileURLToPath(import.meta.url), env,
-      pid => audit('started', pid));
+      pid => audit('started', pid), options.onDiagnostic);
     token.transport = transport;
     // The bundle supplies its own entry below; source imports use an explicit
     // fixture entry in tests. No API key or Claude credential is inherited.
     client = new Client({ name: 'ui-craft-owned-worker', version: '0.0.0-local' });
     await report('Starting isolated check');
-    await client.connect(transport, { signal: controller.signal, timeout: Math.min(budget, process.platform === 'win32' ? 15000 : 5000) });
+    await client.connect(transport, { signal: controller.signal, timeout: Math.min(budget, process.platform === 'win32' ? 30000 : 5000) });
     await report(isRender ? 'Rendering page in an isolated browser worker' : 'Running isolated check');
     let pending = Promise.resolve();
     heartbeat = setInterval(() => {

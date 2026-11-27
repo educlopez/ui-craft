@@ -14,13 +14,17 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: mcp-sdk-v2-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   candidate:
     name: Candidate ${{ matrix.os }} Node ${{ matrix.node }}
     timeout-minutes: 15
     strategy:
       fail-fast: false
-      max-parallel: 3
+      max-parallel: 6
       matrix:
         os: [ubuntu-latest, windows-latest]
         node: ['20', '22', '24']
@@ -38,7 +42,12 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
       - run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Audit bundled runtime dependencies
+        run: pnpm audit --prod --audit-level=high
       - run: node build.mjs
+      - name: Check native Windows guard bootstrap
+        if: runner.os == 'Windows'
+        run: node --test --test-timeout=45000 test/windows-start.test.mjs
       - run: node run-tests.mjs unit
       - run: python package-release.py
       - run: node run-tests.mjs release

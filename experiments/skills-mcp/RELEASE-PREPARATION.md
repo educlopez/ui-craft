@@ -116,6 +116,12 @@ are not certified by those measurements.
 6. Review staged privacy copy before publishing its canonical policy URL. It
    describes bundled execution and direct browser requests; canonical privacy is unchanged.
 
+Update after PR #194: native Windows static/worker ownership and extracted-package
+checks now pass on Node 20/22/24; see CROSS-HOST-TRIAL.md. Windows browser and desktop
+GUI checks remain unverified. The user authorized stable publication without more
+manual trials. The npm workflow uses a separate post-publication Registry job with
+short-lived GitHub OIDC, so retrying Registry does not republish the npm version.
+
 No remote HTTPS server, OAuth service or hosting deployment is created. A cloud
 connector is a separate design/security/deployment decision, not a packaging flag.
 
