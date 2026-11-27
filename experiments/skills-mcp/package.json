@@ -1,0 +1,25 @@
+{
+  "name": "ui-craft-skills-mcp-prototype",
+  "version": "0.0.0-local",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "build": "node build.mjs",
+    "test": "node run-tests.mjs unit",
+    "test:browser": "node run-tests.mjs browser",
+    "build:release": "python3 package-release.py",
+    "test:release": "node run-tests.mjs release",
+    "start": "node dist/server.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/server": "2.4.0",
+    "@modelcontextprotocol/client": "2.4.0",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/sdk": "1.32.2",
+    "esbuild": "0.28.2",
+    "yaml": "2.8.1"
+  }
+}
