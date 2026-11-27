@@ -3,7 +3,9 @@
   "version": "0.0.0-local",
   "private": true,
   "type": "module",
-  "engines": { "node": ">=20" },
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "build": "node build.mjs",
     "test": "node build.mjs && node run-tests.mjs unit",
@@ -13,9 +15,9 @@
     "start": "node dist/server.mjs"
   },
   "dependencies": {
-    "@modelcontextprotocol/server": "2.4.0",
     "@modelcontextprotocol/client": "2.4.0",
-    "zod": "4.4.3"
+    "@modelcontextprotocol/server": "2.4.0",
+    "zod": "4.6.6"
   },
   "devDependencies": {
     "@modelcontextprotocol/sdk": "1.32.2",

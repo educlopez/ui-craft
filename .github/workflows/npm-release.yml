@@ -54,6 +54,7 @@ jobs:
           UI_CRAFT_RELEASE_STABLE: '1'
         run: |
           pnpm install --frozen-lockfile --ignore-scripts
+          pnpm audit --prod --audit-level=high
           node build.mjs
           node run-tests.mjs unit
           python3 package-release.py --stable
