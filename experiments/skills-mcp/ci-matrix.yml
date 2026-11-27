@@ -1,0 +1,35 @@
+# DRAFT ONLY: intentionally outside .github/workflows; does not run remotely.
+name: SDK v2 candidate compatibility
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  candidate:
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, ubuntu-latest, windows-latest]
+        node: ['20', '22', '24']
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: experiments/skills-mcp
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413
+        with:
+          version: 9
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: ${{ matrix.node }}
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - run: node build.mjs
+      - run: node run-tests.mjs unit
+      - run: python package-release.py
+      - run: node run-tests.mjs release
+      - if: matrix.node != '20'
+        run: node run-tests.mjs browser
+        env:
+          UI_CRAFT_TEST_ENTRY: ${{ github.workspace }}/dist/marketplace-v2/runtime/server.mjs

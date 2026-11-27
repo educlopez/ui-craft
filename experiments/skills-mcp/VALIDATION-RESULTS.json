@@ -1,0 +1,84 @@
+{
+  "date": "2026-11-27",
+  "candidate": "1.0.0-rc.1",
+  "activeInstallationsChanged": false,
+  "claudeSkillsCandidacyChanged": false,
+  "published": false,
+  "submitted": false,
+  "linux": {
+    "platform": "linux/arm64, Debian Bookworm container",
+    "nodeVersions": [
+      "20.20.2",
+      "22.23.5",
+      "24.22.3"
+    ],
+    "perVersion": {
+      "unitPass": 32,
+      "windowsOnlySkip": 1,
+      "artifactPass": 6
+    },
+    "browser": {
+      "nodeVersion": "24.22.3",
+      "pass": 4,
+      "context": "explicitly approved test-only no-sandbox; network none; unprivileged; read-only package/root; no host home"
+    }
+  },
+  "macOS": {
+    "unitPass": 32,
+    "windowsOnlySkip": 1,
+    "artifactPass": 6
+  },
+  "openai": {
+    "host": "Codex CLI 0.160.0",
+    "personalAccountVerified": true,
+    "nativeUiCraftSkills": 29,
+    "explicitTypedSkill": "ui-craft:polish",
+    "typedSkillLoaded": true,
+    "completedTools": [
+      "score_ui",
+      "route_task"
+    ],
+    "desktopGui": "not verified"
+  },
+  "cursor": {
+    "host": "Cursor CLI, Linux/arm64",
+    "personalAccountVerified": true,
+    "localPluginDiscovered": true,
+    "completedTools": [
+      "score_ui",
+      "route_task"
+    ],
+    "permissionScope": "only two methods in disposable workspace; shell/write/web denied; Ask mode retained",
+    "macOSGui": "not verified"
+  },
+  "windows": {
+    "tested": false,
+    "utmVersionInstalled": "5.0.9",
+    "guestCreated": false
+  },
+  "lifecycleFix": {
+    "date": "2026-11-27",
+    "platform": "macOS arm64",
+    "nodeVersion": "26.13.0",
+    "unitPass": 41,
+    "windowsOnlySkip": 1,
+    "newRunnerRegressions": 9,
+    "artifactPass": 6,
+    "manualHostTrialsRepeated": false,
+    "browserTestsRepeated": false,
+    "artifacts": {
+      "ui-craft-claude-code-1.1.0-rc.1.zip": "207e8c31cd9deb60d4d703d1fd87b0430712545011787ee9ae3d9d0f85de7ab0",
+      "ui-craft-cursor-1.1.0-rc.1.zip": "02198b92ac846b76654085863d1c3c7d6210bd0db8e6bd865d4af3ee37263fe7",
+      "ui-craft-mcp-1.0.0-rc.1.tgz": "151b12341f469233b63c28e0cd21f988a4652cf7c7da06d38b73b0e6feffe05e",
+      "ui-craft-mcp-only-1.0.0-rc.1.zip": "a8ac3070ec057ff41b2fd8436d232a1f71660a522e251d776656d2af1f1623ae",
+      "ui-craft-openai-1.1.0-rc.1.zip": "bffa1278fbb0d2c1e35b7061ae5a09ede49170cffde010f0fde501be2bccfdcb"
+    }
+  },
+  "artifacts": {
+    "ui-craft-claude-code-1.1.0-rc.1.zip": "a5c0080e95d04304d15040aa96fce695430142fbe6f05fc5b2b910f0ee880803",
+    "ui-craft-cursor-1.1.0-rc.1.zip": "a82fe4f594cc072ab203d36fc8524d8e034400f4d57ce4b76fa8f97f9c1f2bce",
+    "ui-craft-mcp-1.0.0-rc.1.tgz": "2f2850b08845dda09c059e3e28ea0a9a40f697310cc411785c72296968792e00",
+    "ui-craft-mcp-only-1.0.0-rc.1.zip": "8472eb9b32bd9ab9dc112a130b5d89e815682c4d77ee6094d541ff10c202fb08",
+    "ui-craft-openai-1.1.0-rc.1.zip": "fef9abb7ed04f6b547ff8252c4caa9f7cdfaae79dcae3096450659fd127f8bcb"
+  }
+}
