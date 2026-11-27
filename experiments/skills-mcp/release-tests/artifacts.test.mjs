@@ -10,7 +10,11 @@ import { StdioClientTransport as V1Transport } from '@modelcontextprotocol/sdk/c
 import { Client as V2Client } from '@modelcontextprotocol/client';
 import { StdioClientTransport as V2Transport } from '@modelcontextprotocol/client/stdio';
 import { SkillsClient } from '@modelcontextprotocol/client/ext/skills';
-import { MCP_CANDIDATE_VERSION as version } from '../release-config.mjs';
+import { MCP_CANDIDATE_VERSION, PLUGIN_CANDIDATE_VERSION, STABLE_TARGET_VERSION } from '../release-config.mjs';
+
+const stable = process.env.UI_CRAFT_RELEASE_STABLE === '1';
+const version = stable ? STABLE_TARGET_VERSION : MCP_CANDIDATE_VERSION;
+const pluginVersion = stable ? PLUGIN_CANDIDATE_VERSION.split('-')[0] : PLUGIN_CANDIDATE_VERSION;
 
 const here = fileURLToPath(new URL('../', import.meta.url));
 const output = fileURLToPath(new URL('../../../dist/marketplace-v2/', import.meta.url));
@@ -85,14 +89,15 @@ for (const legacy of [true, false]) for (const skills of ['0', '1']) {
       }
     }
     const pkg = JSON.parse(await readFile(join(directory, 'package/package.json'), 'utf8'));
-    assert.equal(pkg.private, true);
+    assert.equal(pkg.private, !stable);
+    assert.equal('prepublishOnly' in pkg.scripts, !stable);
     assert.deepEqual(pkg.dependencies, {});
     assert.match(await readFile(join(directory, 'package/dist/THIRD_PARTY_NOTICES.txt'), 'utf8'), /@modelcontextprotocol\/server@2\.4\.0/);
   });
 }
 
 test('extracted OpenAI package launches without npm and without duplicate MCP skills', async t => {
-  const directory = await extracted(t, 'ui-craft-openai-1.1.0-rc.1.zip');
+  const directory = await extracted(t, `ui-craft-openai-${pluginVersion}.zip`);
   const config = JSON.parse(await readFile(join(directory, 'mcp.json'), 'utf8')).mcpServers['ui-craft-mcp'];
   const entry = config.args[0].replace('${PLUGIN_ROOT}', directory);
   const client = await connect(t, entry, false, config.env.UI_CRAFT_MCP_SKILLS);

@@ -10,6 +10,7 @@ import re
 import shutil
 import stat
 import subprocess
+import sys
 import tarfile
 import zipfile
 
@@ -20,6 +21,10 @@ CONFIG = (HERE / 'release-config.mjs').read_text(encoding='utf-8')
 MCP_VERSION = re.search(r"MCP_CANDIDATE_VERSION = '([^']+)'", CONFIG)[1]
 PLUGIN_VERSION = re.search(r"PLUGIN_CANDIDATE_VERSION = '([^']+)'", CONFIG)[1]
 STABLE_VERSION = re.search(r"STABLE_TARGET_VERSION = '([^']+)'", CONFIG)[1]
+STABLE = '--stable' in sys.argv or os.environ.get('UI_CRAFT_RELEASE_STABLE') == '1'
+if STABLE:
+    MCP_VERSION = STABLE_VERSION
+    PLUGIN_VERSION = PLUGIN_VERSION.split('-')[0]
 TRACKED = subprocess.check_output(['git', 'ls-files', '-z'], cwd=ROOT).decode().split('\0')
 
 
@@ -78,6 +83,19 @@ def launch(variable, skills='0'):
             'env': {'UI_CRAFT_MCP_SKILLS': skills}}
 
 
+def registry_descriptor(version=MCP_VERSION):
+    registry = json.loads((ROOT / 'mcp/server.json').read_text(encoding='utf-8'))
+    registry['version'] = version
+    registry['packages'][0]['version'] = version
+    registry['websiteUrl'] = 'https://ui-craft.smoothui.dev'
+    registry['icons'] = [{'src': 'https://raw.githubusercontent.com/educlopez/ui-craft/main/assets/icon.svg',
+                          'mimeType': 'image/svg+xml', 'sizes': ['any']}]
+    registry['packages'][0]['environmentVariables'] = [{
+        'name': 'UI_CRAFT_MCP_SKILLS', 'description': 'Set 1 only when the host supports Skills over MCP and native UI Craft skills are not installed; otherwise keep 0.',
+        'default': '0', 'choices': ['0', '1'], 'isRequired': False, 'isSecret': False}]
+    return registry
+
+
 def zip_tree(base, filename):
     with zipfile.ZipFile(OUT / filename, 'w', zipfile.ZIP_DEFLATED) as z:
         for p in sorted(base.rglob('*')):
@@ -95,7 +113,7 @@ def zip_tree(base, filename):
 def build():
     before = protected()
     # Build writes runtime/ only; packaging owns these isolated output folders.
-    subprocess.run(['node', str(HERE / 'build.mjs'), '--release'], cwd=HERE, check=True, timeout=120)
+    subprocess.run(['node', str(HERE / 'build.mjs'), '--release'] + (['--stable'] if STABLE else []), cwd=HERE, check=True, timeout=120)
     for name in ['npm', 'claude-code', 'cursor', 'openai', 'mcp-only', 'registry', 'promotion']:
         shutil.rmtree(OUT / name, ignore_errors=True)
         (OUT / name).mkdir(parents=True)
@@ -166,13 +184,18 @@ def build():
         description='Local design-quality tools with optional Skills over MCP.',
         scripts={'start': 'node dist/server.mjs', 'prepublishOnly': 'node -e "throw new Error(\'Local candidate: publication requires explicit promotion\')"'})
     package.pop('overrides', None)
+    if STABLE:
+        package['private'] = False
+        package['scripts'] = {'start': 'node dist/server.mjs'}
     put(base, 'package.json', package)
     copy_tracked(base, ('LICENSE', 'PRIVACY.md'))
-    put(base, 'README.md', (f'# ui-craft-mcp {MCP_VERSION}\n\nLocal release candidate; not published.\n'
+    release_note = ('Self-contained local stdio distribution. Marketplace acceptance is a separate process.\n'
+                    if STABLE else 'Local release candidate; not published.\n')
+    put(base, 'README.md', (f'# ui-craft-mcp {MCP_VERSION}\n\n' + release_note +
         'Eight tools by default. Opt in to 64 catalog skills with UI_CRAFT_MCP_SKILLS=1 only when native skills are absent.\n'
         'Node 20+; Node 22+ and an installed Chrome-family browser for check_fold.\n'
         'Windows 10+ requires Windows PowerShell with Add-Type permitted. Unsupported policies fail closed.\n'
-        'Windows/Linux native tests and client trials remain release gates until executed.\n').encode())
+        'Native static/worker ownership tests pass on Windows/Linux Node 20/22/24; Windows browser and desktop GUI behavior are not certified.\n').encode())
     for channel in ['npm', 'claude-code', 'cursor', 'openai', 'mcp-only']:
         privacy(OUT / channel)
     with (OUT / f'ui-craft-mcp-{MCP_VERSION}.tgz').open('wb') as raw, gzip.GzipFile(fileobj=raw, mode='wb', filename='', mtime=0) as gz, tarfile.open(fileobj=gz, mode='w') as archive:
@@ -183,15 +206,7 @@ def build():
                 info.size = len(data)
                 info.mode = 0o755 if p.name == 'server.mjs' else 0o644
                 archive.addfile(info, io.BytesIO(data))
-    registry = json.loads((ROOT / 'mcp/server.json').read_text(encoding='utf-8'))
-    registry['version'] = MCP_VERSION
-    registry['packages'][0]['version'] = MCP_VERSION
-    registry['websiteUrl'] = 'https://ui-craft.smoothui.dev'
-    registry['icons'] = [{'src': 'https://raw.githubusercontent.com/educlopez/ui-craft/main/assets/icon.svg',
-                          'mimeType': 'image/svg+xml', 'sizes': ['any']}]
-    registry['packages'][0]['environmentVariables'] = [{
-        'name': 'UI_CRAFT_MCP_SKILLS', 'description': 'Set 1 only when the host supports Skills over MCP and native UI Craft skills are not installed; otherwise keep 0.',
-        'default': '0', 'choices': ['0', '1'], 'isRequired': False, 'isSecret': False}]
+    registry = registry_descriptor()
     put(OUT / 'registry', 'server.json', registry)
     # Git-backed Claude/Cursor installs cannot reference ignored build outputs.
     # Prepare inactive source overlays using the future published npm version;
