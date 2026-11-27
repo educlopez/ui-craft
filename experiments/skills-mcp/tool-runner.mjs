@@ -57,6 +57,7 @@ class OwnedTransport {
     child.stderr.on('data', chunk => this.onDiagnostic?.(chunk.toString()));
     child.stdout.setEncoding('utf8');
     child.stdout.on('data', chunk => {
+      this.onDiagnostic?.(`worker stdout: ${Buffer.byteLength(chunk)} bytes\n`);
       this.buffer += chunk;
       if (Buffer.byteLength(this.buffer) > 10 * 1024 * 1024) {
         this.onerror?.(new Error('Worker response exceeds 10 MB'));
@@ -79,6 +80,7 @@ class OwnedTransport {
   }
 
   async send(message) {
+    this.onDiagnostic?.(`worker send: ${message.method ?? 'response'}\n`);
     await new Promise((resolve, reject) => {
       this.child.stdin.write(`${JSON.stringify(message)}\n`, error => error ? reject(error) : resolve());
     });
