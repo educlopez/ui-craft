@@ -17,7 +17,10 @@ async function scratch(t) {
 async function descendant(root) {
   for (let i = 0; i < (process.platform === 'win32' ? 750 : 100); i++) {
     for (const name of await readdir(root)) {
-      try { return Number(await readFile(join(root, name, 'descendant.pid'), 'utf8')); }
+      try {
+        const pid = Number(await readFile(join(root, name, 'descendant.pid'), 'utf8'));
+        if (Number.isSafeInteger(pid) && pid > 0) return pid;
+      }
       catch {}
     }
     await delay(20);

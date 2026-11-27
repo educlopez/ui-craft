@@ -10,11 +10,13 @@ const active = new Set();
 let rendering = false;
 let shutdownInstalled = false;
 let cleanupFailed = false;
+let shuttingDown = false;
 
 function installShutdown() {
   if (shutdownInstalled) return;
   shutdownInstalled = true;
   for (const signal of ['SIGINT', 'SIGTERM']) process.once(signal, () => {
+    shuttingDown = true;
     const jobs = [...active];
     for (const job of jobs) job.abort();
     const deadline = setTimeout(async () => {
@@ -103,6 +105,7 @@ class OwnedTransport {
 }
 
 export async function runTool(name, args, request, options = {}) {
+  if (shuttingDown) throw new Error('UI Craft server is shutting down');
   if (cleanupFailed) throw new Error('Worker cleanup could not be verified; inspect owned processes before restarting this server');
   if (active.size >= 2 || (name === 'check_fold' && rendering)) {
     throw new Error('UI Craft busy; retry after the current check finishes');

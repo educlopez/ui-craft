@@ -16,7 +16,7 @@ import zipfile
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
 OUT = ROOT / 'dist/marketplace-v2'
-CONFIG = (HERE / 'release-config.mjs').read_text()
+CONFIG = (HERE / 'release-config.mjs').read_text(encoding='utf-8')
 MCP_VERSION = re.search(r"MCP_CANDIDATE_VERSION = '([^']+)'", CONFIG)[1]
 PLUGIN_VERSION = re.search(r"PLUGIN_CANDIDATE_VERSION = '([^']+)'", CONFIG)[1]
 STABLE_VERSION = re.search(r"STABLE_TARGET_VERSION = '([^']+)'", CONFIG)[1]
@@ -56,7 +56,7 @@ def runtime(base):
 
 
 def privacy(base):
-    text = (ROOT / 'PRIVACY.md').read_text()
+    text = (ROOT / 'PRIVACY.md').read_text(encoding='utf-8')
     old = ('Installing the local MCP server through the declared `npx` launcher contacts\n'
            'the npm registry to obtain the pinned package and its dependencies.')
     assert old in text, 'Review privacy adaptation after canonical notice changes'
@@ -111,14 +111,14 @@ def build():
             'Node 20+ for static tools; Node 22+ and an installed Chrome-family browser for check_fold.\n'
             'Existing detector hooks are declared separately and remain subject to host permissions.\n'
             'Building this package does not install or run them. Existing installations are unchanged.\n').encode())
-    claude = json.loads((ROOT / '.claude-plugin/plugin.json').read_text())
+    claude = json.loads((ROOT / '.claude-plugin/plugin.json').read_text(encoding='utf-8'))
     put(OUT / 'claude-code', '.claude-plugin/plugin.json', claude)
     copy_tracked(OUT / 'claude-code', ('hooks/hooks.json',))
     put(OUT / 'claude-code', '.mcp.json', {'mcpServers': {'ui-craft-mcp': launch('${CLAUDE_PLUGIN_ROOT}')}})
-    cursor = json.loads((ROOT / '.cursor-plugin/plugin.json').read_text())
+    cursor = json.loads((ROOT / '.cursor-plugin/plugin.json').read_text(encoding='utf-8'))
     cursor.update(version=PLUGIN_VERSION, description='Design-engineering skills, commands, review agents, rules and local MCP quality checks.')
     copy_tracked(OUT / 'cursor', ('hooks/cursor.json',))
-    cursor_hooks = json.loads((ROOT / 'hooks/cursor.json').read_text())
+    cursor_hooks = json.loads((ROOT / 'hooks/cursor.json').read_text(encoding='utf-8'))
     cursor_hooks['hooks']['preToolUse'][0]['command'] = 'node "${CURSOR_PLUGIN_ROOT}/scripts/detect.mjs" hook-run'
     put(OUT / 'cursor', 'hooks/cursor.json', cursor_hooks)
     cursor['mcpServers'] = 'mcp.json'
@@ -134,7 +134,7 @@ def build():
                 data = data.replace(b'../skills/ui-craft/references/', b'../ui-craft/references/')
             put(base, name.removeprefix('.codex/'), data)
     runtime(base)
-    old = json.loads((ROOT / '.codex-plugin/plugin.json').read_text())
+    old = json.loads((ROOT / '.codex-plugin/plugin.json').read_text(encoding='utf-8'))
     interface = old['interface']
     interface['longDescription'] = ('Design-engineering skills and bundled local MCP quality checks. '
         'Requires local desktop execution and Node.js; no npm download or hosted UI Craft account is needed.')
@@ -161,7 +161,7 @@ def build():
     # npm candidate is self-contained and deliberately unpublishable until approved.
     base = OUT / 'npm'
     shutil.copytree(OUT / 'runtime', base / 'dist')
-    package = json.loads((ROOT / 'mcp/package.json').read_text())
+    package = json.loads((ROOT / 'mcp/package.json').read_text(encoding='utf-8'))
     package.update(version=MCP_VERSION, private=True, dependencies={}, devDependencies={},
         description='Local design-quality tools with optional Skills over MCP.',
         scripts={'start': 'node dist/server.mjs', 'prepublishOnly': 'node -e "throw new Error(\'Local candidate: publication requires explicit promotion\')"'})
@@ -183,7 +183,7 @@ def build():
                 info.size = len(data)
                 info.mode = 0o755 if p.name == 'server.mjs' else 0o644
                 archive.addfile(info, io.BytesIO(data))
-    registry = json.loads((ROOT / 'mcp/server.json').read_text())
+    registry = json.loads((ROOT / 'mcp/server.json').read_text(encoding='utf-8'))
     registry['version'] = MCP_VERSION
     registry['packages'][0]['version'] = MCP_VERSION
     registry['websiteUrl'] = 'https://ui-craft.smoothui.dev'
@@ -196,12 +196,12 @@ def build():
     # Git-backed Claude/Cursor installs cannot reference ignored build outputs.
     # Prepare inactive source overlays using the future published npm version;
     # self-contained ZIPs above are separate local-install/desktop artifacts.
-    future = json.loads((ROOT / '.mcp.json').read_text())
+    future = json.loads((ROOT / '.mcp.json').read_text(encoding='utf-8'))
     for server in future['mcpServers'].values():
         server['args'] = [re.sub(r'ui-craft-mcp@[^ ]+', 'ui-craft-mcp@' + STABLE_VERSION, arg) for arg in server.get('args', [])]
         server.setdefault('env', {})['UI_CRAFT_MCP_SKILLS'] = '0'
     put(OUT / 'promotion', '.mcp.json', future)
-    future_cursor = json.loads((ROOT / '.cursor-plugin/plugin.json').read_text())
+    future_cursor = json.loads((ROOT / '.cursor-plugin/plugin.json').read_text(encoding='utf-8'))
     future_cursor['version'] = '1.1.0'
     for server in future_cursor['mcpServers'].values():
         server['args'] = [re.sub(r'ui-craft-mcp@[^ ]+', 'ui-craft-mcp@' + STABLE_VERSION, arg) for arg in server.get('args', [])]
@@ -216,7 +216,10 @@ def build():
     if before != after:
         raise RuntimeError('Protected source/config/candidate changed during packaging')
     put(OUT, 'preserved-sources.json', before)
-    artifacts = {p.name: digest(p) for p in sorted(OUT.iterdir()) if p.suffix in ['.zip', '.tgz']}
+    archive_names = [f'ui-craft-mcp-{MCP_VERSION}.tgz'] + [
+        f'ui-craft-{channel}-{MCP_VERSION if channel == "mcp-only" else PLUGIN_VERSION}.zip'
+        for channel in ['claude-code', 'cursor', 'openai', 'mcp-only']]
+    artifacts = {name: digest(OUT / name) for name in sorted(archive_names)}
     put(OUT, 'SHA256SUMS.json', artifacts)
     for name in ['RELEASE-PREPARATION.md', 'SUBMISSION-DRAFTS.md', 'CROSS-HOST-TRIAL.md']:
         shutil.copyfile(HERE / name, OUT / name)

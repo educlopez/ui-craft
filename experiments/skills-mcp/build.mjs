@@ -20,6 +20,7 @@ await copyFile(resolve(here, 'assets/icon.png'), resolve(output, 'assets/icon.pn
 await copyFile(resolve(here, 'windows-job.cs'), resolve(output, 'windows-job.cs'));
 await buildCatalog(root, resolve(output, 'skills'), { release });
 const result = await build({
+  absWorkingDir: here,
   stdin: {
     contents: `import { serveStdio } from '@modelcontextprotocol/server/stdio';
 import { loadCatalog } from './adapter.mjs';
