@@ -21,6 +21,7 @@ test('Windows launcher uses the system guard, literal paths, no profile and no p
   const launch = workerLaunch(entry, { TMPDIR: 'C:\\temp\\job' }, 'win32');
   assert.equal(launch.command, 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe');
   assert.ok(launch.args.includes('-NoProfile'));
+  assert.equal(launch.args[launch.args.indexOf('-InputFormat') + 1], 'None');
   assert.ok(!launch.args.some(a => /bypass|executionpolicy/i.test(a)));
   assert.ok(!launch.args.at(-1).includes(entry));
   assert.equal(launch.options.env.UI_CRAFT_WORKER_ENTRY, entry);

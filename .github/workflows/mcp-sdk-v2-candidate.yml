@@ -20,7 +20,7 @@ jobs:
     timeout-minutes: 15
     strategy:
       fail-fast: false
-      max-parallel: 3
+      max-parallel: 6
       matrix:
         os: [ubuntu-latest, windows-latest]
         node: ['20', '22', '24']
@@ -39,6 +39,9 @@ jobs:
           node-version: ${{ matrix.node }}
       - run: pnpm install --frozen-lockfile --ignore-scripts
       - run: node build.mjs
+      - name: Check native Windows guard bootstrap
+        if: runner.os == 'Windows'
+        run: node --test --test-timeout=45000 test/windows-start.test.mjs
       - run: node run-tests.mjs unit
       - run: python package-release.py
       - run: node run-tests.mjs release
