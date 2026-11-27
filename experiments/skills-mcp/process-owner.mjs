@@ -28,7 +28,7 @@ export function workerLaunch(entry, env, platform = process.platform) {
 export function spawnWorker(entry, env) {
   const launch = workerLaunch(entry, env);
   return spawn(launch.command, launch.args, { ...launch.options,
-    cwd: process.cwd(), stdio: ['pipe', 'pipe', 'pipe'] });
+    cwd: process.cwd(), stdio: [process.platform === 'win32' ? 'ignore' : 'pipe', 'pipe', 'pipe'] });
 }
 
 export async function stopWorker(child, exited, env) {
@@ -36,7 +36,7 @@ export async function stopWorker(child, exited, env) {
     // The guard acknowledges by exiting only after QueryInformationJobObject
     // reports zero active processes. Preserve the job directory on failure.
     await writeFile(join(env.TMPDIR, 'stop'), 'stop', { flag: 'w' });
-    const result = await Promise.race([exited, delay(15000).then(() => 'timeout')]);
+    const result = await Promise.race([exited, delay(15000, undefined, { ref: false }).then(() => 'timeout')]);
     if (result === 'timeout') {
       child.kill('SIGKILL'); // Closing the guard's handle is the fail-safe.
       throw new Error('Windows worker cleanup was not acknowledged; profile retained');

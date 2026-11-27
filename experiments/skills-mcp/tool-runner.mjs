@@ -5,6 +5,8 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createServer } from 'node:net';
+import { randomBytes, timingSafeEqual } from 'node:crypto';
 
 const active = new Set();
 let rendering = false;
@@ -43,15 +45,72 @@ class OwnedTransport {
 
   async start() {
     if (this.child) throw new Error('Worker transport already started');
+    let pipeReady;
+    if (process.platform === 'win32') {
+      // PowerShell/its native compiler gets NUL stdin. MCP bytes travel over a
+      // local named pipe instead; never expose source code to the bootstrap.
+      const name = `ui-craft-${randomBytes(24).toString('hex')}`;
+      const secret = randomBytes(32).toString('hex');
+      this.env.UI_CRAFT_WORKER_PIPE = name;
+      this.env.UI_CRAFT_WORKER_PIPE_TOKEN = secret;
+      const sockets = new Set();
+      pipeReady = new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          this.pipeServer.close();
+          for (const socket of sockets) socket.destroy();
+          reject(new Error('Windows worker pipe bootstrap timed out'));
+        }, 15000);
+        this.pipeServer = createServer(socket => {
+          sockets.add(socket);
+          let greeting = '';
+          const failed = () => { sockets.delete(socket); socket.destroy(); };
+          socket.on('error', failed);
+          socket.on('close', () => sockets.delete(socket));
+          const authenticate = chunk => {
+            greeting += chunk.toString('utf8');
+            if (greeting.length > 128) { failed(); return; }
+            if (!greeting.includes('\n')) return;
+            const supplied = Buffer.from(greeting, 'utf8');
+            const expected = Buffer.from(secret + '\n', 'utf8');
+            if (supplied.length !== expected.length || !timingSafeEqual(supplied, expected)) {
+              failed(); return;
+            }
+            clearTimeout(timeout);
+            socket.off('data', authenticate);
+            this.input = socket;
+            this.pipeServer.close();
+            for (const other of sockets) if (other !== socket) other.destroy();
+            resolve();
+          };
+          socket.on('data', authenticate);
+        });
+        this.pipeServer.once('error', error => {
+          clearTimeout(timeout);
+          for (const socket of sockets) socket.destroy();
+          reject(error);
+        });
+        this.cancelPipe = () => {
+          clearTimeout(timeout);
+          this.pipeServer.close(() => {});
+          for (const socket of sockets) socket.destroy();
+          reject(new Error('Windows worker bootstrap closed'));
+        };
+        this.pipeServer.maxConnections = 4;
+        this.pipeServer.listen(`\\\\.\\pipe\\${name}`);
+      });
+      // Start has its own bound. Handle early pipe errors while spawn settles.
+      pipeReady.catch(() => {});
+    }
     this.child = spawnWorker(this.entry, this.env);
     const child = this.child;
+    if (process.platform !== 'win32') this.input = child.stdin;
     this.exited = new Promise(resolve => {
       child.once('exit', code => resolve(code));
       child.once('error', () => resolve(-1));
     });
     child.once('error', error => { this.onerror?.(error); this.onclose?.(); });
     child.once('exit', () => this.onclose?.());
-    for (const stream of [child.stdin, child.stdout, child.stderr]) {
+    for (const stream of [child.stdin, child.stdout, child.stderr].filter(Boolean)) {
       stream.on('error', error => this.onerror?.(error));
     }
     // No logging by default: diagnostics can contain user code/URLs. Tests may
@@ -79,12 +138,13 @@ class OwnedTransport {
       child.once('error', reject);
     });
     this.onSpawn?.(child.pid);
+    if (pipeReady) await pipeReady;
   }
 
   async send(message) {
     this.onDiagnostic?.(`worker send: ${message.method ?? 'response'}\n`);
     await new Promise((resolve, reject) => {
-      this.child.stdin.write(`${JSON.stringify(message)}\n`, error => error ? reject(error) : resolve());
+      this.input.write(`${JSON.stringify(message)}\n`, error => error ? reject(error) : resolve());
     });
   }
 
@@ -95,10 +155,12 @@ class OwnedTransport {
   }
 
   async stop() {
+    this.cancelPipe?.();
     const pid = this.child?.pid;
     if (!pid) return;
     await stopWorker(this.child, this.exited, this.env);
-    this.child.stdin.destroy();
+    this.input?.destroy();
+    this.child.stdin?.destroy();
     this.child.stdout.destroy();
     this.child.stderr.destroy();
   }
