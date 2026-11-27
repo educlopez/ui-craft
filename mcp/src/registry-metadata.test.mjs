@@ -18,5 +18,19 @@ test('MCP Registry ownership marker and npm package descriptor stay aligned', ()
     identifier: pkg.name,
     version: pkg.version,
     transport: { type: 'stdio' },
+    environmentVariables: [{
+      name: 'UI_CRAFT_MCP_SKILLS',
+      description: 'Set 1 only on compatible hosts without native UI Craft skills; otherwise keep 0.',
+      default: '0',
+      choices: ['0', '1'],
+      isRequired: false,
+      isSecret: false,
+    }],
+  }]);
+  assert.equal(registry.websiteUrl, pkg.homepage);
+  assert.deepEqual(registry.icons, [{
+    src: 'https://raw.githubusercontent.com/educlopez/ui-craft/main/assets/icon.svg',
+    mimeType: 'image/svg+xml',
+    sizes: ['any'],
   }]);
 });
