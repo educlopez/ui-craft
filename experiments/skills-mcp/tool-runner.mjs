@@ -6,7 +6,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createServer } from 'node:net';
-import { randomBytes, timingSafeEqual } from 'node:crypto';
+import { randomBytes } from 'node:crypto';
+import { verifyWorkerGreeting } from './pipe-auth.mjs';
 
 const active = new Set();
 let rendering = false;
@@ -70,9 +71,7 @@ class OwnedTransport {
             greeting += chunk.toString('utf8');
             if (greeting.length > 128) { failed(); return; }
             if (!greeting.includes('\n')) return;
-            const supplied = Buffer.from(greeting, 'utf8');
-            const expected = Buffer.from(secret + '\n', 'utf8');
-            if (supplied.length !== expected.length || !timingSafeEqual(supplied, expected)) {
+            if (!verifyWorkerGreeting(greeting, secret)) {
               failed(); return;
             }
             clearTimeout(timeout);
