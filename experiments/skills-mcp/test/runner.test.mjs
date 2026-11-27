@@ -180,3 +180,30 @@ for (const scenario of ['success', 'active-cleanup-failure', 'previous-cleanup-f
     assert.deepEqual(await readdir(root), []);
   });
 }
+
+test('SIGTERM refuses late calls before they can spawn a detached worker', {
+  skip: process.platform === 'win32' && 'Requires POSIX SIGTERM delivery', timeout: 20000,
+}, async t => {
+  const root = await scratch(t);
+  const runner = new URL('../tool-runner.mjs', import.meta.url).href;
+  const script = `import {runTool} from ${JSON.stringify(runner)};
+    const options = {entry:${JSON.stringify(entry)},tempRoot:${JSON.stringify(root)}};
+    const job = runTool('slow',{hang:true},{},{...options,onEvent(event) {
+      if (event.event === 'started') setTimeout(() => process.kill(process.pid,'SIGTERM'),100);
+    }}).catch(() => {});
+    process.once('SIGTERM', () => {
+      runTool('slow',{}, {},options).then(() => process.exit(98), error => {
+        if (!/shutting down/.test(error.message)) process.exit(97);
+        console.log('late-call-refused');
+      });
+    });
+    await job;`;
+  const child = spawnSync(process.execPath, ['--input-type=module', '-e', script], {
+    encoding: 'utf8', timeout: 15000,
+  });
+  assert.ifError(child.error);
+  assert.equal(child.status, 0, child.stderr);
+  assert.match(child.stdout, /late-call-refused/);
+  assert.equal((child.stderr.match(/"event":"started"/g) ?? []).length, 1);
+  assert.deepEqual(await readdir(root), []);
+});
