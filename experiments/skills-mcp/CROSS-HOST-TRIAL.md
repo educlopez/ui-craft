@@ -124,3 +124,24 @@ skipped, on Node 26.13.0. All six extracted-package tests pass for the rebuilt
 archives. No browser or authenticated client trial was repeated.
 Rebuilt archive hashes and extracted-package results are recorded separately
 under `lifecycleFix` in `VALIDATION-RESULTS.json`.
+
+## Reviewed candidate and native Windows CI — 2026-11-27
+
+PR #194, head `8472f03`, passed the full Linux and native Windows Node 20/22/24
+matrix in [run 45996100336](https://github.com/educlopez/ui-craft/actions/runs/45996100336).
+Windows ran 42 unit tests successfully (five POSIX/file-symlink cases skipped),
+plus all six extracted-package tests. This includes actual owned-worker calls,
+the native Job Object owner-death regression and two bootstrap checks. No browser,
+desktop GUI, user account or Windows VM was involved in this CI run.
+
+Earlier native attempts exposed slow PowerShell bootstrap/module discovery.
+The reviewed implementation restricts module lookup to system modules and uses
+the qualified system Add-Type command. Its compiler receives NUL stdin; worker
+input uses a local nonce-authenticated named pipe whose server PID is checked
+against the pinned owner. The nonce is removed before child launch. The successful
+Windows bootstrap preflight completed in four seconds on Node 24.
+
+Review also tightened shutdown admission, UTF-8 archive verification, positive PID
+polling, build working-directory/license resolution and archive checksum selection.
+These CI results supersede the earlier Windows-not-tested status for static tools
+and process ownership only; they do not certify native browser behavior or GUI.

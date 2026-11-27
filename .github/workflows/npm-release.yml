@@ -155,3 +155,7 @@ jobs:
         run: |
           ./mcp-publisher login github-oidc
           ./mcp-publisher publish server-release.json
+      - name: Remove temporary Registry credentials
+        if: always()
+        run: |
+          if [ -x ./mcp-publisher ]; then ./mcp-publisher logout; fi
