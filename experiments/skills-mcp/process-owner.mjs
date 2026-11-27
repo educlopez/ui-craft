@@ -12,7 +12,9 @@ export function workerLaunch(entry, env, platform = process.platform) {
   if (!process.env.SystemRoot) throw new Error('SystemRoot is required for Windows worker ownership');
   return {
     command: win32.join(process.env.SystemRoot, 'System32/WindowsPowerShell/v1.0/powershell.exe'),
-    args: ['-NoLogo', '-NoProfile', '-NonInteractive', '-Command',
+    // PowerShell must not consume/wait for the MCP stdin stream as pipeline
+    // input before invoking the guard. The native worker owns those bytes.
+    args: ['-NoLogo', '-NoProfile', '-NonInteractive', '-InputFormat', 'None', '-Command',
       "$ErrorActionPreference='Stop'; Add-Type -LiteralPath $env:UI_CRAFT_WORKER_HELPER; [UICraftJob]::Run()"],
     options: { windowsHide: true, env: {
       ...env, SystemRoot: process.env.SystemRoot,
