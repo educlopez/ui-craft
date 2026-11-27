@@ -39,6 +39,9 @@ jobs:
       - name: Install MCP dependencies
         run: npm ci --prefix mcp
 
+      - name: Install pinned SDK v2 build toolchain
+        run: pnpm --dir experiments/skills-mcp install --frozen-lockfile --ignore-scripts
+
       # The frontmatter suite cross-checks every shipped file with a real YAML parser, and
       # exits 2 rather than passing when it cannot run — so the parser is installed here
       # instead of letting the gate quietly degrade to "not checked".

@@ -9,9 +9,13 @@ import { installLocalZodResolver } from './dependency-resolution.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, '../..');
-const release = process.argv.includes('--release');
-const releaseVersion = process.argv.includes('--stable') ? STABLE_TARGET_VERSION : MCP_CANDIDATE_VERSION;
-const output = release ? resolve(root, 'dist/marketplace-v2/runtime') : resolve(here, 'dist');
+const production = process.argv.includes('--production');
+const release = production || process.argv.includes('--release');
+const releaseVersion = production
+  ? JSON.parse(await readFile(resolve(root, 'mcp/package.json'), 'utf8')).version
+  : process.argv.includes('--stable') ? STABLE_TARGET_VERSION : MCP_CANDIDATE_VERSION;
+const output = production ? resolve(root, 'mcp/dist')
+  : release ? resolve(root, 'dist/marketplace-v2/runtime') : resolve(here, 'dist');
 await rm(output, { recursive: true, force: true });
 await mkdir(output, { recursive: true });
 await mkdir(resolve(output, 'assets'), { recursive: true });

@@ -3,7 +3,7 @@
   "name": "io.github.educlopez/ui-craft",
   "title": "UI Craft",
   "description": "UI quality checks: anti-slop, accessibility, design tokens, scoring and workflow routing.",
-  "version": "0.9.1",
+  "version": "1.0.0",
   "repository": {
     "url": "https://github.com/educlopez/ui-craft",
     "source": "github"
@@ -12,10 +12,33 @@
     {
       "registryType": "npm",
       "identifier": "ui-craft-mcp",
-      "version": "0.9.1",
+      "version": "1.0.0",
       "transport": {
         "type": "stdio"
-      }
+      },
+      "environmentVariables": [
+        {
+          "name": "UI_CRAFT_MCP_SKILLS",
+          "description": "Set 1 only when the host supports Skills over MCP and native UI Craft skills are not installed; otherwise keep 0.",
+          "default": "0",
+          "choices": [
+            "0",
+            "1"
+          ],
+          "isRequired": false,
+          "isSecret": false
+        }
+      ]
+    }
+  ],
+  "websiteUrl": "https://ui-craft.smoothui.dev",
+  "icons": [
+    {
+      "src": "https://raw.githubusercontent.com/educlopez/ui-craft/main/assets/icon.svg",
+      "mimeType": "image/svg+xml",
+      "sizes": [
+        "any"
+      ]
     }
   ]
 }

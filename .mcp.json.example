@@ -4,8 +4,11 @@
       "command": "npx",
       "args": [
         "-y",
-        "ui-craft-mcp@0.9.1"
-      ]
+        "ui-craft-mcp@1.0.0"
+      ],
+      "env": {
+        "UI_CRAFT_MCP_SKILLS": "0"
+      }
     }
   }
 }

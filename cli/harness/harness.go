@@ -116,7 +116,7 @@ type MCPServer struct {
 	Name string
 	// Command is the executable (e.g. "npx").
 	Command string
-	// Args are the arguments passed to Command (e.g. ["-y", "ui-craft-mcp@0.9.1"]).
+	// Args are the arguments passed to Command (e.g. ["-y", "ui-craft-mcp@1.0.0"]).
 	Args []string
 }
 

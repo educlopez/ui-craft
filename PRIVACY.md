@@ -1,6 +1,6 @@
 # UI Craft plugin privacy notice
 
-Effective date: 2026-11-16
+Effective date: 2026-11-27
 
 This notice describes the UI Craft skills, declared local detector hook, and
 local MCP server distributed from this repository. It does not describe the
@@ -39,6 +39,13 @@ Installing the local MCP server through the declared `npx` launcher contacts
 the npm registry to obtain the pinned package and its dependencies. The local
 quality tools are not a hosted data-collection service. UI Craft does not add
 an analytics or advertising collection endpoint to those tools.
+
+Self-contained desktop ZIP editions bundle the MCP server and its dependencies,
+so their declared Node launcher does not contact npm at first use.
+The check_fold tool launches an installed Chrome-family browser with a temporary
+profile and navigates to the user-supplied URL. That destination and its
+subresources receive normal browser requests. Worker profiles are removed after
+verified process cleanup; a cleanup failure retains them for inspection.
 
 If a workflow uses browsing, remote references, or an optional integration,
 that interaction is performed by the user's configured agent or tools. The
