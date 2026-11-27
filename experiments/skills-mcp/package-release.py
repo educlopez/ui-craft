@@ -189,11 +189,13 @@ def build():
         package['scripts'] = {'start': 'node dist/server.mjs'}
     put(base, 'package.json', package)
     copy_tracked(base, ('LICENSE', 'PRIVACY.md'))
-    put(base, 'README.md', (f'# ui-craft-mcp {MCP_VERSION}\n\nLocal release candidate; not published.\n'
+    release_note = ('Self-contained local stdio distribution. Marketplace acceptance is a separate process.\n'
+                    if STABLE else 'Local release candidate; not published.\n')
+    put(base, 'README.md', (f'# ui-craft-mcp {MCP_VERSION}\n\n' + release_note +
         'Eight tools by default. Opt in to 64 catalog skills with UI_CRAFT_MCP_SKILLS=1 only when native skills are absent.\n'
         'Node 20+; Node 22+ and an installed Chrome-family browser for check_fold.\n'
         'Windows 10+ requires Windows PowerShell with Add-Type permitted. Unsupported policies fail closed.\n'
-        'Windows/Linux native tests and client trials remain release gates until executed.\n').encode())
+        'Native static/worker ownership tests pass on Windows/Linux Node 20/22/24; Windows browser and desktop GUI behavior are not certified.\n').encode())
     for channel in ['npm', 'claude-code', 'cursor', 'openai', 'mcp-only']:
         privacy(OUT / channel)
     with (OUT / f'ui-craft-mcp-{MCP_VERSION}.tgz').open('wb') as raw, gzip.GzipFile(fileobj=raw, mode='wb', filename='', mtime=0) as gz, tarfile.open(fileobj=gz, mode='w') as archive:
