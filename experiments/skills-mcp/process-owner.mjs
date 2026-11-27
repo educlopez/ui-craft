@@ -18,6 +18,7 @@ export function workerLaunch(entry, env, platform = process.platform) {
       "& { $ErrorActionPreference='Stop'; if ($env:UI_CRAFT_WORKER_DIAGNOSTICS -eq '1') { [Console]::Error.WriteLine('guard-script-entered') }; Add-Type -LiteralPath $env:UI_CRAFT_WORKER_HELPER; if ($env:UI_CRAFT_WORKER_DIAGNOSTICS -eq '1') { [Console]::Error.WriteLine('guard-helper-compiled') }; [UICraftJob]::Run() }"],
     options: { windowsHide: true, env: {
       ...env, SystemRoot: process.env.SystemRoot,
+      PSModulePath: win32.join(process.env.SystemRoot, 'System32/WindowsPowerShell/v1.0/Modules'),
       UI_CRAFT_WORKER_NODE: process.execPath, UI_CRAFT_WORKER_ENTRY: entry,
       UI_CRAFT_WORKER_HELPER: fileURLToPath(new URL('./windows-job.cs', import.meta.url)),
       UI_CRAFT_WORKER_PARENT: String(process.pid), UI_CRAFT_WORKER_STOP: join(env.TMPDIR, 'stop'),

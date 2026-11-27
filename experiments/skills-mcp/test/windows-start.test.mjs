@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -16,10 +16,25 @@ test('Windows owned transport connects using its credential-free environment', {
   t.after(() => rm(root, { recursive: true, force: true }));
   let diagnostics = '';
   const started = Date.now();
+  let inspectTimer;
+  t.after(() => clearTimeout(inspectTimer));
   try {
     const result = await runTool('slow', {}, {}, {
       entry: fileURLToPath(new URL('./fixtures/worker.mjs', import.meta.url)),
       tempRoot: root, onDiagnostic: text => { diagnostics = (diagnostics + `[${Date.now() - started}ms] ${text}`).slice(-8192); },
+      onEvent: event => {
+        if (event.event !== 'started') return;
+        inspectTimer = setTimeout(() => {
+          // Inspect only this controlled fixture's direct children on CI.
+          const ps = join(process.env.SystemRoot, 'System32/WindowsPowerShell/v1.0/powershell.exe');
+          const script = `Get-CimInstance Win32_Process | Where-Object ParentProcessId -eq ${event.pid} | Select-Object Name,ProcessId,CommandLine | ConvertTo-Json -Compress`;
+          const inspector = spawn(ps, ['-NoProfile', '-NonInteractive', '-Command', script], { stdio: ['ignore', 'pipe', 'pipe'] });
+          const limit = setTimeout(() => inspector.kill('SIGKILL'), 5000);
+          inspector.once('exit', () => clearTimeout(limit));
+          inspector.stdout.on('data', text => { diagnostics = (diagnostics + `Owned compiler children: ${text}`).slice(-8192); });
+          inspector.stderr.resume();
+        }, 5000);
+      },
     });
     assert.equal(result.content[0].text, 'done');
   } catch (error) {
