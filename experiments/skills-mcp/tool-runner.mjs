@@ -31,10 +31,11 @@ function installShutdown() {
 // A private transport owns a POSIX group or Windows Job Object. Closing the SDK
 // transport alone could kill Node but leave its Chrome descendants running.
 class OwnedTransport {
-  constructor(entry, env, onSpawn) {
+  constructor(entry, env, onSpawn, onDiagnostic) {
     this.entry = entry;
     this.env = env;
     this.onSpawn = onSpawn;
+    this.onDiagnostic = onDiagnostic;
     this.buffer = '';
   }
 
@@ -51,7 +52,9 @@ class OwnedTransport {
     for (const stream of [child.stdin, child.stdout, child.stderr]) {
       stream.on('error', error => this.onerror?.(error));
     }
-    child.stderr.on('data', () => {}); // Drain diagnostics; never echo code/URLs.
+    // No logging by default: diagnostics can contain user code/URLs. Tests may
+    // explicitly capture their own controlled fixture's output for assertions.
+    child.stderr.on('data', chunk => this.onDiagnostic?.(chunk.toString()));
     child.stdout.setEncoding('utf8');
     child.stdout.on('data', chunk => {
       this.buffer += chunk;
@@ -157,7 +160,7 @@ export async function runTool(name, args, request, options = {}) {
       ...(process.env.UI_CRAFT_CHROME ? { UI_CRAFT_CHROME: process.env.UI_CRAFT_CHROME } : {}),
     };
     transport = new OwnedTransport(options.entry ?? fileURLToPath(import.meta.url), env,
-      pid => audit('started', pid));
+      pid => audit('started', pid), options.onDiagnostic);
     token.transport = transport;
     // The bundle supplies its own entry below; source imports use an explicit
     // fixture entry in tests. No API key or Claude credential is inherited.
