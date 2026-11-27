@@ -59,7 +59,7 @@ class OwnedTransport {
           this.pipeServer.close();
           for (const socket of sockets) socket.destroy();
           reject(new Error('Windows worker pipe bootstrap timed out'));
-        }, 15000);
+        }, 25000);
         this.pipeServer = createServer(socket => {
           sockets.add(socket);
           let greeting = '';
@@ -234,7 +234,7 @@ export async function runTool(name, args, request, options = {}) {
     // fixture entry in tests. No API key or Claude credential is inherited.
     client = new Client({ name: 'ui-craft-owned-worker', version: '0.0.0-local' });
     await report('Starting isolated check');
-    await client.connect(transport, { signal: controller.signal, timeout: Math.min(budget, process.platform === 'win32' ? 15000 : 5000) });
+    await client.connect(transport, { signal: controller.signal, timeout: Math.min(budget, process.platform === 'win32' ? 30000 : 5000) });
     await report(isRender ? 'Rendering page in an isolated browser worker' : 'Running isolated check');
     let pending = Promise.resolve();
     heartbeat = setInterval(() => {
