@@ -6,13 +6,33 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { workerLaunch, stopWorker } from '../process-owner.mjs';
+import { getDefaultEnvironment } from '@modelcontextprotocol/client/stdio';
+import { runTool } from '../tool-runner.mjs';
+
+test('Windows owned transport connects using its credential-free environment', {
+  skip: process.platform !== 'win32', timeout: 40000,
+}, async t => {
+  const root = await mkdtemp(join(tmpdir(), 'ui craft transport '));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  let diagnostics = '';
+  try {
+    const result = await runTool('slow', {}, {}, {
+      entry: fileURLToPath(new URL('./fixtures/worker.mjs', import.meta.url)),
+      tempRoot: root, onDiagnostic: text => { diagnostics = (diagnostics + text).slice(-8192); },
+    });
+    assert.equal(result.content[0].text, 'done');
+  } catch (error) {
+    throw new Error(`${error.message}\nControlled fixture diagnostics: ${diagnostics}`, { cause: error });
+  }
+});
 
 test('Windows guard bootstraps a fixture over redirected stdio', {
   skip: process.platform !== 'win32', timeout: 40000,
 }, async t => {
   const root = await mkdtemp(join(tmpdir(), 'ui craft guard '));
   const entry = fileURLToPath(new URL('./fixtures/worker.mjs', import.meta.url));
-  const env = { ...process.env, TMPDIR: root, TMP: root, TEMP: root };
+  const env = { ...getDefaultEnvironment(), TMPDIR: root, TMP: root, TEMP: root,
+    UI_CRAFT_MCP_TOOL_WORKER: '1', UI_CRAFT_MCP_SKILLS: '0' };
   const launch = workerLaunch(entry, env);
   // Diagnostics belong to this controlled fixture only, never real tool data.
   launch.args[launch.args.length - 1] = launch.args.at(-1)
