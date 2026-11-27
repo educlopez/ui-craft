@@ -101,3 +101,57 @@ jobs:
         if: inputs.package == 'ui-craft-mcp'
         working-directory: dist/marketplace-v2/npm
         run: npm publish --provenance --access public
+
+  registry:
+    name: Publish official MCP Registry metadata
+    if: inputs.package == 'ui-craft-mcp'
+    needs: publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '20'
+      - name: Verify npm ownership metadata is publicly available
+        env:
+          REQUESTED_VERSION: ${{ inputs.version }}
+        run: |
+          node --input-type=module <<'NODE'
+          import {setTimeout as delay} from 'node:timers/promises';
+          const version = process.env.REQUESTED_VERSION;
+          let verified = false;
+          for (let i = 0; i < 12; i++) {
+            const response = await fetch(`https://registry.npmjs.org/ui-craft-mcp/${encodeURIComponent(version)}`, {signal: AbortSignal.timeout(20000)});
+            if (response.ok) {
+              const pkg = await response.json();
+              if (pkg.name !== 'ui-craft-mcp' || pkg.version !== version || pkg.mcpName !== 'io.github.educlopez/ui-craft') throw new Error('Published npm identity mismatch');
+              verified = true;
+              break;
+            }
+            await delay(5000);
+          }
+          if (!verified) throw new Error('Published npm package not visible yet; rerun only this Registry job');
+          NODE
+      - name: Prepare the same versioned descriptor used by packaging
+        env:
+          REQUESTED_VERSION: ${{ inputs.version }}
+        run: |
+          python3 - <<'PY'
+          import importlib.util, json, os
+          from pathlib import Path
+          spec = importlib.util.spec_from_file_location('packager', 'experiments/skills-mcp/package-release.py')
+          module = importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(module)
+          Path('server-release.json').write_text(json.dumps(module.registry_descriptor(os.environ['REQUESTED_VERSION']), indent=2) + '\n', encoding='utf-8')
+          PY
+      - name: Download checksum-pinned official publisher
+        run: |
+          curl --fail --location --silent --show-error --max-time 120 https://github.com/modelcontextprotocol/registry/releases/download/v1.8.17/mcp-publisher_linux_amd64.tar.gz -o publisher.tar.gz
+          echo '4fbfe8236becd291a7a37b3e2cd7d5a6171ecf25c62a47f4fe92ef9b92007f9b  publisher.tar.gz' | sha256sum --check
+          tar --extract --gzip --file publisher.tar.gz --no-same-owner --no-same-permissions mcp-publisher
+          chmod +x mcp-publisher
+      - name: Publish using existing GitHub repository identity
+        run: |
+          ./mcp-publisher login github-oidc
+          ./mcp-publisher publish server-release.json

@@ -83,6 +83,19 @@ def launch(variable, skills='0'):
             'env': {'UI_CRAFT_MCP_SKILLS': skills}}
 
 
+def registry_descriptor(version=MCP_VERSION):
+    registry = json.loads((ROOT / 'mcp/server.json').read_text(encoding='utf-8'))
+    registry['version'] = version
+    registry['packages'][0]['version'] = version
+    registry['websiteUrl'] = 'https://ui-craft.smoothui.dev'
+    registry['icons'] = [{'src': 'https://raw.githubusercontent.com/educlopez/ui-craft/main/assets/icon.svg',
+                          'mimeType': 'image/svg+xml', 'sizes': ['any']}]
+    registry['packages'][0]['environmentVariables'] = [{
+        'name': 'UI_CRAFT_MCP_SKILLS', 'description': 'Set 1 only when the host supports Skills over MCP and native UI Craft skills are not installed; otherwise keep 0.',
+        'default': '0', 'choices': ['0', '1'], 'isRequired': False, 'isSecret': False}]
+    return registry
+
+
 def zip_tree(base, filename):
     with zipfile.ZipFile(OUT / filename, 'w', zipfile.ZIP_DEFLATED) as z:
         for p in sorted(base.rglob('*')):
@@ -191,15 +204,7 @@ def build():
                 info.size = len(data)
                 info.mode = 0o755 if p.name == 'server.mjs' else 0o644
                 archive.addfile(info, io.BytesIO(data))
-    registry = json.loads((ROOT / 'mcp/server.json').read_text(encoding='utf-8'))
-    registry['version'] = MCP_VERSION
-    registry['packages'][0]['version'] = MCP_VERSION
-    registry['websiteUrl'] = 'https://ui-craft.smoothui.dev'
-    registry['icons'] = [{'src': 'https://raw.githubusercontent.com/educlopez/ui-craft/main/assets/icon.svg',
-                          'mimeType': 'image/svg+xml', 'sizes': ['any']}]
-    registry['packages'][0]['environmentVariables'] = [{
-        'name': 'UI_CRAFT_MCP_SKILLS', 'description': 'Set 1 only when the host supports Skills over MCP and native UI Craft skills are not installed; otherwise keep 0.',
-        'default': '0', 'choices': ['0', '1'], 'isRequired': False, 'isSecret': False}]
+    registry = registry_descriptor()
     put(OUT / 'registry', 'server.json', registry)
     # Git-backed Claude/Cursor installs cannot reference ignored build outputs.
     # Prepare inactive source overlays using the future published npm version;
