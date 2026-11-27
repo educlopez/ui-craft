@@ -157,6 +157,7 @@ export async function runTool(name, args, request, options = {}) {
       ...getDefaultEnvironment(),
       TMPDIR: directory, TMP: directory, TEMP: directory,
       UI_CRAFT_MCP_TOOL_WORKER: '1', UI_CRAFT_MCP_SKILLS: '0',
+      ...(options.onDiagnostic ? { UI_CRAFT_WORKER_DIAGNOSTICS: '1' } : {}),
       ...(process.env.UI_CRAFT_CHROME ? { UI_CRAFT_CHROME: process.env.UI_CRAFT_CHROME } : {}),
     };
     transport = new OwnedTransport(options.entry ?? fileURLToPath(import.meta.url), env,

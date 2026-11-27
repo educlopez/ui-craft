@@ -15,7 +15,7 @@ export function workerLaunch(entry, env, platform = process.platform) {
     // PowerShell must not consume/wait for the MCP stdin stream as pipeline
     // input before invoking the guard. The native worker owns those bytes.
     args: ['-NoLogo', '-NoProfile', '-NonInteractive', '-InputFormat', 'None', '-Command',
-      "$ErrorActionPreference='Stop'; Add-Type -LiteralPath $env:UI_CRAFT_WORKER_HELPER; [UICraftJob]::Run()"],
+      "$ErrorActionPreference='Stop'; if ($env:UI_CRAFT_WORKER_DIAGNOSTICS -eq '1') { [Console]::Error.WriteLine('guard-script-entered') }; Add-Type -LiteralPath $env:UI_CRAFT_WORKER_HELPER; if ($env:UI_CRAFT_WORKER_DIAGNOSTICS -eq '1') { [Console]::Error.WriteLine('guard-helper-compiled') }; [UICraftJob]::Run()"],
     options: { windowsHide: true, env: {
       ...env, SystemRoot: process.env.SystemRoot,
       UI_CRAFT_WORKER_NODE: process.execPath, UI_CRAFT_WORKER_ENTRY: entry,

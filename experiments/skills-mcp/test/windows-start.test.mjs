@@ -15,10 +15,11 @@ test('Windows owned transport connects using its credential-free environment', {
   const root = await mkdtemp(join(tmpdir(), 'ui craft transport '));
   t.after(() => rm(root, { recursive: true, force: true }));
   let diagnostics = '';
+  const started = Date.now();
   try {
     const result = await runTool('slow', {}, {}, {
       entry: fileURLToPath(new URL('./fixtures/worker.mjs', import.meta.url)),
-      tempRoot: root, onDiagnostic: text => { diagnostics = (diagnostics + text).slice(-8192); },
+      tempRoot: root, onDiagnostic: text => { diagnostics = (diagnostics + `[${Date.now() - started}ms] ${text}`).slice(-8192); },
     });
     assert.equal(result.content[0].text, 'done');
   } catch (error) {
